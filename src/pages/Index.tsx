@@ -9,7 +9,12 @@ const Index = () => {
     <div className="flex min-h-svh flex-col bg-background">
       <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
         <h1 className="flex items-center text-6xl font-black tracking-tight text-foreground sm:text-8xl">
-          <img src={logoS} alt="S" className="inline-block h-[1.35em] w-auto -mr-[0.08em] drop-shadow-[0_0_16px_rgba(59,130,246,0.4)]" />
+          <img
+            src={logoS}
+            alt="S"
+            className="inline-block h-[2.6em] w-auto object-contain -my-[0.6em]"
+            style={{ mixBlendMode: 'lighten', marginRight: '-1.1em', marginLeft: '-0.5em' }}
+          />
           <span>ottra</span>
         </h1>
         <p className="mt-4 text-lg font-medium text-foreground/80 sm:text-xl">
