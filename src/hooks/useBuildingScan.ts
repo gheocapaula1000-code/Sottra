@@ -1,19 +1,7 @@
 import { useState, useCallback } from "react";
 import { identifyBuilding, getCadastral, getPricing, getListings, getEnergy } from "@/services/scan";
 import { getMoodScore, getTimeView, getOpportunityIndex } from "@/services/forecast";
-
-type SectionStatus = "idle" | "loading" | "success" | "error";
-
-interface ScanResult {
-  identify: { status: SectionStatus; data: unknown; message: string | null };
-  cadastral: { status: SectionStatus; data: unknown; message: string | null };
-  pricing: { status: SectionStatus; data: unknown; message: string | null };
-  listings: { status: SectionStatus; data: unknown; message: string | null };
-  energy: { status: SectionStatus; data: unknown; message: string | null };
-  moodScore: { status: SectionStatus; data: unknown; message: string | null };
-  timeView: { status: SectionStatus; data: unknown; message: string | null };
-  opportunity: { status: SectionStatus; data: unknown; message: string | null };
-}
+import type { ScanResult, SectionState } from "@/types";
 
 const idle = { status: "idle" as const, data: null, message: null };
 
@@ -21,14 +9,14 @@ const initialState: ScanResult = {
   identify: idle, cadastral: idle, pricing: idle,
   listings: idle, energy: idle, moodScore: idle,
   timeView: idle, opportunity: idle,
-};
+} as ScanResult;
 
 export function useBuildingScan() {
   const [result, setResult] = useState<ScanResult>(initialState);
   const [scanning, setScanning] = useState(false);
 
-  const update = (key: keyof ScanResult, value: ScanResult[keyof ScanResult]) =>
-    setResult((prev) => ({ ...prev, [key]: value }));
+  const update = (key: keyof ScanResult, value: { status: SectionState["status"]; data: unknown; message: string | null }) =>
+    setResult((prev) => ({ ...prev, [key]: value } as ScanResult));
 
   const scan = useCallback(async (photo: string, lat: number, lng: number) => {
     setScanning(true);
@@ -38,7 +26,6 @@ export function useBuildingScan() {
       ) as unknown as ScanResult
     );
 
-    // Run scan + forecast engines in parallel, fully independent
     const scanEngine = async () => {
       const idRes = await identifyBuilding(photo, lat, lng);
       update("identify", {

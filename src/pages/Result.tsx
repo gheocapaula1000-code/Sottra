@@ -8,6 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
+import type {
+  IdentifyResult,
+  CadastralData,
+  PricingData,
+  ListingsData,
+  EnergyData,
+  MoodScoreData,
+  TimeViewData,
+  OpportunityData,
+  ScanResult,
+} from "@/types";
 
 interface ResultState {
   photo: string;
@@ -123,20 +134,20 @@ const Result = () => {
     );
   }
 
-  const s = (k: keyof typeof result) => result[k].status;
-  const d = <T,>(k: keyof typeof result) => result[k].data as T | null;
+  const s = (k: keyof ScanResult) => result[k].status;
+  const d = <T,>(k: keyof ScanResult) => result[k].data as T | null;
 
-  const identify = d<{ address: string; buildingId: string; confidence: number }>("identify");
-  const cadastral = d<{ foglio: number; particella: number; subalterno: number; anno: number; piani: number; unitaImmobiliari: number; renditaCatastale: number }>("cadastral");
-  const pricing = d<{ prezzoMq: number; prezzoMqMin: number; prezzoMqMax: number; mediaZona: number; trend5Anni: number }>("pricing");
-  const listings = d<{ annunci: { tipo: string; prezzo: number; mq: number; locali: number; piano: number; link: string }[] }>("listings");
-  const energy = d<{ classeEnergetica: string; epgl: number; mediaZona: string }>("energy");
-  const mood = d<{ score: number; trend: string; categorie: Record<string, number> }>("moodScore");
-  const timeView = d<{ previsione5Anni: number; previsione10Anni: number; previsione20Anni: number; progettiInArrivo: string[] }>("timeView");
-  const opportunity = d<{ indice: number; quadrante: string; raccomandazione: string }>("opportunity");
+  const identify = d<IdentifyResult>("identify");
+  const cadastral = d<CadastralData>("cadastral");
+  const pricing = d<PricingData>("pricing");
+  const listings = d<ListingsData>("listings");
+  const energy = d<EnergyData>("energy");
+  const mood = d<MoodScoreData>("moodScore");
+  const timeView = d<TimeViewData>("timeView");
+  const opportunity = d<OpportunityData>("opportunity");
 
-  const isLoading = (k: keyof typeof result) => s(k) === "loading";
-  const isOk = (k: keyof typeof result) => s(k) === "success" && result[k].data;
+  const isLoading = (k: keyof ScanResult) => s(k) === "loading";
+  const isOk = (k: keyof ScanResult) => s(k) === "success" && result[k].data;
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -372,7 +383,7 @@ const Result = () => {
             lat: state.lat ?? null,
             lng: state.lng ?? null,
             moodScore: mood?.score ?? null,
-            scanResult: result as unknown as Record<string, unknown>,
+            scanResult: result,
           });
           toast({ title: "Scansione salvata", description: "Trovi questa scansione nella cronologia." });
         }}>
