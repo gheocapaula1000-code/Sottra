@@ -18,7 +18,7 @@ export async function identifyBuilding(photo: string, lat: number, lng: number) 
     await delay(800);
     return { error: false, message: null, data: mockIdentify };
   }
-  const res = await coreRequest("/sottra/scan/identify", "POST", { photo, lat, lng });
+  const res = await coreRequest("/scan/identify", "POST", { photo, lat, lng });
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
