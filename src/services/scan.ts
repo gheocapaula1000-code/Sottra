@@ -38,7 +38,7 @@ export async function getPricing(address: string) {
     await delay();
     return { error: false, message: null, data: mockPricing };
   }
-  const res = await coreRequest("/sottra/scan/pricing", "POST", { address });
+  const res = await coreRequest("/scan/pricing", "POST", { address });
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
