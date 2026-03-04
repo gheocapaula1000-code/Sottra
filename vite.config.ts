@@ -21,9 +21,9 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: "Sottra",
         short_name: "Sottra",
-        description: "Ciò che sta sotto, ora lo sai tu.",
-        theme_color: "#121212",
-        background_color: "#121212",
+        description: "Inquadra qualsiasi edificio. Scopri tutto in 3 secondi.",
+        theme_color: "#0A0A0F",
+        background_color: "#0A0A0F",
         display: "standalone",
         start_url: "/",
         icons: [
