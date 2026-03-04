@@ -383,7 +383,7 @@ const Result = () => {
             lat: state.lat ?? null,
             lng: state.lng ?? null,
             moodScore: mood?.score ?? null,
-            scanResult: result as unknown as Record<string, unknown>,
+            scanResult: result,
           });
           toast({ title: "Scansione salvata", description: "Trovi questa scansione nella cronologia." });
         }}>
