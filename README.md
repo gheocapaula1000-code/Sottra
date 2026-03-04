@@ -1,73 +1,105 @@
-# Welcome to your Lovable project
+# Sottra
 
-## Project info
+> **Ciò che sta sotto, lo sai solo tu.**
+> Inquadra qualsiasi edificio. Scopri tutto in 3 secondi.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Sottra è una web-app mobile-first che permette di puntare la fotocamera su un edificio e ottenere istantaneamente dati catastali, stime di prezzo e indicatori di zona.
 
-## How can I edit this code?
+## Architettura
 
-There are several ways of editing your application.
+```
+┌─────────────────────────────────────────┐
+│               Frontend (React + Vite)   │
+│                                         │
+│  Camera → useBuildingScan hook          │
+│              │                          │
+│     ┌────────┴────────┐                 │
+│     ▼                 ▼                 │
+│  Motore Scan    Motore Forecast         │
+│  (scan.ts)      (forecast.ts)           │
+│     │                 │                 │
+│     └────────┬────────┘                 │
+│              ▼                          │
+│        coreRequest (api.ts)             │
+│        Promise.allSettled               │
+│              │                          │
+│              ▼                          │
+│        Central Core API (esterno)       │
+└─────────────────────────────────────────┘
+```
 
-**Use Lovable**
+### Motori indipendenti
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+| Motore | File | Endpoint | Output |
+|--------|------|----------|--------|
+| **Scan** | `src/services/scan.ts` | `/identify`, `/cadastral`, `/pricing` | Dati identificativi, catastali, stime prezzo |
+| **Forecast** | `src/services/forecast.ts` | `/zone-stats`, `/mood-score`, `/forecast` | Statistiche zona, sentiment, previsioni |
 
-Changes made via Lovable will be committed automatically to this repo.
+I due motori vengono lanciati in parallelo con `Promise.allSettled` — se uno fallisce, l'altro restituisce comunque i suoi risultati.
 
-**Use your preferred IDE**
+### Layer API (`src/services/api.ts`)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- `coreRequest<T>()` — wrapper non-throwing con timeout e abort
+- `isError()` — type guard per distinguere errori da risultati
+- Mock mode automatico via `VITE_USE_MOCK=true`
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Tech Stack
 
-Follow these steps:
+- **React 18** + TypeScript
+- **Vite** con PWA (vite-plugin-pwa)
+- **Tailwind CSS** + shadcn/ui
+- **Recharts** per grafiche
+- **Vitest** per test
+
+## Struttura progetto
+
+```
+src/
+├── assets/          # Immagini e logo
+├── components/      # ErrorBoundary, NavLink, UI (shadcn)
+├── hooks/           # useBuildingScan, use-mobile, use-toast
+├── pages/           # Index, Scan, Result, NotFound
+├── services/        # api.ts, scan.ts, forecast.ts, mockData.ts
+├── test/            # api.test.ts, services.test.ts
+└── types/           # ServiceResult, SectionStatus, IdentifyData, CoreError
+```
+
+## Setup locale
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+git clone <REPO_URL>
+cd sottra
+npm install
+cp .env.example .env    # configura le variabili
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Variabili d'ambiente
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Variabile | Descrizione | Default |
+|-----------|-------------|---------|
+| `VITE_USE_MOCK` | Attiva dati mock senza backend | `true` |
+| `VITE_CORE_API_URL` | URL del Central Core API | — |
+| `VITE_CORE_API_KEY` | API key per autenticazione | — |
 
-**Use GitHub Codespaces**
+## Test
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```sh
+npm test
+```
 
-## What technologies are used for this project?
+15 test su 3 file: `api.test.ts` (6), `services.test.ts` (8), `example.test.ts` (1).
 
-This project is built with:
+## Build & Deploy
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```sh
+npm run build    # output in dist/
+```
 
-## How can I deploy this project?
+La build produce chunk ottimizzati: `vendor-react`, `vendor-radix`, `vendor-charts` + lazy loading su Scan/Result/NotFound.
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Deploy: apri [Lovable](https://lovable.dev) → Share → Publish.
 
-## Can I connect a custom domain to my Lovable project?
+## Licenza
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+© 2026 Sottra. Tutti i diritti riservati.
