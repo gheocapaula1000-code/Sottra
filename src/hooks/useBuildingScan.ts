@@ -15,8 +15,8 @@ export function useBuildingScan() {
   const [result, setResult] = useState<ScanResult>(initialState);
   const [scanning, setScanning] = useState(false);
 
-  const update = (key: keyof ScanResult, value: SectionState) =>
-    setResult((prev) => ({ ...prev, [key]: value }));
+  const update = (key: keyof ScanResult, value: { status: SectionState["status"]; data: unknown; message: string | null }) =>
+    setResult((prev) => ({ ...prev, [key]: value } as ScanResult));
 
   const scan = useCallback(async (photo: string, lat: number, lng: number) => {
     setScanning(true);
