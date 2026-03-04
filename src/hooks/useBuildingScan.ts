@@ -3,13 +3,13 @@ import { identifyBuilding, getCadastral, getPricing, getListings, getEnergy } fr
 import { getMoodScore, getTimeView, getOpportunityIndex } from "@/services/forecast";
 import type { ScanResult, SectionState } from "@/types";
 
-const idle: SectionState = { status: "idle", data: null, message: null };
+const idle = { status: "idle" as const, data: null, message: null };
 
 const initialState: ScanResult = {
   identify: idle, cadastral: idle, pricing: idle,
   listings: idle, energy: idle, moodScore: idle,
   timeView: idle, opportunity: idle,
-};
+} as ScanResult;
 
 export function useBuildingScan() {
   const [result, setResult] = useState<ScanResult>(initialState);
