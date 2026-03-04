@@ -1,5 +1,5 @@
-const SottraLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+const SottraLogo = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+  <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} style={style}>
     <defs>
       <linearGradient id="scanLine" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0%" stopColor="#3B82F6" stopOpacity="0" />
