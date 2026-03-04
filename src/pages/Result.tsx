@@ -8,6 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
+import type {
+  IdentifyResult,
+  CadastralData,
+  PricingData,
+  ListingsData,
+  EnergyData,
+  MoodScoreData,
+  TimeViewData,
+  OpportunityData,
+  ScanResult,
+} from "@/types";
 
 interface ResultState {
   photo: string;
