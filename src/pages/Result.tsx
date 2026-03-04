@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Building2, Zap, TrendingUp, MapPin, Bookmark, ChevronRight, Rocket } from "lucide-react";
+import { useScanHistory } from "@/contexts/ScanHistoryContext";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -102,6 +104,8 @@ const Result = () => {
   const location = useLocation();
   const state = location.state as ResultState | null;
   const { result, scanning, scan } = useBuildingScan();
+  const { saveScan } = useScanHistory();
+  const { toast } = useToast();
   const started = useRef(false);
 
   useEffect(() => {
@@ -360,7 +364,18 @@ const Result = () => {
       {/* ── FOOTER ── */}
       <div className="fixed bottom-0 inset-x-0 bg-background/80 backdrop-blur-lg border-t border-border px-5 pb-[max(env(safe-area-inset-bottom,20px),20px)] pt-3 flex gap-3">
         <Button className="flex-1" size="lg" onClick={() => navigate("/scan")}>Scansiona un altro</Button>
-        <Button variant="outline" size="lg" className="shrink-0" onClick={() => {}}>
+        <Button variant="outline" size="lg" className="shrink-0" onClick={() => {
+          if (!state) return;
+          saveScan({
+            photo: state.photo,
+            address: identify?.address ?? "Indirizzo sconosciuto",
+            lat: state.lat ?? null,
+            lng: state.lng ?? null,
+            moodScore: mood?.score ?? null,
+            scanResult: result as unknown as Record<string, unknown>,
+          });
+          toast({ title: "Scansione salvata", description: "Trovi questa scansione nella cronologia." });
+        }}>
           <Bookmark className="h-4 w-4" />
         </Button>
       </div>
