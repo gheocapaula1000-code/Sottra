@@ -1,10 +1,21 @@
-export const mockIdentify = {
+import type {
+  IdentifyResult,
+  CadastralData,
+  PricingData,
+  ListingsData,
+  EnergyData,
+  MoodScoreData,
+  TimeViewData,
+  OpportunityData,
+} from "@/types";
+
+export const mockIdentify: IdentifyResult = {
   address: "Via Torino 45, Milano",
   buildingId: "MI-VT45",
   confidence: 0.92,
 };
 
-export const mockCadastral = {
+export const mockCadastral: CadastralData = {
   foglio: 234,
   particella: 89,
   subalterno: 3,
@@ -14,7 +25,7 @@ export const mockCadastral = {
   renditaCatastale: 1850,
 };
 
-export const mockPricing = {
+export const mockPricing: PricingData = {
   prezzoMq: 4200,
   prezzoMqMin: 3800,
   prezzoMqMax: 5100,
@@ -22,20 +33,20 @@ export const mockPricing = {
   trend5Anni: 18.5,
 };
 
-export const mockListings = {
+export const mockListings: ListingsData = {
   annunci: [
     { tipo: "vendita", prezzo: 320000, mq: 75, locali: 3, piano: 4, link: "#" },
     { tipo: "affitto", prezzo: 1200, mq: 55, locali: 2, piano: 2, link: "#" },
   ],
 };
 
-export const mockEnergy = {
+export const mockEnergy: EnergyData = {
   classeEnergetica: "D",
   epgl: 142.5,
   mediaZona: "E",
 };
 
-export const mockMoodScore = {
+export const mockMoodScore: MoodScoreData = {
   score: 72,
   trend: "in crescita",
   categorie: {
@@ -47,7 +58,7 @@ export const mockMoodScore = {
   },
 };
 
-export const mockTimeView = {
+export const mockTimeView: TimeViewData = {
   previsione5Anni: 12,
   previsione10Anni: 28,
   previsione20Anni: 45,
@@ -57,7 +68,7 @@ export const mockTimeView = {
   ],
 };
 
-export const mockOpportunity = {
+export const mockOpportunity: OpportunityData = {
   indice: 76,
   quadrante: "Stella Nascente",
   raccomandazione: "Zona in decollo — finestra d'acquisto ideale",

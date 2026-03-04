@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import type { ScanResult } from "@/types";
 
 export interface SavedScan {
   id: string;
@@ -8,7 +9,7 @@ export interface SavedScan {
   lng: number | null;
   date: string;
   moodScore: number | null;
-  scanResult: Record<string, unknown>;
+  scanResult: Partial<ScanResult>;
 }
 
 interface ScanHistoryContextType {
