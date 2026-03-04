@@ -104,6 +104,8 @@ const Result = () => {
   const location = useLocation();
   const state = location.state as ResultState | null;
   const { result, scanning, scan } = useBuildingScan();
+  const { saveScan } = useScanHistory();
+  const { toast } = useToast();
   const started = useRef(false);
 
   useEffect(() => {
