@@ -12,7 +12,7 @@ export async function getMoodScore(lat: number, lng: number) {
     await delay(900);
     return { error: false, message: null, data: mockMoodScore };
   }
-  const res = await coreRequest("/sottra/forecast/moodscore", "POST", { lat, lng });
+  const res = await coreRequest("/forecast/moodscore", "POST", { lat, lng });
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
