@@ -30,6 +30,12 @@ const Index = () => {
         >
           Inizia a scoprire
         </Button>
+        <button
+          onClick={() => navigate("/history")}
+          className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Le tue scansioni →
+        </button>
       </main>
 
       <footer className="py-6 text-center text-xs text-muted-foreground">

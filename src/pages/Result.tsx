@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Building2, Zap, TrendingUp, MapPin, Bookmark, ChevronRight, Rocket } from "lucide-react";
+import { useScanHistory } from "@/contexts/ScanHistoryContext";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
