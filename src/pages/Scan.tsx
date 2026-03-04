@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Upload, Camera } from "lucide-react";
+import { X, Upload, Camera, MapPin, ImagePlus } from "lucide-react";
 
 type CameraState = "loading" | "active" | "denied" | "unavailable";
+type ShootPhase = "idle" | "flash" | "gps";
 
 const Scan = () => {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraState, setCameraState] = useState<CameraState>("loading");
+  const [shootPhase, setShootPhase] = useState<ShootPhase>("idle");
+  const [freezeFrame, setFreezeFrame] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,29 +60,38 @@ const Scan = () => {
     return canvas.toDataURL("image/jpeg", 0.85);
   }, []);
 
+  const navigateWithGps = useCallback(
+    (photo: string) => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => navigate("/result", { state: { photo, lat: pos.coords.latitude, lng: pos.coords.longitude } }),
+          () => navigate("/result", { state: { photo, lat: null, lng: null, gpsError: true } }),
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      } else {
+        navigate("/result", { state: { photo, lat: null, lng: null, gpsError: true } });
+      }
+    },
+    [navigate]
+  );
+
   const handleShoot = useCallback(() => {
     const photo = captureFrame();
     if (!photo) return;
 
-    // Stop stream before navigating
+    // Stop stream
     streamRef.current?.getTracks().forEach((t) => t.stop());
 
-    // GPS only at shoot time
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          navigate("/result", { state: { photo, lat: pos.coords.latitude, lng: pos.coords.longitude } });
-        },
-        () => {
-          // GPS denied/unavailable — proceed without coords
-          navigate("/result", { state: { photo, lat: null, lng: null, gpsError: true } });
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
-    } else {
-      navigate("/result", { state: { photo, lat: null, lng: null, gpsError: true } });
-    }
-  }, [captureFrame, navigate]);
+    // Flash phase
+    setFreezeFrame(photo);
+    setShootPhase("flash");
+
+    setTimeout(() => {
+      // GPS phase
+      setShootPhase("gps");
+      navigateWithGps(photo);
+    }, 150);
+  }, [captureFrame, navigateWithGps]);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,19 +100,13 @@ const Scan = () => {
       const reader = new FileReader();
       reader.onload = () => {
         const photo = reader.result as string;
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => navigate("/result", { state: { photo, lat: pos.coords.latitude, lng: pos.coords.longitude } }),
-            () => navigate("/result", { state: { photo, lat: null, lng: null, gpsError: true } }),
-            { enableHighAccuracy: true, timeout: 8000 }
-          );
-        } else {
-          navigate("/result", { state: { photo, lat: null, lng: null, gpsError: true } });
-        }
+        setFreezeFrame(photo);
+        setShootPhase("gps");
+        navigateWithGps(photo);
       };
       reader.readAsDataURL(file);
     },
-    [navigate]
+    [navigateWithGps]
   );
 
   return (
@@ -113,7 +120,27 @@ const Scan = () => {
         autoPlay
       />
 
-      {/* Overlay */}
+      {/* Flash overlay */}
+      {shootPhase === "flash" && (
+        <div className="absolute inset-0 z-50 animate-camera-flash bg-white" />
+      )}
+
+      {/* GPS waiting overlay */}
+      {shootPhase === "gps" && freezeFrame && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center">
+          <img src={freezeFrame} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative z-10 flex flex-col items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 backdrop-blur">
+              <MapPin className="h-8 w-8 text-primary animate-pulse" />
+            </div>
+            <p className="text-base font-semibold text-white">Acquisizione posizione…</p>
+            <p className="text-sm text-white/50">Attendere qualche istante</p>
+          </div>
+        </div>
+      )}
+
+      {/* Overlay UI */}
       <div className="absolute inset-0 flex flex-col">
         {/* Header */}
         <header className="z-10 flex items-center justify-between px-5 pt-[env(safe-area-inset-top,12px)] pb-2">
@@ -125,7 +152,7 @@ const Scan = () => {
 
         {/* Center: viewfinder or fallback */}
         <div className="flex flex-1 flex-col items-center justify-center">
-          {cameraState === "active" && (
+          {cameraState === "active" && shootPhase === "idle" && (
             <>
               <Viewfinder />
               <p className="mt-6 text-sm font-medium text-white/70 drop-shadow">Inquadra un edificio</p>
@@ -164,9 +191,19 @@ const Scan = () => {
           )}
         </div>
 
-        {/* Bottom shutter */}
-        {cameraState === "active" && (
-          <div className="z-10 flex justify-center pb-[max(env(safe-area-inset-bottom,24px),24px)] pt-4">
+        {/* Bottom controls */}
+        {cameraState === "active" && shootPhase === "idle" && (
+          <div className="z-10 flex items-center justify-center gap-8 pb-[max(env(safe-area-inset-bottom,24px),24px)] pt-4 px-6">
+            {/* Gallery button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors active:bg-white/20"
+              aria-label="Carica foto dalla galleria"
+            >
+              <ImagePlus className="h-5 w-5 text-white/80" />
+            </button>
+
+            {/* Shutter */}
             <button
               onClick={handleShoot}
               className="group flex h-[72px] w-[72px] items-center justify-center rounded-full border-[3px] border-white/90 bg-transparent transition-transform active:scale-90"
@@ -174,9 +211,21 @@ const Scan = () => {
             >
               <div className="h-[58px] w-[58px] rounded-full bg-white transition-colors group-active:bg-white/70" />
             </button>
+
+            {/* Spacer for symmetry */}
+            <div className="h-11 w-11" />
           </div>
         )}
       </div>
+
+      {/* Hidden file input for gallery */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileUpload}
+      />
     </div>
   );
 };
@@ -188,7 +237,6 @@ const Viewfinder = () => (
     <Corner className="right-0 top-0" rotate={90} />
     <Corner className="bottom-0 right-0" rotate={180} />
     <Corner className="bottom-0 left-0" rotate={270} />
-    {/* Subtle pulse animation */}
     <div className="absolute inset-4 animate-pulse rounded-lg border border-white/10" />
   </div>
 );
