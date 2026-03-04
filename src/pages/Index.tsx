@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import logoS from "@/assets/logo-s-icon.png";
+import SottraLogo from "@/components/SottraLogo";
 
 const Index = () => {
   const navigate = useNavigate();
