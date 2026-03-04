@@ -12,7 +12,7 @@ export async function getMoodScore(lat: number, lng: number) {
     await delay(900);
     return { error: false, message: null, data: mockMoodScore };
   }
-  const res = await coreRequest("/sottra/forecast/moodscore", "POST", { lat, lng });
+  const res = await coreRequest("/forecast/moodscore", "POST", { lat, lng });
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
@@ -22,7 +22,7 @@ export async function getTimeView(lat: number, lng: number, horizon: number) {
     await delay(1100);
     return { error: false, message: null, data: mockTimeView };
   }
-  const res = await coreRequest("/sottra/forecast/timeview", "POST", { lat, lng, horizon });
+  const res = await coreRequest("/forecast/timeview", "POST", { lat, lng, horizon });
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
@@ -32,7 +32,7 @@ export async function getOpportunityIndex(lat: number, lng: number) {
     await delay(1300);
     return { error: false, message: null, data: mockOpportunity };
   }
-  const res = await coreRequest("/sottra/forecast/opportunity", "POST", { lat, lng });
+  const res = await coreRequest("/forecast/opportunity", "POST", { lat, lng });
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
