@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import logoS from "@/assets/logo-s-icon.png";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -7,12 +8,10 @@ const Index = () => {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-        <div className="flex flex-col items-center gap-4">
-          <img src="/icons/icon-512.png" alt="Sottra" className="h-20 w-20 sm:h-28 sm:w-28" />
-          <h1 className="text-6xl font-black tracking-tight text-foreground sm:text-8xl">
-            Sottra
-          </h1>
-        </div>
+        <h1 className="flex items-baseline text-6xl font-black tracking-tight text-foreground sm:text-8xl">
+          <img src={logoS} alt="S" className="inline-block h-[1.1em] w-auto -mr-[0.02em] translate-y-[0.05em] drop-shadow-[0_0_12px_rgba(59,130,246,0.5)]" />
+          <span>ottra</span>
+        </h1>
         <p className="mt-4 text-lg font-medium text-foreground/80 sm:text-xl">
           Ciò che sta sotto, lo sai solo tu.
         </p>
