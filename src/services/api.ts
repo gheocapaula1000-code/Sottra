@@ -13,7 +13,7 @@ export async function coreRequest<T = unknown>(
   endpoint: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "POST",
   body?: unknown,
-  timeout = 5000,
+  timeout = 10000,
 ): Promise<T | CoreError> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -36,15 +36,25 @@ export async function coreRequest<T = unknown>(
       return { error: true, message: `HTTP ${res.status}: ${text}` };
     }
 
-    return (await res.json()) as T;
+    const json = await res.json();
+
+    // Central Core V3 wrapper: { ok, data, warnings, debug_id }
+    if (json && typeof json === "object" && "ok" in json) {
+      if (!json.ok) {
+        return { error: true, message: json.error?.message ?? "Unknown error" };
+      }
+      return json.data as T;
+    }
+
+    return json as T;
   } catch (err: unknown) {
     clearTimeout(timer);
     if (err instanceof DOMException && err.name === "AbortError") {
-      return { error: true, message: "Request timeout" };
+      return { error: true, message: "Timeout richiesta" };
     }
     return {
       error: true,
-      message: err instanceof Error ? err.message : "Unknown error",
+      message: err instanceof Error ? err.message : "Errore sconosciuto",
     };
   }
 }
