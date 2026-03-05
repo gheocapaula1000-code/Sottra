@@ -22,7 +22,7 @@ export async function getTimeView(lat: number, lng: number, horizon: number) {
     await delay(1100);
     return { error: false, message: null, data: mockTimeView };
   }
-  const res = await coreRequest("/forecast/timeview", "POST", { lat, lng, horizon });
+  const res = await coreRequest("/forecast/timeview", "POST", { lat, lng, horizon }, 25000);
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
