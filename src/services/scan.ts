@@ -28,7 +28,7 @@ export async function getCadastral(address: string) {
     await delay();
     return { error: false, message: null, data: mockCadastral };
   }
-  const res = await coreRequest("/scan/cadastral", "POST", { address });
+  const res = await coreRequest("/scan/cadastral", "POST", { address }, 25000);
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
