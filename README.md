@@ -1,105 +1,63 @@
-# Sottra
+# Sottra — Ciò che sta sotto, lo sai solo tu.
 
-> **Ciò che sta sotto, lo sai solo tu.**
-> Inquadra qualsiasi edificio. Scopri tutto in 3 secondi.
-
-Sottra è una web-app mobile-first che permette di puntare la fotocamera su un edificio e ottenere istantaneamente dati catastali, stime di prezzo e indicatori di zona.
+PWA per scanner edifici: fotografa qualsiasi edificio, ottieni dati catastali, prezzi di mercato, classe energetica, annunci nella zona, e previsioni di investimento in 3 secondi.
 
 ## Architettura
 
+Due motori indipendenti che girano in parallelo:
+
+- **Motore Scan**: foto + GPS → identify → catasto, prezzi, annunci, energia
+- **Motore Forecast**: GPS → MoodScore zona, previsione futura, indice opportunità
 ```
-┌─────────────────────────────────────────┐
-│               Frontend (React + Vite)   │
-│                                         │
-│  Camera → useBuildingScan hook          │
-│              │                          │
-│     ┌────────┴────────┐                 │
-│     ▼                 ▼                 │
-│  Motore Scan    Motore Forecast         │
-│  (scan.ts)      (forecast.ts)           │
-│     │                 │                 │
-│     └────────┬────────┘                 │
-│              ▼                          │
-│        coreRequest (api.ts)             │
-│        Promise.allSettled               │
-│              │                          │
-│              ▼                          │
-│        Central Core API (esterno)       │
-└─────────────────────────────────────────┘
+Browser → Sottra PWA (React + Vite)
+       → Central Core V3 (Supabase Edge Function: /sottra/*)
+         → Nominatim (geocoding gratuito)
+         → Provider analisi dati (orchestrati)
 ```
-
-### Motori indipendenti
-
-| Motore | File | Endpoint | Output |
-|--------|------|----------|--------|
-| **Scan** | `src/services/scan.ts` | `/identify`, `/cadastral`, `/pricing` | Dati identificativi, catastali, stime prezzo |
-| **Forecast** | `src/services/forecast.ts` | `/zone-stats`, `/mood-score`, `/forecast` | Statistiche zona, sentiment, previsioni |
-
-I due motori vengono lanciati in parallelo con `Promise.allSettled` — se uno fallisce, l'altro restituisce comunque i suoi risultati.
-
-### Layer API (`src/services/api.ts`)
-
-- `coreRequest<T>()` — wrapper non-throwing con timeout e abort
-- `isError()` — type guard per distinguere errori da risultati
-- Mock mode automatico via `VITE_USE_MOCK=true`
 
 ## Tech Stack
 
-- **React 18** + TypeScript
-- **Vite** con PWA (vite-plugin-pwa)
-- **Tailwind CSS** + shadcn/ui
-- **Recharts** per grafiche
-- **Vitest** per test
+- **Frontend**: React 18, TypeScript, Tailwind CSS, shadcn/ui, Vite
+- **Backend**: Central Core V3 (Edge Function condivisa)
+- **Geocoding**: OpenStreetMap Nominatim (fallback Google Maps)
+- **PWA**: Service Worker, manifest, installabile
 
-## Struttura progetto
-
+## Struttura
 ```
 src/
-├── assets/          # Immagini e logo
-├── components/      # ErrorBoundary, NavLink, UI (shadcn)
-├── hooks/           # useBuildingScan, use-mobile, use-toast
-├── pages/           # Index, Scan, Result, NotFound
-├── services/        # api.ts, scan.ts, forecast.ts, mockData.ts
-├── test/            # api.test.ts, services.test.ts
-└── types/           # ServiceResult, SectionStatus, IdentifyData, CoreError
+  pages/        → Index, Scan, Result, History, NotFound
+  services/     → scan.ts, forecast.ts, api.ts, mockData.ts
+  hooks/        → useBuildingScan (orchestratore dual-engine)
+  contexts/     → ScanHistoryContext (cronologia scansioni)
+  types/        → Interfacce TypeScript per tutti i dati
+  components/   → UI condivisa + shadcn/ui
 ```
 
-## Setup locale
+## Variabili d'ambiente
+```env
+VITE_USE_MOCK=false              # true per dati finti
+VITE_CORE_API_URL=               # URL Edge Function Sottra
+VITE_CORE_API_KEY=               # AI_CORE_SECRET di Central Core V3
+```
 
-```sh
-git clone <REPO_URL>
-cd sottra
+## Sviluppo
+```bash
 npm install
-cp .env.example .env    # configura le variabili
-npm run dev
+npm run dev      # http://localhost:8080
+npm run build    # Build produzione
+npx vitest run   # Test (15 test)
+npx eslint src/  # Lint (0 errori)
 ```
 
-### Variabili d'ambiente
+## Endpoint Backend (8 rotte)
 
-| Variabile | Descrizione | Default |
-|-----------|-------------|---------|
-| `VITE_USE_MOCK` | Attiva dati mock senza backend | `true` |
-| `VITE_CORE_API_URL` | URL del Central Core API | — |
-| `VITE_CORE_API_KEY` | API key per autenticazione | — |
-
-## Test
-
-```sh
-npm test
-```
-
-15 test su 3 file: `api.test.ts` (6), `services.test.ts` (8), `example.test.ts` (1).
-
-## Build & Deploy
-
-```sh
-npm run build    # output in dist/
-```
-
-La build produce chunk ottimizzati: `vendor-react`, `vendor-radix`, `vendor-charts` + lazy loading su Scan/Result/NotFound.
-
-Deploy: apri [Lovable](https://lovable.dev) → Share → Publish.
-
-## Licenza
-
-© 2026 Sottra. Tutti i diritti riservati.
+| Endpoint | Motore | Descrizione |
+|----------|--------|-------------|
+| /scan/identify | Scan | GPS → indirizzo + building ID |
+| /scan/cadastral | Scan | Dati catastali stimati |
+| /scan/pricing | Scan | Prezzi al m² (range + media zona) |
+| /scan/listings | Scan | Annunci vendita/affitto in zona |
+| /scan/energy | Scan | Classe energetica stimata |
+| /forecast/moodscore | Forecast | Score qualità quartiere 0-100 |
+| /forecast/timeview | Forecast | Previsione valore 5/10/20 anni |
+| /forecast/opportunity | Forecast | Indice opportunità + quadrante |
