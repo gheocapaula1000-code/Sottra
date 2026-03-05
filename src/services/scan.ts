@@ -58,7 +58,7 @@ export async function getEnergy(address: string) {
     await delay(700);
     return { error: false, message: null, data: mockEnergy };
   }
-  const res = await coreRequest("/scan/energy", "POST", { address });
+  const res = await coreRequest("/scan/energy", "POST", { address }, 25000);
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }

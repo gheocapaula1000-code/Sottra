@@ -32,7 +32,7 @@ export async function getOpportunityIndex(lat: number, lng: number) {
     await delay(1300);
     return { error: false, message: null, data: mockOpportunity };
   }
-  const res = await coreRequest("/forecast/opportunity", "POST", { lat, lng });
+  const res = await coreRequest("/forecast/opportunity", "POST", { lat, lng }, 25000);
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
