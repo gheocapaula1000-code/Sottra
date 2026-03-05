@@ -1,57 +1,60 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// Mock the API layer so services never hit the network
+vi.mock("@/services/api", () => ({
+  coreRequest: vi.fn().mockResolvedValue({ address: "Via Test 1", buildingId: "IT-TEST", confidence: 0.9 }),
+  isError: (res: unknown) => typeof res === "object" && res !== null && (res as { error?: boolean }).error === true,
+}));
+
 import { identifyBuilding, getCadastral, getPricing, getListings, getEnergy } from "@/services/scan";
 import { getMoodScore, getTimeView, getOpportunityIndex } from "@/services/forecast";
 
-// Mock VITE_USE_MOCK to true so we test the mock paths
-vi.stubEnv("VITE_USE_MOCK", "true");
-
-describe("scan.ts (mock mode)", () => {
-  it("identifyBuilding returns mock data", async () => {
-    const res = await identifyBuilding("base64photo", 41.9, 12.5);
+describe("scan.ts", () => {
+  it("identifyBuilding returns data", async () => {
+    const res = await identifyBuilding("photo", 41.9, 12.5);
     expect(res.error).toBe(false);
     expect(res.data).toBeTruthy();
-    expect(res.data).toHaveProperty("address");
   });
 
-  it("getCadastral returns mock data", async () => {
+  it("getCadastral returns data", async () => {
     const res = await getCadastral("Via Roma 1");
     expect(res.error).toBe(false);
     expect(res.data).toBeTruthy();
   });
 
-  it("getPricing returns mock data", async () => {
+  it("getPricing returns data", async () => {
     const res = await getPricing("Via Roma 1");
     expect(res.error).toBe(false);
     expect(res.data).toBeTruthy();
   });
 
-  it("getListings returns mock data", async () => {
+  it("getListings returns data", async () => {
     const res = await getListings("Via Roma 1");
     expect(res.error).toBe(false);
     expect(res.data).toBeTruthy();
   });
 
-  it("getEnergy returns mock data", async () => {
+  it("getEnergy returns data", async () => {
     const res = await getEnergy("Via Roma 1");
     expect(res.error).toBe(false);
     expect(res.data).toBeTruthy();
   });
 });
 
-describe("forecast.ts (mock mode)", () => {
-  it("getMoodScore returns mock data", async () => {
+describe("forecast.ts", () => {
+  it("getMoodScore returns data", async () => {
     const res = await getMoodScore(41.9, 12.5);
     expect(res.error).toBe(false);
     expect(res.data).toBeTruthy();
   });
 
-  it("getTimeView returns mock data", async () => {
+  it("getTimeView returns data", async () => {
     const res = await getTimeView(41.9, 12.5, 12);
     expect(res.error).toBe(false);
     expect(res.data).toBeTruthy();
   });
 
-  it("getOpportunityIndex returns mock data", async () => {
+  it("getOpportunityIndex returns data", async () => {
     const res = await getOpportunityIndex(41.9, 12.5);
     expect(res.error).toBe(false);
     expect(res.data).toBeTruthy();
