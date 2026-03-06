@@ -73,15 +73,19 @@ describe("api.ts", () => {
     });
 
     it("returns circuit breaker error after repeated failures", async () => {
+      vi.useFakeTimers();
       globalThis.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
       for (let i = 0; i < 5; i++) {
-        await coreRequest("/test", "GET");
+        const p = coreRequest("/test", "GET");
+        await vi.advanceTimersByTimeAsync(2000);
+        await p;
       }
       const result = await coreRequest("/test", "GET");
       expect(isError(result)).toBe(true);
       if (isError(result)) {
         expect(result.message).toContain("non raggiungibile");
       }
+      vi.useRealTimers();
     });
   });
 
