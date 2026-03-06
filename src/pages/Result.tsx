@@ -6,10 +6,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
-import {
-  HeaderCard, CadastralCard, PricingCard, ListingsCard,
-  EnergyCard, MoodScoreCard, TimeViewCard, OpportunityCard,
-} from "@/components/result/index";
+import HeaderCard from "@/components/result/HeaderCard";
+import CadastralCard from "@/components/result/CadastralCard";
+import PricingCard from "@/components/result/PricingCard";
+import ListingsCard from "@/components/result/ListingsCard";
+import EnergyCard from "@/components/result/EnergyCard";
+import MoodScoreCard from "@/components/result/MoodScoreCard";
+import TimeViewCard from "@/components/result/TimeViewCard";
+import OpportunityCard from "@/components/result/OpportunityCard";
 import type {
   IdentifyResult, CadastralData, PricingData, ListingsData,
   EnergyData, MoodScoreData, TimeViewData, OpportunityData, ScanResult,
