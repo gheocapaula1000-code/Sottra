@@ -34,9 +34,14 @@ const App = () => (
                 <Route path="/scan" element={<Scan />} />
                 <Route path="/result" element={<Result />} />
                 <Route path="/history" element={<History />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/cookie-policy" element={<CookiePolicy />} />
+                <Route path="/termini-condizioni" element={<TerminiCondizioni />} />
+                <Route path="/note-legali" element={<NoteLegali />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
+            <CookieBanner />
           </BrowserRouter>
         </ScanHistoryProvider>
       </TooltipProvider>

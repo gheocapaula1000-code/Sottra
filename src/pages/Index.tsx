@@ -41,8 +41,17 @@ const Index = () => {
         </button>
       </main>
 
-      <footer className="py-6 text-center text-xs text-muted-foreground">
-        © 2026 Sottra
+      <footer className="py-6 text-center text-xs text-muted-foreground space-y-2">
+        <nav className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+          <a href="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</a>
+          <span>|</span>
+          <a href="/cookie-policy" className="hover:text-foreground transition-colors">Cookie Policy</a>
+          <span>|</span>
+          <a href="/termini-condizioni" className="hover:text-foreground transition-colors">Termini e Condizioni</a>
+          <span>|</span>
+          <a href="/note-legali" className="hover:text-foreground transition-colors">Note Legali</a>
+        </nav>
+        <p>© 2026 Pi.Gi Service di Gheoca Paula — Tutti i diritti riservati</p>
       </footer>
     </div>
   );
