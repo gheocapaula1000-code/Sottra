@@ -8,15 +8,22 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
 import HeaderCard from "@/components/result/HeaderCard";
 import CadastralCard from "@/components/result/CadastralCard";
+import CondominioCard from "@/components/result/CondominioCard";
 import PricingCard from "@/components/result/PricingCard";
+import StoricoTransazioniCard from "@/components/result/StoricoTransazioniCard";
 import ListingsCard from "@/components/result/ListingsCard";
 import EnergyCard from "@/components/result/EnergyCard";
 import MoodScoreCard from "@/components/result/MoodScoreCard";
+import TrendDemograficoCard from "@/components/result/TrendDemograficoCard";
 import TimeViewCard from "@/components/result/TimeViewCard";
+import InfrastrutureCard from "@/components/result/InfrastrutureCard";
+import RischioZonaCard from "@/components/result/RischioZonaCard";
 import OpportunityCard from "@/components/result/OpportunityCard";
 import type {
   IdentifyResult, CadastralData, PricingData, ListingsData,
-  EnergyData, MoodScoreData, TimeViewData, OpportunityData, ScanResult,
+  EnergyData, MoodScoreData, TimeViewData, OpportunityData,
+  CondominioData, StoricoTransazioniData, InfrastrutureData,
+  RischioZonaData, TrendDemograficoData, ScanResult,
 } from "@/types";
 
 interface ResultState {
@@ -71,11 +78,16 @@ const Result = () => {
         <div className="space-y-3 px-5 pb-32 pt-2">
           <HeaderCard photo={state.photo} identify={identify} loading={s("identify") === "loading"} lat={state.lat} lng={state.lng} />
           <CadastralCard data={d<CadastralData>("cadastral")} loading={s("cadastral") === "loading"} />
+          <CondominioCard data={d<CondominioData>("condominio")} loading={s("condominio") === "loading"} />
           <PricingCard data={d<PricingData>("pricing")} loading={s("pricing") === "loading"} />
+          <StoricoTransazioniCard data={d<StoricoTransazioniData>("storicoTransazioni")} loading={s("storicoTransazioni") === "loading"} />
           <ListingsCard data={d<ListingsData>("listings")} loading={s("listings") === "loading"} />
           <EnergyCard data={d<EnergyData>("energy")} loading={s("energy") === "loading"} />
           <MoodScoreCard data={d<MoodScoreData>("moodScore")} loading={s("moodScore") === "loading"} />
+          <TrendDemograficoCard data={d<TrendDemograficoData>("trendDemografico")} loading={s("trendDemografico") === "loading"} />
           <TimeViewCard data={d<TimeViewData>("timeView")} loading={s("timeView") === "loading"} />
+          <InfrastrutureCard data={d<InfrastrutureData>("infrastrutture")} loading={s("infrastrutture") === "loading"} />
+          <RischioZonaCard data={d<RischioZonaData>("rischioZona")} loading={s("rischioZona") === "loading"} />
           <OpportunityCard data={d<OpportunityData>("opportunity")} loading={s("opportunity") === "loading"} />
         </div>
       </ScrollArea>

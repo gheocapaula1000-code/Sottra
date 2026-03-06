@@ -1,14 +1,16 @@
 import { useState, useCallback } from "react";
-import { identifyBuilding, getCadastral, getPricing, getListings, getEnergy } from "@/services/scan";
-import { getMoodScore, getTimeView, getOpportunityIndex } from "@/services/forecast";
+import { identifyBuilding, getCadastral, getPricing, getListings, getEnergy, getCondominio, getStoricoTransazioni } from "@/services/scan";
+import { getMoodScore, getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico } from "@/services/forecast";
 import type { ScanResult, SectionState } from "@/types";
 
 const idle = { status: "idle" as const, data: null, message: null };
 
 const initialState: ScanResult = {
   identify: idle, cadastral: idle, pricing: idle,
-  listings: idle, energy: idle, moodScore: idle,
-  timeView: idle, opportunity: idle,
+  listings: idle, energy: idle, condominio: idle,
+  storicoTransazioni: idle, moodScore: idle, timeView: idle,
+  opportunity: idle, infrastrutture: idle, rischioZona: idle,
+  trendDemografico: idle,
 } as ScanResult;
 
 export function useBuildingScan() {
@@ -17,6 +19,9 @@ export function useBuildingScan() {
 
   const update = (key: keyof ScanResult, value: { status: SectionState["status"]; data: unknown; message: string | null }) =>
     setResult((prev) => ({ ...prev, [key]: value } as ScanResult));
+
+  const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) =>
+    update(key, { status: r.error ? "error" : "success", data: r.data, message: r.message });
 
   const scan = useCallback(async (photo: string, lat: number, lng: number) => {
     setScanning(true);
@@ -39,38 +44,25 @@ export function useBuildingScan() {
       const address = (idRes.data as { address?: string }).address ?? "";
       if (!address) return;
 
-      const tasks = [
-        getCadastral(address).then((r) =>
-          update("cadastral", { status: r.error ? "error" : "success", data: r.data, message: r.message })
-        ),
-        getPricing(address).then((r) =>
-          update("pricing", { status: r.error ? "error" : "success", data: r.data, message: r.message })
-        ),
-        getListings(address).then((r) =>
-          update("listings", { status: r.error ? "error" : "success", data: r.data, message: r.message })
-        ),
-        getEnergy(address).then((r) =>
-          update("energy", { status: r.error ? "error" : "success", data: r.data, message: r.message })
-        ),
-      ];
-
-      await Promise.allSettled(tasks);
+      await Promise.allSettled([
+        getCadastral(address).then(resolve("cadastral")),
+        getPricing(address).then(resolve("pricing")),
+        getListings(address).then(resolve("listings")),
+        getEnergy(address).then(resolve("energy")),
+        getCondominio(address).then(resolve("condominio")),
+        getStoricoTransazioni(address).then(resolve("storicoTransazioni")),
+      ]);
     };
 
     const forecastEngine = async () => {
-      const tasks = [
-        getMoodScore(lat, lng).then((r) =>
-          update("moodScore", { status: r.error ? "error" : "success", data: r.data, message: r.message })
-        ),
-        getTimeView(lat, lng, 12).then((r) =>
-          update("timeView", { status: r.error ? "error" : "success", data: r.data, message: r.message })
-        ),
-        getOpportunityIndex(lat, lng).then((r) =>
-          update("opportunity", { status: r.error ? "error" : "success", data: r.data, message: r.message })
-        ),
-      ];
-
-      await Promise.allSettled(tasks);
+      await Promise.allSettled([
+        getMoodScore(lat, lng).then(resolve("moodScore")),
+        getTimeView(lat, lng, 12).then(resolve("timeView")),
+        getOpportunityIndex(lat, lng).then(resolve("opportunity")),
+        getInfrastrutture(lat, lng).then(resolve("infrastrutture")),
+        getRischioZona(lat, lng).then(resolve("rischioZona")),
+        getTrendDemografico(lat, lng).then(resolve("trendDemografico")),
+      ]);
     };
 
     await Promise.allSettled([scanEngine(), forecastEngine()]);
