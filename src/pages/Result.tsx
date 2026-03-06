@@ -9,7 +9,7 @@ import { useBuildingScan } from "@/hooks/useBuildingScan";
 import {
   HeaderCard, CadastralCard, PricingCard, ListingsCard,
   EnergyCard, MoodScoreCard, TimeViewCard, OpportunityCard,
-} from "@/components/result";
+} from "@/components/result/index";
 import type {
   IdentifyResult, CadastralData, PricingData, ListingsData,
   EnergyData, MoodScoreData, TimeViewData, OpportunityData, ScanResult,
