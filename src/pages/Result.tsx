@@ -6,19 +6,19 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
-import HeaderCard from "@/components/result/HeaderCard";
-import CadastralCard from "@/components/result/CadastralCard";
-import CondominioCard from "@/components/result/CondominioCard";
-import PricingCard from "@/components/result/PricingCard";
-import StoricoTransazioniCard from "@/components/result/StoricoTransazioniCard";
-import ListingsCard from "@/components/result/ListingsCard";
-import EnergyCard from "@/components/result/EnergyCard";
-import MoodScoreCard from "@/components/result/MoodScoreCard";
-import TrendDemograficoCard from "@/components/result/TrendDemograficoCard";
-import TimeViewCard from "@/components/result/TimeViewCard";
-import InfrastrutureCard from "@/components/result/InfrastrutureCard";
-import RischioZonaCard from "@/components/result/RischioZonaCard";
-import OpportunityCard from "@/components/result/OpportunityCard";
+import HeaderCard from "@/components/result/HeaderCard.tsx";
+import CadastralCard from "@/components/result/CadastralCard.tsx";
+import CondominioCard from "@/components/result/CondominioCard.tsx";
+import PricingCard from "@/components/result/PricingCard.tsx";
+import StoricoTransazioniCard from "@/components/result/StoricoTransazioniCard.tsx";
+import ListingsCard from "@/components/result/ListingsCard.tsx";
+import EnergyCard from "@/components/result/EnergyCard.tsx";
+import MoodScoreCard from "@/components/result/MoodScoreCard.tsx";
+import TrendDemograficoCard from "@/components/result/TrendDemograficoCard.tsx";
+import TimeViewCard from "@/components/result/TimeViewCard.tsx";
+import InfrastrutureCard from "@/components/result/InfrastrutureCard.tsx";
+import RischioZonaCard from "@/components/result/RischioZonaCard.tsx";
+import OpportunityCard from "@/components/result/OpportunityCard.tsx";
 import type {
   IdentifyResult, CadastralData, PricingData, ListingsData,
   EnergyData, MoodScoreData, TimeViewData, OpportunityData,
