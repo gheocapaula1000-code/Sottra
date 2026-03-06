@@ -1,8 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { coreRequest, isError } from "@/services/api";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { coreRequest, isError, _resetCircuitBreaker } from "@/services/api";
 
 describe("api.ts", () => {
   const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    _resetCircuitBreaker();
+  });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
@@ -53,6 +57,31 @@ describe("api.ts", () => {
       await coreRequest("/test", "POST", { foo: "bar" });
       const call = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(JSON.parse(call[1].body)).toEqual({ foo: "bar" });
+    });
+
+    it("retries once on 503 then succeeds", async () => {
+      let calls = 0;
+      globalThis.fetch = vi.fn().mockImplementation(() => {
+        calls++;
+        if (calls === 1) return Promise.resolve({ ok: false, status: 503, text: () => Promise.resolve("Unavailable") });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 1 }) });
+      });
+
+      const result = await coreRequest("/test", "GET");
+      expect(isError(result)).toBe(false);
+      expect(calls).toBe(2);
+    });
+
+    it("returns circuit breaker error after repeated failures", async () => {
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
+      for (let i = 0; i < 5; i++) {
+        await coreRequest("/test", "GET");
+      }
+      const result = await coreRequest("/test", "GET");
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        expect(result.message).toContain("non raggiungibile");
+      }
     });
   });
 
