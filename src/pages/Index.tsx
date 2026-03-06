@@ -51,7 +51,7 @@ const Index = () => {
           <span>|</span>
           <a href="/note-legali" className="hover:text-foreground transition-colors">Note Legali</a>
         </nav>
-        <p>© 2026 Sottra — Tutti i diritti riservati</p>
+        <p>© 2026 Sottra By Pi.Gi Service — Tutti i diritti riservati</p>
       </footer>
     </div>
   );
