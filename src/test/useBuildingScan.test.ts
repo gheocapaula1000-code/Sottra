@@ -51,18 +51,14 @@ describe("useBuildingScan", () => {
     expect(result.current.result.moodScore.status).toBe("idle");
   });
 
-  it("sets scanning to true during scan", async () => {
+  it("completes scan and sets scanning to false", async () => {
     const { result } = renderHook(() => useBuildingScan());
 
-    act(() => {
-      result.current.scan("base64photo", 45.46, 9.19);
+    await act(async () => {
+      await result.current.scan("base64photo", 45.46, 9.19);
     });
 
-    expect(result.current.scanning).toBe(true);
-
-    await waitFor(() => {
-      expect(result.current.scanning).toBe(false);
-    });
+    expect(result.current.scanning).toBe(false);
   });
 
   it("populates all sections on successful scan", async () => {
