@@ -86,16 +86,83 @@ export interface OpportunityData {
   raccomandazione: string;
 }
 
+/** Info condominio */
+export interface CondominioData {
+  tipoRiscaldamento: "centralizzato" | "autonomo";
+  ascensore: boolean;
+  statoConservazione: "ottimo" | "buono" | "sufficiente" | "mediocre";
+  annoUltimaRistrutturazione: number | null;
+  postiAuto: number;
+  giardino: boolean;
+  portineria: boolean;
+}
+
+/** Storico transazioni */
+export interface TransazioneStorica {
+  data: string;
+  prezzo: number;
+  mq: number;
+  piano: number;
+  tipo: "vendita" | "affitto";
+}
+
+export interface StoricoTransazioniData {
+  transazioni: TransazioneStorica[];
+  mediaZona12Mesi: number;
+  variazione12Mesi: number;
+}
+
+/** Infrastrutture in costruzione */
+export interface InfrastrutturaProgetto {
+  nome: string;
+  tipo: "metro" | "tram" | "ciclabile" | "strada" | "edificio_pubblico" | "parco" | "altro";
+  stato: "approvato" | "in_costruzione" | "completato";
+  completamentoPrevisto: string;
+  distanzaKm: number;
+}
+
+export interface InfrastrutureData {
+  progetti: InfrastrutturaProgetto[];
+  cantieriAperti: number;
+  impattoStimato: "alto" | "medio" | "basso";
+}
+
+/** Rischio zona */
+export interface RischioZonaData {
+  idrogeologico: "alto" | "medio" | "basso" | "nullo";
+  sismico: "zona1" | "zona2" | "zona3" | "zona4";
+  inquinamento: "alto" | "medio" | "basso";
+  alluvionale: boolean;
+  scoreRischio: number;
+}
+
+/** Trend demografico */
+export interface TrendDemograficoData {
+  etaMedia: number;
+  densitaAbitanti: number;
+  flussoResidenti12Mesi: number;
+  percentualeFamiglie: number;
+  percentualeGiovani: number;
+  percentualeStranieri: number;
+}
+
 /** Risultato completo di una scansione */
 export interface ScanResult {
+  // Motore Scan
   identify: SectionState<IdentifyResult>;
   cadastral: SectionState<CadastralData>;
   pricing: SectionState<PricingData>;
   listings: SectionState<ListingsData>;
   energy: SectionState<EnergyData>;
+  condominio: SectionState<CondominioData>;
+  storicoTransazioni: SectionState<StoricoTransazioniData>;
+  // Motore Forecast
   moodScore: SectionState<MoodScoreData>;
   timeView: SectionState<TimeViewData>;
   opportunity: SectionState<OpportunityData>;
+  infrastrutture: SectionState<InfrastrutureData>;
+  rischioZona: SectionState<RischioZonaData>;
+  trendDemografico: SectionState<TrendDemograficoData>;
 }
 
 /** Errore restituito da coreRequest */
