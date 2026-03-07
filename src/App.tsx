@@ -16,6 +16,7 @@ const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const TerminiCondizioni = lazy(() => import("./pages/TerminiCondizioni"));
 const NoteLegali = lazy(() => import("./pages/NoteLegali"));
+const B2B = lazy(() => import("./pages/B2B"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
                 <Route path="/cookie-policy" element={<CookiePolicy />} />
                 <Route path="/termini-condizioni" element={<TerminiCondizioni />} />
                 <Route path="/note-legali" element={<NoteLegali />} />
+                <Route path="/b2b" element={<B2B />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
