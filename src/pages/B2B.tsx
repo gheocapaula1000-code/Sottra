@@ -124,7 +124,7 @@ function HeroSection() {
         </p>
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Button size="lg" className="gap-2 text-base" onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}>
-            Prova gratis 5 giorni <ArrowRight className="h-4 w-4" />
+            Prova gratis 3 giorni <ArrowRight className="h-4 w-4" />
           </Button>
           <p className="text-sm text-muted-foreground">Nessuna carta di credito richiesta</p>
         </div>
