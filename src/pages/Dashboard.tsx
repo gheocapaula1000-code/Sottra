@@ -1,11 +1,39 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { TrialExpiredScreen } from "@/components/TrialExpiredScreen";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import logoS from "@/assets/logo-s-icon.png";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { loading, canScan, subscribed, trial, planKey } = useSubscription();
+  const { toast } = useToast();
+
+  const handleManageSubscription = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) window.location.href = data.url;
+    } catch (e: any) {
+      toast({ title: "Errore", description: e.message, variant: "destructive" });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+      </div>
+    );
+  }
+
+  if (!canScan) {
+    return <TrialExpiredScreen scansUsed={trial?.scans_used ?? 0} />;
+  }
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -15,6 +43,19 @@ const Dashboard = () => {
           <span className="ml-[-0.4rem] text-lg font-black text-foreground tracking-tight">ottra</span>
         </div>
         <div className="flex items-center gap-3">
+          {trial?.active && !subscribed && (
+            <span className="text-xs text-primary font-medium">
+              Trial: {trial.scans_used}/{trial.max_scans} scansioni
+            </span>
+          )}
+          {subscribed && (
+            <button
+              onClick={handleManageSubscription}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Gestisci abbonamento
+            </button>
+          )}
           <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
           <Button variant="ghost" size="sm" onClick={signOut}>Esci</Button>
         </div>
