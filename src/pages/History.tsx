@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,7 +18,7 @@ function formatDate(iso: string) {
 
 const History = () => {
   const navigate = useNavigate();
-  const { scans } = useScanHistory();
+  const { scans, clearAll } = useScanHistory();
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -30,6 +30,14 @@ const History = () => {
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
         <span className="text-base font-bold text-foreground flex-1">Le tue scansioni</span>
+        {scans.length > 0 && (
+          <button
+            onClick={clearAll}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary"
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </button>
+        )}
       </header>
 
       <ScrollArea className="flex-1">
