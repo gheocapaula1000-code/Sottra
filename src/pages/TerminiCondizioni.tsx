@@ -29,6 +29,12 @@ const TerminiCondizioni = () => {
           </section>
 
           <section>
+            <h2 className="font-semibold text-foreground mb-2">Uso della licenza</h2>
+            <p>La licenza d'uso di Sottra è strettamente personale, non cedibile e non trasferibile. Ogni account è vincolato a un singolo dispositivo per l'intera durata dell'abbonamento. Il cambio dispositivo non è disponibile in modalità self-service: per trasferire l'account a un nuovo dispositivo è necessario contattare il supporto scrivendo a <a href="mailto:supporto@sottra.app" className="text-primary underline">supporto@sottra.app</a>.</p>
+            <p className="mt-2">La condivisione dell'account, delle credenziali o dei dati ottenuti tramite il servizio con terzi non autorizzati è espressamente vietata e comporta la sospensione immediata dell'account senza diritto a rimborso.</p>
+          </section>
+
+          <section>
             <h2 className="font-semibold text-foreground mb-2">Proprietà intellettuale</h2>
             <p>Tutti i contenuti, marchi, grafiche e software presenti nel sito sono di proprietà esclusiva del titolare e protetti dalle leggi vigenti.</p>
           </section>
