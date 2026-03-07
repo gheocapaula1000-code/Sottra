@@ -179,7 +179,7 @@ function PricingSection() {
         <div className="text-center">
           <h2 className="text-3xl font-black text-foreground sm:text-4xl">Piani di abbonamento</h2>
           <p className="mx-auto mt-3 max-w-lg text-muted-foreground">
-            Trial gratuito di 5 giorni con 10 scansioni. Nessuna carta di credito.
+            Trial gratuito di 3 giorni con 5 scansioni. Nessuna carta di credito.
           </p>
         </div>
 
