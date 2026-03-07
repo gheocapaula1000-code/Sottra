@@ -38,10 +38,14 @@ export function ScanHistoryProvider({ children }: { children: ReactNode }) {
     setScans((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
+  const clearAll = useCallback(() => {
+    setScans([]);
+  }, []);
+
   const getScans = useCallback(() => scans, [scans]);
 
   return (
-    <ScanHistoryContext.Provider value={{ scans, saveScan, removeScan, getScans }}>
+    <ScanHistoryContext.Provider value={{ scans, saveScan, removeScan, clearAll, getScans }}>
       {children}
     </ScanHistoryContext.Provider>
   );
