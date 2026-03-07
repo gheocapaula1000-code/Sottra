@@ -62,7 +62,7 @@ function HeaderCard({ photo, identify, loading, lat, lng }: { photo: string; ide
   if (loading) return <SectionSkeleton />;
   return (
     <Section>
-      <img src={photo} alt="Edificio" className="w-full h-48 object-cover rounded-lg mb-3" />
+      <img src={photo} alt="Edificio" className="w-full aspect-video object-cover rounded-t-xl mb-3" />
       {identify && (
         <div className="space-y-2">
           <h2 className="text-lg font-bold text-foreground">{identify.address}</h2>
