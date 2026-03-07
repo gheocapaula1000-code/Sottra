@@ -16,6 +16,7 @@ interface ScanHistoryContextType {
   scans: SavedScan[];
   saveScan: (scan: Omit<SavedScan, "id" | "date">) => void;
   removeScan: (id: string) => void;
+  clearAll: () => void;
   getScans: () => SavedScan[];
 }
 
