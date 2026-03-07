@@ -16,6 +16,7 @@ const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const TerminiCondizioni = lazy(() => import("./pages/TerminiCondizioni"));
 const NoteLegali = lazy(() => import("./pages/NoteLegali"));
+const B2B = lazy(() => import("./pages/B2B"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
