@@ -30,11 +30,10 @@ const planFeatures: Record<PlanKey, string[]> = {
   ],
   enterprise: [
     "Tutto del piano Agenzia",
-    "API dedicata per integrazione gestionale",
-    "SLA 99.9% con supporto dedicato",
-    "Account manager personale",
-    "Formazione team inclusa",
-    "Fatturazione personalizzata",
+    "Dashboard agenzia multi-agente",
+    "Export PDF con logo agenzia + watermark Sottra",
+    "Storico scansioni illimitato",
+    "Supporto prioritario",
   ],
 };
 
