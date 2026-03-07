@@ -308,7 +308,7 @@ function CtaSection() {
       <div className="mx-auto max-w-3xl rounded-2xl border border-primary/20 bg-primary/5 p-8 text-center sm:p-12">
         <Clock className="mx-auto h-8 w-8 text-primary" />
         <h2 className="mt-4 text-3xl font-black text-foreground sm:text-4xl">
-          Prova Sottra gratis per 5 giorni
+          Prova Sottra gratis per 3 giorni
         </h2>
         <p className="mx-auto mt-3 max-w-md text-muted-foreground">
           10 scansioni incluse. Nessuna carta di credito. Accesso completo a tutti i dati certificati.
