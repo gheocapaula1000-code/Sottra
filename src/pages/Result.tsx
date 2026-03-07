@@ -243,19 +243,24 @@ function TimeViewCard({ data, loading }: { data: TimeViewData | null; loading: b
 function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
   if (!data) return null;
+  const nearby = data.progetti.filter(p => p.distanzaKm <= 3);
   const statoBadge: Record<string, string> = { approvato: "bg-blue-500/20 text-blue-400 border-blue-500/30", in_costruzione: "bg-amber-500/20 text-amber-400 border-amber-500/30", completato: "bg-green-500/20 text-green-400 border-green-500/30" };
   return (
     <Section>
       <div className="flex items-center gap-2 mb-3"><Construction className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Infrastrutture</span></div>
-      <div className="space-y-2">
-        {data.progetti.map((p, i) => (
-          <div key={i} className="flex items-center justify-between text-sm">
-            <div><span className="font-medium text-foreground">{p.nome}</span><span className="text-xs text-muted-foreground ml-2">{fmt(p.distanzaKm)} km</span></div>
-            <Badge className={`text-[10px] ${statoBadge[p.stato] ?? ""}`}>{p.stato.replace("_", " ")}</Badge>
-          </div>
-        ))}
-      </div>
-      <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Cantieri aperti: {data.cantieriAperti}</span><span>Impatto: <span className="font-medium text-foreground capitalize">{data.impattoStimato}</span></span></div>
+      {nearby.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nessun cantiere nelle vicinanze</p>
+      ) : (
+        <div className="space-y-2">
+          {nearby.map((p, i) => (
+            <div key={i} className="flex items-center justify-between text-sm">
+              <div><span className="font-medium text-foreground">{p.nome}</span><span className="text-xs text-muted-foreground ml-2">{fmt(p.distanzaKm)} km</span></div>
+              <Badge className={`text-[10px] ${statoBadge[p.stato] ?? ""}`}>{p.stato.replace("_", " ")}</Badge>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Cantieri aperti: {nearby.length}</span><span>Impatto: <span className="font-medium text-foreground capitalize">{data.impattoStimato}</span></span></div>
     </Section>
   );
 }
