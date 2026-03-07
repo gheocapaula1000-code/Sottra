@@ -1,0 +1,60 @@
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import logoS from "@/assets/logo-s-icon.png";
+
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  return (
+    <div className="flex min-h-svh flex-col bg-background">
+      <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center">
+          <img src={logoS} alt="S" loading="eager" className="h-8 w-auto" style={{ mixBlendMode: "lighten" }} />
+          <span className="ml-[-0.4rem] text-lg font-black text-foreground tracking-tight">ottra</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
+          <Button variant="ghost" size="sm" onClick={signOut}>Esci</Button>
+        </div>
+      </header>
+
+      <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+        <h1 className="flex items-center text-6xl font-black tracking-tight text-foreground sm:text-8xl">
+          <img
+            src={logoS}
+            alt="S"
+            loading="eager"
+            decoding="sync"
+            fetchPriority="high"
+            className="inline-block h-[2.6em] w-auto object-contain -my-[0.6em]"
+            style={{ marginRight: '-1.1em', marginLeft: '-0.5em', mixBlendMode: 'lighten' }}
+          />
+          <span>ottra</span>
+        </h1>
+        <p className="mt-4 text-lg font-medium text-foreground/80 sm:text-xl">
+          Ciò che sta sotto, lo sai solo tu.
+        </p>
+        <p className="mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
+          Inquadra qualsiasi edificio. Scopri tutto in 3 secondi.
+        </p>
+        <Button className="mt-10" size="lg" onClick={() => navigate("/scan")}>
+          Inizia a scoprire
+        </Button>
+        <button
+          onClick={() => navigate("/history")}
+          className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Le tue scansioni →
+        </button>
+      </main>
+
+      <footer className="py-6 text-center text-xs text-muted-foreground">
+        <p>Per trasferire il tuo account a un nuovo dispositivo, scrivi a <a href="mailto:supporto@sottra.app" className="text-primary hover:underline">supporto@sottra.app</a></p>
+      </footer>
+    </div>
+  );
+};
+
+export default Dashboard;
