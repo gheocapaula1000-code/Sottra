@@ -18,8 +18,8 @@ export const PLANS = {
     product_id: "prod_U6V6LGKnn1SyT3",
     price_id: "price_1T8I6OGWMFww3yH4RyBCJmXL",
     name: "Enterprise",
-    price: 799,
-    scans: -1, // unlimited
+    price: 749,
+    scans: 800,
   },
 } as const;
 

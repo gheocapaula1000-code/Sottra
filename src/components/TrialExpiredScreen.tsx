@@ -30,18 +30,17 @@ const planFeatures: Record<PlanKey, string[]> = {
   ],
   enterprise: [
     "Tutto del piano Agenzia",
-    "API dedicata per integrazione gestionale",
-    "SLA 99.9% con supporto dedicato",
-    "Account manager personale",
-    "Formazione team inclusa",
-    "Fatturazione personalizzata",
+    "Dashboard agenzia multi-agente",
+    "Export PDF con logo agenzia + watermark Sottra",
+    "Storico scansioni illimitato",
+    "Supporto prioritario",
   ],
 };
 
 const planMeta: Record<PlanKey, { users: string; scans: string; popular: boolean }> = {
   agente: { users: "1 account", scans: "80 scansioni/mese", popular: false },
   agenzia: { users: "3 account inclusi", scans: "250 scansioni/mese", popular: true },
-  enterprise: { users: "10 account inclusi", scans: "Scansioni illimitate", popular: false },
+  enterprise: { users: "10 account inclusi", scans: "800 scansioni/mese", popular: false },
 };
 
 interface TrialExpiredScreenProps {
