@@ -40,7 +40,7 @@ const planFeatures: Record<PlanKey, string[]> = {
 const planMeta: Record<PlanKey, { users: string; scans: string; popular: boolean }> = {
   agente: { users: "1 account", scans: "80 scansioni/mese", popular: false },
   agenzia: { users: "3 account inclusi", scans: "250 scansioni/mese", popular: true },
-  enterprise: { users: "10 account inclusi", scans: "Scansioni illimitate", popular: false },
+  enterprise: { users: "10 account inclusi", scans: "800 scansioni/mese", popular: false },
 };
 
 interface TrialExpiredScreenProps {
