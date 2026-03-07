@@ -7,6 +7,7 @@ import { lazy, Suspense } from "react";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { ScanHistoryProvider } from "@/contexts/ScanHistoryContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import CookieBanner from "@/components/CookieBanner";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -30,29 +31,31 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <ScanHistoryProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Suspense fallback={<div className="flex min-h-svh items-center justify-center bg-background"><div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" /></div>}>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/signup" element={<Signup />} />
-                  <Route path="/app" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/scan" element={<ProtectedRoute><Scan /></ProtectedRoute>} />
-                  <Route path="/result" element={<ProtectedRoute><Result /></ProtectedRoute>} />
-                  <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                  <Route path="/cookie-policy" element={<CookiePolicy />} />
-                  <Route path="/termini-condizioni" element={<TerminiCondizioni />} />
-                  <Route path="/note-legali" element={<NoteLegali />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-              <CookieBanner />
-            </BrowserRouter>
-          </ScanHistoryProvider>
+          <SubscriptionProvider>
+            <ScanHistoryProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Suspense fallback={<div className="flex min-h-svh items-center justify-center bg-background"><div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" /></div>}>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/app" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path="/scan" element={<ProtectedRoute><Scan /></ProtectedRoute>} />
+                    <Route path="/result" element={<ProtectedRoute><Result /></ProtectedRoute>} />
+                    <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                    <Route path="/cookie-policy" element={<CookiePolicy />} />
+                    <Route path="/termini-condizioni" element={<TerminiCondizioni />} />
+                    <Route path="/note-legali" element={<NoteLegali />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+                <CookieBanner />
+              </BrowserRouter>
+            </ScanHistoryProvider>
+          </SubscriptionProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
