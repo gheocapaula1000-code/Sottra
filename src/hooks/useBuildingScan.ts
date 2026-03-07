@@ -45,12 +45,12 @@ export function useBuildingScan() {
       if (!address) return;
 
       await Promise.allSettled([
-        getCadastral(address).then(resolve("cadastral")),
-        getPricing(address).then(resolve("pricing")),
-        getListings(address).then(resolve("listings")),
-        getEnergy(address).then(resolve("energy")),
-        getCondominio(address).then(resolve("condominio")),
-        getStoricoTransazioni(address).then(resolve("storicoTransazioni")),
+        getCadastral(address, photo).then(resolve("cadastral")),
+        getPricing(address, photo).then(resolve("pricing")),
+        getListings(address, photo).then(resolve("listings")),
+        getEnergy(address, photo).then(resolve("energy")),
+        getCondominio(address, photo).then(resolve("condominio")),
+        getStoricoTransazioni(address, photo).then(resolve("storicoTransazioni")),
       ]);
     };
 
