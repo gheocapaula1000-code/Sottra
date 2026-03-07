@@ -311,7 +311,7 @@ function CtaSection() {
           Prova Sottra gratis per 3 giorni
         </h2>
         <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-          10 scansioni incluse. Nessuna carta di credito. Accesso completo a tutti i dati certificati.
+          5 scansioni incluse. Nessuna carta di credito. Accesso completo a tutti i dati certificati.
         </p>
         <Button size="lg" className="mt-8 gap-2 text-base">
           Inizia il trial gratuito <ArrowRight className="h-4 w-4" />
