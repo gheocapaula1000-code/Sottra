@@ -28,6 +28,8 @@ const plans = [
       "Prezzi OMI, visura catastale, classe energetica",
       "MoodScore, trend demografico, rischio zona",
       "Storico scansioni 6 mesi",
+      "Solo visualizzazione in-app (no export PDF)",
+      "Dispositivo vincolato per durata abbonamento",
     ],
     cta: "Inizia il trial gratuito",
     popular: false,
