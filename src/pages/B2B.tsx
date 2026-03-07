@@ -44,10 +44,11 @@ const plans = [
     features: [
       "Tutto del piano Agente",
       "Dashboard agenzia multi-agente",
-      "Report PDF con logo personalizzabile",
+      "Export PDF con logo agenzia + watermark Sottra",
       "Annunci attivi nella zona",
       "Storico scansioni illimitato",
       "Supporto prioritario via email",
+      "Dispositivo vincolato per durata abbonamento",
     ],
     extra: "Agente aggiuntivo: €49/mese (+80 scansioni)",
     cta: "Inizia il trial gratuito",

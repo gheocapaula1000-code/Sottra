@@ -335,6 +335,7 @@ const Result = () => {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
+      <Watermark userName="paula.gheoca" />
       <header className="flex items-center gap-3 px-5 pt-[env(safe-area-inset-top,12px)] pb-2">
         <button onClick={() => navigate("/scan")} className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary"><ArrowLeft className="h-5 w-5 text-foreground" /></button>
         <span className="text-base font-bold text-foreground flex-1">Risultato</span>
