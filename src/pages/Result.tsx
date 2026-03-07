@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
 import { cn } from "@/lib/utils";
+import Watermark from "@/components/Watermark";
 import type {
   IdentifyResult, CadastralData, PricingData, ListingsData,
   EnergyData, MoodScoreData, TimeViewData, OpportunityData,
