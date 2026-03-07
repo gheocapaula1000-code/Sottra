@@ -124,7 +124,7 @@ function HeroSection() {
         </p>
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Button size="lg" className="gap-2 text-base" onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}>
-            Prova gratis 5 giorni <ArrowRight className="h-4 w-4" />
+            Prova gratis 3 giorni <ArrowRight className="h-4 w-4" />
           </Button>
           <p className="text-sm text-muted-foreground">Nessuna carta di credito richiesta</p>
         </div>
@@ -179,7 +179,7 @@ function PricingSection() {
         <div className="text-center">
           <h2 className="text-3xl font-black text-foreground sm:text-4xl">Piani di abbonamento</h2>
           <p className="mx-auto mt-3 max-w-lg text-muted-foreground">
-            Trial gratuito di 5 giorni con 10 scansioni. Nessuna carta di credito.
+            Trial gratuito di 3 giorni con 5 scansioni. Nessuna carta di credito.
           </p>
         </div>
 
@@ -308,10 +308,10 @@ function CtaSection() {
       <div className="mx-auto max-w-3xl rounded-2xl border border-primary/20 bg-primary/5 p-8 text-center sm:p-12">
         <Clock className="mx-auto h-8 w-8 text-primary" />
         <h2 className="mt-4 text-3xl font-black text-foreground sm:text-4xl">
-          Prova Sottra gratis per 5 giorni
+          Prova Sottra gratis per 3 giorni
         </h2>
         <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-          10 scansioni incluse. Nessuna carta di credito. Accesso completo a tutti i dati certificati.
+          5 scansioni incluse. Nessuna carta di credito. Accesso completo a tutti i dati certificati.
         </p>
         <Button size="lg" className="mt-8 gap-2 text-base">
           Inizia il trial gratuito <ArrowRight className="h-4 w-4" />
