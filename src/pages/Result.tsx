@@ -250,6 +250,7 @@ function TimeViewCard({ data, loading }: { data: TimeViewData | null; loading: b
           {data.progettiInArrivo.map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-foreground"><Rocket className="h-3 w-3 text-primary" />{p}</div>)}
         </div>
       )}
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
