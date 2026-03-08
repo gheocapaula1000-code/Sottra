@@ -61,8 +61,8 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
       if (data?.url) {
         window.location.href = data.url;
       }
-    } catch (e: any) {
-      toast({ title: "Errore", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Errore", description: e instanceof Error ? e.message : "Errore sconosciuto", variant: "destructive" });
     } finally {
       setLoadingPlan(null);
     }
