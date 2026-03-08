@@ -292,9 +292,20 @@ function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; 
   );
 }
 
-function RischioZonaCard({ data, loading }: { data: RischioZonaData | null; loading: boolean }) {
+function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (!data) return null;
+  if (error) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><AlertTriangle className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
+      <span className="text-sm text-muted-foreground">Errore: {message || "dati non disponibili"}</span>
+    </Section>
+  );
+  if (!data) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><AlertTriangle className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
+      <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
+    </Section>
+  );
   const lc: Record<string, string> = { nullo: "text-green-500", basso: "text-green-400", medio: "text-amber-400", alto: "text-red-500", zona4: "text-green-500", zona3: "text-green-400", zona2: "text-amber-400", zona1: "text-red-500" };
   return (
     <Section>
