@@ -4,7 +4,7 @@ import { ArrowLeft, Bookmark, Building2, Home, TrendingUp, History, ChevronRight
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
@@ -122,6 +122,7 @@ function CondominioCard({ data, loading }: { data: CondominioData | null; loadin
 }
 
 function PricingCard({ data, loading }: { data: PricingData | null; loading: boolean }) {
+  console.log("[PricingCard] data=", data, "loading=", loading);
   if (loading) return <SectionSkeleton />;
   if (!data) return <Section><span className="text-sm text-muted-foreground">Dati di mercato non disponibili</span></Section>;
   const diff = data.prezzoMq - data.mediaZona;
@@ -353,7 +354,7 @@ const Result = () => {
         {scanning && <span className="text-xs text-muted-foreground animate-pulse">Analisi…</span>}
       </header>
 
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         <div className="space-y-3 px-5 pb-32 pt-2">
           <HeaderCard photo={state.photo} identify={result.identify.data as IdentifyResult | null} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} />
           <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} />
@@ -378,7 +379,7 @@ const Result = () => {
           {/* <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} /> */}
           {/* <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} /> */}
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="fixed bottom-0 inset-x-0 bg-background/80 backdrop-blur-lg border-t border-border px-5 pb-[max(env(safe-area-inset-bottom,20px),20px)] pt-3 flex gap-3">
         <Button className="flex-1" size="lg" onClick={() => navigate("/scan")}>Scansiona un altro</Button>
