@@ -215,9 +215,20 @@ function MoodScoreCard({ data, loading }: { data: MoodScoreData | null; loading:
   );
 }
 
-function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | null; loading: boolean }) {
+function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDemograficoData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (!data) return null;
+  if (error) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
+      <span className="text-sm text-muted-foreground">Errore: {message || "dati non disponibili"}</span>
+    </Section>
+  );
+  if (!data) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
+      <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
+    </Section>
+  );
   return (
     <Section>
       <div className="flex items-center gap-2 mb-3"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
