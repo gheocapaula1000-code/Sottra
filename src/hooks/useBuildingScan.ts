@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useReducer, useState, useCallback } from "react";
 import { identifyBuilding, getCadastral, getPricing, getListings, getEnergy, getCondominio, getStoricoTransazioni } from "@/services/scan";
 import { getMoodScore, getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico } from "@/services/forecast";
 import type { ScanResult, SectionState } from "@/types";
@@ -13,24 +13,38 @@ const initialState: ScanResult = {
   trendDemografico: idle,
 } as ScanResult;
 
+type Action =
+  | { type: "RESET_ALL_LOADING" }
+  | { type: "RESET_IDLE" }
+  | { type: "SET"; key: keyof ScanResult; value: { status: SectionState["status"]; data: unknown; message: string | null } };
+
+function reducer(state: ScanResult, action: Action): ScanResult {
+  switch (action.type) {
+    case "RESET_ALL_LOADING":
+      return Object.fromEntries(
+        Object.keys(initialState).map((k) => [k, { status: "loading", data: null, message: null }])
+      ) as unknown as ScanResult;
+    case "RESET_IDLE":
+      return initialState;
+    case "SET":
+      return { ...state, [action.key]: action.value } as ScanResult;
+    default:
+      return state;
+  }
+}
+
 export function useBuildingScan() {
-  const [result, setResult] = useState<ScanResult>(initialState);
+  const [result, dispatch] = useReducer(reducer, initialState);
   const [scanning, setScanning] = useState(false);
 
   const scan = useCallback(async (photo: string, lat: number, lng: number) => {
     setScanning(true);
-    setResult(
-      Object.fromEntries(
-        Object.keys(initialState).map((k) => [k, { status: "loading", data: null, message: null }])
-      ) as unknown as ScanResult
-    );
+    dispatch({ type: "RESET_ALL_LOADING" });
 
-    // Helpers defined INSIDE useCallback to avoid stale closures
     const set = (key: keyof ScanResult, value: { status: SectionState["status"]; data: unknown; message: string | null }) =>
-      setResult((prev) => ({ ...prev, [key]: value } as ScanResult));
+      dispatch({ type: "SET", key, value });
 
     const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
-      if (key === "pricing") console.log("[DEBUG] resolve pricing:", JSON.stringify(r).slice(0, 300));
       set(key, { status: r.error ? "error" : "success", data: r.data, message: r.message });
     };
 
@@ -77,5 +91,10 @@ export function useBuildingScan() {
     setScanning(false);
   }, []);
 
-  return { result, scanning, scan, reset: () => { setResult(initialState); setScanning(false); } };
+  return {
+    result,
+    scanning,
+    scan,
+    reset: () => { dispatch({ type: "RESET_IDLE" }); setScanning(false); },
+  };
 }
