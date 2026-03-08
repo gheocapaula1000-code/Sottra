@@ -61,6 +61,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setPlanKey(data.product_id ? getPlanByProductId(data.product_id) : null);
       setSubscriptionEnd(data.subscription_end);
       setTrial(data.trial);
+      setIsAdmin(data.is_admin ?? false);
     } catch (e) {
       console.error("Failed to check subscription:", e);
     } finally {
