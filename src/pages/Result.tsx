@@ -210,7 +210,7 @@ function MoodScoreCard({ data, loading }: { data: MoodScoreData | null; loading:
           {Object.entries(data.categorie).map(([k, v]) => <MiniBar key={k} label={k} value={v} />)}
         </div>
       </div>
-      <SourceLabel text="Fonte: analisi multi-sorgente Sottra" />
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
