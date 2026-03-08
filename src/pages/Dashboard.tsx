@@ -10,7 +10,7 @@ import logoS from "@/assets/logo-s-icon.png";
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { loading, canScan, subscribed, trial, planKey } = useSubscription();
+  const { loading, canScan, subscribed, trial, planKey, isAdmin } = useSubscription();
   const { toast } = useToast();
 
   const handleManageSubscription = async () => {
@@ -43,7 +43,10 @@ const Dashboard = () => {
           <span className="ml-[-0.4rem] text-lg font-black text-foreground tracking-tight">ottra</span>
         </div>
         <div className="flex items-center gap-3">
-          {trial?.active && !subscribed && (
+          {isAdmin && (
+            <span className="text-xs text-primary font-medium">Admin</span>
+          )}
+          {!isAdmin && trial?.active && !subscribed && (
             <span className="text-xs text-primary font-medium">
               Trial: {trial.scans_used}/{trial.max_scans} scansioni
             </span>

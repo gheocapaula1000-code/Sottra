@@ -17,6 +17,7 @@ interface SubscriptionState {
   subscriptionEnd: string | null;
   trial: TrialInfo | null;
   canScan: boolean;
+  isAdmin: boolean;
   refresh: () => Promise<void>;
 }
 
@@ -27,6 +28,7 @@ const SubscriptionContext = createContext<SubscriptionState>({
   subscriptionEnd: null,
   trial: null,
   canScan: false,
+  isAdmin: false,
   refresh: async () => {},
 });
 
@@ -39,6 +41,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [planKey, setPlanKey] = useState<PlanKey | null>(null);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [trial, setTrial] = useState<TrialInfo | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!session) {
@@ -46,6 +49,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setSubscribed(false);
       setPlanKey(null);
       setTrial(null);
+      setIsAdmin(false);
       return;
     }
 
@@ -57,6 +61,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setPlanKey(data.product_id ? getPlanByProductId(data.product_id) : null);
       setSubscriptionEnd(data.subscription_end);
       setTrial(data.trial);
+      setIsAdmin(data.is_admin ?? false);
     } catch (e) {
       console.error("Failed to check subscription:", e);
     } finally {
@@ -75,10 +80,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [session, refresh]);
 
-  const canScan = subscribed || (trial?.active ?? false);
+  const canScan = isAdmin || subscribed || (trial?.active ?? false);
 
   return (
-    <SubscriptionContext.Provider value={{ loading, subscribed, planKey, subscriptionEnd, trial, canScan, refresh }}>
+    <SubscriptionContext.Provider value={{ loading, subscribed, planKey, subscriptionEnd, trial, canScan, isAdmin, refresh }}>
       {children}
     </SubscriptionContext.Provider>
   );
