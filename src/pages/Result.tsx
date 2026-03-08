@@ -95,7 +95,7 @@ function CadastralCard({ data, loading }: { data: CadastralData | null; loading:
         <div><span className="text-muted-foreground">Rendita</span><p className="font-medium text-foreground">{fmtEur(data.renditaCatastale)}</p></div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Foglio {data.foglio} · Particella {data.particella} · Sub {data.subalterno}</p>
-      <SourceLabel text="Fonte: Agenzia Entrate — Catasto" />
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
@@ -210,7 +210,7 @@ function MoodScoreCard({ data, loading }: { data: MoodScoreData | null; loading:
           {Object.entries(data.categorie).map(([k, v]) => <MiniBar key={k} label={k} value={v} />)}
         </div>
       </div>
-      <SourceLabel text="Fonte: analisi multi-sorgente Sottra" />
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
@@ -297,7 +297,7 @@ function RischioZonaCard({ data, loading }: { data: RischioZonaData | null; load
           <div><span className="text-muted-foreground">Alluvionale</span><p className={`font-medium ${data.alluvionale ? "text-red-500" : "text-green-500"}`}>{data.alluvionale ? "Sì" : "No"}</p></div>
         </div>
       </div>
-      <SourceLabel text="Fonte: ISPRA IdroGEO · INGV/Protezione Civile" />
+      <SourceLabel text="Fonte: ISPRA IdroGEO" />
     </Section>
   );
 }
@@ -312,7 +312,7 @@ function OpportunityCard({ data, loading }: { data: OpportunityData | null; load
       <p className="text-4xl font-black text-foreground mt-2">{fmt(data.indice)}<span className="text-base font-normal text-muted-foreground">/100</span></p>
       <p className="text-sm font-medium text-foreground mt-1">{data.quadrante}</p>
       <p className="text-xs text-muted-foreground mt-2">{data.raccomandazione}</p>
-      <SourceLabel text="Fonte: analisi multi-sorgente Sottra" />
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
