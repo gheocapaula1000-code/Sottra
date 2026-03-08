@@ -95,6 +95,7 @@ function CadastralCard({ data, loading }: { data: CadastralData | null; loading:
         <div><span className="text-muted-foreground">Rendita</span><p className="font-medium text-foreground">{fmtEur(data.renditaCatastale)}</p></div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Foglio {data.foglio} · Particella {data.particella} · Sub {data.subalterno}</p>
+      <SourceLabel text="Fonte: Agenzia Entrate — Catasto" />
     </Section>
   );
 }
