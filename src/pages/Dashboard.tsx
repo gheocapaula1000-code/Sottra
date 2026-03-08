@@ -10,7 +10,7 @@ import logoS from "@/assets/logo-s-icon.png";
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { loading, canScan, subscribed, trial, planKey } = useSubscription();
+  const { loading, canScan, subscribed, trial, planKey, isAdmin } = useSubscription();
   const { toast } = useToast();
 
   const handleManageSubscription = async () => {
