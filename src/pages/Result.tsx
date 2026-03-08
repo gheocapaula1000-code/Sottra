@@ -22,6 +22,10 @@ import type {
 function fmt(n: number) { return n.toLocaleString("it-IT", { maximumFractionDigits: 1 }); }
 function fmtEur(n: number) { return n.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }); }
 
+function SourceLabel({ text }: { text: string }) {
+  return <p className="mt-3 text-[10px] text-muted-foreground/50">{text}</p>;
+}
+
 function Section({ visible = true, children, className }: { visible?: boolean; children: React.ReactNode; className?: string }) {
   return <div className={cn("rounded-xl bg-card border border-border p-4 transition-opacity duration-500", visible ? "opacity-100" : "opacity-0", className)}>{children}</div>;
 }
