@@ -122,7 +122,6 @@ function CondominioCard({ data, loading }: { data: CondominioData | null; loadin
 }
 
 function PricingCard({ data, loading }: { data: PricingData | null; loading: boolean }) {
-  console.log("[DEBUG] PricingCard render — loading:", loading, "data:", data);
   if (loading) return <SectionSkeleton />;
   if (!data) return <Section><span className="text-sm text-muted-foreground">Dati di mercato non disponibili</span></Section>;
   const diff = data.prezzoMq - data.mediaZona;
@@ -228,7 +227,7 @@ function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | 
         <div><span className="text-muted-foreground">Under 35</span><p className="font-medium text-foreground">{fmt(data.percentualeGiovani)}%</p></div>
       </div>
       <div className="space-y-2"><MiniBar label="Famiglie" value={data.percentualeFamiglie} /><MiniBar label="Stranieri" value={data.percentualeStranieri} /></div>
-      <SourceLabel text="Fonte: ISTAT" />
+      <SourceLabel text="Fonte: ISTAT — Popolazione residente 2025" />
     </Section>
   );
 }
@@ -297,7 +296,7 @@ function RischioZonaCard({ data, loading }: { data: RischioZonaData | null; load
           <div><span className="text-muted-foreground">Alluvionale</span><p className={`font-medium ${data.alluvionale ? "text-red-500" : "text-green-500"}`}>{data.alluvionale ? "Sì" : "No"}</p></div>
         </div>
       </div>
-      <SourceLabel text="Fonte: ISPRA IdroGEO" />
+      <SourceLabel text="Fonte: ISPRA IdroGEO + INGV/OPCM 3519" />
     </Section>
   );
 }
