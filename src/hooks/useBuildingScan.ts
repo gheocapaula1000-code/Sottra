@@ -17,14 +17,6 @@ export function useBuildingScan() {
   const [result, setResult] = useState<ScanResult>(initialState);
   const [scanning, setScanning] = useState(false);
 
-  const update = (key: keyof ScanResult, value: { status: SectionState["status"]; data: unknown; message: string | null }) =>
-    setResult((prev) => ({ ...prev, [key]: value } as ScanResult));
-
-  const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
-    if (key === "pricing") console.log("[DEBUG] resolve pricing:", JSON.stringify(r).slice(0, 300));
-    update(key, { status: r.error ? "error" : "success", data: r.data, message: r.message });
-  };
-
   const scan = useCallback(async (photo: string, lat: number, lng: number) => {
     setScanning(true);
     setResult(
@@ -33,9 +25,23 @@ export function useBuildingScan() {
       ) as unknown as ScanResult
     );
 
+    // Helpers defined INSIDE useCallback to avoid stale closures
+    const set = (key: keyof ScanResult, value: { status: SectionState["status"]; data: unknown; message: string | null }) =>
+      setResult((prev) => ({ ...prev, [key]: value } as ScanResult));
+
+    const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
+      if (key === "pricing") console.log("[DEBUG] resolve pricing:", JSON.stringify(r).slice(0, 300));
+      set(key, { status: r.error ? "error" : "success", data: r.data, message: r.message });
+    };
+
+    const reject = (key: keyof ScanResult) => (err: unknown) => {
+      console.error(`[SCAN] ${key} rejected:`, err);
+      set(key, { status: "error", data: null, message: err instanceof Error ? err.message : "Errore imprevisto" });
+    };
+
     const scanEngine = async () => {
       const idRes = await identifyBuilding(photo, lat, lng);
-      update("identify", {
+      set("identify", {
         status: idRes.error ? "error" : "success",
         data: idRes.data,
         message: idRes.message,
@@ -47,23 +53,23 @@ export function useBuildingScan() {
       if (!address) return;
 
       await Promise.allSettled([
-        getCadastral(address, photo).then(resolve("cadastral")),
-        getPricing(address, photo).then(resolve("pricing")),
-        getListings(address, photo).then(resolve("listings")),
-        getEnergy(address, photo).then(resolve("energy")),
-        getCondominio(address, photo).then(resolve("condominio")),
-        getStoricoTransazioni(address, photo).then(resolve("storicoTransazioni")),
+        getCadastral(address, photo).then(resolve("cadastral")).catch(reject("cadastral")),
+        getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing")),
+        getListings(address, photo).then(resolve("listings")).catch(reject("listings")),
+        getEnergy(address, photo).then(resolve("energy")).catch(reject("energy")),
+        getCondominio(address, photo).then(resolve("condominio")).catch(reject("condominio")),
+        getStoricoTransazioni(address, photo).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
       ]);
     };
 
     const forecastEngine = async () => {
       await Promise.allSettled([
-        getMoodScore(lat, lng).then(resolve("moodScore")),
-        getTimeView(lat, lng, 12).then(resolve("timeView")),
-        getOpportunityIndex(lat, lng).then(resolve("opportunity")),
-        getInfrastrutture(lat, lng).then(resolve("infrastrutture")),
-        getRischioZona(lat, lng).then(resolve("rischioZona")),
-        getTrendDemografico(lat, lng).then(resolve("trendDemografico")),
+        getMoodScore(lat, lng).then(resolve("moodScore")).catch(reject("moodScore")),
+        getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
+        getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
+        getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
+        getRischioZona(lat, lng).then(resolve("rischioZona")).catch(reject("rischioZona")),
+        getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
       ]);
     };
 
