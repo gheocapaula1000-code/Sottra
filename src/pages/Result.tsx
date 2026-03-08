@@ -22,6 +22,10 @@ import type {
 function fmt(n: number) { return n.toLocaleString("it-IT", { maximumFractionDigits: 1 }); }
 function fmtEur(n: number) { return n.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }); }
 
+function SourceLabel({ text }: { text: string }) {
+  return <p className="mt-3 text-[10px] text-muted-foreground/50">{text}</p>;
+}
+
 function Section({ visible = true, children, className }: { visible?: boolean; children: React.ReactNode; className?: string }) {
   return <div className={cn("rounded-xl bg-card border border-border p-4 transition-opacity duration-500", visible ? "opacity-100" : "opacity-0", className)}>{children}</div>;
 }
@@ -91,6 +95,7 @@ function CadastralCard({ data, loading }: { data: CadastralData | null; loading:
         <div><span className="text-muted-foreground">Rendita</span><p className="font-medium text-foreground">{fmtEur(data.renditaCatastale)}</p></div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Foglio {data.foglio} · Particella {data.particella} · Sub {data.subalterno}</p>
+      <SourceLabel text="Fonte: Agenzia Entrate — Catasto" />
     </Section>
   );
 }
@@ -111,6 +116,7 @@ function CondominioCard({ data, loading }: { data: CondominioData | null; loadin
         <div><span className="text-muted-foreground">Giardino</span><p className="font-medium text-foreground">{yn(data.giardino)}</p></div>
         {data.annoUltimaRistrutturazione && <div className="col-span-2"><span className="text-muted-foreground">Ultima ristrutturazione</span><p className="font-medium text-foreground">{data.annoUltimaRistrutturazione}</p></div>}
       </div>
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
@@ -127,6 +133,7 @@ function PricingCard({ data, loading }: { data: PricingData | null; loading: boo
       <p className="text-xs text-muted-foreground mt-1">Range: {fmtEur(data.prezzoMqMin)} – {fmtEur(data.prezzoMqMax)}</p>
       <div className="flex items-center gap-2 mt-2"><span className="text-xs text-muted-foreground">Media zona: {fmtEur(data.mediaZona)}</span><Badge variant={diff >= 0 ? "default" : "secondary"}>{diff >= 0 ? "Sopra" : "Sotto"} media</Badge></div>
       <p className="text-xs text-muted-foreground mt-2">Trend 5 anni: <span className="font-medium text-foreground">{data.trend5Anni > 0 ? "+" : ""}{fmt(data.trend5Anni)}%</span></p>
+      <SourceLabel text="Fonte: Agenzia Entrate — OMI, 1° sem. 2025" />
     </Section>
   );
 }
@@ -146,6 +153,7 @@ function StoricoTransazioniCard({ data, loading }: { data: StoricoTransazioniDat
         ))}
       </div>
       <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Media zona 12m: {fmtEur(data.mediaZona12Mesi)}/m²</span><span className="font-medium text-foreground">{data.variazione12Mesi > 0 ? "+" : ""}{fmt(data.variazione12Mesi)}%</span></div>
+      <SourceLabel text="Fonte: Agenzia Entrate — OMI, 1° sem. 2025" />
     </Section>
   );
 }
@@ -164,6 +172,7 @@ function ListingsCard({ data, loading }: { data: ListingsData | null; loading: b
           </a>
         ))}
       </div>
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
@@ -183,6 +192,7 @@ function EnergyCard({ data, loading }: { data: EnergyData | null; loading: boole
           <p className="text-muted-foreground">Media zona: <span className="font-medium text-foreground">{data.mediaZona}</span></p>
         </div>
       </div>
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
@@ -200,6 +210,7 @@ function MoodScoreCard({ data, loading }: { data: MoodScoreData | null; loading:
           {Object.entries(data.categorie).map(([k, v]) => <MiniBar key={k} label={k} value={v} />)}
         </div>
       </div>
+      <SourceLabel text="Fonte: analisi multi-sorgente Sottra" />
     </Section>
   );
 }
@@ -217,6 +228,7 @@ function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | 
         <div><span className="text-muted-foreground">Under 35</span><p className="font-medium text-foreground">{fmt(data.percentualeGiovani)}%</p></div>
       </div>
       <div className="space-y-2"><MiniBar label="Famiglie" value={data.percentualeFamiglie} /><MiniBar label="Stranieri" value={data.percentualeStranieri} /></div>
+      <SourceLabel text="Fonte: ISTAT" />
     </Section>
   );
 }
@@ -238,6 +250,7 @@ function TimeViewCard({ data, loading }: { data: TimeViewData | null; loading: b
           {data.progettiInArrivo.map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-foreground"><Rocket className="h-3 w-3 text-primary" />{p}</div>)}
         </div>
       )}
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
@@ -263,6 +276,7 @@ function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; 
         </div>
       )}
       <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Cantieri aperti: {nearby.length}</span><span>Impatto: <span className="font-medium text-foreground capitalize">{data.impattoStimato}</span></span></div>
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
@@ -283,6 +297,7 @@ function RischioZonaCard({ data, loading }: { data: RischioZonaData | null; load
           <div><span className="text-muted-foreground">Alluvionale</span><p className={`font-medium ${data.alluvionale ? "text-red-500" : "text-green-500"}`}>{data.alluvionale ? "Sì" : "No"}</p></div>
         </div>
       </div>
+      <SourceLabel text="Fonte: ISPRA IdroGEO · INGV/Protezione Civile" />
     </Section>
   );
 }
@@ -297,6 +312,7 @@ function OpportunityCard({ data, loading }: { data: OpportunityData | null; load
       <p className="text-4xl font-black text-foreground mt-2">{fmt(data.indice)}<span className="text-base font-normal text-muted-foreground">/100</span></p>
       <p className="text-sm font-medium text-foreground mt-1">{data.quadrante}</p>
       <p className="text-xs text-muted-foreground mt-2">{data.raccomandazione}</p>
+      <SourceLabel text="Fonte: analisi multi-sorgente Sottra" />
     </Section>
   );
 }
