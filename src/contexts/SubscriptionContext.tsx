@@ -49,6 +49,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setSubscribed(false);
       setPlanKey(null);
       setTrial(null);
+      setIsAdmin(false);
       return;
     }
 
