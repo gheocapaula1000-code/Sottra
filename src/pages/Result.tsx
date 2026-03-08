@@ -358,7 +358,7 @@ const Result = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-3 px-5 pb-32 pt-2">
           <HeaderCard photo={state.photo} identify={result.identify.data as IdentifyResult | null} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} />
-          <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} />
+          <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} error={result.pricing.status === "error"} />
 
           {/* Messaggio sezioni future */}
           <Section>
