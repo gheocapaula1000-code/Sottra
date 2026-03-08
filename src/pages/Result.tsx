@@ -133,6 +133,7 @@ function PricingCard({ data, loading }: { data: PricingData | null; loading: boo
       <p className="text-xs text-muted-foreground mt-1">Range: {fmtEur(data.prezzoMqMin)} – {fmtEur(data.prezzoMqMax)}</p>
       <div className="flex items-center gap-2 mt-2"><span className="text-xs text-muted-foreground">Media zona: {fmtEur(data.mediaZona)}</span><Badge variant={diff >= 0 ? "default" : "secondary"}>{diff >= 0 ? "Sopra" : "Sotto"} media</Badge></div>
       <p className="text-xs text-muted-foreground mt-2">Trend 5 anni: <span className="font-medium text-foreground">{data.trend5Anni > 0 ? "+" : ""}{fmt(data.trend5Anni)}%</span></p>
+      <SourceLabel text="Fonte: Agenzia Entrate — OMI, 1° sem. 2025" />
     </Section>
   );
 }
