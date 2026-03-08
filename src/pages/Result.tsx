@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
 import { cn } from "@/lib/utils";
+import { DataBadge, type DataTier } from "@/components/DataBadge";
 import Watermark from "@/components/Watermark";
 import type {
   IdentifyResult, CadastralData, PricingData, ListingsData,
@@ -22,8 +23,13 @@ import type {
 function fmt(n: number) { return n.toLocaleString("it-IT", { maximumFractionDigits: 1 }); }
 function fmtEur(n: number) { return n.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }); }
 
-function SourceLabel({ text }: { text: string }) {
-  return <p className="mt-3 text-[10px] text-muted-foreground/50">{text}</p>;
+function SourceLabel({ text, tier }: { text: string; tier?: DataTier }) {
+  return (
+    <div className="mt-3 flex items-center gap-2">
+      {tier && <DataBadge tier={tier} />}
+      <p className="text-[10px] text-muted-foreground/50">{text}</p>
+    </div>
+  );
 }
 
 function Section({ visible = true, children, className }: { visible?: boolean; children: React.ReactNode; className?: string }) {
@@ -95,7 +101,7 @@ function CadastralCard({ data, loading }: { data: CadastralData | null; loading:
         <div><span className="text-muted-foreground">Rendita</span><p className="font-medium text-foreground">{fmtEur(data.renditaCatastale)}</p></div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Foglio {data.foglio} · Particella {data.particella} · Sub {data.subalterno}</p>
-      <SourceLabel text="Stima indicativa" />
+      <SourceLabel text="Fonte: Sister / Catasto" tier="ufficiale" />
     </Section>
   );
 }
@@ -116,7 +122,7 @@ function CondominioCard({ data, loading }: { data: CondominioData | null; loadin
         <div><span className="text-muted-foreground">Giardino</span><p className="font-medium text-foreground">{yn(data.giardino)}</p></div>
         {data.annoUltimaRistrutturazione && <div className="col-span-2"><span className="text-muted-foreground">Ultima ristrutturazione</span><p className="font-medium text-foreground">{data.annoUltimaRistrutturazione}</p></div>}
       </div>
-      <SourceLabel text="Stima indicativa" />
+      <SourceLabel text="Elaborazione da fonti pubbliche" tier="elaborato" />
     </Section>
   );
 }
@@ -133,7 +139,7 @@ function PricingCard({ data, loading, error, message }: { data: PricingData | nu
       <p className="text-xs text-muted-foreground mt-1">Range: {fmtEur(data.prezzoMqMin)} – {fmtEur(data.prezzoMqMax)}</p>
       <div className="flex items-center gap-2 mt-2"><span className="text-xs text-muted-foreground">Media zona: {fmtEur(data.mediaZona)}</span><Badge variant={diff >= 0 ? "default" : "secondary"}>{diff >= 0 ? "Sopra" : "Sotto"} media</Badge></div>
       <p className="text-xs text-muted-foreground mt-2">Trend 5 anni: <span className="font-medium text-foreground">{data.trend5Anni > 0 ? "+" : ""}{fmt(data.trend5Anni)}%</span></p>
-      <SourceLabel text="Fonte: Agenzia Entrate — OMI, 1° sem. 2025" />
+      <SourceLabel text="Fonte: Agenzia Entrate — OMI, 1° sem. 2025" tier="ufficiale" />
     </Section>
   );
 }
@@ -153,7 +159,7 @@ function StoricoTransazioniCard({ data, loading }: { data: StoricoTransazioniDat
         ))}
       </div>
       <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Media zona 12m: {fmtEur(data.mediaZona12Mesi)}/m²</span><span className="font-medium text-foreground">{data.variazione12Mesi > 0 ? "+" : ""}{fmt(data.variazione12Mesi)}%</span></div>
-      <SourceLabel text="Fonte: Agenzia Entrate — OMI, 1° sem. 2025" />
+      <SourceLabel text="Fonte: Agenzia Entrate — OMI, 1° sem. 2025" tier="ufficiale" />
     </Section>
   );
 }
@@ -172,7 +178,7 @@ function ListingsCard({ data, loading }: { data: ListingsData | null; loading: b
           </a>
         ))}
       </div>
-      <SourceLabel text="Stima indicativa" />
+      <SourceLabel text="Elaborazione da portali immobiliari" tier="elaborato" />
     </Section>
   );
 }
@@ -192,7 +198,7 @@ function EnergyCard({ data, loading }: { data: EnergyData | null; loading: boole
           <p className="text-muted-foreground">Media zona: <span className="font-medium text-foreground">{data.mediaZona}</span></p>
         </div>
       </div>
-      <SourceLabel text="Stima indicativa" />
+      <SourceLabel text="Valore indicativo — verificare con APE ufficiale" tier="stima" />
     </Section>
   );
 }
@@ -210,7 +216,7 @@ function MoodScoreCard({ data, loading }: { data: MoodScoreData | null; loading:
           {Object.entries(data.categorie).map(([k, v]) => <MiniBar key={k} label={k} value={v} />)}
         </div>
       </div>
-      <SourceLabel text="Stima indicativa" />
+      <SourceLabel text="Indice elaborato internamente — non costituisce valutazione ufficiale" tier="elaborato" />
     </Section>
   );
 }
@@ -239,7 +245,7 @@ function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDe
         <div><span className="text-muted-foreground">Under 35</span><p className="font-medium text-foreground">{fmt(data.percentualeGiovani)}%</p></div>
       </div>
       <div className="space-y-2"><MiniBar label="Famiglie" value={data.percentualeFamiglie} /><MiniBar label="Stranieri" value={data.percentualeStranieri} /></div>
-      <SourceLabel text="Fonte: ISTAT — Popolazione residente 2025" />
+      <SourceLabel text="Fonte: ISTAT — Popolazione residente 2025" tier="ufficiale" />
     </Section>
   );
 }
@@ -261,7 +267,7 @@ function TimeViewCard({ data, loading }: { data: TimeViewData | null; loading: b
           {data.progettiInArrivo.map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-foreground"><Rocket className="h-3 w-3 text-primary" />{p}</div>)}
         </div>
       )}
-      <SourceLabel text="Stima indicativa" />
+      <SourceLabel text="Proiezione indicativa — non costituisce consulenza finanziaria" tier="stima" />
     </Section>
   );
 }
@@ -287,7 +293,7 @@ function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; 
         </div>
       )}
       <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Cantieri aperti: {nearby.length}</span><span>Impatto: <span className="font-medium text-foreground capitalize">{data.impattoStimato}</span></span></div>
-      <SourceLabel text="Stima indicativa" />
+      <SourceLabel text="Elaborazione da Open Data comunali" tier="elaborato" />
     </Section>
   );
 }
@@ -319,7 +325,7 @@ function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaD
           <div><span className="text-muted-foreground">Alluvionale</span><p className={`font-medium ${data.alluvionale ? "text-red-500" : "text-green-500"}`}>{data.alluvionale ? "Sì" : "No"}</p></div>
         </div>
       </div>
-      <SourceLabel text="Fonte: ISPRA IdroGEO + INGV/OPCM 3519" />
+      <SourceLabel text="Fonte: ISPRA IdroGEO + INGV/OPCM 3519" tier="ufficiale" />
     </Section>
   );
 }
@@ -334,7 +340,7 @@ function OpportunityCard({ data, loading }: { data: OpportunityData | null; load
       <p className="text-4xl font-black text-foreground mt-2">{fmt(data.indice)}<span className="text-base font-normal text-muted-foreground">/100</span></p>
       <p className="text-sm font-medium text-foreground mt-1">{data.quadrante}</p>
       <p className="text-xs text-muted-foreground mt-2">{data.raccomandazione}</p>
-      <SourceLabel text="Stima indicativa" />
+      <SourceLabel text="Indice elaborato internamente — non costituisce consulenza finanziaria" tier="stima" />
     </Section>
   );
 }
@@ -373,7 +379,7 @@ const Result = () => {
       <header className="flex items-center gap-3 px-5 pt-[env(safe-area-inset-top,12px)] pb-2">
         <button onClick={() => navigate("/scan")} className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary"><ArrowLeft className="h-5 w-5 text-foreground" /></button>
         <span className="text-base font-bold text-foreground flex-1">Risultato</span>
-        {scanning && <span className="text-xs text-muted-foreground animate-pulse">Analisi…</span>}
+        {scanning && <span className="text-xs text-muted-foreground animate-pulse">Elaborazione…</span>}
       </header>
 
       <div className="flex-1 overflow-y-auto">
@@ -387,7 +393,8 @@ const Result = () => {
           {/* Messaggio sezioni future */}
           <Section>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Altre sezioni in arrivo: dati catastali, energia, infrastrutture. Ogni dato proviene esclusivamente da fonti istituzionali certificate.
+              Altre sezioni in arrivo: dati catastali, energia, infrastrutture.
+              Il report distingue chiaramente tra dati ufficiali, dati elaborati e stime indicative.
             </p>
           </Section>
 

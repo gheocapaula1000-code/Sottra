@@ -20,7 +20,12 @@ const TerminiCondizioni = () => {
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Oggetto</h2>
-            <p>Sottra è una PWA che permette di fotografare edifici e ottenere dati catastali, prezzi di mercato, classe energetica, annunci nella zona e previsioni di investimento.</p>
+            <p>Sottra è una PWA che permette di fotografare edifici e ottenere un quadro informativo composto da dati catastali, prezzi di mercato, classificazione energetica, annunci nella zona e indicatori predittivi. Il report distingue chiaramente tra dati ufficiali, dati elaborati e stime indicative.</p>
+          </section>
+
+          <section>
+            <h2 className="font-semibold text-foreground mb-2">Natura dei dati</h2>
+            <p>Il servizio è pensato come supporto informativo e operativo per professionisti del settore immobiliare. I dati contrassegnati come "Dato ufficiale" provengono da fonti istituzionali pubbliche (OMI, ISTAT, ISPRA, INGV). I dati contrassegnati come "Dato elaborato" o "Stima indicativa" sono il risultato di elaborazioni interne e non hanno valore certificato. Nessun contenuto del report sostituisce perizie professionali, valutazioni ufficiali o consulenza finanziaria.</p>
           </section>
 
           <section>
@@ -41,7 +46,7 @@ const TerminiCondizioni = () => {
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Limitazione di responsabilità</h2>
-            <p>Il servizio è fornito "così com'è" senza garanzie di alcun tipo. I dati forniti hanno carattere indicativo e non sostituiscono perizie professionali.</p>
+            <p>Il servizio è fornito "così com'è" senza garanzie di alcun tipo. I dati forniti hanno carattere informativo e non sostituiscono perizie professionali o consulenze specialistiche. Alcuni contenuti possono essere elaborati o stimati in assenza di dati ufficiali completi.</p>
           </section>
 
           <section>
