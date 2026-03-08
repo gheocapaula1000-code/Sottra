@@ -329,11 +329,6 @@ const Result = () => {
     );
   }
 
-  const s = (k: keyof ScanResult) => result[k].status;
-  const d = <T,>(k: keyof ScanResult) => result[k].data as T | null;
-  const identify = d<IdentifyResult>("identify");
-  const mood = d<MoodScoreData>("moodScore");
-
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <Watermark userName="paula.gheoca" />
@@ -345,19 +340,19 @@ const Result = () => {
 
       <ScrollArea className="flex-1">
         <div className="space-y-3 px-5 pb-32 pt-2">
-          <HeaderCard photo={state.photo} identify={identify} loading={s("identify") === "loading"} lat={state.lat} lng={state.lng} />
-          <CadastralCard data={d<CadastralData>("cadastral")} loading={s("cadastral") === "loading"} />
-          <CondominioCard data={d<CondominioData>("condominio")} loading={s("condominio") === "loading"} />
-          <PricingCard data={d<PricingData>("pricing")} loading={s("pricing") === "loading"} />
-          <StoricoTransazioniCard data={d<StoricoTransazioniData>("storicoTransazioni")} loading={s("storicoTransazioni") === "loading"} />
-          <ListingsCard data={d<ListingsData>("listings")} loading={s("listings") === "loading"} />
-          <EnergyCard data={d<EnergyData>("energy")} loading={s("energy") === "loading"} />
-          <MoodScoreCard data={d<MoodScoreData>("moodScore")} loading={s("moodScore") === "loading"} />
-          <TrendDemograficoCard data={d<TrendDemograficoData>("trendDemografico")} loading={s("trendDemografico") === "loading"} />
-          <TimeViewCard data={d<TimeViewData>("timeView")} loading={s("timeView") === "loading"} />
-          <InfrastrutureCard data={d<InfrastrutureData>("infrastrutture")} loading={s("infrastrutture") === "loading"} />
-          <RischioZonaCard data={d<RischioZonaData>("rischioZona")} loading={s("rischioZona") === "loading"} />
-          <OpportunityCard data={d<OpportunityData>("opportunity")} loading={s("opportunity") === "loading"} />
+          <HeaderCard photo={state.photo} identify={result.identify.data as IdentifyResult | null} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} />
+          <CadastralCard data={result.cadastral.data as CadastralData | null} loading={result.cadastral.status === "loading"} />
+          <CondominioCard data={result.condominio.data as CondominioData | null} loading={result.condominio.status === "loading"} />
+          <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} />
+          <StoricoTransazioniCard data={result.storicoTransazioni.data as StoricoTransazioniData | null} loading={result.storicoTransazioni.status === "loading"} />
+          <ListingsCard data={result.listings.data as ListingsData | null} loading={result.listings.status === "loading"} />
+          <EnergyCard data={result.energy.data as EnergyData | null} loading={result.energy.status === "loading"} />
+          <MoodScoreCard data={result.moodScore.data as MoodScoreData | null} loading={result.moodScore.status === "loading"} />
+          <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} />
+          <TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} />
+          <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} />
+          <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} />
+          <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} />
         </div>
       </ScrollArea>
 
@@ -365,6 +360,8 @@ const Result = () => {
         <Button className="flex-1" size="lg" onClick={() => navigate("/scan")}>Scansiona un altro</Button>
         <Button variant="outline" size="lg" className="shrink-0" onClick={() => {
           if (!state) return;
+          const identify = result.identify.data as IdentifyResult | null;
+          const mood = result.moodScore.data as MoodScoreData | null;
           saveScan({ photo: state.photo, address: identify?.address ?? "Indirizzo sconosciuto", lat: state.lat ?? null, lng: state.lng ?? null, moodScore: mood?.score ?? null, scanResult: result });
           toast({ title: "Scansione salvata", description: "Trovi questa scansione nella cronologia." });
         }}><Bookmark className="h-4 w-4" /></Button>
