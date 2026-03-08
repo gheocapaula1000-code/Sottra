@@ -121,10 +121,11 @@ function CondominioCard({ data, loading }: { data: CondominioData | null; loadin
   );
 }
 
-function PricingCard({ data, loading }: { data: PricingData | null; loading: boolean }) {
-  console.log("[PricingCard] data=", data, "loading=", loading);
+function PricingCard({ data, loading, error }: { data: PricingData | null; loading: boolean; error: boolean }) {
+  console.log("[PricingCard] data=", data, "loading=", loading, "error=", error);
   if (loading) return <SectionSkeleton />;
-  if (!data) return <Section><span className="text-sm text-muted-foreground">Dati di mercato non disponibili</span></Section>;
+  if (error) return <Section><span className="text-sm text-muted-foreground">Dati di mercato non disponibili</span></Section>;
+  if (!data) return <Section><span className="text-sm text-muted-foreground">Dati di mercato in caricamento...</span></Section>;
   const diff = data.prezzoMq - data.mediaZona;
   return (
     <Section>
@@ -357,7 +358,7 @@ const Result = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-3 px-5 pb-32 pt-2">
           <HeaderCard photo={state.photo} identify={result.identify.data as IdentifyResult | null} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} />
-          <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} />
+          <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} error={result.pricing.status === "error"} />
 
           {/* Messaggio sezioni future */}
           <Section>
