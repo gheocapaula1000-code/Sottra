@@ -17,6 +17,7 @@ interface SubscriptionState {
   subscriptionEnd: string | null;
   trial: TrialInfo | null;
   canScan: boolean;
+  isAdmin: boolean;
   refresh: () => Promise<void>;
 }
 
@@ -27,6 +28,7 @@ const SubscriptionContext = createContext<SubscriptionState>({
   subscriptionEnd: null,
   trial: null,
   canScan: false,
+  isAdmin: false,
   refresh: async () => {},
 });
 
