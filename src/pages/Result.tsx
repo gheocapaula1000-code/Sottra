@@ -121,11 +121,10 @@ function CondominioCard({ data, loading }: { data: CondominioData | null; loadin
   );
 }
 
-function PricingCard({ data, loading, error }: { data: PricingData | null; loading: boolean; error: boolean }) {
-  console.log("[PricingCard] data=", data, "loading=", loading, "error=", error);
+function PricingCard({ data, loading, error, message }: { data: PricingData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (error) return <Section><span className="text-sm text-muted-foreground">Dati di mercato non disponibili</span></Section>;
-  if (!data) return <Section><span className="text-sm text-muted-foreground">Dati di mercato in caricamento...</span></Section>;
+  if (error) return <Section><span className="text-sm text-muted-foreground">Errore prezzi: {message || "non disponibili"}</span></Section>;
+  if (!data) return <Section><span className="text-sm text-muted-foreground">Prezzi in caricamento...</span></Section>;
   const diff = data.prezzoMq - data.mediaZona;
   return (
     <Section>
@@ -216,9 +215,20 @@ function MoodScoreCard({ data, loading }: { data: MoodScoreData | null; loading:
   );
 }
 
-function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | null; loading: boolean }) {
+function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDemograficoData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (!data) return null;
+  if (error) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
+      <span className="text-sm text-muted-foreground">Errore: {message || "dati non disponibili"}</span>
+    </Section>
+  );
+  if (!data) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
+      <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
+    </Section>
+  );
   return (
     <Section>
       <div className="flex items-center gap-2 mb-3"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
@@ -282,9 +292,20 @@ function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; 
   );
 }
 
-function RischioZonaCard({ data, loading }: { data: RischioZonaData | null; loading: boolean }) {
+function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (!data) return null;
+  if (error) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><AlertTriangle className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
+      <span className="text-sm text-muted-foreground">Errore: {message || "dati non disponibili"}</span>
+    </Section>
+  );
+  if (!data) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><AlertTriangle className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
+      <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
+    </Section>
+  );
   const lc: Record<string, string> = { nullo: "text-green-500", basso: "text-green-400", medio: "text-amber-400", alto: "text-red-500", zona4: "text-green-500", zona3: "text-green-400", zona2: "text-amber-400", zona1: "text-red-500" };
   return (
     <Section>
@@ -358,10 +379,10 @@ const Result = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-3 px-5 pb-32 pt-2">
           <HeaderCard photo={state.photo} identify={result.identify.data as IdentifyResult | null} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} />
-          <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} error={result.pricing.status === "error"} />
+          <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} error={result.pricing.status === "error"} message={result.pricing.message} />
 
-          <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} />
-          <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} />
+          <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} error={result.rischioZona.status === "error"} message={result.rischioZona.message} />
+          <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} error={result.trendDemografico.status === "error"} message={result.trendDemografico.message} />
 
           {/* Messaggio sezioni future */}
           <Section>
