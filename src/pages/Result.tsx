@@ -379,7 +379,7 @@ const Result = () => {
           {/* <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} /> */}
           {/* <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} /> */}
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="fixed bottom-0 inset-x-0 bg-background/80 backdrop-blur-lg border-t border-border px-5 pb-[max(env(safe-area-inset-bottom,20px),20px)] pt-3 flex gap-3">
         <Button className="flex-1" size="lg" onClick={() => navigate("/scan")}>Scansiona un altro</Button>
