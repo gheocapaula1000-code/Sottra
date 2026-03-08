@@ -272,6 +272,7 @@ function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; 
         </div>
       )}
       <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Cantieri aperti: {nearby.length}</span><span>Impatto: <span className="font-medium text-foreground capitalize">{data.impattoStimato}</span></span></div>
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
