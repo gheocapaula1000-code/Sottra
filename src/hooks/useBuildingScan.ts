@@ -20,8 +20,10 @@ export function useBuildingScan() {
   const update = (key: keyof ScanResult, value: { status: SectionState["status"]; data: unknown; message: string | null }) =>
     setResult((prev) => ({ ...prev, [key]: value } as ScanResult));
 
-  const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) =>
+  const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
+    if (key === "pricing") console.log("[DEBUG] resolve pricing:", JSON.stringify(r).slice(0, 300));
     update(key, { status: r.error ? "error" : "success", data: r.data, message: r.message });
+  };
 
   const scan = useCallback(async (photo: string, lat: number, lng: number) => {
     setScanning(true);
