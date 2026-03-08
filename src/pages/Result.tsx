@@ -293,6 +293,7 @@ function RischioZonaCard({ data, loading }: { data: RischioZonaData | null; load
           <div><span className="text-muted-foreground">Alluvionale</span><p className={`font-medium ${data.alluvionale ? "text-red-500" : "text-green-500"}`}>{data.alluvionale ? "Sì" : "No"}</p></div>
         </div>
       </div>
+      <SourceLabel text="Fonte: ISPRA IdroGEO · INGV/Protezione Civile" />
     </Section>
   );
 }
