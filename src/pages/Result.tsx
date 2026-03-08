@@ -379,10 +379,10 @@ const Result = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-3 px-5 pb-32 pt-2">
           <HeaderCard photo={state.photo} identify={result.identify.data as IdentifyResult | null} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} />
-          <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} error={result.pricing.status === "error"} />
+          <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} error={result.pricing.status === "error"} message={result.pricing.message} />
 
-          <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} />
-          <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} />
+          <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} error={result.rischioZona.status === "error"} message={result.rischioZona.message} />
+          <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} error={result.trendDemografico.status === "error"} message={result.trendDemografico.message} />
 
           {/* Messaggio sezioni future */}
           <Section>
