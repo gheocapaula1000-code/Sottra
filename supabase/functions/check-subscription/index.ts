@@ -32,6 +32,29 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
+    // Check if user is admin
+    const { data: roleData } = await supabaseClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    const isAdmin = !!roleData;
+
+    if (isAdmin) {
+      return new Response(JSON.stringify({
+        subscribed: true,
+        product_id: null,
+        subscription_end: null,
+        is_admin: true,
+        trial: null,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     // Check Stripe subscription
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let subscribed = false;
@@ -68,6 +91,7 @@ serve(async (req) => {
       subscribed,
       product_id: productId,
       subscription_end: subscriptionEnd,
+      is_admin: false,
       trial: trial ? {
         active: trialActive,
         scans_used: trial.scans_used,
