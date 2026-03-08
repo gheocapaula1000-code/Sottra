@@ -122,6 +122,7 @@ function CondominioCard({ data, loading }: { data: CondominioData | null; loadin
 }
 
 function PricingCard({ data, loading }: { data: PricingData | null; loading: boolean }) {
+  console.log("[PricingCard] data=", data, "loading=", loading);
   if (loading) return <SectionSkeleton />;
   if (!data) return <Section><span className="text-sm text-muted-foreground">Dati di mercato non disponibili</span></Section>;
   const diff = data.prezzoMq - data.mediaZona;
