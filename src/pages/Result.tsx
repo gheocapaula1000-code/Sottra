@@ -121,10 +121,11 @@ function CondominioCard({ data, loading }: { data: CondominioData | null; loadin
   );
 }
 
-function PricingCard({ data, loading }: { data: PricingData | null; loading: boolean }) {
-  console.log("[PricingCard] data=", data, "loading=", loading);
+function PricingCard({ data, loading, error }: { data: PricingData | null; loading: boolean; error: boolean }) {
+  console.log("[PricingCard] data=", data, "loading=", loading, "error=", error);
   if (loading) return <SectionSkeleton />;
-  if (!data) return <Section><span className="text-sm text-muted-foreground">Dati di mercato non disponibili</span></Section>;
+  if (error) return <Section><span className="text-sm text-muted-foreground">Dati di mercato non disponibili</span></Section>;
+  if (!data) return <Section><span className="text-sm text-muted-foreground">Dati di mercato in caricamento...</span></Section>;
   const diff = data.prezzoMq - data.mediaZona;
   return (
     <Section>
