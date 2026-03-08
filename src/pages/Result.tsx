@@ -116,6 +116,7 @@ function CondominioCard({ data, loading }: { data: CondominioData | null; loadin
         <div><span className="text-muted-foreground">Giardino</span><p className="font-medium text-foreground">{yn(data.giardino)}</p></div>
         {data.annoUltimaRistrutturazione && <div className="col-span-2"><span className="text-muted-foreground">Ultima ristrutturazione</span><p className="font-medium text-foreground">{data.annoUltimaRistrutturazione}</p></div>}
       </div>
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
