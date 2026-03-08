@@ -9,8 +9,8 @@ import { LEGAL_ENTITY } from "@/lib/legalEntity";
 import logoS from "@/assets/logo-s-icon.png";
 import {
   Camera, Zap, ShieldCheck, TrendingUp, Users, Building2,
-  CheckCircle2, ArrowRight, Database, Brain, Globe, Clock,
-  BarChart3, MapPin, Star, Layers,
+  CheckCircle2, ArrowRight, Database, Globe, Clock,
+  BarChart3, MapPin, Layers,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -26,10 +26,10 @@ const plans = [
     scans: "80 scansioni/mese",
     users: "1 account",
     features: [
-      "Motore Scan completo — dati reali certificati",
-      "Motore Forecast — analisi predittiva zona",
+      "Analisi completa — dati ufficiali e stime separate",
+      "Quadro predittivo zona e trend demografico",
       "Prezzi OMI, visura catastale, classe energetica",
-      "MoodScore, trend demografico, rischio zona",
+      "MoodScore, rischio zona, infrastrutture",
       "Storico scansioni 6 mesi",
       "Solo visualizzazione in-app (no export PDF)",
       "Dispositivo vincolato per durata abbonamento",
@@ -78,20 +78,20 @@ const plans = [
 ];
 
 const dataSources = [
-  { name: "OMI — Agenzia delle Entrate", desc: "Prezzi immobiliari certificati per zona", icon: BarChart3, free: true },
-  { name: "Sister / Catasto", desc: "Visure catastali: foglio, particella, rendita", icon: Database, free: true },
-  { name: "ISTAT", desc: "Dati demografici, popolazione, età, famiglie", icon: Users, free: true },
-  { name: "ISPRA IdroGEO", desc: "Rischio idrogeologico e alluvionale", icon: ShieldCheck, free: true },
-  { name: "INGV / Protezione Civile", desc: "Classificazione sismica ufficiale", icon: Layers, free: true },
-  { name: "Open Data Comunali", desc: "Cantieri, infrastrutture, progetti urbani", icon: MapPin, free: true },
-  { name: "Google Maps + Places", desc: "Identificazione edificio e POI zona", icon: Globe, free: false },
-  { name: "GPT-5.4 Vision", desc: "Analisi visiva foto edificio", icon: Brain, free: false },
+  { name: "OMI — Agenzia delle Entrate", desc: "Quotazioni immobiliari per zona e tipologia", icon: BarChart3, tier: "Dato ufficiale" },
+  { name: "Sister / Catasto", desc: "Visure catastali: foglio, particella, rendita", icon: Database, tier: "Dato ufficiale" },
+  { name: "ISTAT", desc: "Dati demografici, popolazione, età, famiglie", icon: Users, tier: "Dato ufficiale" },
+  { name: "ISPRA IdroGEO", desc: "Rischio idrogeologico e alluvionale", icon: ShieldCheck, tier: "Dato ufficiale" },
+  { name: "INGV / Protezione Civile", desc: "Classificazione sismica", icon: Layers, tier: "Dato ufficiale" },
+  { name: "Open Data Comunali", desc: "Cantieri, infrastrutture, progetti urbani", icon: MapPin, tier: "Dato elaborato" },
+  { name: "Google Maps + Places", desc: "Identificazione edificio e POI zona", icon: Globe, tier: "Dato elaborato" },
+  { name: "Elaborazione interna", desc: "Analisi strutturata e classificazione automatizzata", icon: Zap, tier: "Stima indicativa" },
 ];
 
 const moatItems = [
-  { icon: Database, title: "Dati precaricati", desc: "Settimane di lavoro per scaricare, pulire e importare OMI, ISTAT, ISPRA in un database PostGIS." },
+  { icon: Database, title: "Dati precaricati", desc: "Settimane di lavoro per scaricare, pulire e importare OMI, ISTAT, ISPRA in un database geospaziale." },
   { icon: ShieldCheck, title: "Brevetto depositato", desc: "Il metodo foto → profilo multi-sorgente con due motori paralleli è coperto da domanda di brevetto UIBM." },
-  { icon: Brain, title: "Integrazione Vision", desc: "Nessun concorrente italiano combina analisi visiva con dati catastali reali." },
+  { icon: Zap, title: "Elaborazione proprietaria", desc: "Nessun concorrente italiano combina analisi strutturata con dati catastali reali in un unico flusso." },
   { icon: Layers, title: "Incrocio 7+ fonti", desc: "Il valore è nell'incrocio automatico di fonti in 5 secondi. Replicare l'integrazione richiede competenze specifiche." },
   { icon: TrendingUp, title: "Effetto rete", desc: "Ogni scansione migliora il database. Più utenti = più dati = prodotto migliore." },
 ];
@@ -130,8 +130,8 @@ function HeroSection() {
           <span className="text-primary">Decidi.</span>
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground sm:text-xl">
-          Una foto di un edificio → profilo completo con <strong className="text-foreground">dati reali certificati</strong> in 5 secondi. 
-          Quello che oggi richiede 2 ore su 6 portali diversi.
+          Una foto di un edificio → quadro informativo completo in 5 secondi.
+          Il report distingue chiaramente tra <strong className="text-foreground">dati ufficiali, elaborazioni e stime</strong>.
         </p>
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Button size="lg" className="gap-2 text-base" onClick={() => navigate("/signup")}>
@@ -145,8 +145,8 @@ function HeroSection() {
         {[
           { icon: Camera, label: "Foto → Dati" },
           { icon: Zap, label: "5 secondi" },
-          { icon: ShieldCheck, label: "Fonti certificate" },
-          { icon: TrendingUp, label: "Analisi predittiva" },
+          { icon: ShieldCheck, label: "Fonti tracciate" },
+          { icon: TrendingUp, label: "Quadro predittivo" },
         ].map(({ icon: Icon, label }) => (
           <div key={label} className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 backdrop-blur">
             <Icon className="h-5 w-5 shrink-0 text-primary" />
@@ -161,8 +161,8 @@ function HeroSection() {
 function HowItWorks() {
   const steps = [
     { num: "01", title: "Scatta una foto", desc: "Inquadra qualsiasi edificio con il tuo smartphone." },
-    { num: "02", title: "Due motori in parallelo", desc: "Motore Scan (dati reali) + Motore Forecast (analisi predittiva) lavorano simultaneamente." },
-    { num: "03", title: "Report completo", desc: "Prezzi OMI, catasto, classe energetica, MoodScore, rischio zona e molto altro." },
+    { num: "02", title: "Due motori in parallelo", desc: "Motore Scan (dati strutturati) + Motore Forecast (quadro predittivo) lavorano simultaneamente." },
+    { num: "03", title: "Report trasparente", desc: "Prezzi OMI, catasto, rischio zona, demografia e molto altro. Ogni sezione indica la fonte e il tipo di dato." },
   ];
   return (
     <section className="px-6 py-20 sm:px-10 lg:px-20">
@@ -261,10 +261,11 @@ function DataSourcesSection() {
     <section className="px-6 py-20 sm:px-10 lg:px-20">
       <div className="mx-auto max-w-5xl">
         <h2 className="text-center text-3xl font-black text-foreground sm:text-4xl">
-          Fonti dati certificate
+          Fonti dati e trasparenza
         </h2>
         <p className="mx-auto mt-3 max-w-lg text-center text-muted-foreground">
-          Ogni dato nel report Sottra è tracciabile alla fonte ufficiale. 7 fonti su 10 sono gratuite.
+          Ogni sezione del report indica la fonte e il tipo di dato.
+          Le fonti, quando disponibili, vengono esplicitamente indicate.
         </p>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
@@ -276,8 +277,8 @@ function DataSourcesSection() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm font-semibold text-foreground truncate">{ds.name}</h4>
-                  <Badge variant={ds.free ? "secondary" : "outline"} className="shrink-0 text-[10px]">
-                    {ds.free ? "Gratuita" : "A pagamento"}
+                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                    {ds.tier}
                   </Badge>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">{ds.desc}</p>
@@ -286,8 +287,8 @@ function DataSourcesSection() {
           ))}
         </div>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Costo medio per scansione: <strong className="text-foreground">~€0.06</strong>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Alcuni contenuti possono essere elaborati o stimati in assenza di dati ufficiali completi.
         </p>
       </div>
     </section>
@@ -325,7 +326,7 @@ function CtaSection() {
           Prova Sottra gratis per 3 giorni
         </h2>
         <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-          5 scansioni incluse. Nessuna carta di credito. Accesso completo a tutti i dati certificati.
+          5 scansioni incluse. Nessuna carta di credito. Accesso completo al quadro informativo.
         </p>
         <Button size="lg" className="mt-8 gap-2 text-base" onClick={() => navigate("/signup")}>
           Inizia il trial gratuito <ArrowRight className="h-4 w-4" />

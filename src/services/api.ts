@@ -1,8 +1,4 @@
-const CORE_API_URL =
-  import.meta.env.VITE_CORE_API_URL ??
-  "https://xyzcompanyid.supabase.co/functions/v1";
-
-const CORE_API_KEY = import.meta.env.VITE_CORE_API_KEY ?? "";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CoreError {
   error: true;
@@ -36,11 +32,10 @@ function recordFailure() {
   if (cb.failures >= CB_THRESHOLD) cb.open = true;
 }
 
-// ── Retryable status ──
-function isRetryable(status: number): boolean {
-  return status === 502 || status === 503 || status === 504 || status === 429;
-}
-
+/**
+ * Proxy all Core API requests through the backend edge function.
+ * No API keys are exposed to the client.
+ */
 export async function coreRequest<T = unknown>(
   endpoint: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "POST",
@@ -52,49 +47,34 @@ export async function coreRequest<T = unknown>(
   }
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-
     try {
-      const res = await fetch(`${CORE_API_URL}${endpoint}`, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${CORE_API_KEY}`,
-        },
-        body: body ? JSON.stringify(body) : undefined,
-        signal: controller.signal,
+      const { data, error } = await supabase.functions.invoke("core-proxy", {
+        body: { endpoint, method, payload: body, timeout },
       });
 
-      clearTimeout(timer);
-
-      if (!res.ok) {
-        if (attempt === 0 && isRetryable(res.status)) {
+      if (error) {
+        if (attempt === 0) {
           await new Promise((r) => setTimeout(r, 1000));
           continue;
         }
-        const text = await res.text().catch(() => res.statusText);
         recordFailure();
-        return { error: true, message: `HTTP ${res.status}: ${text}` };
+        return { error: true, message: error.message || "Errore di rete" };
       }
 
-      const json = await res.json();
-
       // Central Core V3 wrapper: { ok, data, warnings, debug_id }
-      if (json && typeof json === "object" && "ok" in json) {
-        if (!json.ok) {
+      if (data && typeof data === "object" && "ok" in data) {
+        if (!data.ok) {
           recordFailure();
-          return { error: true, message: json.error?.message ?? "Unknown error" };
+          return { error: true, message: data.error?.message ?? "Errore sconosciuto" };
         }
         recordSuccess();
-        return json.data as T;
+        return data.data as T;
       }
 
       recordSuccess();
-      return json as T;
+      return data as T;
     } catch (err: unknown) {
-      clearTimeout(timer);
-      if (attempt === 0 && !(err instanceof DOMException && err.name === "AbortError")) {
+      if (attempt === 0) {
         await new Promise((r) => setTimeout(r, 1000));
         continue;
       }
@@ -109,7 +89,6 @@ export async function coreRequest<T = unknown>(
     }
   }
 
-  // Should never reach here, but TypeScript needs it
   recordFailure();
   return { error: true, message: "Errore sconosciuto" };
 }

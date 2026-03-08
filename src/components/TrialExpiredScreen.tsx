@@ -11,10 +11,10 @@ import { useToast } from "@/hooks/use-toast";
 
 const planFeatures: Record<PlanKey, string[]> = {
   agente: [
-    "Motore Scan completo — dati reali certificati",
-    "Motore Forecast — analisi predittiva zona",
+    "Analisi completa — dati ufficiali e stime separate",
+    "Quadro predittivo zona e trend demografico",
     "Prezzi OMI, visura catastale, classe energetica",
-    "MoodScore, trend demografico, rischio zona",
+    "MoodScore, rischio zona, infrastrutture",
     "Storico scansioni 6 mesi",
     "Solo visualizzazione in-app (no export PDF)",
     "Dispositivo vincolato per durata abbonamento",
