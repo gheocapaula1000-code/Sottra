@@ -227,7 +227,7 @@ function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | 
         <div><span className="text-muted-foreground">Under 35</span><p className="font-medium text-foreground">{fmt(data.percentualeGiovani)}%</p></div>
       </div>
       <div className="space-y-2"><MiniBar label="Famiglie" value={data.percentualeFamiglie} /><MiniBar label="Stranieri" value={data.percentualeStranieri} /></div>
-      <SourceLabel text="Fonte: ISTAT" />
+      <SourceLabel text="Fonte: ISTAT — Popolazione residente 2025" />
     </Section>
   );
 }
