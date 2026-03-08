@@ -18,8 +18,8 @@ const Dashboard = () => {
       const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
       if (data?.url) window.location.href = data.url;
-    } catch (e: any) {
-      toast({ title: "Errore", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Errore", description: e instanceof Error ? e.message : "Errore sconosciuto", variant: "destructive" });
     }
   };
 
