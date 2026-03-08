@@ -41,6 +41,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [planKey, setPlanKey] = useState<PlanKey | null>(null);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [trial, setTrial] = useState<TrialInfo | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!session) {
