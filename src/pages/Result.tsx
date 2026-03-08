@@ -192,6 +192,7 @@ function EnergyCard({ data, loading }: { data: EnergyData | null; loading: boole
           <p className="text-muted-foreground">Media zona: <span className="font-medium text-foreground">{data.mediaZona}</span></p>
         </div>
       </div>
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
