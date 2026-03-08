@@ -308,6 +308,7 @@ function OpportunityCard({ data, loading }: { data: OpportunityData | null; load
       <p className="text-4xl font-black text-foreground mt-2">{fmt(data.indice)}<span className="text-base font-normal text-muted-foreground">/100</span></p>
       <p className="text-sm font-medium text-foreground mt-1">{data.quadrante}</p>
       <p className="text-xs text-muted-foreground mt-2">{data.raccomandazione}</p>
+      <SourceLabel text="Fonte: analisi multi-sorgente Sottra" />
     </Section>
   );
 }
