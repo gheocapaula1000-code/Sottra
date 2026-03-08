@@ -20,7 +20,7 @@ const NoteLegali = () => {
           <p><strong>Email:</strong> {val(e.email)}</p>
           <p><strong>PEC:</strong> {val(e.pec)}</p>
           <p><strong>Telefono:</strong> {val(e.phone)}</p>
-          <p><strong>Hosting:</strong> Lovable / Supabase</p>
+          <p><strong>Hosting:</strong> Infrastruttura cloud UE</p>
 
           <p className="text-xs text-muted-foreground pt-4">Ultimo aggiornamento: marzo 2026</p>
         </div>
