@@ -172,6 +172,7 @@ function ListingsCard({ data, loading }: { data: ListingsData | null; loading: b
           </a>
         ))}
       </div>
+      <SourceLabel text="Stima indicativa" />
     </Section>
   );
 }
