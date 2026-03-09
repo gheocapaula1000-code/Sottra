@@ -32,7 +32,8 @@ const AdminDashboard = () => {
         if (error) throw error;
         setStats(data);
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Errore nel caricamento");
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg.includes("Forbidden") ? "Accesso non autorizzato." : "Impossibile caricare i dati. Riprova più tardi.");
       } finally {
         setLoading(false);
       }
