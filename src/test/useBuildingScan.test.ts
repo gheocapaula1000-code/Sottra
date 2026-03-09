@@ -37,7 +37,7 @@ vi.mock("@/services/forecast", () => ({
   }),
   getOpportunityIndex: vi.fn().mockResolvedValue({
     error: false, message: null,
-    data: { indice: 80, quadrante: "Stella Nascente", raccomandazione: "Zona in crescita" },
+    data: { score: 80, band: "forte", drivers: ["Test driver"], risks: ["Test risk"], observation: "Test observation" },
   }),
 }));
 
