@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { TrialExpiredScreen } from "@/components/TrialExpiredScreen";
+import { APP_BRAND } from "@/lib/legalEntity";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import SottraMark from "@/components/SottraMark";
