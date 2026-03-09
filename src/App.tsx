@@ -10,9 +10,11 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import CookieBanner from "@/components/CookieBanner";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
 import Index from "./pages/Index";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const Scan = lazy(() => import("./pages/Scan"));
 const Result = lazy(() => import("./pages/Result"));
 const History = lazy(() => import("./pages/History"));
@@ -42,6 +44,7 @@ const App = () => (
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/app" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
                     <Route path="/scan" element={<ProtectedRoute><Scan /></ProtectedRoute>} />
                     <Route path="/result" element={<ProtectedRoute><Result /></ProtectedRoute>} />
                     <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
