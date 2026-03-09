@@ -307,24 +307,123 @@ function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDe
   );
 }
 
-function TimeViewCard({ data, loading }: { data: TimeViewData | null; loading: boolean }) {
+function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (!data) return null;
-  return (
+  if (error) return (
     <Section>
-      <div className="flex items-center gap-2 mb-3"><TrendingUp className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Previsione Valore</span></div>
-      <div className="grid grid-cols-3 gap-3 text-center text-sm mb-3">
-        <div><span className="text-muted-foreground text-xs">5 anni</span><p className="font-bold text-foreground">{fmt(data.previsione5Anni)}%</p></div>
-        <div><span className="text-muted-foreground text-xs">10 anni</span><p className="font-bold text-foreground">{fmt(data.previsione10Anni)}%</p></div>
-        <div><span className="text-muted-foreground text-xs">20 anni</span><p className="font-bold text-foreground">{fmt(data.previsione20Anni)}%</p></div>
+      <div className="flex items-center gap-2 mb-2"><Eye className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Scenario Evolutivo</span></div>
+      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
+    </Section>
+  );
+  if (!data) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><Eye className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Scenario Evolutivo</span></div>
+      <span className="text-sm text-muted-foreground">Dati in elaborazione...</span>
+    </Section>
+  );
+
+  const isUnavailable = data.sourceType === "unavailable" || (!data.scenarioBand && data.previsione5Anni == null);
+  if (isUnavailable) {
+    return (
+      <Section>
+        <div className="flex items-center gap-2 mb-3"><Eye className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Scenario Evolutivo</span></div>
+        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dati insufficienti per elaborare uno scenario evolutivo"}</p>
+        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
+      </Section>
+    );
+  }
+
+  const tier = sourceTypeToTier(data.sourceType) === "stima" ? "elaborato" as DataTier : sourceTypeToTier(data.sourceType);
+  const sourceText = data.sourceLabel || "Elaborazione da indicatori territoriali e infrastrutturali";
+  const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
+
+  const bandColors: Record<string, string> = {
+    molto_favorevole: "from-emerald-500/20 to-green-500/10 border-emerald-500/30",
+    favorevole: "from-sky-500/20 to-blue-500/10 border-sky-500/30",
+    neutro: "from-slate-500/15 to-stone-500/10 border-slate-500/30",
+    incerto: "from-amber-500/15 to-yellow-500/10 border-amber-500/30",
+    sfavorevole: "from-red-500/15 to-rose-500/10 border-red-500/30",
+  };
+  const bandLabels: Record<string, string> = {
+    molto_favorevole: "Scenario molto favorevole",
+    favorevole: "Scenario favorevole",
+    neutro: "Scenario neutro",
+    incerto: "Scenario incerto",
+    sfavorevole: "Scenario sfavorevole",
+  };
+
+  const bandClass = data.scenarioBand ? bandColors[data.scenarioBand] ?? "" : "";
+  const bandLabel = data.scenarioBand ? bandLabels[data.scenarioBand] ?? data.scenarioBand : null;
+  const drivers = (data.scenarioDrivers ?? []).slice(0, 3);
+  const risks = (data.scenarioRisks ?? []).slice(0, 2);
+
+  return (
+    <Section className={`bg-gradient-to-br ${bandClass}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Eye className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-foreground text-sm">Scenario Evolutivo</span>
+        </div>
+        {bandLabel && <Badge variant="secondary" className="text-[10px] font-medium">{bandLabel}</Badge>}
       </div>
-      {data.progettiInArrivo.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground">Progetti in arrivo</p>
-          {data.progettiInArrivo.map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-foreground"><Rocket className="h-3 w-3 text-primary" />{p}</div>)}
+
+      {data.scenarioHorizon && (
+        <p className="text-xs text-muted-foreground mb-3">Orizzonte: <span className="font-medium text-foreground">{data.scenarioHorizon}</span></p>
+      )}
+
+      {/* Legacy percentages if present */}
+      {data.previsione5Anni != null && (
+        <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4 rounded-lg bg-background/50 border border-border/50 p-3">
+          <div><span className="text-muted-foreground text-[10px] uppercase tracking-wider">5 anni</span><p className="font-bold text-foreground text-lg">{fmt(data.previsione5Anni)}%</p></div>
+          <div><span className="text-muted-foreground text-[10px] uppercase tracking-wider">10 anni</span><p className="font-bold text-foreground text-lg">{fmt(data.previsione10Anni)}%</p></div>
+          <div><span className="text-muted-foreground text-[10px] uppercase tracking-wider">20 anni</span><p className="font-bold text-foreground text-lg">{fmt(data.previsione20Anni)}%</p></div>
         </div>
       )}
-      <SourceLabel text="Proiezione indicativa — non costituisce consulenza finanziaria" tier="stima" />
+
+      {/* Drivers */}
+      {drivers.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Fattori trainanti</p>
+          {drivers.map((d, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" />
+              <p className="text-xs text-foreground leading-relaxed">{d}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Risks */}
+      {risks.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Elementi di attenzione</p>
+          {risks.map((r, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
+              <p className="text-xs text-foreground leading-relaxed">{r}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Narrative */}
+      {data.narrativeObservation && (
+        <div className="rounded-lg bg-background/40 border border-border/40 px-3 py-2.5 mb-3">
+          <p className="text-xs text-foreground/90 leading-relaxed italic">"{data.narrativeObservation}"</p>
+        </div>
+      )}
+
+      {/* Projects */}
+      {(data.progettiInArrivo ?? []).length > 0 && (
+        <div className="space-y-1 mb-3">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Progetti in arrivo</p>
+          {(data.progettiInArrivo ?? []).map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-foreground"><Rocket className="h-3 w-3 text-primary" />{p}</div>)}
+        </div>
+      )}
+
+      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mb-1">{data.confidenceReason}</p>}
+      <SourceLabel text={`${sourceText}${periodText}`} tier={tier} />
+      <p className="text-[9px] text-muted-foreground/40 mt-1">Le proiezioni sono indicative e non costituiscono consulenza finanziaria</p>
     </Section>
   );
 }
