@@ -1,12 +1,11 @@
 /**
  * Dati legali centralizzati — Pi.Gi Service di Gheoca Paula
- * Profilo comune + dati specifici per app Sottra (sottra.app)
  */
 
 /* ── Dati societari comuni ── */
 export const LEGAL_ENTITY = {
   companyName: "Pi.Gi Service di Gheoca Paula",
-  address: "Via Guido Reni, 8",
+  address: "Via Guidi Reni, 8",
   city: "Padova",
   province: "PD",
   cap: "35133",
@@ -17,12 +16,12 @@ export const LEGAL_ENTITY = {
   applicableLaw: "Legge italiana",
 } as const;
 
-/* ── Dati specifici app corrente (sottra.app) ── */
+/* ── Dati specifici app corrente ── */
 export const APP_BRAND = {
-  name: "Sottra",
-  domain: "sottra.app",
-  infoEmail: "info@sottra.app",
-  supportEmail: "supporto@sottra.app",
+  name: "Pi.Gi Service",
+  domain: "pigiservice.com",
+  infoEmail: "info@pigiservice.com",
+  supportEmail: "supporto@pigiservice.com",
 } as const;
 
 /** Helper: mostra il valore o "[da compilare]" se vuoto */
