@@ -271,17 +271,38 @@ function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDe
       <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
     </Section>
   );
+
+  // Gestione unavailable
+  const isUnavailable = data.sourceType === "unavailable" || data.etaMedia == null;
+  if (isUnavailable) {
+    return (
+      <Section>
+        <div className="flex items-center gap-2 mb-3"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
+        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
+        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="stima" />
+      </Section>
+    );
+  }
+
+  const tier = sourceTypeToTier(data.sourceType);
+  const sourceText = data.sourceLabel || (tier === "ufficiale" ? "Fonte: ISTAT" : "Elaborazione dati demografici");
+  const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
+
   return (
     <Section>
       <div className="flex items-center gap-2 mb-3"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
       <div className="grid grid-cols-2 gap-3 text-sm mb-3">
         <div><span className="text-muted-foreground">Età media</span><p className="font-medium text-foreground">{fmt(data.etaMedia)}</p></div>
         <div><span className="text-muted-foreground">Densità</span><p className="font-medium text-foreground">{fmt(data.densitaAbitanti)} ab/km²</p></div>
-        <div><span className="text-muted-foreground">Flusso 12m</span><p className="font-medium text-foreground">{data.flussoResidenti12Mesi > 0 ? "+" : ""}{fmt(data.flussoResidenti12Mesi)}%</p></div>
+        <div><span className="text-muted-foreground">Flusso 12m</span><p className="font-medium text-foreground">{data.flussoResidenti12Mesi != null && data.flussoResidenti12Mesi > 0 ? "+" : ""}{fmt(data.flussoResidenti12Mesi)}%</p></div>
         <div><span className="text-muted-foreground">Under 35</span><p className="font-medium text-foreground">{fmt(data.percentualeGiovani)}%</p></div>
       </div>
-      <div className="space-y-2"><MiniBar label="Famiglie" value={data.percentualeFamiglie} /><MiniBar label="Stranieri" value={data.percentualeStranieri} /></div>
-      <SourceLabel text="Elaborazione in fase di collegamento a fonte ISTAT" tier="stima" />
+      <div className="space-y-2">
+        <MiniBar label="Famiglie" value={data.percentualeFamiglie ?? 0} />
+        <MiniBar label="Stranieri" value={data.percentualeStranieri ?? 0} />
+      </div>
+      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mt-2">{data.confidenceReason}</p>}
+      <SourceLabel text={`${sourceText}${periodText}`} tier={tier} />
     </Section>
   );
 }
