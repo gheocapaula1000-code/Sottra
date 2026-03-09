@@ -48,9 +48,18 @@ export const mockTimeView: TimeViewData = {
     "Nuova fermata metro M4 (2027)",
     "Riqualificazione Piazza Sant'Ambrogio (2028)",
   ],
+  scenarioBand: "favorevole",
+  scenarioHorizon: "3-5 anni",
+  scenarioDrivers: ["Prossimità a nuove infrastrutture di trasporto", "Trend demografico positivo nella zona", "Riqualificazione urbana in corso"],
+  scenarioRisks: ["Possibile saturazione dell'offerta residenziale", "Tempi di completamento delle opere pubbliche"],
+  narrativeObservation: "L'area mostra segnali di evoluzione positiva sostenuti da interventi infrastrutturali concreti. Lo scenario di medio periodo appare favorevole, con elementi che meritano un monitoraggio attento.",
 };
 
 export const mockOpportunity: OpportunityData = {
+  score: 76, band: "forte",
+  drivers: ["Prezzi sotto la media di zona con trend in crescita", "Infrastrutture in fase di completamento nel raggio di 2 km", "Flusso demografico positivo negli ultimi 12 mesi"],
+  risks: ["Classe energetica da verificare — potenziale costo di adeguamento", "Dinamica dei prezzi potrebbe rallentare nel breve"],
+  observation: "Contesto con fattori convergenti da non sottovalutare. I driver identificati suggeriscono un quadro interessante che merita approfondimento.",
   indice: 76, quadrante: "Stella Nascente",
   raccomandazione: "Zona in decollo — finestra d'acquisto ideale",
 };
