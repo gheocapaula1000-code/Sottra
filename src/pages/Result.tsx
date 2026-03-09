@@ -36,7 +36,7 @@ function sourceTypeToTier(sourceType?: string): DataTier {
     case "official": return "ufficiale";
     case "elaborated": return "elaborato";
     case "estimate": return "stima";
-    case "unavailable": return "stima";
+    case "unavailable": return "non_disponibile";
     default: return "stima";
   }
 }
