@@ -5,17 +5,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-border px-5 py-10 sm:px-10 lg:px-20">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 text-center">
-        <div className="flex items-center gap-0">
-          <img
-            src={logoS}
-            alt="Sottra"
-            className="h-7 w-auto"
-            style={{ mixBlendMode: "lighten" }}
-          />
-          <span className="ml-[-0.3rem] text-lg font-black text-foreground leading-none">
-            ottra
-          </span>
-        </div>
+        <SottraMark size="sm" />
         <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground sm:text-sm">
           <a
             href="/privacy-policy"

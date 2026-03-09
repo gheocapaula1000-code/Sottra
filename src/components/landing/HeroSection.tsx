@@ -20,18 +20,7 @@ export default function HeroSection() {
 
       {/* Nav */}
       <nav className="relative mx-auto flex w-full max-w-6xl items-center justify-between py-5">
-        <div className="flex items-center gap-0">
-          <img
-            src={logoS}
-            alt="Sottra"
-            className="h-8 w-auto sm:h-9"
-            style={{ mixBlendMode: "lighten" }}
-            fetchPriority="high"
-          />
-          <span className="ml-[-0.35rem] text-[1.35rem] sm:text-2xl font-black text-foreground tracking-tight leading-none">
-            ottra
-          </span>
-        </div>
+        <SottraMark size="md" />
         <div className="flex items-center gap-2 sm:gap-3">
           <Button size="sm" variant="ghost" onClick={() => navigate("/login")}>
             Accedi
