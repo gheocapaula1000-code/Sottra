@@ -36,11 +36,9 @@ const Signup = () => {
     <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm space-y-8">
         <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center">
-            <img src={logoS} alt="Sottra" className="h-12 w-auto" style={{ mixBlendMode: "lighten" }} />
-            <span className="ml-[-0.6rem] text-3xl font-black text-foreground tracking-tight">ottra</span>
-          </div>
+          <SottraMark size="lg" />
           <p className="text-sm text-muted-foreground">Crea il tuo account</p>
+        </div>
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4">

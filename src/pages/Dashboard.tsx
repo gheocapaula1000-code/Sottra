@@ -39,10 +39,7 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <div className="flex items-center">
-          <img src={logoS} alt="S" loading="eager" className="h-8 w-auto" style={{ mixBlendMode: "lighten" }} />
-          <span className="ml-[-0.4rem] text-lg font-black text-foreground tracking-tight">ottra</span>
-        </div>
+        <SottraMark size="sm" />
         <div className="flex items-center gap-3">
           {isAdmin && (
             <span className="text-xs text-primary font-medium">Admin</span>
