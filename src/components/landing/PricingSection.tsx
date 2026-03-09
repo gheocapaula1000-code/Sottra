@@ -77,8 +77,11 @@ export default function PricingSection() {
             Piani di abbonamento
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" as any }}>
-            Prima provi, poi decidi. 3 giorni gratis, 5 scansioni,
-            nessuna carta di credito, nessuna disdetta.
+            Prima provi, poi decidi. 3 giorni gratis, 5 scansioni incluse.
+            Nessuna carta di credito, nessun dato bancario, nessuna disdetta.
+          </p>
+          <p className="mx-auto mt-2 max-w-md text-xs font-semibold text-primary sm:text-sm">
+            Se non ti abboni, non succede nulla. Paghi solo se scegli di continuare.
           </p>
         </div>
 
@@ -114,7 +117,7 @@ export default function PricingSection() {
               </div>
 
               <p className="mt-2 text-xs text-primary font-semibold">
-                Paghi solo dopo la prova gratuita
+                Zero carta per iniziare · Paghi solo dopo la prova
               </p>
 
               <div className="mt-3 flex flex-wrap gap-2">

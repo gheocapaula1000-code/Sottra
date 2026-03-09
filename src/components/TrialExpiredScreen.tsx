@@ -79,8 +79,8 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
           Hai effettuato <strong className="text-foreground">{scansUsed} scansioni</strong> in 3 giorni.
           <br />Scegli il piano più adatto a te per continuare.
         </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Rinnovo mensile, disdici quando vuoi.
+        <p className="mt-2 text-sm font-semibold text-primary">
+          Nessun dato bancario è stato richiesto durante il trial · Il pagamento avviene solo ora, se decidi di proseguire
         </p>
 
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
