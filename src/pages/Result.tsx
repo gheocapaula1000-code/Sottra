@@ -369,20 +369,39 @@ function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaD
       <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
     </Section>
   );
+
+  // Gestione unavailable
+  const isUnavailable = data.sourceType === "unavailable" || data.scoreRischio == null;
+  if (isUnavailable) {
+    return (
+      <Section>
+        <div className="flex items-center gap-2 mb-3"><AlertTriangle className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
+        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
+        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="stima" />
+      </Section>
+    );
+  }
+
+  const tier = sourceTypeToTier(data.sourceType);
+  const sourceText = data.sourceLabel || (tier === "ufficiale" ? "Fonte: ISPRA IdroGEO + INGV" : "Elaborazione rischio zona");
+  const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
+
   const lc: Record<string, string> = { nullo: "text-green-500", basso: "text-green-400", medio: "text-amber-400", alto: "text-red-500", zona4: "text-green-500", zona3: "text-green-400", zona2: "text-amber-400", zona1: "text-red-500" };
+
   return (
     <Section>
       <div className="flex items-center gap-2 mb-3"><AlertTriangle className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
       <div className="flex items-start gap-4">
-        <ScoreArc value={data.scoreRischio} />
+        <ScoreArc value={data.scoreRischio ?? 0} />
         <div className="grid grid-cols-2 gap-3 text-sm flex-1">
-          <div><span className="text-muted-foreground">Idrogeologico</span><p className={`font-medium capitalize ${lc[data.idrogeologico]}`}>{data.idrogeologico}</p></div>
-          <div><span className="text-muted-foreground">Sismico</span><p className={`font-medium ${lc[data.sismico]}`}>{data.sismico.replace("zona", "Zona ")}</p></div>
-          <div><span className="text-muted-foreground">Inquinamento</span><p className={`font-medium capitalize ${lc[data.inquinamento]}`}>{data.inquinamento}</p></div>
-          <div><span className="text-muted-foreground">Alluvionale</span><p className={`font-medium ${data.alluvionale ? "text-red-500" : "text-green-500"}`}>{data.alluvionale ? "Sì" : "No"}</p></div>
+          <div><span className="text-muted-foreground">Idrogeologico</span><p className={`font-medium capitalize ${data.idrogeologico ? lc[data.idrogeologico] : "text-muted-foreground"}`}>{data.idrogeologico ?? "—"}</p></div>
+          <div><span className="text-muted-foreground">Sismico</span><p className={`font-medium ${data.sismico ? lc[data.sismico] : "text-muted-foreground"}`}>{data.sismico ? data.sismico.replace("zona", "Zona ") : "—"}</p></div>
+          <div><span className="text-muted-foreground">Inquinamento</span><p className={`font-medium capitalize ${data.inquinamento ? lc[data.inquinamento] : "text-muted-foreground"}`}>{data.inquinamento ?? "—"}</p></div>
+          <div><span className="text-muted-foreground">Alluvionale</span><p className={`font-medium ${data.alluvionale != null ? (data.alluvionale ? "text-red-500" : "text-green-500") : "text-muted-foreground"}`}>{data.alluvionale != null ? (data.alluvionale ? "Sì" : "No") : "—"}</p></div>
         </div>
       </div>
-      <SourceLabel text="Dato in corso di verifica — fonte ISPRA/INGV in attivazione" tier="stima" />
+      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mt-2">{data.confidenceReason}</p>}
+      <SourceLabel text={`${sourceText}${periodText}`} tier={tier} />
     </Section>
   );
 }
