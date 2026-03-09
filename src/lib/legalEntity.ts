@@ -12,7 +12,6 @@ export const LEGAL_ENTITY = {
   cap: "35133",
   country: "Italia",
   vatNumber: "05770260288",
-  fiscalCode: "GHCPLA75E63Z129I",
   pec: "paulagheoca@pec.it",
   jurisdiction: "Foro di Padova",
   applicableLaw: "Legge italiana",
