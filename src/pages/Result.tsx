@@ -165,7 +165,7 @@ function PricingCard({ data, loading, error, message }: { data: PricingData | nu
 
   const diff = (data.prezzoMq ?? 0) - (data.mediaZona ?? 0);
   const tier = sourceTypeToTier(data.sourceType);
-  const sourceText = data.sourceLabel || (tier === "ufficiale" ? "Fonte: Agenzia Entrate — OMI" : "Stima indicativa");
+  const sourceText = data.sourceLabel || (tier === "ufficiale" ? "Fonte: Agenzia Entrate — OMI" : "Elaborazione da fonti di mercato");
   const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
 
   return (
