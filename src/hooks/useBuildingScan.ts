@@ -73,8 +73,8 @@ export function useBuildingScan() {
     };
 
     const forecastEngine = async () => {
+      // moodScore skipped — not yet live
       await Promise.allSettled([
-        getMoodScore(lat, lng).then(resolve("moodScore")).catch(reject("moodScore")),
         getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
         getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
         getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),

@@ -50,6 +50,9 @@ const Login = () => {
         </form>
 
         <div className="text-center text-sm text-muted-foreground space-y-2">
+          <Link to="/forgot-password" className="block text-primary hover:underline">
+            Password dimenticata?
+          </Link>
           <p>
             Non hai un account?{" "}
             <Link to="/signup" className="text-primary hover:underline">Registrati</Link>

@@ -26,7 +26,7 @@ const TerminiCondizioni = () => {
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Natura dei dati</h2>
-            <p>Il servizio è pensato come supporto informativo e operativo per professionisti del settore immobiliare. I dati contrassegnati come "Dato ufficiale" provengono da fonti istituzionali pubbliche (OMI, ISTAT, ISPRA, INGV). I dati contrassegnati come "Dato elaborato" o "Stima indicativa" sono il risultato di elaborazioni interne e non hanno valore certificato. Nessun contenuto del report sostituisce perizie professionali, valutazioni ufficiali o consulenza finanziaria.</p>
+            <p>Il servizio è pensato come supporto informativo e operativo per professionisti del settore immobiliare. I dati contrassegnati come "Dato ufficiale" provengono da fonti istituzionali pubbliche (OMI, ISTAT, ISPRA, INGV). I dati contrassegnati come "Dato elaborato" sono il risultato di elaborazioni interne e non hanno valore certificato. I moduli contrassegnati come "In attivazione" non sono ancora operativi. Nessun contenuto del report sostituisce perizie professionali, valutazioni ufficiali o consulenza finanziaria.</p>
           </section>
 
           <section>
