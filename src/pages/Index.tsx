@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import HeroSection from "@/components/landing/HeroSection";
 import ValueModules from "@/components/landing/ValueModules";
 import MultiLevel from "@/components/landing/MultiLevel";
+import HowItWorks from "@/components/landing/HowItWorks";
 import TrustBlock from "@/components/landing/TrustBlock";
 import TargetAudience from "@/components/landing/TargetAudience";
 import PricingSection from "@/components/landing/PricingSection";
@@ -33,6 +34,7 @@ const Index = () => {
       <HeroSection />
       <ValueModules />
       <MultiLevel />
+      <HowItWorks />
       <TrustBlock />
       <TargetAudience />
       <PricingSection />
