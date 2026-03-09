@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bookmark, Building2, Home, TrendingUp, History, ChevronRight, Zap, Users, Rocket, Construction, AlertTriangle, MapPin } from "lucide-react";
+import { ArrowLeft, Bookmark, Building2, Home, TrendingUp, History, ChevronRight, Zap, Users, Rocket, Construction, AlertTriangle, MapPin, Compass } from "lucide-react";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import type {
   IdentifyResult, CadastralData, PricingData, ListingsData,
   EnergyData, MoodScoreData, TimeViewData, OpportunityData,
   CondominioData, StoricoTransazioniData, InfrastrutureData,
-  RischioZonaData, TrendDemograficoData, ScanResult, SourceMetadata,
+  RischioZonaData, TrendDemograficoData, SviluppoAreaData, ScanResult, SourceMetadata,
 } from "@/types";
 
 /* ── helpers ─────────────────────────────────────────── */
@@ -406,6 +406,144 @@ function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaD
   );
 }
 
+function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAreaData | null; loading: boolean; error: boolean; message: string | null }) {
+  if (loading) return <SectionSkeleton />;
+  if (error) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><Compass className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Dinamica Territoriale</span></div>
+      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
+    </Section>
+  );
+  if (!data) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><Compass className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Dinamica Territoriale</span></div>
+      <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
+    </Section>
+  );
+
+  const isUnavailable = data.sourceType === "unavailable" || (data.areaDevelopmentScore == null && !data.narrativeObservation);
+  if (isUnavailable) {
+    return (
+      <Section>
+        <div className="flex items-center gap-2 mb-3"><Compass className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Dinamica Territoriale</span></div>
+        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Copertura non disponibile per questa zona"}</p>
+        <SourceLabel text={data.sourceLabel || "Dati insufficienti per l'elaborazione"} tier="stima" />
+      </Section>
+    );
+  }
+
+  const tier = sourceTypeToTier(data.sourceType);
+  const sourceText = data.sourceLabel || "Elaborazione da fonti pubbliche";
+  const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
+
+  // Band color mapping
+  const bandColors: Record<string, string> = {
+    elevata: "from-emerald-500/20 to-green-500/10 border-emerald-500/30",
+    significativa: "from-sky-500/20 to-blue-500/10 border-sky-500/30",
+    moderata: "from-amber-500/15 to-yellow-500/10 border-amber-500/30",
+    contenuta: "from-orange-500/15 to-amber-500/10 border-orange-500/30",
+    limitata: "from-stone-500/15 to-stone-400/10 border-stone-500/30",
+  };
+
+  const bandLabels: Record<string, string> = {
+    elevata: "Dinamica elevata",
+    significativa: "Dinamica significativa",
+    moderata: "Dinamica moderata",
+    contenuta: "Dinamica contenuta",
+    limitata: "Dinamica limitata",
+  };
+
+  const bandClass = data.areaDevelopmentBand ? bandColors[data.areaDevelopmentBand] ?? "" : "";
+  const bandLabel = data.areaDevelopmentBand ? bandLabels[data.areaDevelopmentBand] ?? data.areaDevelopmentBand : null;
+
+  // Collect top 3 signals
+  const topSignals = (data.developmentSignals ?? [])
+    .filter(s => s.label)
+    .slice(0, 3);
+
+  // Collect infrastructure + connectivity + investments for highlights
+  const highlights: string[] = [
+    ...(data.infrastructureProjects ?? []).slice(0, 2),
+    ...(data.connectivitySignals ?? []).slice(0, 1),
+    ...(data.publicInvestmentSignals ?? []).slice(0, 1),
+  ].slice(0, 3);
+
+  return (
+    <Section className={`bg-gradient-to-br ${bandClass}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Compass className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-foreground text-sm">Dinamica Territoriale</span>
+        </div>
+        {bandLabel && (
+          <Badge variant="secondary" className="text-[10px] font-medium">{bandLabel}</Badge>
+        )}
+      </div>
+
+      {/* Score prominente */}
+      {data.areaDevelopmentScore != null && (
+        <div className="flex items-center gap-3 mb-4">
+          <ScoreArc value={data.areaDevelopmentScore} />
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {data.areaDevelopmentScore >= 70
+                ? "Il territorio mostra elementi di evoluzione concreti. I segnali emersi meritano una valutazione seria."
+                : data.areaDevelopmentScore >= 45
+                  ? "Contesto con fattori di trasformazione rilevanti. Zona da monitorare con attenzione."
+                  : "Area con segnali contenuti di sviluppo. Il contesto attuale è stabile."
+              }
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Top signals */}
+      {topSignals.length > 0 && (
+        <div className="space-y-2 mb-3">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Segnali rilevanti</p>
+          {topSignals.map((s, i) => (
+            <div key={i} className="flex items-start gap-2.5">
+              <div className={cn(
+                "mt-1 h-2 w-2 rounded-full shrink-0",
+                s.relevance === "alta" ? "bg-emerald-500" : s.relevance === "media" ? "bg-sky-500" : "bg-muted-foreground/50"
+              )} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground leading-tight">{s.label}</p>
+                {s.detail && <p className="text-[11px] text-muted-foreground mt-0.5">{s.detail}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Highlights: infra, connectivity, investments */}
+      {highlights.length > 0 && (
+        <div className="rounded-lg bg-background/50 border border-border/50 p-3 mb-3 space-y-1.5">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Opere e investimenti</p>
+          {highlights.map((h, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs text-foreground">
+              <Construction className="h-3 w-3 shrink-0 text-primary/70" />
+              <span>{h}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Narrative observation */}
+      {data.narrativeObservation && (
+        <div className="rounded-lg bg-background/40 border border-border/40 px-3 py-2.5 mb-3">
+          <p className="text-xs text-foreground/90 leading-relaxed italic">
+            "{data.narrativeObservation}"
+          </p>
+        </div>
+      )}
+
+      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mb-1">{data.confidenceReason}</p>}
+      <SourceLabel text={`${sourceText}${periodText}`} tier={tier} />
+    </Section>
+  );
+}
+
 function OpportunityCard({ data, loading }: { data: OpportunityData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
   if (!data) return null;
@@ -463,8 +601,10 @@ const Result = () => {
           <HeaderCard photo={state.photo} identify={result.identify.data as IdentifyResult | null} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} />
           <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} error={result.pricing.status === "error"} message={result.pricing.message} />
 
-          <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} error={result.rischioZona.status === "error"} message={result.rischioZona.message} />
+           <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} error={result.rischioZona.status === "error"} message={result.rischioZona.message} />
           <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} error={result.trendDemografico.status === "error"} message={result.trendDemografico.message} />
+
+          <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} error={result.sviluppoArea.status === "error"} message={result.sviluppoArea.message} />
 
           {/* Messaggio sezioni future */}
           <Section>

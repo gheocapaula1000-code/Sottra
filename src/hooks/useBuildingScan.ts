@@ -1,6 +1,6 @@
 import { useReducer, useState, useCallback } from "react";
 import { identifyBuilding, getCadastral, getPricing, getListings, getEnergy, getCondominio, getStoricoTransazioni } from "@/services/scan";
-import { getMoodScore, getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico } from "@/services/forecast";
+import { getMoodScore, getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea } from "@/services/forecast";
 import type { ScanResult, SectionState } from "@/types";
 
 const idle = { status: "idle" as const, data: null, message: null };
@@ -10,7 +10,7 @@ const initialState: ScanResult = {
   listings: idle, energy: idle, condominio: idle,
   storicoTransazioni: idle, moodScore: idle, timeView: idle,
   opportunity: idle, infrastrutture: idle, rischioZona: idle,
-  trendDemografico: idle,
+  trendDemografico: idle, sviluppoArea: idle,
 } as ScanResult;
 
 type Action =
@@ -84,6 +84,7 @@ export function useBuildingScan() {
         getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
         getRischioZona(lat, lng).then(resolve("rischioZona")).catch(reject("rischioZona")),
         getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
+        getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
       ]);
     };
 
