@@ -16,7 +16,7 @@ const NoteLegali = () => {
           <p><strong>Titolare:</strong> {val(e.companyName)}</p>
           <p><strong>Sede legale:</strong> {val(e.address)}, {val(e.cap)} {val(e.city)} ({val(e.province)})</p>
           <p><strong>P.IVA:</strong> {val(e.vatNumber)}</p>
-          <p><strong>Codice Fiscale:</strong> {val(e.fiscalCode)}</p>
+          
           <p><strong>PEC:</strong> {val(e.pec)}</p>
           <p><strong>Email info:</strong> <a href={`mailto:${APP_BRAND.infoEmail}`} className="text-primary underline">{APP_BRAND.infoEmail}</a></p>
           <p><strong>Email supporto:</strong> <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary underline">{APP_BRAND.supportEmail}</a></p>
