@@ -5,6 +5,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { TrialExpiredScreen } from "@/components/TrialExpiredScreen";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import SottraMark from "@/components/SottraMark";
 import logoS from "@/assets/logo-s-icon.png";
 
 const Dashboard = () => {
