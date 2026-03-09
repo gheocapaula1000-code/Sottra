@@ -86,7 +86,7 @@ export interface TimeViewData extends SourceMetadata {
   previsione10Anni?: number;
   previsione20Anni?: number;
   progettiInArrivo?: string[];
-  scenarioBand?: "molto_favorevole" | "favorevole" | "neutro" | "incerto" | "sfavorevole" | null;
+  scenarioBand?: "favorevole" | "moderatamente_favorevole" | "stabile" | "da_monitorare" | null;
   scenarioHorizon?: string | null;
   scenarioDrivers?: string[] | null;
   scenarioRisks?: string[] | null;

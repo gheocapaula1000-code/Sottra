@@ -338,18 +338,16 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
   const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
 
   const bandColors: Record<string, string> = {
-    molto_favorevole: "from-emerald-500/20 to-green-500/10 border-emerald-500/30",
-    favorevole: "from-sky-500/20 to-blue-500/10 border-sky-500/30",
-    neutro: "from-slate-500/15 to-stone-500/10 border-slate-500/30",
-    incerto: "from-amber-500/15 to-yellow-500/10 border-amber-500/30",
-    sfavorevole: "from-red-500/15 to-rose-500/10 border-red-500/30",
+    favorevole: "from-emerald-500/20 to-green-500/10 border-emerald-500/30",
+    moderatamente_favorevole: "from-sky-500/20 to-blue-500/10 border-sky-500/30",
+    stabile: "from-slate-500/15 to-stone-500/10 border-slate-500/30",
+    da_monitorare: "from-amber-500/15 to-yellow-500/10 border-amber-500/30",
   };
   const bandLabels: Record<string, string> = {
-    molto_favorevole: "Scenario molto favorevole",
     favorevole: "Scenario favorevole",
-    neutro: "Scenario neutro",
-    incerto: "Scenario incerto",
-    sfavorevole: "Scenario sfavorevole",
+    moderatamente_favorevole: "Scenario moderatamente favorevole",
+    stabile: "Scenario stabile",
+    da_monitorare: "Scenario da monitorare",
   };
 
   const bandClass = data.scenarioBand ? bandColors[data.scenarioBand] ?? "" : "";
