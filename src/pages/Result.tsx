@@ -159,7 +159,7 @@ function StoricoTransazioniCard({ data, loading }: { data: StoricoTransazioniDat
         ))}
       </div>
       <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Media zona 12m: {fmtEur(data.mediaZona12Mesi)}/m²</span><span className="font-medium text-foreground">{data.variazione12Mesi > 0 ? "+" : ""}{fmt(data.variazione12Mesi)}%</span></div>
-      <SourceLabel text="Fonte: Agenzia Entrate — OMI, 1° sem. 2025" tier="ufficiale" />
+      <SourceLabel text="Stima indicativa — collegamento a fonte OMI in corso" tier="stima" />
     </Section>
   );
 }
