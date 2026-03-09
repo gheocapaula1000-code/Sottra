@@ -129,8 +129,8 @@ function CondominioCard({ data, loading }: { data: CondominioData | null; loadin
 
 function PricingCard({ data, loading, error, message }: { data: PricingData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (error) return <Section><span className="text-sm text-muted-foreground">Errore prezzi: {message || "non disponibili"}</span></Section>;
-  if (!data) return <Section><span className="text-sm text-muted-foreground">Prezzi in caricamento...</span></Section>;
+  if (error) return <Section><div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="font-semibold text-foreground text-sm">Prezzi di Mercato</span></div><p className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</p></Section>;
+  if (!data) return null;
   const diff = data.prezzoMq - data.mediaZona;
   return (
     <Section>
