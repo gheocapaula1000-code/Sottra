@@ -427,7 +427,7 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
       <Section>
         <div className="flex items-center gap-2 mb-3"><Compass className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Dinamica Territoriale</span></div>
         <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Copertura non disponibile per questa zona"}</p>
-        <SourceLabel text={data.sourceLabel || "Dati insufficienti per l'elaborazione"} tier="stima" />
+        <SourceLabel text={data.sourceLabel || "Dati insufficienti per l'elaborazione"} tier="non_disponibile" />
       </Section>
     );
   }

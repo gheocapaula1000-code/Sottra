@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export type DataTier = "ufficiale" | "elaborato" | "stima" | "demo";
+export type DataTier = "ufficiale" | "elaborato" | "stima" | "non_disponibile" | "demo";
 
 const config: Record<DataTier, { label: string; className: string; desc: string }> = {
   ufficiale: {
@@ -17,6 +17,11 @@ const config: Record<DataTier, { label: string; className: string; desc: string 
     label: "Stima indicativa",
     className: "bg-amber-500/15 text-amber-400 border-amber-500/30",
     desc: "Valore indicativo, non certificato",
+  },
+  non_disponibile: {
+    label: "Non disponibile",
+    className: "bg-stone-500/15 text-stone-400 border-stone-500/30",
+    desc: "Dato non disponibile per questa zona",
   },
   demo: {
     label: "Contenuto dimostrativo",
