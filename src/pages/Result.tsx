@@ -303,7 +303,7 @@ function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaD
   if (error) return (
     <Section>
       <div className="flex items-center gap-2 mb-2"><AlertTriangle className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
-      <span className="text-sm text-muted-foreground">Errore: {message || "dati non disponibili"}</span>
+      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
     </Section>
   );
   if (!data) return (
