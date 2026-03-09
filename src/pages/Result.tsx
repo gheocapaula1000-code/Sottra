@@ -643,17 +643,120 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
   );
 }
 
-function OpportunityCard({ data, loading }: { data: OpportunityData | null; loading: boolean }) {
+function OpportunityCard({ data, loading, error, message }: { data: OpportunityData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (!data) return null;
-  const qs: Record<string, string> = { "Stella Nascente": "from-green-500/20 to-emerald-500/10 border-green-500/30", "Diamante Grezzo": "from-blue-500/20 to-cyan-500/10 border-blue-500/30", "Picco Raggiunto": "from-yellow-500/20 to-amber-500/10 border-yellow-500/30", "Allerta Rossa": "from-red-500/20 to-rose-500/10 border-red-500/30" };
+  if (error) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><Target className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Indice Opportunità</span></div>
+      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
+    </Section>
+  );
+  if (!data) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><Target className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Indice Opportunità</span></div>
+      <span className="text-sm text-muted-foreground">Dati in elaborazione...</span>
+    </Section>
+  );
+
+  const scoreValue = data.score ?? data.indice ?? null;
+  const isUnavailable = data.sourceType === "unavailable" || scoreValue == null;
+  if (isUnavailable) {
+    return (
+      <Section>
+        <div className="flex items-center gap-2 mb-3"><Target className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Indice Opportunità</span></div>
+        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dati insufficienti per elaborare un indice di opportunità"}</p>
+        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
+      </Section>
+    );
+  }
+
+  const tier = sourceTypeToTier(data.sourceType) === "stima" ? "elaborato" as DataTier : sourceTypeToTier(data.sourceType);
+  const sourceText = data.sourceLabel || "Elaborazione da indicatori di contesto e mercato";
+  const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
+
+  const bandColors: Record<string, string> = {
+    molto_forte: "from-emerald-500/20 to-green-500/10 border-emerald-500/30",
+    forte: "from-sky-500/20 to-blue-500/10 border-sky-500/30",
+    interessante: "from-violet-500/15 to-indigo-500/10 border-violet-500/30",
+    limitata: "from-stone-500/15 to-stone-400/10 border-stone-500/30",
+  };
+  const bandLabels: Record<string, string> = {
+    molto_forte: "Opportunità molto forte",
+    forte: "Opportunità forte",
+    interessante: "Opportunità interessante",
+    limitata: "Opportunità limitata",
+  };
+
+  // Fallback to legacy quadrante for band styling
+  const effectiveBand = data.band ?? null;
+  const bandClass = effectiveBand ? bandColors[effectiveBand] ?? "" : "";
+  const bandLabel = effectiveBand ? bandLabels[effectiveBand] ?? effectiveBand : (data.quadrante ?? null);
+
+  const drivers = (data.drivers ?? []).slice(0, 3);
+  const risks = (data.risks ?? []).slice(0, 2);
+  const observation = data.observation ?? data.raccomandazione ?? null;
+
   return (
-    <Section className={`bg-gradient-to-br ${qs[data.quadrante] ?? ""}`}>
-      <span className="font-semibold text-foreground text-sm">Indice Opportunità</span>
-      <p className="text-4xl font-black text-foreground mt-2">{fmt(data.indice)}<span className="text-base font-normal text-muted-foreground">/100</span></p>
-      <p className="text-sm font-medium text-foreground mt-1">{data.quadrante}</p>
-      <p className="text-xs text-muted-foreground mt-2">{data.raccomandazione}</p>
-      <SourceLabel text="Indice elaborato internamente — non costituisce consulenza finanziaria" tier="stima" />
+    <Section className={`bg-gradient-to-br ${bandClass}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-foreground text-sm">Indice Opportunità</span>
+        </div>
+        {bandLabel && <Badge variant="secondary" className="text-[10px] font-medium">{bandLabel}</Badge>}
+      </div>
+
+      {/* Score prominente */}
+      <div className="flex items-center gap-4 mb-4">
+        <ScoreArc value={scoreValue} size={88} />
+        <div className="flex-1">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {scoreValue >= 70
+              ? "Segnali convergenti da non sottovalutare. Il contesto presenta fattori favorevoli che meritano attenzione seria."
+              : scoreValue >= 45
+                ? "Quadro interessante da approfondire. Il contesto mostra elementi rilevanti da valutare con attenzione."
+                : "Contesto con potenziale contenuto. La zona presenta elementi da monitorare nel tempo."
+            }
+          </p>
+        </div>
+      </div>
+
+      {/* Drivers */}
+      {drivers.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Driver principali</p>
+          {drivers.map((d, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <div className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 bg-emerald-500" />
+              <p className="text-xs text-foreground leading-relaxed">{d}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Risks */}
+      {risks.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Elementi di rischio</p>
+          {risks.map((r, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <div className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 bg-amber-500" />
+              <p className="text-xs text-foreground leading-relaxed">{r}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Observation */}
+      {observation && (
+        <div className="rounded-lg bg-background/40 border border-border/40 px-3 py-2.5 mb-3">
+          <p className="text-xs text-foreground/90 leading-relaxed italic">"{observation}"</p>
+        </div>
+      )}
+
+      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mb-1">{data.confidenceReason}</p>}
+      <SourceLabel text={`${sourceText}${periodText}`} tier={tier} />
+      <p className="text-[9px] text-muted-foreground/40 mt-1">Indice elaborato — non costituisce consulenza finanziaria o raccomandazione d'investimento</p>
     </Section>
   );
 }
