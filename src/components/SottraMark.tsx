@@ -7,9 +7,9 @@ interface SottraMarkProps {
 }
 
 const sizes = {
-  sm: { img: "h-8 sm:h-9", text: "text-lg sm:text-xl", ml: "-0.35rem", translateY: "2px" },
-  md: { img: "h-10 sm:h-11", text: "text-[1.4rem] sm:text-[1.6rem]", ml: "-0.4rem", translateY: "2.5px" },
-  lg: { img: "h-14 sm:h-16", text: "text-[1.75rem] sm:text-[2rem]", ml: "-0.45rem", translateY: "3px" },
+  sm: { img: "h-8 sm:h-9", text: "text-lg sm:text-xl", ml: "-0.5rem", translateY: "2.5px" },
+  md: { img: "h-10 sm:h-11", text: "text-[1.4rem] sm:text-[1.6rem]", ml: "-0.55rem", translateY: "3px" },
+  lg: { img: "h-14 sm:h-16", text: "text-[1.75rem] sm:text-[2rem]", ml: "-0.6rem", translateY: "3.5px" },
 };
 
 export default function SottraMark({ size = "md", className }: SottraMarkProps) {
