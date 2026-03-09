@@ -270,14 +270,17 @@ function DataSourcesSection() {
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
           {dataSources.map((ds) => (
-            <div key={ds.name} className="flex items-start gap-4 rounded-xl border border-border bg-card/60 p-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                <ds.icon className="h-5 w-5 text-primary" />
+            <div key={ds.name} className={`flex items-start gap-4 rounded-xl border p-4 ${ds.active ? "border-border bg-card/60" : "border-border/50 bg-card/30 opacity-70"}`}>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${ds.active ? "bg-primary/10" : "bg-muted"}`}>
+                <ds.icon className={`h-5 w-5 ${ds.active ? "text-primary" : "text-muted-foreground"}`} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm font-semibold text-foreground truncate">{ds.name}</h4>
-                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                  <Badge 
+                    variant={ds.tier === "In attivazione" ? "outline" : "secondary"} 
+                    className={`shrink-0 text-[10px] ${ds.tier === "In attivazione" ? "border-amber-500/50 text-amber-500" : ""}`}
+                  >
                     {ds.tier}
                   </Badge>
                 </div>
