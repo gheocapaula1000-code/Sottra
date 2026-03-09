@@ -1,3 +1,8 @@
+/**
+ * CONTENUTO DIMOSTRATIVO — Questi dati sono esempi a scopo illustrativo.
+ * Non provengono da fonti ufficiali e non rappresentano informazioni reali.
+ * Utilizzati solo quando VITE_USE_MOCK=true.
+ */
 import type {
   IdentifyResult, CadastralData, PricingData, ListingsData, EnergyData,
   MoodScoreData, TimeViewData, OpportunityData,
