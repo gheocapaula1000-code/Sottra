@@ -226,7 +226,7 @@ function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDe
   if (error) return (
     <Section>
       <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
-      <span className="text-sm text-muted-foreground">Errore: {message || "dati non disponibili"}</span>
+      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
     </Section>
   );
   if (!data) return (
