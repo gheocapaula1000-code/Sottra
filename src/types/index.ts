@@ -132,19 +132,21 @@ export interface StoricoTransazioniData {
   variazione12Mesi: number;
 }
 
-/** Infrastrutture in costruzione */
-export interface InfrastrutturaProgetto {
-  nome: string;
-  tipo: "metro" | "tram" | "ciclabile" | "strada" | "edificio_pubblico" | "parco" | "altro";
-  stato: "approvato" | "in_costruzione" | "completato";
-  completamentoPrevisto: string;
-  distanzaKm: number;
-}
-
-export interface InfrastrutureData {
-  progetti: InfrastrutturaProgetto[];
-  cantieriAperti: number;
-  impattoStimato: "alto" | "medio" | "basso";
+/** Infrastrutture e reti */
+export interface InfrastrutureData extends SourceMetadata {
+  infrastructureScore: number | null;
+  infrastructureBand?: "elevata" | "significativa" | "moderata" | "contenuta" | "limitata" | null;
+  infrastructureProjects?: string[] | null;
+  connectivitySignals?: string[] | null;
+  mobilitySignals?: string[] | null;
+  publicWorksSignals?: string[] | null;
+  topDrivers?: string[] | null;
+  topRisks?: string[] | null;
+  narrativeObservation?: string | null;
+  /** Legacy fields */
+  progetti?: { nome: string; tipo: string; stato: string; completamentoPrevisto: string; distanzaKm: number }[];
+  cantieriAperti?: number;
+  impattoStimato?: "alto" | "medio" | "basso";
 }
 
 /** Rischio zona */

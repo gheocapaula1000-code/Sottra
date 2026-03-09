@@ -86,13 +86,20 @@ export const mockStoricoTransazioni: StoricoTransazioniData = {
 };
 
 export const mockInfrastrutture: InfrastrutureData = {
-  progetti: [
-    { nome: "Prolungamento M4 Linate-Stazione Forlanini", tipo: "metro", stato: "in_costruzione", completamentoPrevisto: "2027-06", distanzaKm: 1.2 },
-    { nome: "Pista ciclabile Naviglio Pavese", tipo: "ciclabile", stato: "approvato", completamentoPrevisto: "2028-03", distanzaKm: 0.8 },
-    { nome: "Nuovo parco urbano ex-scalo Romana", tipo: "parco", stato: "approvato", completamentoPrevisto: "2029-01", distanzaKm: 2.1 },
+  infrastructureScore: 74,
+  infrastructureBand: "significativa",
+  infrastructureProjects: [
+    "Prolungamento M4 Linate-Stazione Forlanini (completamento 2027)",
+    "Nuovo parco urbano ex-scalo Romana (approvato)",
   ],
-  cantieriAperti: 3,
-  impattoStimato: "alto",
+  connectivitySignals: ["Fibra ottica FTTH disponibile", "Copertura 5G attiva"],
+  mobilitySignals: ["Pista ciclabile Naviglio Pavese in fase di approvazione", "3 linee bus entro 500m"],
+  publicWorksSignals: ["Riqualificazione Piazza Sant'Ambrogio (2028)"],
+  topDrivers: ["Prossimità a nodi di trasporto in potenziamento", "Rete ciclabile in espansione", "Investimenti pubblici significativi nel raggio di 2 km"],
+  topRisks: ["Tempi di completamento delle opere soggetti a variazioni", "Possibile impatto cantieri nel breve periodo"],
+  narrativeObservation: "La zona mostra segnali infrastrutturali rilevanti. Il contesto è sostenuto da interventi e reti che meritano attenzione, con elementi di trasformazione concreti già in fase operativa.",
+  sourceType: "elaborated",
+  sourceLabel: "Elaborazione da Open Data comunali e fonti pubbliche",
 };
 
 export const mockRischioZona: RischioZonaData = {

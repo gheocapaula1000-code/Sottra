@@ -926,12 +926,14 @@ const Result = () => {
           <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} error={result.opportunity.status === "error"} message={result.opportunity.message} />
           <TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} error={result.timeView.status === "error"} message={result.timeView.message} />
 
+          <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} error={result.infrastrutture.status === "error"} message={result.infrastrutture.message} />
+
           <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} error={result.sviluppoArea.status === "error"} message={result.sviluppoArea.message} />
 
           {/* Messaggio sezioni future */}
           <Section>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Altre sezioni in arrivo: dati catastali, energia, infrastrutture.
+              Altre sezioni in arrivo: dati catastali, energia e dettagli condominiali.
               Il report distingue chiaramente tra dati ufficiali, dati elaborati e stime indicative.
             </p>
           </Section>
@@ -943,7 +945,6 @@ const Result = () => {
           {/* <ListingsCard data={result.listings.data as ListingsData | null} loading={result.listings.status === "loading"} /> */}
           {/* <EnergyCard data={result.energy.data as EnergyData | null} loading={result.energy.status === "loading"} /> */}
           {/* <MoodScoreCard data={result.moodScore.data as MoodScoreData | null} loading={result.moodScore.status === "loading"} /> */}
-          {/* <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} /> */}
         </div>
       </div>
 
