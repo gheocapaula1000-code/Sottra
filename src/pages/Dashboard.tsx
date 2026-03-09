@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { TrialExpiredScreen } from "@/components/TrialExpiredScreen";
@@ -12,7 +13,7 @@ import logoS from "@/assets/logo-s-icon.png";
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { loading, canScan, subscribed, trial, planKey, isAdmin } = useSubscription();
+  const { loading, canScan, subscribed, trial, planKey, isAdmin, refresh } = useSubscription();
   const { toast } = useToast();
 
   const handleManageSubscription = async () => {
@@ -24,6 +25,11 @@ const Dashboard = () => {
       toast({ title: "Errore", description: e instanceof Error ? e.message : "Errore sconosciuto", variant: "destructive" });
     }
   };
+
+  // Force refresh subscription state on dashboard mount
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   if (loading) {
     return (
@@ -42,6 +48,11 @@ const Dashboard = () => {
       <header className="flex items-center justify-between px-6 py-4 border-b border-border">
         <SottraMark size="sm" />
         <div className="flex items-center gap-3">
+          {isAdmin && user?.email === "gheocapaula@gmail.com" && (
+            <span className="text-[10px] text-muted-foreground/60 font-mono">
+              Owner mode attivo
+            </span>
+          )}
           {isAdmin && (
             <button
               onClick={() => navigate("/admin")}
