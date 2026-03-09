@@ -137,12 +137,12 @@ export interface InfrastrutureData {
 }
 
 /** Rischio zona */
-export interface RischioZonaData {
-  idrogeologico: "alto" | "medio" | "basso" | "nullo";
-  sismico: "zona1" | "zona2" | "zona3" | "zona4";
-  inquinamento: "alto" | "medio" | "basso";
-  alluvionale: boolean;
-  scoreRischio: number;
+export interface RischioZonaData extends SourceMetadata {
+  idrogeologico: "alto" | "medio" | "basso" | "nullo" | null;
+  sismico: "zona1" | "zona2" | "zona3" | "zona4" | null;
+  inquinamento: "alto" | "medio" | "basso" | null;
+  alluvionale: boolean | null;
+  scoreRischio: number | null;
 }
 
 /** Trend demografico */
