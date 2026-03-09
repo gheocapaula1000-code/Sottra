@@ -57,6 +57,7 @@ const plans = [
       "Tutto del piano Agenzia",
       "Dashboard agenzia multi-agente",
       "Export PDF con logo agenzia (in attivazione)",
+      "Annunci attivi nella zona (in attivazione)",
       "Storico scansioni illimitato",
       "Supporto prioritario",
     ],
