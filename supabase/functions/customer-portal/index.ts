@@ -7,6 +7,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const OWNER_EMAILS = ["gheocapaula@gmail.com"];
+const isOwnerEmail = (email: string) => OWNER_EMAILS.includes(email.toLowerCase());
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -27,6 +30,14 @@ serve(async (req) => {
     if (userError) throw new Error(`Auth error: ${userError.message}`);
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
+
+    // Owner/admin bypass — no Stripe customer needed
+    if (isOwnerEmail(user.email)) {
+      return new Response(JSON.stringify({ owner: true, message: "Account owner — nessun abbonamento da gestire." }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
