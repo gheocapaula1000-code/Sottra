@@ -6,7 +6,7 @@ import SottraMark from "@/components/SottraMark";
 const trustItems = [
   { icon: Clock, text: "3 giorni gratis" },
   { icon: ScanLine, text: "5 scansioni incluse" },
-  { icon: CreditCard, text: "Nessuna carta richiesta" },
+  { icon: CreditCard, text: "Zero carta, zero dati bancari" },
   { icon: CalendarOff, text: "Nessuna disdetta" },
 ];
 
