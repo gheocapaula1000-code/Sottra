@@ -325,7 +325,7 @@ function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaD
           <div><span className="text-muted-foreground">Alluvionale</span><p className={`font-medium ${data.alluvionale ? "text-red-500" : "text-green-500"}`}>{data.alluvionale ? "Sì" : "No"}</p></div>
         </div>
       </div>
-      <SourceLabel text="Fonte: ISPRA IdroGEO + INGV/OPCM 3519" tier="ufficiale" />
+      <SourceLabel text="Dato in corso di verifica — fonte ISPRA/INGV in attivazione" tier="stima" />
     </Section>
   );
 }
