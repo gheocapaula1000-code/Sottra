@@ -22,7 +22,7 @@ const planFeatures: Record<PlanKey, string[]> = {
   agenzia: [
     "Tutto del piano Agente",
     "Dashboard agenzia multi-agente",
-    "Export PDF con logo agenzia + watermark Sottra",
+    "Export PDF con logo agenzia (in attivazione)",
     "Annunci attivi nella zona",
     "Storico scansioni illimitato",
     "Supporto prioritario via email",
