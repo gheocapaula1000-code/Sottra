@@ -78,14 +78,14 @@ const plans = [
 ];
 
 const dataSources = [
-  { name: "OMI — Agenzia delle Entrate", desc: "Quotazioni immobiliari per zona e tipologia", icon: BarChart3, tier: "Dato ufficiale" },
-  { name: "Sister / Catasto", desc: "Visure catastali: foglio, particella, rendita", icon: Database, tier: "Dato ufficiale" },
-  { name: "ISTAT", desc: "Dati demografici, popolazione, età, famiglie", icon: Users, tier: "Dato ufficiale" },
-  { name: "ISPRA IdroGEO", desc: "Rischio idrogeologico e alluvionale", icon: ShieldCheck, tier: "Dato ufficiale" },
-  { name: "INGV / Protezione Civile", desc: "Classificazione sismica", icon: Layers, tier: "Dato ufficiale" },
-  { name: "Open Data Comunali", desc: "Cantieri, infrastrutture, progetti urbani", icon: MapPin, tier: "Dato elaborato" },
-  { name: "Google Maps + Places", desc: "Identificazione edificio e POI zona", icon: Globe, tier: "Dato elaborato" },
-  { name: "Elaborazione interna", desc: "Analisi strutturata e incrocio dati da fonti pubbliche", icon: Zap, tier: "Stima indicativa" },
+  { name: "OMI — Agenzia delle Entrate", desc: "Quotazioni immobiliari per zona e tipologia", icon: BarChart3, tier: "Dato ufficiale", active: true },
+  { name: "ISTAT", desc: "Dati demografici, popolazione, età, famiglie", icon: Users, tier: "Dato ufficiale", active: true },
+  { name: "ISPRA IdroGEO", desc: "Rischio idrogeologico e alluvionale", icon: ShieldCheck, tier: "Dato ufficiale", active: true },
+  { name: "INGV / Protezione Civile", desc: "Classificazione sismica", icon: Layers, tier: "Dato ufficiale", active: true },
+  { name: "Sister / Catasto", desc: "Visure catastali: foglio, particella, rendita", icon: Database, tier: "In attivazione", active: false },
+  { name: "Open Data Comunali", desc: "Cantieri, infrastrutture, progetti urbani", icon: MapPin, tier: "Dato elaborato", active: false },
+  { name: "Google Maps + Places", desc: "Identificazione edificio e POI zona", icon: Globe, tier: "Dato elaborato", active: true },
+  { name: "Elaborazione interna", desc: "Analisi strutturata e incrocio dati da fonti pubbliche", icon: Zap, tier: "Stima indicativa", active: true },
 ];
 
 const moatItems = [
