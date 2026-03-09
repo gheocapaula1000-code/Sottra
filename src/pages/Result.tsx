@@ -196,7 +196,7 @@ function StoricoTransazioniCard({ data, loading }: { data: StoricoTransazioniDat
         ))}
       </div>
       <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Media zona 12m: {fmtEur(data.mediaZona12Mesi)}/m²</span><span className="font-medium text-foreground">{data.variazione12Mesi > 0 ? "+" : ""}{fmt(data.variazione12Mesi)}%</span></div>
-      <SourceLabel text="Stima indicativa — collegamento a fonte OMI in corso" tier="stima" />
+      <SourceLabel text="Fonte in attivazione — collegamento OMI in corso" tier="non_disponibile" />
     </Section>
   );
 }
