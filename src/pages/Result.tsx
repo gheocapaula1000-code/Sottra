@@ -475,19 +475,21 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
   const bandClass = data.infrastructureBand ? bandColors[data.infrastructureBand] ?? "" : "";
   const bandLabel = data.infrastructureBand ? bandLabels[data.infrastructureBand] ?? data.infrastructureBand : null;
 
-  const drivers = (data.topDrivers ?? []).slice(0, 3);
-  const risks = (data.topRisks ?? []).slice(0, 2);
+  // Normalize helpers for mixed string | object arrays
+  const toDriverRisk = (item: InfrastructureDriverRisk | string): InfrastructureDriverRisk =>
+    typeof item === "string" ? { label: item } : item;
+  const toSignal = (item: InfrastructureSignal | string): InfrastructureSignal =>
+    typeof item === "string" ? { label: item } : item;
+  const toProject = (item: InfrastructureProject | string): InfrastructureProject =>
+    typeof item === "string" ? { label: item } : item;
 
-  // Collect signal highlights
-  const signalSections: { label: string; icon: React.ReactNode; items: string[] }[] = [];
-  const infraProjects = (data.infrastructureProjects ?? []).slice(0, 3);
-  if (infraProjects.length > 0) signalSections.push({ label: "Opere e progetti", icon: <Construction className="h-3 w-3 shrink-0 text-primary/70" />, items: infraProjects });
-  const mobility = (data.mobilitySignals ?? []).slice(0, 2);
-  if (mobility.length > 0) signalSections.push({ label: "Mobilità", icon: <MapPin className="h-3 w-3 shrink-0 text-primary/70" />, items: mobility });
-  const connectivity = (data.connectivitySignals ?? []).slice(0, 2);
-  if (connectivity.length > 0) signalSections.push({ label: "Connettività", icon: <Zap className="h-3 w-3 shrink-0 text-primary/70" />, items: connectivity });
-  const publicWorks = (data.publicWorksSignals ?? []).slice(0, 2);
-  if (publicWorks.length > 0) signalSections.push({ label: "Interventi pubblici", icon: <Rocket className="h-3 w-3 shrink-0 text-primary/70" />, items: publicWorks });
+  const drivers = (data.topDrivers ?? []).slice(0, 3).map(toDriverRisk);
+  const risks = (data.topRisks ?? []).slice(0, 2).map(toDriverRisk);
+
+  const infraProjects = (data.infrastructureProjects ?? []).slice(0, 3).map(toProject);
+  const mobilitySignals = (data.mobilitySignals ?? []).slice(0, 2).map(toSignal);
+  const connectivitySignals = (data.connectivitySignals ?? []).slice(0, 2).map(toSignal);
+  const publicWorksSignals = (data.publicWorksSignals ?? []).slice(0, 2).map(toSignal);
 
   return (
     <Section className={`bg-gradient-to-br ${bandClass}`}>
