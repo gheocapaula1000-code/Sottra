@@ -145,7 +145,7 @@ function HeroSection() {
         {[
           { icon: Camera, label: "Foto → Dati" },
           { icon: Zap, label: "5 secondi" },
-          { icon: ShieldCheck, label: "Fonti tracciate" },
+          { icon: ShieldCheck, label: "Fonti indicate" },
           { icon: TrendingUp, label: "Quadro predittivo" },
         ].map(({ icon: Icon, label }) => (
           <div key={label} className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 backdrop-blur">
