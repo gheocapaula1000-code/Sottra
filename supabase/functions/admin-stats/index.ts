@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const OWNER_EMAILS = ["gheocapaula@gmail.com"];
+const isOwnerEmail = (email: string) => OWNER_EMAILS.includes(email.toLowerCase());
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -25,17 +28,24 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError) throw new Error(`Auth error: ${userError.message}`);
     const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
+    if (!user?.email) throw new Error("User not authenticated");
 
-    // Verify admin role
-    const { data: roleData } = await supabaseClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
+    // Owner bypass — same logic as check-subscription
+    const isOwner = isOwnerEmail(user.email);
 
-    if (!roleData) {
+    // DB role check for non-owner admins
+    let isDbAdmin = false;
+    if (!isOwner) {
+      const { data: roleData } = await supabaseClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      isDbAdmin = !!roleData;
+    }
+
+    if (!isOwner && !isDbAdmin) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 403,
