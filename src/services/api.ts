@@ -32,6 +32,17 @@ function recordFailure() {
   if (cb.failures >= CB_THRESHOLD) cb.open = true;
 }
 
+/** Map raw error messages to user-friendly Italian microcopy */
+function friendlyMessage(raw: string, status?: number): string {
+  if (status === 401) return "Sessione scaduta — effettua nuovamente l'accesso";
+  if (status === 503) return "Servizio non ancora disponibile";
+  if (status === 504) return "Il servizio non ha risposto in tempo — riprova";
+  if (status === 502) return "Errore di comunicazione — riprova più tardi";
+  if (/timeout/i.test(raw)) return "Il servizio non ha risposto in tempo — riprova";
+  if (/network|fetch|abort/i.test(raw)) return "Errore di connessione — verifica la rete";
+  return "Servizio temporaneamente non disponibile";
+}
+
 /**
  * Proxy all Core API requests through the backend edge function.
  * No API keys are exposed to the client.
@@ -43,7 +54,7 @@ export async function coreRequest<T = unknown>(
   timeout = 10000,
 ): Promise<T | CoreError> {
   if (isCircuitOpen()) {
-    return { error: true, message: "Servizio temporaneamente non raggiungibile" };
+    return { error: true, message: "Servizio temporaneamente non raggiungibile — riprova tra qualche istante" };
   }
 
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -58,14 +69,21 @@ export async function coreRequest<T = unknown>(
           continue;
         }
         recordFailure();
-        return { error: true, message: error.message || "Errore di rete" };
+        return { error: true, message: friendlyMessage(error.message || "") };
+      }
+
+      // Edge function returned an error object
+      if (data && typeof data === "object" && "error" in data && data.error?.message) {
+        const status = data.status ?? data.error?.status;
+        recordFailure();
+        return { error: true, message: friendlyMessage(data.error.message, status) };
       }
 
       // Central Core V3 wrapper: { ok, data, warnings, debug_id }
       if (data && typeof data === "object" && "ok" in data) {
         if (!data.ok) {
           recordFailure();
-          return { error: true, message: data.error?.message ?? "Errore sconosciuto" };
+          return { error: true, message: friendlyMessage(data.error?.message ?? "", data.status) };
         }
         recordSuccess();
         return data.data as T;
@@ -80,17 +98,17 @@ export async function coreRequest<T = unknown>(
       }
       recordFailure();
       if (err instanceof DOMException && err.name === "AbortError") {
-        return { error: true, message: "Timeout richiesta" };
+        return { error: true, message: friendlyMessage("timeout") };
       }
       return {
         error: true,
-        message: err instanceof Error ? err.message : "Errore sconosciuto",
+        message: friendlyMessage(err instanceof Error ? err.message : ""),
       };
     }
   }
 
   recordFailure();
-  return { error: true, message: "Errore sconosciuto" };
+  return { error: true, message: "Servizio temporaneamente non disponibile" };
 }
 
 export function isError(res: unknown): res is CoreError {
