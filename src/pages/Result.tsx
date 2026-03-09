@@ -16,6 +16,7 @@ import type {
   EnergyData, MoodScoreData, TimeViewData, OpportunityData,
   CondominioData, StoricoTransazioniData, InfrastrutureData,
   RischioZonaData, TrendDemograficoData, SviluppoAreaData, ScanResult, SourceMetadata,
+  InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
 } from "@/types";
 
 /* ── helpers ─────────────────────────────────────────── */
