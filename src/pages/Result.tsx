@@ -101,7 +101,7 @@ function CadastralCard({ data, loading }: { data: CadastralData | null; loading:
         <div><span className="text-muted-foreground">Rendita</span><p className="font-medium text-foreground">{fmtEur(data.renditaCatastale)}</p></div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Foglio {data.foglio} · Particella {data.particella} · Sub {data.subalterno}</p>
-      <SourceLabel text="Fonte: Sister / Catasto" tier="ufficiale" />
+      <SourceLabel text="Fonte in attivazione — collegamento a Sister/Catasto in corso" tier="stima" />
     </Section>
   );
 }
@@ -139,7 +139,7 @@ function PricingCard({ data, loading, error, message }: { data: PricingData | nu
       <p className="text-xs text-muted-foreground mt-1">Range: {fmtEur(data.prezzoMqMin)} – {fmtEur(data.prezzoMqMax)}</p>
       <div className="flex items-center gap-2 mt-2"><span className="text-xs text-muted-foreground">Media zona: {fmtEur(data.mediaZona)}</span><Badge variant={diff >= 0 ? "default" : "secondary"}>{diff >= 0 ? "Sopra" : "Sotto"} media</Badge></div>
       <p className="text-xs text-muted-foreground mt-2">Trend 5 anni: <span className="font-medium text-foreground">{data.trend5Anni > 0 ? "+" : ""}{fmt(data.trend5Anni)}%</span></p>
-      <SourceLabel text="Fonte: Agenzia Entrate — OMI, 1° sem. 2025" tier="ufficiale" />
+      <SourceLabel text="Stima indicativa — collegamento a fonte OMI in corso" tier="stima" />
     </Section>
   );
 }
@@ -159,7 +159,7 @@ function StoricoTransazioniCard({ data, loading }: { data: StoricoTransazioniDat
         ))}
       </div>
       <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Media zona 12m: {fmtEur(data.mediaZona12Mesi)}/m²</span><span className="font-medium text-foreground">{data.variazione12Mesi > 0 ? "+" : ""}{fmt(data.variazione12Mesi)}%</span></div>
-      <SourceLabel text="Fonte: Agenzia Entrate — OMI, 1° sem. 2025" tier="ufficiale" />
+      <SourceLabel text="Stima indicativa — collegamento a fonte OMI in corso" tier="stima" />
     </Section>
   );
 }
@@ -245,7 +245,7 @@ function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDe
         <div><span className="text-muted-foreground">Under 35</span><p className="font-medium text-foreground">{fmt(data.percentualeGiovani)}%</p></div>
       </div>
       <div className="space-y-2"><MiniBar label="Famiglie" value={data.percentualeFamiglie} /><MiniBar label="Stranieri" value={data.percentualeStranieri} /></div>
-      <SourceLabel text="Fonte: ISTAT — Popolazione residente 2025" tier="ufficiale" />
+      <SourceLabel text="Elaborazione in fase di collegamento a fonte ISTAT" tier="stima" />
     </Section>
   );
 }
@@ -325,7 +325,7 @@ function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaD
           <div><span className="text-muted-foreground">Alluvionale</span><p className={`font-medium ${data.alluvionale ? "text-red-500" : "text-green-500"}`}>{data.alluvionale ? "Sì" : "No"}</p></div>
         </div>
       </div>
-      <SourceLabel text="Fonte: ISPRA IdroGEO + INGV/OPCM 3519" tier="ufficiale" />
+      <SourceLabel text="Dato in corso di verifica — fonte ISPRA/INGV in attivazione" tier="stima" />
     </Section>
   );
 }
