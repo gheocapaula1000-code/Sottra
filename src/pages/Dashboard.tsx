@@ -55,7 +55,7 @@ const Dashboard = () => {
               Trial: {trial.scans_used}/{trial.max_scans} scansioni
             </span>
           )}
-          {subscribed && (
+          {subscribed && !isAdmin && (
             <button
               onClick={handleManageSubscription}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"

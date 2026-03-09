@@ -7,6 +7,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Centralized owner bypass — works independently of DB roles
+const OWNER_EMAILS = ["gheocapaula@gmail.com"];
+
+const isOwnerEmail = (email: string) =>
+  OWNER_EMAILS.includes(email.toLowerCase());
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -28,11 +34,21 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2025-08-27.basil",
-    });
+    // Owner bypass — immediate return, no Stripe call needed
+    if (isOwnerEmail(user.email)) {
+      return new Response(JSON.stringify({
+        subscribed: true,
+        product_id: null,
+        subscription_end: null,
+        is_admin: true,
+        trial: null,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
-    // Check if user is admin
+    // Check if user is admin via DB roles
     const { data: roleData } = await supabaseClient
       .from("user_roles")
       .select("role")
@@ -54,6 +70,10 @@ serve(async (req) => {
         status: 200,
       });
     }
+
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+      apiVersion: "2025-08-27.basil",
+    });
 
     // Check Stripe subscription
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
