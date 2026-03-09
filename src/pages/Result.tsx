@@ -806,6 +806,9 @@ const Result = () => {
            <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} error={result.rischioZona.status === "error"} message={result.rischioZona.message} />
           <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} error={result.trendDemografico.status === "error"} message={result.trendDemografico.message} />
 
+          <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} error={result.opportunity.status === "error"} message={result.opportunity.message} />
+          <TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} error={result.timeView.status === "error"} message={result.timeView.message} />
+
           <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} error={result.sviluppoArea.status === "error"} message={result.sviluppoArea.message} />
 
           {/* Messaggio sezioni future */}
@@ -823,9 +826,7 @@ const Result = () => {
           {/* <ListingsCard data={result.listings.data as ListingsData | null} loading={result.listings.status === "loading"} /> */}
           {/* <EnergyCard data={result.energy.data as EnergyData | null} loading={result.energy.status === "loading"} /> */}
           {/* <MoodScoreCard data={result.moodScore.data as MoodScoreData | null} loading={result.moodScore.status === "loading"} /> */}
-          {/* <TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} /> */}
           {/* <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} /> */}
-          {/* <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} /> */}
         </div>
       </div>
 
