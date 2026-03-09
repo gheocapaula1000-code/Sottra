@@ -235,7 +235,7 @@ function EnergyCard({ data, loading }: { data: EnergyData | null; loading: boole
           <p className="text-muted-foreground">Media zona: <span className="font-medium text-foreground">{data.mediaZona}</span></p>
         </div>
       </div>
-      <SourceLabel text="Valore indicativo — verificare con APE ufficiale" tier="stima" />
+      <SourceLabel text="Fonte in attivazione — verificare con APE ufficiale" tier="non_disponibile" />
     </Section>
   );
 }
