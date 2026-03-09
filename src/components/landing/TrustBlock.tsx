@@ -17,7 +17,7 @@ const items = [
   {
     icon: FileCheck,
     title: "Classificazione trasparente",
-    desc: "Ogni sezione del report indica la natura del dato: ufficiale, elaborato o stima indicativa.",
+    desc: "Ogni sezione del report indica la natura del dato: ufficiale, elaborato o non disponibile. Nessuna ambiguità.",
     badge: "Trasparenza",
   },
 ];
