@@ -91,7 +91,7 @@ const dataSources = [
 const moatItems = [
   { icon: Database, title: "Dati precaricati", desc: "Settimane di lavoro per scaricare, pulire e importare OMI, ISTAT, ISPRA in un database geospaziale." },
   { icon: ShieldCheck, title: "Brevetto depositato", desc: "Il metodo foto → profilo multi-sorgente con due motori paralleli è coperto da domanda di brevetto UIBM." },
-  { icon: Zap, title: "Elaborazione proprietaria", desc: "Nessun concorrente italiano combina analisi strutturata con dati catastali reali in un unico flusso." },
+  { icon: Zap, title: "Elaborazione proprietaria", desc: "Nessun concorrente italiano combina analisi strutturata con dati catastali in un unico flusso." },
   { icon: Layers, title: "Incrocio 7+ fonti", desc: "Il valore è nell'incrocio automatico di fonti in 5 secondi. Replicare l'integrazione richiede competenze specifiche." },
   { icon: TrendingUp, title: "Effetto rete", desc: "Ogni scansione migliora il database. Più utenti = più dati = prodotto migliore." },
 ];
