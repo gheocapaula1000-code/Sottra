@@ -93,7 +93,7 @@ const Dashboard = () => {
       </main>
 
       <footer className="py-6 text-center text-xs text-muted-foreground">
-        <p>Per trasferire il tuo account a un nuovo dispositivo, scrivi a <a href="mailto:supporto@sottra.app" className="text-primary hover:underline">supporto@sottra.app</a></p>
+        <p>Per trasferire il tuo account a un nuovo dispositivo, scrivi a <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary hover:underline">{APP_BRAND.supportEmail}</a></p>
       </footer>
     </div>
   );
