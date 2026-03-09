@@ -16,12 +16,12 @@ export const LEGAL_ENTITY = {
   applicableLaw: "Legge italiana",
 } as const;
 
-/* ── Dati specifici app corrente ── */
+/* ── Dati specifici app corrente (sottra.app) ── */
 export const APP_BRAND = {
-  name: "Pi.Gi Service",
-  domain: "pigiservice.com",
-  infoEmail: "info@pigiservice.com",
-  supportEmail: "supporto@pigiservice.com",
+  name: "Sottra",
+  domain: "sottra.app",
+  infoEmail: "info@sottra.app",
+  supportEmail: "supporto@sottra.app",
 } as const;
 
 /** Helper: mostra il valore o "[da compilare]" se vuoto */
