@@ -85,13 +85,13 @@ const dataSources = [
   { name: "INGV / Protezione Civile", desc: "Classificazione sismica", icon: Layers, tier: "Dato ufficiale" },
   { name: "Open Data Comunali", desc: "Cantieri, infrastrutture, progetti urbani", icon: MapPin, tier: "Dato elaborato" },
   { name: "Google Maps + Places", desc: "Identificazione edificio e POI zona", icon: Globe, tier: "Dato elaborato" },
-  { name: "Elaborazione interna", desc: "Analisi strutturata e classificazione automatizzata", icon: Zap, tier: "Stima indicativa" },
+  { name: "Elaborazione interna", desc: "Analisi strutturata e incrocio dati da fonti pubbliche", icon: Zap, tier: "Stima indicativa" },
 ];
 
 const moatItems = [
   { icon: Database, title: "Dati precaricati", desc: "Settimane di lavoro per scaricare, pulire e importare OMI, ISTAT, ISPRA in un database geospaziale." },
   { icon: ShieldCheck, title: "Brevetto depositato", desc: "Il metodo foto → profilo multi-sorgente con due motori paralleli è coperto da domanda di brevetto UIBM." },
-  { icon: Zap, title: "Elaborazione proprietaria", desc: "Nessun concorrente italiano combina analisi strutturata con dati catastali reali in un unico flusso." },
+  { icon: Zap, title: "Elaborazione proprietaria", desc: "Nessun concorrente italiano combina analisi strutturata con dati catastali in un unico flusso." },
   { icon: Layers, title: "Incrocio 7+ fonti", desc: "Il valore è nell'incrocio automatico di fonti in 5 secondi. Replicare l'integrazione richiede competenze specifiche." },
   { icon: TrendingUp, title: "Effetto rete", desc: "Ogni scansione migliora il database. Più utenti = più dati = prodotto migliore." },
 ];
@@ -145,7 +145,7 @@ function HeroSection() {
         {[
           { icon: Camera, label: "Foto → Dati" },
           { icon: Zap, label: "5 secondi" },
-          { icon: ShieldCheck, label: "Fonti tracciate" },
+          { icon: ShieldCheck, label: "Fonti indicate" },
           { icon: TrendingUp, label: "Quadro predittivo" },
         ].map(({ icon: Icon, label }) => (
           <div key={label} className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 backdrop-blur">
