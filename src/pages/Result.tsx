@@ -15,7 +15,7 @@ import type {
   IdentifyResult, CadastralData, PricingData, ListingsData,
   EnergyData, MoodScoreData, TimeViewData, OpportunityData,
   CondominioData, StoricoTransazioniData, InfrastrutureData,
-  RischioZonaData, TrendDemograficoData, ScanResult, SourceMetadata,
+  RischioZonaData, TrendDemograficoData, SviluppoAreaData, ScanResult, SourceMetadata,
 } from "@/types";
 
 /* ── helpers ─────────────────────────────────────────── */
