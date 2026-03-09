@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { TrialExpiredScreen } from "@/components/TrialExpiredScreen";
+import { APP_BRAND } from "@/lib/legalEntity";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import SottraMark from "@/components/SottraMark";
@@ -93,7 +94,7 @@ const Dashboard = () => {
       </main>
 
       <footer className="py-6 text-center text-xs text-muted-foreground">
-        <p>Per trasferire il tuo account a un nuovo dispositivo, scrivi a <a href="mailto:supporto@sottra.app" className="text-primary hover:underline">supporto@sottra.app</a></p>
+        <p>Per trasferire il tuo account a un nuovo dispositivo, scrivi a <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary hover:underline">{APP_BRAND.supportEmail}</a></p>
       </footer>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LEGAL_ENTITY, val } from "@/lib/legalEntity";
+import { LEGAL_ENTITY, APP_BRAND, val } from "@/lib/legalEntity";
 
 const TerminiCondizioni = () => {
   const navigate = useNavigate();
@@ -20,7 +20,7 @@ const TerminiCondizioni = () => {
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Oggetto</h2>
-            <p>Sottra è una PWA che permette di fotografare edifici e ottenere un quadro informativo composto da dati catastali, prezzi di mercato, classificazione energetica, annunci nella zona e indicatori predittivi. Il report distingue chiaramente tra dati ufficiali, dati elaborati e stime indicative.</p>
+            <p>{APP_BRAND.name} è una PWA che permette di fotografare edifici e ottenere un quadro informativo composto da dati catastali, prezzi di mercato, classificazione energetica, annunci nella zona e indicatori predittivi. Il report distingue chiaramente tra dati ufficiali, dati elaborati e stime indicative.</p>
           </section>
 
           <section>
@@ -35,7 +35,7 @@ const TerminiCondizioni = () => {
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Uso della licenza</h2>
-            <p>La licenza d'uso di Sottra è strettamente personale, non cedibile e non trasferibile. Ogni account è vincolato a un singolo dispositivo per l'intera durata dell'abbonamento. Il cambio dispositivo non è disponibile in modalità self-service: per trasferire l'account a un nuovo dispositivo è necessario contattare il supporto scrivendo a <a href="mailto:supporto@sottra.app" className="text-primary underline">supporto@sottra.app</a>.</p>
+            <p>La licenza d'uso di {APP_BRAND.name} è strettamente personale, non cedibile e non trasferibile. Ogni account è vincolato a un singolo dispositivo per l'intera durata dell'abbonamento. Il cambio dispositivo non è disponibile in modalità self-service: per trasferire l'account a un nuovo dispositivo è necessario contattare il supporto scrivendo a <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary underline">{APP_BRAND.supportEmail}</a>.</p>
             <p className="mt-2">La condivisione dell'account, delle credenziali o dei dati ottenuti tramite il servizio con terzi non autorizzati è espressamente vietata e comporta la sospensione immediata dell'account senza diritto a rimborso.</p>
           </section>
 
@@ -56,7 +56,7 @@ const TerminiCondizioni = () => {
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Foro competente e legge applicabile</h2>
-            <p>Per qualsiasi controversia sarà competente il Tribunale della sede legale del titolare. Legge applicabile: legge italiana.</p>
+            <p>Per qualsiasi controversia sarà competente il {e.jurisdiction}. Legge applicabile: {e.applicableLaw}.</p>
           </section>
 
           <p className="text-xs text-muted-foreground pt-4">Ultimo aggiornamento: marzo 2026</p>

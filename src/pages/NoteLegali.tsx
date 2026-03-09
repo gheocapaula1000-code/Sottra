@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LEGAL_ENTITY, val } from "@/lib/legalEntity";
+import { LEGAL_ENTITY, APP_BRAND, val } from "@/lib/legalEntity";
 
 const NoteLegali = () => {
   const navigate = useNavigate();
@@ -14,13 +14,15 @@ const NoteLegali = () => {
 
         <div className="space-y-4 text-sm text-foreground/90 leading-relaxed">
           <p><strong>Titolare:</strong> {val(e.companyName)}</p>
-          <p><strong>Sede legale:</strong> {val(e.address)} {val(e.cap)} {val(e.city)} ({val(e.province)})</p>
+          <p><strong>Sede legale:</strong> {val(e.address)}, {val(e.cap)} {val(e.city)} ({val(e.province)})</p>
           <p><strong>P.IVA:</strong> {val(e.vatNumber)}</p>
           <p><strong>Codice Fiscale:</strong> {val(e.fiscalCode)}</p>
-          <p><strong>Email:</strong> {val(e.email)}</p>
           <p><strong>PEC:</strong> {val(e.pec)}</p>
-          <p><strong>Telefono:</strong> {val(e.phone)}</p>
+          <p><strong>Email info:</strong> <a href={`mailto:${APP_BRAND.infoEmail}`} className="text-primary underline">{APP_BRAND.infoEmail}</a></p>
+          <p><strong>Email supporto:</strong> <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary underline">{APP_BRAND.supportEmail}</a></p>
           <p><strong>Hosting:</strong> Infrastruttura cloud UE</p>
+          <p><strong>Legge applicabile:</strong> {e.applicableLaw}</p>
+          <p><strong>Foro competente:</strong> {e.jurisdiction}</p>
 
           <p className="text-xs text-muted-foreground pt-4">Ultimo aggiornamento: marzo 2026</p>
         </div>

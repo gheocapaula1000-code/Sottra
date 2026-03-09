@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LEGAL_ENTITY, val } from "@/lib/legalEntity";
+import { LEGAL_ENTITY, APP_BRAND, val } from "@/lib/legalEntity";
 
 const PrivacyPolicy = () => {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ const PrivacyPolicy = () => {
         <div className="space-y-6 text-sm text-foreground/90 leading-relaxed">
           <section>
             <h2 className="font-semibold text-foreground mb-2">Titolare del trattamento</h2>
-            <p>{val(e.companyName)}<br/>{val(e.address)} {val(e.cap)} {val(e.city)} ({val(e.province)})<br/>Email: {val(e.email)} | PEC: {val(e.pec)}</p>
+            <p>{val(e.companyName)}<br/>{val(e.address)}, {val(e.cap)} {val(e.city)} ({val(e.province)})<br/>PEC: {val(e.pec)} | Email: <a href={`mailto:${APP_BRAND.infoEmail}`} className="text-primary underline">{APP_BRAND.infoEmail}</a></p>
           </section>
 
           <section>
@@ -46,6 +46,16 @@ const PrivacyPolicy = () => {
           <section>
             <h2 className="font-semibold text-foreground mb-2">Cookie</h2>
             <p>Per informazioni sull'uso dei cookie, consulta la <a href="/cookie-policy" className="underline hover:text-foreground">Cookie Policy</a>.</p>
+          </section>
+
+          <section>
+            <h2 className="font-semibold text-foreground mb-2">Contatti</h2>
+            <p>Per esercitare i tuoi diritti o per qualsiasi richiesta: <a href={`mailto:${APP_BRAND.infoEmail}`} className="text-primary underline">{APP_BRAND.infoEmail}</a></p>
+          </section>
+
+          <section>
+            <h2 className="font-semibold text-foreground mb-2">Legge applicabile e foro competente</h2>
+            <p>{e.applicableLaw} — {e.jurisdiction}</p>
           </section>
 
           <p className="text-xs text-muted-foreground pt-4">Ultimo aggiornamento: marzo 2026</p>
