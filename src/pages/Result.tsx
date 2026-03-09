@@ -36,7 +36,7 @@ function sourceTypeToTier(sourceType?: string): DataTier {
     case "official": return "ufficiale";
     case "elaborated": return "elaborato";
     case "estimate": return "stima";
-    case "unavailable": return "stima";
+    case "unavailable": return "non_disponibile";
     default: return "stima";
   }
 }
@@ -157,7 +157,7 @@ function PricingCard({ data, loading, error, message }: { data: PricingData | nu
       <Section>
         <div className="flex items-center gap-2 mb-3"><TrendingUp className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Prezzi di Mercato</span></div>
         <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
-        <SourceLabel text={data.sourceLabel || "Fonte ufficiale non trovata per l'indirizzo analizzato"} tier="stima" />
+        <SourceLabel text={data.sourceLabel || "Fonte ufficiale non trovata per l'indirizzo analizzato"} tier="non_disponibile" />
       </Section>
     );
   }
@@ -279,7 +279,7 @@ function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDe
       <Section>
         <div className="flex items-center gap-2 mb-3"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
         <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
-        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="stima" />
+        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
       </Section>
     );
   }
@@ -377,7 +377,7 @@ function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaD
       <Section>
         <div className="flex items-center gap-2 mb-3"><AlertTriangle className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
         <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
-        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="stima" />
+        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
       </Section>
     );
   }
@@ -427,7 +427,7 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
       <Section>
         <div className="flex items-center gap-2 mb-3"><Compass className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Dinamica Territoriale</span></div>
         <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Copertura non disponibile per questa zona"}</p>
-        <SourceLabel text={data.sourceLabel || "Dati insufficienti per l'elaborazione"} tier="stima" />
+        <SourceLabel text={data.sourceLabel || "Dati insufficienti per l'elaborazione"} tier="non_disponibile" />
       </Section>
     );
   }
