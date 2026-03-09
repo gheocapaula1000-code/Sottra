@@ -9,11 +9,11 @@ export default function CtaFinal() {
     <section className="px-5 py-20 sm:px-10 lg:px-20">
       <div className="mx-auto max-w-3xl rounded-2xl border border-primary/20 bg-primary/5 p-7 text-center sm:p-12">
         <h2 className="text-2xl font-black text-foreground sm:text-3xl lg:text-4xl" style={{ textWrap: "balance" as any }}>
-          Il contesto conta quanto il prezzo
+          Prova gratis. Decidi dopo.
         </h2>
         <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" as any }}>
-          Prova Sottra gratis per 3 giorni. 5 scansioni incluse, nessuna carta
-          di credito, nessun dato bancario.
+          3 giorni gratis, 5 scansioni incluse. Nessuna carta di credito,
+          nessun dato bancario, nessun impegno iniziale.
         </p>
         <Button
           size="lg"
@@ -22,9 +22,12 @@ export default function CtaFinal() {
         >
           Inizia senza carta <ArrowRight className="h-4 w-4" />
         </Button>
-        <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-          <span>Se non ti abboni, non succede nulla. Nessuna disdetta.</span>
+        <div className="mt-4 flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+            <span>Se non ti abboni, non succede nulla. Nessuna disdetta.</span>
+          </div>
+          <span className="font-medium text-primary/80">Paghi solo se scegli di continuare</span>
         </div>
       </div>
     </section>

@@ -117,7 +117,7 @@ export default function PricingSection() {
               </div>
 
               <p className="mt-2 text-xs text-primary font-semibold">
-                Paghi solo dopo la prova gratuita
+                Zero carta per iniziare · Paghi solo dopo la prova
               </p>
 
               <div className="mt-3 flex flex-wrap gap-2">

@@ -95,8 +95,8 @@ export default function HeroSection() {
               </div>
             ))}
           </div>
-          <p className="mt-3 text-[11px] text-muted-foreground sm:text-xs">
-            Nessun dato bancario richiesto · Decidi solo dopo la prova
+          <p className="mt-3 text-[11px] text-muted-foreground sm:text-xs font-medium">
+            Nessuna carta di credito né dato bancario richiesti per iniziare · Paghi solo se scegli di continuare
           </p>
         </div>
       </div>
