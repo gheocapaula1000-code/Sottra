@@ -20,12 +20,13 @@ const TerminiCondizioni = () => {
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Oggetto</h2>
-            <p>{APP_BRAND.name} è una PWA che permette di fotografare edifici e ottenere un quadro informativo composto da dati catastali, prezzi di mercato, classificazione energetica, annunci nella zona e indicatori predittivi. Il report distingue chiaramente tra dati ufficiali, dati elaborati e stime indicative.</p>
+            <p>{APP_BRAND.name} è una PWA che permette di fotografare edifici e ottenere un quadro informativo composto da prezzi di mercato, indicatori di rischio, trend demografici, analisi infrastrutturale, dinamica territoriale e indicatori predittivi. Il report distingue chiaramente tra dati ufficiali e dati elaborati.</p>
+            <p className="mt-2">Ulteriori moduli — tra cui dati catastali, classificazione energetica, annunci nella zona, storico transazioni e informazioni condominiali — sono in fase di attivazione progressiva e verranno resi disponibili man mano che le relative fonti saranno integrate.</p>
           </section>
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Natura dei dati</h2>
-            <p>Il servizio è pensato come supporto informativo e operativo per professionisti del settore immobiliare. I dati contrassegnati come "Dato ufficiale" provengono da fonti istituzionali pubbliche (OMI, ISTAT, ISPRA, INGV). I dati contrassegnati come "Dato elaborato" o "Stima indicativa" sono il risultato di elaborazioni interne e non hanno valore certificato. Nessun contenuto del report sostituisce perizie professionali, valutazioni ufficiali o consulenza finanziaria.</p>
+            <p>Il servizio è pensato come supporto informativo e operativo per professionisti del settore immobiliare. I dati contrassegnati come "Dato ufficiale" provengono da fonti istituzionali pubbliche (OMI, ISTAT, ISPRA, INGV). I dati contrassegnati come "Dato elaborato" sono il risultato di elaborazioni interne e non hanno valore certificato. I moduli contrassegnati come "In attivazione" non sono ancora operativi. Nessun contenuto del report sostituisce perizie professionali, valutazioni ufficiali o consulenza finanziaria.</p>
           </section>
 
           <section>

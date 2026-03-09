@@ -1,6 +1,6 @@
 import { useReducer, useState, useCallback } from "react";
-import { identifyBuilding, getCadastral, getPricing, getListings, getEnergy, getCondominio, getStoricoTransazioni } from "@/services/scan";
-import { getMoodScore, getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea } from "@/services/forecast";
+import { identifyBuilding, getPricing } from "@/services/scan";
+import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea } from "@/services/forecast";
 import type { ScanResult, SectionState } from "@/types";
 
 const idle = { status: "idle" as const, data: null, message: null };
@@ -66,19 +66,15 @@ export function useBuildingScan() {
       const address = (idRes.data as { address?: string }).address ?? "";
       if (!address) return;
 
+      // Only call live modules — inactive modules (cadastral, listings, energy, condominio, storicoTransazioni) skipped
       await Promise.allSettled([
-        getCadastral(address, photo).then(resolve("cadastral")).catch(reject("cadastral")),
         getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing")),
-        getListings(address, photo).then(resolve("listings")).catch(reject("listings")),
-        getEnergy(address, photo).then(resolve("energy")).catch(reject("energy")),
-        getCondominio(address, photo).then(resolve("condominio")).catch(reject("condominio")),
-        getStoricoTransazioni(address, photo).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
       ]);
     };
 
     const forecastEngine = async () => {
+      // moodScore skipped — not yet live
       await Promise.allSettled([
-        getMoodScore(lat, lng).then(resolve("moodScore")).catch(reject("moodScore")),
         getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
         getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
         getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
