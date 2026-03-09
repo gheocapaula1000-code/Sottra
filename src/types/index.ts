@@ -22,6 +22,15 @@ export interface IdentifyResult {
   confidence: number;
 }
 
+/** Source metadata dal backend */
+export interface SourceMetadata {
+  sourceLabel?: string;
+  sourceType?: "official" | "elaborated" | "estimate" | "unavailable";
+  sourcePeriod?: string;
+  confidenceReason?: string;
+  limitations?: string[];
+}
+
 /** Dati catastali */
 export interface CadastralData {
   foglio: number;
@@ -34,7 +43,7 @@ export interface CadastralData {
 }
 
 /** Dati prezzi di mercato */
-export interface PricingData {
+export interface PricingData extends SourceMetadata {
   prezzoMq: number;
   prezzoMqMin: number;
   prezzoMqMax: number;
@@ -128,22 +137,22 @@ export interface InfrastrutureData {
 }
 
 /** Rischio zona */
-export interface RischioZonaData {
-  idrogeologico: "alto" | "medio" | "basso" | "nullo";
-  sismico: "zona1" | "zona2" | "zona3" | "zona4";
-  inquinamento: "alto" | "medio" | "basso";
-  alluvionale: boolean;
-  scoreRischio: number;
+export interface RischioZonaData extends SourceMetadata {
+  idrogeologico: "alto" | "medio" | "basso" | "nullo" | null;
+  sismico: "zona1" | "zona2" | "zona3" | "zona4" | null;
+  inquinamento: "alto" | "medio" | "basso" | null;
+  alluvionale: boolean | null;
+  scoreRischio: number | null;
 }
 
 /** Trend demografico */
-export interface TrendDemograficoData {
-  etaMedia: number;
-  densitaAbitanti: number;
-  flussoResidenti12Mesi: number;
-  percentualeFamiglie: number;
-  percentualeGiovani: number;
-  percentualeStranieri: number;
+export interface TrendDemograficoData extends SourceMetadata {
+  etaMedia: number | null;
+  densitaAbitanti: number | null;
+  flussoResidenti12Mesi: number | null;
+  percentualeFamiglie: number | null;
+  percentualeGiovani: number | null;
+  percentualeStranieri: number | null;
 }
 
 /** Risultato completo di una scansione */

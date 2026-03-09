@@ -15,13 +15,31 @@ import type {
   IdentifyResult, CadastralData, PricingData, ListingsData,
   EnergyData, MoodScoreData, TimeViewData, OpportunityData,
   CondominioData, StoricoTransazioniData, InfrastrutureData,
-  RischioZonaData, TrendDemograficoData, ScanResult,
+  RischioZonaData, TrendDemograficoData, ScanResult, SourceMetadata,
 } from "@/types";
 
 /* ── helpers ─────────────────────────────────────────── */
 
-function fmt(n: number) { return n.toLocaleString("it-IT", { maximumFractionDigits: 1 }); }
-function fmtEur(n: number) { return n.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }); }
+function fmt(n: number | null | undefined): string {
+  if (n == null) return "—";
+  return n.toLocaleString("it-IT", { maximumFractionDigits: 1 });
+}
+
+function fmtEur(n: number | null | undefined): string {
+  if (n == null) return "—";
+  return n.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+}
+
+/** Converte sourceType backend in DataTier */
+function sourceTypeToTier(sourceType?: string): DataTier {
+  switch (sourceType) {
+    case "official": return "ufficiale";
+    case "elaborated": return "elaborato";
+    case "estimate": return "stima";
+    case "unavailable": return "stima";
+    default: return "stima";
+  }
+}
 
 function SourceLabel({ text, tier }: { text: string; tier?: DataTier }) {
   return (
@@ -131,15 +149,33 @@ function PricingCard({ data, loading, error, message }: { data: PricingData | nu
   if (loading) return <SectionSkeleton />;
   if (error) return <Section><div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="font-semibold text-foreground text-sm">Prezzi di Mercato</span></div><p className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</p></Section>;
   if (!data) return null;
-  const diff = data.prezzoMq - data.mediaZona;
+
+  // Gestione unavailable
+  const isUnavailable = data.sourceType === "unavailable" || data.prezzoMq == null;
+  if (isUnavailable) {
+    return (
+      <Section>
+        <div className="flex items-center gap-2 mb-3"><TrendingUp className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Prezzi di Mercato</span></div>
+        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
+        <SourceLabel text={data.sourceLabel || "Fonte ufficiale non trovata per l'indirizzo analizzato"} tier="stima" />
+      </Section>
+    );
+  }
+
+  const diff = (data.prezzoMq ?? 0) - (data.mediaZona ?? 0);
+  const tier = sourceTypeToTier(data.sourceType);
+  const sourceText = data.sourceLabel || (tier === "ufficiale" ? "Fonte: Agenzia Entrate — OMI" : "Stima indicativa");
+  const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
+
   return (
     <Section>
       <div className="flex items-center gap-2 mb-3"><TrendingUp className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Prezzi di Mercato</span></div>
       <p className="text-2xl font-bold text-foreground">{fmtEur(data.prezzoMq)}<span className="text-sm font-normal text-muted-foreground">/m²</span></p>
       <p className="text-xs text-muted-foreground mt-1">Range: {fmtEur(data.prezzoMqMin)} – {fmtEur(data.prezzoMqMax)}</p>
       <div className="flex items-center gap-2 mt-2"><span className="text-xs text-muted-foreground">Media zona: {fmtEur(data.mediaZona)}</span><Badge variant={diff >= 0 ? "default" : "secondary"}>{diff >= 0 ? "Sopra" : "Sotto"} media</Badge></div>
-      <p className="text-xs text-muted-foreground mt-2">Trend 5 anni: <span className="font-medium text-foreground">{data.trend5Anni > 0 ? "+" : ""}{fmt(data.trend5Anni)}%</span></p>
-      <SourceLabel text="Stima indicativa — collegamento a fonte OMI in corso" tier="stima" />
+      <p className="text-xs text-muted-foreground mt-2">Trend 5 anni: <span className="font-medium text-foreground">{data.trend5Anni != null && data.trend5Anni > 0 ? "+" : ""}{fmt(data.trend5Anni)}%</span></p>
+      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mt-1">{data.confidenceReason}</p>}
+      <SourceLabel text={`${sourceText}${periodText}`} tier={tier} />
     </Section>
   );
 }
@@ -235,17 +271,38 @@ function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDe
       <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
     </Section>
   );
+
+  // Gestione unavailable
+  const isUnavailable = data.sourceType === "unavailable" || data.etaMedia == null;
+  if (isUnavailable) {
+    return (
+      <Section>
+        <div className="flex items-center gap-2 mb-3"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
+        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
+        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="stima" />
+      </Section>
+    );
+  }
+
+  const tier = sourceTypeToTier(data.sourceType);
+  const sourceText = data.sourceLabel || (tier === "ufficiale" ? "Fonte: ISTAT" : "Elaborazione dati demografici");
+  const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
+
   return (
     <Section>
       <div className="flex items-center gap-2 mb-3"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
       <div className="grid grid-cols-2 gap-3 text-sm mb-3">
         <div><span className="text-muted-foreground">Età media</span><p className="font-medium text-foreground">{fmt(data.etaMedia)}</p></div>
         <div><span className="text-muted-foreground">Densità</span><p className="font-medium text-foreground">{fmt(data.densitaAbitanti)} ab/km²</p></div>
-        <div><span className="text-muted-foreground">Flusso 12m</span><p className="font-medium text-foreground">{data.flussoResidenti12Mesi > 0 ? "+" : ""}{fmt(data.flussoResidenti12Mesi)}%</p></div>
+        <div><span className="text-muted-foreground">Flusso 12m</span><p className="font-medium text-foreground">{data.flussoResidenti12Mesi != null && data.flussoResidenti12Mesi > 0 ? "+" : ""}{fmt(data.flussoResidenti12Mesi)}%</p></div>
         <div><span className="text-muted-foreground">Under 35</span><p className="font-medium text-foreground">{fmt(data.percentualeGiovani)}%</p></div>
       </div>
-      <div className="space-y-2"><MiniBar label="Famiglie" value={data.percentualeFamiglie} /><MiniBar label="Stranieri" value={data.percentualeStranieri} /></div>
-      <SourceLabel text="Elaborazione in fase di collegamento a fonte ISTAT" tier="stima" />
+      <div className="space-y-2">
+        <MiniBar label="Famiglie" value={data.percentualeFamiglie ?? 0} />
+        <MiniBar label="Stranieri" value={data.percentualeStranieri ?? 0} />
+      </div>
+      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mt-2">{data.confidenceReason}</p>}
+      <SourceLabel text={`${sourceText}${periodText}`} tier={tier} />
     </Section>
   );
 }
@@ -312,20 +369,39 @@ function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaD
       <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
     </Section>
   );
+
+  // Gestione unavailable
+  const isUnavailable = data.sourceType === "unavailable" || data.scoreRischio == null;
+  if (isUnavailable) {
+    return (
+      <Section>
+        <div className="flex items-center gap-2 mb-3"><AlertTriangle className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
+        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
+        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="stima" />
+      </Section>
+    );
+  }
+
+  const tier = sourceTypeToTier(data.sourceType);
+  const sourceText = data.sourceLabel || (tier === "ufficiale" ? "Fonte: ISPRA IdroGEO + INGV" : "Elaborazione rischio zona");
+  const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
+
   const lc: Record<string, string> = { nullo: "text-green-500", basso: "text-green-400", medio: "text-amber-400", alto: "text-red-500", zona4: "text-green-500", zona3: "text-green-400", zona2: "text-amber-400", zona1: "text-red-500" };
+
   return (
     <Section>
       <div className="flex items-center gap-2 mb-3"><AlertTriangle className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
       <div className="flex items-start gap-4">
-        <ScoreArc value={data.scoreRischio} />
+        <ScoreArc value={data.scoreRischio ?? 0} />
         <div className="grid grid-cols-2 gap-3 text-sm flex-1">
-          <div><span className="text-muted-foreground">Idrogeologico</span><p className={`font-medium capitalize ${lc[data.idrogeologico]}`}>{data.idrogeologico}</p></div>
-          <div><span className="text-muted-foreground">Sismico</span><p className={`font-medium ${lc[data.sismico]}`}>{data.sismico.replace("zona", "Zona ")}</p></div>
-          <div><span className="text-muted-foreground">Inquinamento</span><p className={`font-medium capitalize ${lc[data.inquinamento]}`}>{data.inquinamento}</p></div>
-          <div><span className="text-muted-foreground">Alluvionale</span><p className={`font-medium ${data.alluvionale ? "text-red-500" : "text-green-500"}`}>{data.alluvionale ? "Sì" : "No"}</p></div>
+          <div><span className="text-muted-foreground">Idrogeologico</span><p className={`font-medium capitalize ${data.idrogeologico ? lc[data.idrogeologico] : "text-muted-foreground"}`}>{data.idrogeologico ?? "—"}</p></div>
+          <div><span className="text-muted-foreground">Sismico</span><p className={`font-medium ${data.sismico ? lc[data.sismico] : "text-muted-foreground"}`}>{data.sismico ? data.sismico.replace("zona", "Zona ") : "—"}</p></div>
+          <div><span className="text-muted-foreground">Inquinamento</span><p className={`font-medium capitalize ${data.inquinamento ? lc[data.inquinamento] : "text-muted-foreground"}`}>{data.inquinamento ?? "—"}</p></div>
+          <div><span className="text-muted-foreground">Alluvionale</span><p className={`font-medium ${data.alluvionale != null ? (data.alluvionale ? "text-red-500" : "text-green-500") : "text-muted-foreground"}`}>{data.alluvionale != null ? (data.alluvionale ? "Sì" : "No") : "—"}</p></div>
         </div>
       </div>
-      <SourceLabel text="Dato in corso di verifica — fonte ISPRA/INGV in attivazione" tier="stima" />
+      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mt-2">{data.confidenceReason}</p>}
+      <SourceLabel text={`${sourceText}${periodText}`} tier={tier} />
     </Section>
   );
 }

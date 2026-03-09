@@ -12,7 +12,7 @@ function delay(ms = 600) {
 
 export async function identifyBuilding(photo: string, lat: number, lng: number) {
   if (USE_MOCK) { await delay(800); return { error: false, message: null, data: mockIdentify }; }
-  const res = await coreRequest("/scan/identify", "POST", { lat, lng }, 15000);
+  const res = await coreRequest("/scan/identify", "POST", { lat, lng, photo }, 15000);
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }

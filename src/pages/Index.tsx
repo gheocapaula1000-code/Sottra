@@ -78,14 +78,14 @@ const plans = [
 ];
 
 const dataSources = [
-  { name: "OMI — Agenzia delle Entrate", desc: "Quotazioni immobiliari per zona e tipologia", icon: BarChart3, tier: "Dato ufficiale" },
-  { name: "Sister / Catasto", desc: "Visure catastali: foglio, particella, rendita", icon: Database, tier: "Dato ufficiale" },
-  { name: "ISTAT", desc: "Dati demografici, popolazione, età, famiglie", icon: Users, tier: "Dato ufficiale" },
-  { name: "ISPRA IdroGEO", desc: "Rischio idrogeologico e alluvionale", icon: ShieldCheck, tier: "Dato ufficiale" },
-  { name: "INGV / Protezione Civile", desc: "Classificazione sismica", icon: Layers, tier: "Dato ufficiale" },
-  { name: "Open Data Comunali", desc: "Cantieri, infrastrutture, progetti urbani", icon: MapPin, tier: "Dato elaborato" },
-  { name: "Google Maps + Places", desc: "Identificazione edificio e POI zona", icon: Globe, tier: "Dato elaborato" },
-  { name: "Elaborazione interna", desc: "Analisi strutturata e incrocio dati da fonti pubbliche", icon: Zap, tier: "Stima indicativa" },
+  { name: "OMI — Agenzia delle Entrate", desc: "Quotazioni immobiliari per zona e tipologia", icon: BarChart3, tier: "Dato ufficiale", active: true },
+  { name: "ISTAT", desc: "Dati demografici, popolazione, età, famiglie", icon: Users, tier: "Dato ufficiale", active: true },
+  { name: "ISPRA IdroGEO", desc: "Rischio idrogeologico e alluvionale", icon: ShieldCheck, tier: "Dato ufficiale", active: true },
+  { name: "INGV / Protezione Civile", desc: "Classificazione sismica", icon: Layers, tier: "Dato ufficiale", active: true },
+  { name: "Sister / Catasto", desc: "Visure catastali: foglio, particella, rendita", icon: Database, tier: "In attivazione", active: false },
+  { name: "Open Data Comunali", desc: "Cantieri, infrastrutture, progetti urbani", icon: MapPin, tier: "Dato elaborato", active: false },
+  { name: "Google Maps + Places", desc: "Identificazione edificio e POI zona", icon: Globe, tier: "Dato elaborato", active: true },
+  { name: "Elaborazione interna", desc: "Analisi strutturata e incrocio dati da fonti pubbliche", icon: Zap, tier: "Stima indicativa", active: true },
 ];
 
 const moatItems = [
@@ -270,14 +270,17 @@ function DataSourcesSection() {
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
           {dataSources.map((ds) => (
-            <div key={ds.name} className="flex items-start gap-4 rounded-xl border border-border bg-card/60 p-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                <ds.icon className="h-5 w-5 text-primary" />
+            <div key={ds.name} className={`flex items-start gap-4 rounded-xl border p-4 ${ds.active ? "border-border bg-card/60" : "border-border/50 bg-card/30 opacity-70"}`}>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${ds.active ? "bg-primary/10" : "bg-muted"}`}>
+                <ds.icon className={`h-5 w-5 ${ds.active ? "text-primary" : "text-muted-foreground"}`} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm font-semibold text-foreground truncate">{ds.name}</h4>
-                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                  <Badge 
+                    variant={ds.tier === "In attivazione" ? "outline" : "secondary"} 
+                    className={`shrink-0 text-[10px] ${ds.tier === "In attivazione" ? "border-amber-500/50 text-amber-500" : ""}`}
+                  >
                     {ds.tier}
                   </Badge>
                 </div>
