@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ChevronDown, ShieldCheck, CreditCard, CalendarOff, ScanLine, Clock } from "lucide-react";
-import logoS from "@/assets/logo-s-icon.png";
+import SottraMark from "@/components/SottraMark";
 
 const trustItems = [
   { icon: Clock, text: "3 giorni gratis" },
