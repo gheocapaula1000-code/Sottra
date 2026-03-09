@@ -1,7 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowRight, ChevronDown, ShieldCheck, CreditCard, CalendarOff, ScanLine, Clock } from "lucide-react";
 import logoS from "@/assets/logo-s-icon.png";
+
+const trustItems = [
+  { icon: Clock, text: "3 giorni gratis" },
+  { icon: ScanLine, text: "5 scansioni incluse" },
+  { icon: CreditCard, text: "Nessuna carta richiesta" },
+  { icon: CalendarOff, text: "Nessuna disdetta" },
+];
 
 export default function HeroSection() {
   const navigate = useNavigate();
@@ -45,7 +52,7 @@ export default function HeroSection() {
       </nav>
 
       {/* Hero content */}
-      <div className="relative mx-auto flex flex-1 max-w-3xl flex-col items-center justify-center text-center pb-20">
+      <div className="relative mx-auto flex flex-1 max-w-3xl flex-col items-center justify-center text-center pb-24">
         <span className="mb-5 inline-block rounded-full border border-border bg-secondary/60 px-4 py-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Piattaforma per professionisti immobiliari
         </span>
@@ -56,12 +63,9 @@ export default function HeroSection() {
           <span className="text-primary">Molto di più.</span>
         </h1>
 
-        <p className="mx-auto mt-5 max-w-md text-base leading-relaxed text-muted-foreground sm:mt-6 sm:max-w-lg sm:text-lg">
-          Prezzo, rischio, demografia, dinamica territoriale, scenario e
-          infrastrutture.{" "}
-          <strong className="text-foreground">
-            Da un solo scatto, il quadro completo.
-          </strong>
+        <p className="mx-auto mt-5 max-w-[18rem] text-base leading-relaxed text-muted-foreground sm:mt-6 sm:max-w-md sm:text-lg" style={{ textWrap: "balance" as any }}>
+          Da un solo scatto,{" "}
+          <strong className="text-foreground">il quadro generale.</strong>
         </p>
 
         <div className="mt-8 flex w-full flex-col items-center gap-3 sm:mt-10 sm:flex-row sm:justify-center sm:gap-4">
@@ -87,9 +91,25 @@ export default function HeroSection() {
           </Button>
         </div>
 
-        <p className="mt-4 text-xs text-muted-foreground">
-          Nessuna carta di credito · 5 scansioni incluse
-        </p>
+        {/* Trust strip */}
+        <div className="mt-8 w-full max-w-lg">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-2">
+            {trustItems.map((item) => (
+              <div
+                key={item.text}
+                className="flex items-center gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2.5 sm:flex-col sm:gap-1 sm:px-2 sm:py-3 sm:text-center"
+              >
+                <item.icon className="h-4 w-4 shrink-0 text-primary sm:h-5 sm:w-5" />
+                <span className="text-xs font-semibold text-foreground leading-tight">
+                  {item.text}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] text-muted-foreground sm:text-xs">
+            Nessun dato bancario richiesto · Decidi solo dopo la prova
+          </p>
+        </div>
       </div>
 
       {/* Scroll hint */}

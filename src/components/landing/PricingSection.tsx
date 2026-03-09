@@ -23,7 +23,7 @@ const plans = [
       "Solo visualizzazione in-app (no export PDF)",
       "Dispositivo vincolato per durata abbonamento",
     ],
-    cta: "Inizia il trial gratuito",
+    cta: "Prova gratis 3 giorni",
     popular: false,
   },
   {
@@ -43,7 +43,7 @@ const plans = [
       "Dispositivo vincolato per durata abbonamento",
     ],
     extra: "Agente aggiuntivo: €49/mese (+80 scansioni)",
-    cta: "Inizia il trial gratuito",
+    cta: "Prova gratis 3 giorni",
     popular: true,
   },
   {
@@ -61,7 +61,7 @@ const plans = [
       "Supporto prioritario",
     ],
     extra: "Agente aggiuntivo: €39/mese (sconto rispetto ai €49 standard)",
-    cta: "Inizia il trial gratuito",
+    cta: "Prova gratis 3 giorni",
     popular: false,
   },
 ];
@@ -76,10 +76,9 @@ export default function PricingSection() {
           <h2 className="text-2xl font-black text-foreground sm:text-3xl lg:text-4xl">
             Piani di abbonamento
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base">
-            Trial gratuito 3 giorni, 5 scansioni, senza carta di credito.
-            <br />
-            Dopo il trial scegli il tuo piano. Disdici quando vuoi.
+          <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" as any }}>
+            Prima provi, poi decidi. 3 giorni gratis, 5 scansioni,
+            nessuna carta di credito, nessuna disdetta.
           </p>
         </div>
 
@@ -113,6 +112,10 @@ export default function PricingSection() {
                   {plan.period}
                 </span>
               </div>
+
+              <p className="mt-2 text-xs text-primary font-semibold">
+                Paghi solo dopo la prova gratuita
+              </p>
 
               <div className="mt-3 flex flex-wrap gap-2">
                 <Badge variant="secondary" className="text-[10px] sm:text-xs">
