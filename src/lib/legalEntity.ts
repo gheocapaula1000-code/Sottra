@@ -1,26 +1,29 @@
 /**
- * Dati legali centralizzati.
- * Configurare tramite variabili d'ambiente VITE_LEGAL_* prima del go-live.
+ * Dati legali centralizzati — Pi.Gi Service di Gheoca Paula
+ * Profilo comune + dati specifici per app Sottra (sottra.app)
  */
-const env = (key: string, fallback: string): string => {
-  if (typeof import.meta !== "undefined" && import.meta.env) {
-    const val = (import.meta.env as Record<string, string | undefined>)[key];
-    if (val && val.trim()) return val.trim();
-  }
-  return fallback;
-};
 
+/* ── Dati societari comuni ── */
 export const LEGAL_ENTITY = {
-  companyName: env("VITE_LEGAL_COMPANY_NAME", ""),
-  address: env("VITE_LEGAL_ADDRESS", ""),
-  city: env("VITE_LEGAL_CITY", ""),
-  province: env("VITE_LEGAL_PROVINCE", ""),
-  cap: env("VITE_LEGAL_CAP", ""),
-  vatNumber: env("VITE_LEGAL_VAT", ""),
-  fiscalCode: env("VITE_LEGAL_CF", ""),
-  email: env("VITE_LEGAL_EMAIL", ""),
-  pec: env("VITE_LEGAL_PEC", ""),
-  phone: env("VITE_LEGAL_PHONE", ""),
+  companyName: "Pi.Gi Service di Gheoca Paula",
+  address: "Via Guido Reni, 8",
+  city: "Padova",
+  province: "PD",
+  cap: "35133",
+  country: "Italia",
+  vatNumber: "05770260288",
+  fiscalCode: "GHCPLA75E63Z129I",
+  pec: "paulagheoca@pec.it",
+  jurisdiction: "Foro di Padova",
+  applicableLaw: "Legge italiana",
+} as const;
+
+/* ── Dati specifici app corrente (sottra.app) ── */
+export const APP_BRAND = {
+  name: "Sottra",
+  domain: "sottra.app",
+  infoEmail: "info@sottra.app",
+  supportEmail: "supporto@sottra.app",
 } as const;
 
 /** Helper: mostra il valore o "[da compilare]" se vuoto */
