@@ -85,7 +85,7 @@ const dataSources = [
   { name: "INGV / Protezione Civile", desc: "Classificazione sismica", icon: Layers, tier: "Dato ufficiale" },
   { name: "Open Data Comunali", desc: "Cantieri, infrastrutture, progetti urbani", icon: MapPin, tier: "Dato elaborato" },
   { name: "Google Maps + Places", desc: "Identificazione edificio e POI zona", icon: Globe, tier: "Dato elaborato" },
-  { name: "Elaborazione interna", desc: "Analisi strutturata e classificazione automatizzata", icon: Zap, tier: "Stima indicativa" },
+  { name: "Elaborazione interna", desc: "Analisi strutturata e incrocio dati da fonti pubbliche", icon: Zap, tier: "Stima indicativa" },
 ];
 
 const moatItems = [
