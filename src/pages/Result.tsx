@@ -20,8 +20,26 @@ import type {
 
 /* ── helpers ─────────────────────────────────────────── */
 
-function fmt(n: number) { return n.toLocaleString("it-IT", { maximumFractionDigits: 1 }); }
-function fmtEur(n: number) { return n.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }); }
+function fmt(n: number | null | undefined): string {
+  if (n == null) return "—";
+  return n.toLocaleString("it-IT", { maximumFractionDigits: 1 });
+}
+
+function fmtEur(n: number | null | undefined): string {
+  if (n == null) return "—";
+  return n.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+}
+
+/** Converte sourceType backend in DataTier */
+function sourceTypeToTier(sourceType?: string): DataTier {
+  switch (sourceType) {
+    case "official": return "ufficiale";
+    case "elaborated": return "elaborato";
+    case "estimate": return "stima";
+    case "unavailable": return "stima";
+    default: return "stima";
+  }
+}
 
 function SourceLabel({ text, tier }: { text: string; tier?: DataTier }) {
   return (
