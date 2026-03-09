@@ -66,13 +66,9 @@ export function useBuildingScan() {
       const address = (idRes.data as { address?: string }).address ?? "";
       if (!address) return;
 
+      // Only call live modules — inactive modules (cadastral, listings, energy, condominio, storicoTransazioni) skipped
       await Promise.allSettled([
-        getCadastral(address, photo).then(resolve("cadastral")).catch(reject("cadastral")),
         getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing")),
-        getListings(address, photo).then(resolve("listings")).catch(reject("listings")),
-        getEnergy(address, photo).then(resolve("energy")).catch(reject("energy")),
-        getCondominio(address, photo).then(resolve("condominio")).catch(reject("condominio")),
-        getStoricoTransazioni(address, photo).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
       ]);
     };
 
