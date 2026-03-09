@@ -22,6 +22,15 @@ export interface IdentifyResult {
   confidence: number;
 }
 
+/** Source metadata dal backend */
+export interface SourceMetadata {
+  sourceLabel?: string;
+  sourceType?: "official" | "elaborated" | "estimate" | "unavailable";
+  sourcePeriod?: string;
+  confidenceReason?: string;
+  limitations?: string[];
+}
+
 /** Dati catastali */
 export interface CadastralData {
   foglio: number;
@@ -34,7 +43,7 @@ export interface CadastralData {
 }
 
 /** Dati prezzi di mercato */
-export interface PricingData {
+export interface PricingData extends SourceMetadata {
   prezzoMq: number;
   prezzoMqMin: number;
   prezzoMqMax: number;
