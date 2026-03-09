@@ -81,11 +81,16 @@ export interface MoodScoreData {
 }
 
 /** Previsione futura */
-export interface TimeViewData {
-  previsione5Anni: number;
-  previsione10Anni: number;
-  previsione20Anni: number;
-  progettiInArrivo: string[];
+export interface TimeViewData extends SourceMetadata {
+  previsione5Anni?: number;
+  previsione10Anni?: number;
+  previsione20Anni?: number;
+  progettiInArrivo?: string[];
+  scenarioBand?: "molto_favorevole" | "favorevole" | "neutro" | "incerto" | "sfavorevole" | null;
+  scenarioHorizon?: string | null;
+  scenarioDrivers?: string[] | null;
+  scenarioRisks?: string[] | null;
+  narrativeObservation?: string | null;
 }
 
 /** Indice opportunità */
