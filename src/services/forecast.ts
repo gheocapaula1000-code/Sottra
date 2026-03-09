@@ -51,3 +51,10 @@ export async function getTrendDemografico(lat: number, lng: number) {
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
+
+export async function getSviluppoArea(lat: number, lng: number) {
+  if (USE_MOCK) { await delay(1200); return { error: false, message: null, data: null }; }
+  const res = await coreRequest("/forecast/sviluppo-area", "POST", { lat, lng }, 25000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}

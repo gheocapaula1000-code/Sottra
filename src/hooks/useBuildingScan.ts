@@ -84,6 +84,7 @@ export function useBuildingScan() {
         getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
         getRischioZona(lat, lng).then(resolve("rischioZona")).catch(reject("rischioZona")),
         getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
+        getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
       ]);
     };
 

@@ -155,6 +155,25 @@ export interface TrendDemograficoData extends SourceMetadata {
   percentualeStranieri: number | null;
 }
 
+/** Segnale di sviluppo area */
+export interface DevelopmentSignal {
+  type: string;
+  label: string;
+  relevance?: "alta" | "media" | "bassa";
+  detail?: string;
+}
+
+/** Sviluppo area / Dinamica territoriale */
+export interface SviluppoAreaData extends SourceMetadata {
+  developmentSignals: DevelopmentSignal[] | null;
+  infrastructureProjects: string[] | null;
+  connectivitySignals: string[] | null;
+  publicInvestmentSignals: string[] | null;
+  areaDevelopmentScore: number | null;
+  areaDevelopmentBand: "elevata" | "significativa" | "moderata" | "contenuta" | "limitata" | null;
+  narrativeObservation: string | null;
+}
+
 /** Risultato completo di una scansione */
 export interface ScanResult {
   // Motore Scan
@@ -172,6 +191,7 @@ export interface ScanResult {
   infrastrutture: SectionState<InfrastrutureData>;
   rischioZona: SectionState<RischioZonaData>;
   trendDemografico: SectionState<TrendDemograficoData>;
+  sviluppoArea: SectionState<SviluppoAreaData>;
 }
 
 /** Errore restituito da coreRequest */
