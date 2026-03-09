@@ -34,7 +34,6 @@ const Login = () => {
           <SottraMark size="lg" />
           <p className="text-sm text-muted-foreground">Accedi al tuo account</p>
         </div>
-        </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">

@@ -39,7 +39,6 @@ const Signup = () => {
           <SottraMark size="lg" />
           <p className="text-sm text-muted-foreground">Crea il tuo account</p>
         </div>
-        </div>
 
         <form onSubmit={handleSignup} className="space-y-4">
           <div className="space-y-2">
