@@ -279,7 +279,7 @@ function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDe
       <Section>
         <div className="flex items-center gap-2 mb-3"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
         <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
-        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="stima" />
+        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
       </Section>
     );
   }
