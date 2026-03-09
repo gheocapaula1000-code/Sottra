@@ -1,5 +1,5 @@
 import { LEGAL_ENTITY } from "@/lib/legalEntity";
-import logoS from "@/assets/logo-s-icon.png";
+import SottraMark from "@/components/SottraMark";
 
 export default function Footer() {
   return (
