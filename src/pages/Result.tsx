@@ -38,7 +38,7 @@ function sourceTypeToTier(sourceType?: string): DataTier {
     case "elaborated": return "elaborato";
     case "estimate": return "stima";
     case "unavailable": return "non_disponibile";
-    default: return "stima";
+    default: return "elaborato";
   }
 }
 
@@ -120,7 +120,7 @@ function CadastralCard({ data, loading }: { data: CadastralData | null; loading:
         <div><span className="text-muted-foreground">Rendita</span><p className="font-medium text-foreground">{fmtEur(data.renditaCatastale)}</p></div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Foglio {data.foglio} · Particella {data.particella} · Sub {data.subalterno}</p>
-      <SourceLabel text="Fonte in attivazione — collegamento a Sister/Catasto in corso" tier="stima" />
+      <SourceLabel text="Fonte in attivazione — collegamento a Sister/Catasto in corso" tier="non_disponibile" />
     </Section>
   );
 }
@@ -165,7 +165,7 @@ function PricingCard({ data, loading, error, message }: { data: PricingData | nu
 
   const diff = (data.prezzoMq ?? 0) - (data.mediaZona ?? 0);
   const tier = sourceTypeToTier(data.sourceType);
-  const sourceText = data.sourceLabel || (tier === "ufficiale" ? "Fonte: Agenzia Entrate — OMI" : "Stima indicativa");
+  const sourceText = data.sourceLabel || (tier === "ufficiale" ? "Fonte: Agenzia Entrate — OMI" : "Elaborazione da fonti di mercato");
   const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
 
   return (
@@ -196,7 +196,7 @@ function StoricoTransazioniCard({ data, loading }: { data: StoricoTransazioniDat
         ))}
       </div>
       <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Media zona 12m: {fmtEur(data.mediaZona12Mesi)}/m²</span><span className="font-medium text-foreground">{data.variazione12Mesi > 0 ? "+" : ""}{fmt(data.variazione12Mesi)}%</span></div>
-      <SourceLabel text="Stima indicativa — collegamento a fonte OMI in corso" tier="stima" />
+      <SourceLabel text="Fonte in attivazione — collegamento OMI in corso" tier="non_disponibile" />
     </Section>
   );
 }
@@ -235,7 +235,7 @@ function EnergyCard({ data, loading }: { data: EnergyData | null; loading: boole
           <p className="text-muted-foreground">Media zona: <span className="font-medium text-foreground">{data.mediaZona}</span></p>
         </div>
       </div>
-      <SourceLabel text="Valore indicativo — verificare con APE ufficiale" tier="stima" />
+      <SourceLabel text="Fonte in attivazione — verificare con APE ufficiale" tier="non_disponibile" />
     </Section>
   );
 }
@@ -992,11 +992,11 @@ const Result = () => {
 
           <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} error={result.sviluppoArea.status === "error"} message={result.sviluppoArea.message} />
 
-          {/* Messaggio sezioni future */}
+          {/* Moduli in attivazione */}
           <Section>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Altre sezioni in arrivo: dati catastali, energia e dettagli condominiali.
-              Il report distingue chiaramente tra dati ufficiali, dati elaborati e stime indicative.
+              Nuovi moduli in fase di attivazione: dati catastali, classe energetica, dettagli condominiali, storico transazioni, annunci attivi nella zona.
+              Saranno visibili non appena collegati a fonti reali verificate.
             </p>
           </Section>
 

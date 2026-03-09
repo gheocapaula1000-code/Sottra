@@ -15,10 +15,10 @@ const plans = [
     scans: "80 scansioni/mese",
     users: "1 account",
     features: [
-      "Analisi completa — dati ufficiali e stime separate",
+      "Analisi completa — dati ufficiali ed elaborati separati",
       "Quadro predittivo zona e trend demografico",
-      "Prezzi OMI, visura catastale, classe energetica",
-      "MoodScore, rischio zona, infrastrutture",
+      "Prezzi di mercato, rischio zona, infrastrutture",
+      "Indice opportunità e scenario evolutivo",
       "Storico scansioni 6 mesi",
       "Solo visualizzazione in-app (no export PDF)",
       "Dispositivo vincolato per durata abbonamento",
@@ -36,7 +36,7 @@ const plans = [
     features: [
       "Tutto del piano Agente",
       "Dashboard agenzia multi-agente",
-      "Export PDF con logo agenzia + watermark Sottra",
+      "Export PDF con logo agenzia (in attivazione)",
       "Annunci attivi nella zona",
       "Storico scansioni illimitato",
       "Supporto prioritario via email",
@@ -56,7 +56,7 @@ const plans = [
     features: [
       "Tutto del piano Agenzia",
       "Dashboard agenzia multi-agente",
-      "Export PDF con logo agenzia + watermark Sottra",
+      "Export PDF con logo agenzia (in attivazione)",
       "Storico scansioni illimitato",
       "Supporto prioritario",
     ],

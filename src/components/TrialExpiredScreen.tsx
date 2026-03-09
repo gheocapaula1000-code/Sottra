@@ -11,10 +11,10 @@ import { useToast } from "@/hooks/use-toast";
 
 const planFeatures: Record<PlanKey, string[]> = {
   agente: [
-    "Analisi completa — dati ufficiali e stime separate",
+    "Analisi completa — dati ufficiali ed elaborati separati",
     "Quadro predittivo zona e trend demografico",
-    "Prezzi OMI, visura catastale, classe energetica",
-    "MoodScore, rischio zona, infrastrutture",
+    "Prezzi di mercato, rischio zona, infrastrutture",
+    "Indice opportunità e scenario evolutivo",
     "Storico scansioni 6 mesi",
     "Solo visualizzazione in-app (no export PDF)",
     "Dispositivo vincolato per durata abbonamento",
@@ -22,7 +22,7 @@ const planFeatures: Record<PlanKey, string[]> = {
   agenzia: [
     "Tutto del piano Agente",
     "Dashboard agenzia multi-agente",
-    "Export PDF con logo agenzia + watermark Sottra",
+    "Export PDF con logo agenzia (in attivazione)",
     "Annunci attivi nella zona",
     "Storico scansioni illimitato",
     "Supporto prioritario via email",
@@ -31,7 +31,7 @@ const planFeatures: Record<PlanKey, string[]> = {
   enterprise: [
     "Tutto del piano Agenzia",
     "Dashboard agenzia multi-agente",
-    "Export PDF con logo agenzia + watermark Sottra",
+    "Export PDF con logo agenzia (in attivazione)",
     "Storico scansioni illimitato",
     "Supporto prioritario",
   ],
