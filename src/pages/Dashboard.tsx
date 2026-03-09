@@ -43,7 +43,12 @@ const Dashboard = () => {
         <SottraMark size="sm" />
         <div className="flex items-center gap-3">
           {isAdmin && (
-            <span className="text-xs text-primary font-medium">Admin</span>
+            <button
+              onClick={() => navigate("/admin")}
+              className="text-xs text-primary font-medium hover:underline transition-colors"
+            >
+              Admin →
+            </button>
           )}
           {!isAdmin && trial?.active && !subscribed && (
             <span className="text-xs text-primary font-medium">
