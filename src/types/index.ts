@@ -146,13 +146,13 @@ export interface RischioZonaData extends SourceMetadata {
 }
 
 /** Trend demografico */
-export interface TrendDemograficoData {
-  etaMedia: number;
-  densitaAbitanti: number;
-  flussoResidenti12Mesi: number;
-  percentualeFamiglie: number;
-  percentualeGiovani: number;
-  percentualeStranieri: number;
+export interface TrendDemograficoData extends SourceMetadata {
+  etaMedia: number | null;
+  densitaAbitanti: number | null;
+  flussoResidenti12Mesi: number | null;
+  percentualeFamiglie: number | null;
+  percentualeGiovani: number | null;
+  percentualeStranieri: number | null;
 }
 
 /** Risultato completo di una scansione */
