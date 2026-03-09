@@ -132,21 +132,40 @@ export interface StoricoTransazioniData {
   variazione12Mesi: number;
 }
 
+/** Progetto infrastrutturale */
+export interface InfrastructureProject {
+  label: string;
+  category?: string;
+  status?: string;
+  source?: string;
+  impact?: string;
+  period?: string;
+}
+
+/** Segnale infrastrutturale generico */
+export interface InfrastructureSignal {
+  label: string;
+  source?: string;
+  detail?: string;
+}
+
+/** Driver o rischio infrastrutturale */
+export interface InfrastructureDriverRisk {
+  label: string;
+  source?: string;
+}
+
 /** Infrastrutture e reti */
 export interface InfrastrutureData extends SourceMetadata {
   infrastructureScore: number | null;
   infrastructureBand?: "elevata" | "significativa" | "moderata" | "contenuta" | "limitata" | null;
-  infrastructureProjects?: string[] | null;
-  connectivitySignals?: string[] | null;
-  mobilitySignals?: string[] | null;
-  publicWorksSignals?: string[] | null;
-  topDrivers?: string[] | null;
-  topRisks?: string[] | null;
+  infrastructureProjects?: (InfrastructureProject | string)[] | null;
+  connectivitySignals?: (InfrastructureSignal | string)[] | null;
+  mobilitySignals?: (InfrastructureSignal | string)[] | null;
+  publicWorksSignals?: (InfrastructureSignal | string)[] | null;
+  topDrivers?: (InfrastructureDriverRisk | string)[] | null;
+  topRisks?: (InfrastructureDriverRisk | string)[] | null;
   narrativeObservation?: string | null;
-  /** Legacy fields */
-  progetti?: { nome: string; tipo: string; stato: string; completamentoPrevisto: string; distanzaKm: number }[];
-  cantieriAperti?: number;
-  impattoStimato?: "alto" | "medio" | "basso";
 }
 
 /** Rischio zona */

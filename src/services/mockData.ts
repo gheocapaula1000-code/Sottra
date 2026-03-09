@@ -89,14 +89,29 @@ export const mockInfrastrutture: InfrastrutureData = {
   infrastructureScore: 74,
   infrastructureBand: "significativa",
   infrastructureProjects: [
-    "Prolungamento M4 Linate-Stazione Forlanini (completamento 2027)",
-    "Nuovo parco urbano ex-scalo Romana (approvato)",
+    { label: "Prolungamento M4 Linate-Stazione Forlanini", category: "Trasporto pubblico", status: "In corso", impact: "Alto", period: "Completamento 2027", source: "Open Data Comune di Milano" },
+    { label: "Nuovo parco urbano ex-scalo Romana", category: "Riqualificazione", status: "Approvato", impact: "Medio", source: "Delibera comunale" },
   ],
-  connectivitySignals: ["Fibra ottica FTTH disponibile", "Copertura 5G attiva"],
-  mobilitySignals: ["Pista ciclabile Naviglio Pavese in fase di approvazione", "3 linee bus entro 500m"],
-  publicWorksSignals: ["Riqualificazione Piazza Sant'Ambrogio (2028)"],
-  topDrivers: ["Prossimità a nodi di trasporto in potenziamento", "Rete ciclabile in espansione", "Investimenti pubblici significativi nel raggio di 2 km"],
-  topRisks: ["Tempi di completamento delle opere soggetti a variazioni", "Possibile impatto cantieri nel breve periodo"],
+  connectivitySignals: [
+    { label: "Fibra ottica FTTH disponibile", source: "AgCom" },
+    { label: "Copertura 5G attiva", source: "Operatori nazionali" },
+  ],
+  mobilitySignals: [
+    { label: "Pista ciclabile Naviglio Pavese in fase di approvazione", source: "PUMS Milano" },
+    { label: "3 linee bus entro 500m" },
+  ],
+  publicWorksSignals: [
+    { label: "Riqualificazione Piazza Sant'Ambrogio", source: "Open Data comunali", detail: "Intervento previsto entro il 2028" },
+  ],
+  topDrivers: [
+    { label: "Prossimità a nodi di trasporto in potenziamento", source: "Analisi geospaziale" },
+    { label: "Rete ciclabile in espansione" },
+    { label: "Investimenti pubblici significativi nel raggio di 2 km", source: "Open Data" },
+  ],
+  topRisks: [
+    { label: "Tempi di completamento delle opere soggetti a variazioni" },
+    { label: "Possibile impatto cantieri nel breve periodo", source: "Stime operative" },
+  ],
   narrativeObservation: "La zona mostra segnali infrastrutturali rilevanti. Il contesto è sostenuto da interventi e reti che meritano attenzione, con elementi di trasformazione concreti già in fase operativa.",
   sourceType: "elaborated",
   sourceLabel: "Elaborazione da Open Data comunali e fonti pubbliche",

@@ -16,6 +16,7 @@ import type {
   EnergyData, MoodScoreData, TimeViewData, OpportunityData,
   CondominioData, StoricoTransazioniData, InfrastrutureData,
   RischioZonaData, TrendDemograficoData, SviluppoAreaData, ScanResult, SourceMetadata,
+  InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
 } from "@/types";
 
 /* ── helpers ─────────────────────────────────────────── */
@@ -474,19 +475,21 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
   const bandClass = data.infrastructureBand ? bandColors[data.infrastructureBand] ?? "" : "";
   const bandLabel = data.infrastructureBand ? bandLabels[data.infrastructureBand] ?? data.infrastructureBand : null;
 
-  const drivers = (data.topDrivers ?? []).slice(0, 3);
-  const risks = (data.topRisks ?? []).slice(0, 2);
+  // Normalize helpers for mixed string | object arrays
+  const toDriverRisk = (item: InfrastructureDriverRisk | string): InfrastructureDriverRisk =>
+    typeof item === "string" ? { label: item } : item;
+  const toSignal = (item: InfrastructureSignal | string): InfrastructureSignal =>
+    typeof item === "string" ? { label: item } : item;
+  const toProject = (item: InfrastructureProject | string): InfrastructureProject =>
+    typeof item === "string" ? { label: item } : item;
 
-  // Collect signal highlights
-  const signalSections: { label: string; icon: React.ReactNode; items: string[] }[] = [];
-  const infraProjects = (data.infrastructureProjects ?? []).slice(0, 3);
-  if (infraProjects.length > 0) signalSections.push({ label: "Opere e progetti", icon: <Construction className="h-3 w-3 shrink-0 text-primary/70" />, items: infraProjects });
-  const mobility = (data.mobilitySignals ?? []).slice(0, 2);
-  if (mobility.length > 0) signalSections.push({ label: "Mobilità", icon: <MapPin className="h-3 w-3 shrink-0 text-primary/70" />, items: mobility });
-  const connectivity = (data.connectivitySignals ?? []).slice(0, 2);
-  if (connectivity.length > 0) signalSections.push({ label: "Connettività", icon: <Zap className="h-3 w-3 shrink-0 text-primary/70" />, items: connectivity });
-  const publicWorks = (data.publicWorksSignals ?? []).slice(0, 2);
-  if (publicWorks.length > 0) signalSections.push({ label: "Interventi pubblici", icon: <Rocket className="h-3 w-3 shrink-0 text-primary/70" />, items: publicWorks });
+  const drivers = (data.topDrivers ?? []).slice(0, 3).map(toDriverRisk);
+  const risks = (data.topRisks ?? []).slice(0, 2).map(toDriverRisk);
+
+  const infraProjects = (data.infrastructureProjects ?? []).slice(0, 3).map(toProject);
+  const mobilitySignals = (data.mobilitySignals ?? []).slice(0, 2).map(toSignal);
+  const connectivitySignals = (data.connectivitySignals ?? []).slice(0, 2).map(toSignal);
+  const publicWorksSignals = (data.publicWorksSignals ?? []).slice(0, 2).map(toSignal);
 
   return (
     <Section className={`bg-gradient-to-br ${bandClass}`}>
@@ -522,26 +525,82 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
           {drivers.map((d, i) => (
             <div key={i} className="flex items-start gap-2">
               <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" />
-              <p className="text-xs text-foreground leading-relaxed">{d}</p>
+              <div>
+                <p className="text-xs text-foreground leading-relaxed">{d.label}</p>
+                {d.source && <p className="text-[10px] text-muted-foreground/60">{d.source}</p>}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Signal sections */}
-      {signalSections.length > 0 && (
+      {/* Projects */}
+      {infraProjects.length > 0 && (
+        <div className="rounded-lg bg-background/50 border border-border/50 p-3 mb-3 space-y-2.5">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Opere e progetti</p>
+          {infraProjects.map((p, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <Construction className="h-3 w-3 mt-0.5 shrink-0 text-primary/70" />
+              <div className="min-w-0">
+                <p className="text-xs text-foreground leading-relaxed">{p.label}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                  {p.status && <span className="text-[10px] text-muted-foreground">{p.status}</span>}
+                  {p.category && <span className="text-[10px] text-muted-foreground">{p.category}</span>}
+                  {p.impact && <span className="text-[10px] text-primary/80 font-medium">{p.impact}</span>}
+                  {p.period && <span className="text-[10px] text-muted-foreground/60">{p.period}</span>}
+                </div>
+                {p.source && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{p.source}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Signals grid */}
+      {(mobilitySignals.length > 0 || connectivitySignals.length > 0 || publicWorksSignals.length > 0) && (
         <div className="rounded-lg bg-background/50 border border-border/50 p-3 mb-3 space-y-3">
-          {signalSections.map((section, si) => (
-            <div key={si} className="space-y-1.5">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{section.label}</p>
-              {section.items.map((item, ii) => (
-                <div key={ii} className="flex items-center gap-2 text-xs text-foreground">
-                  {section.icon}
-                  <span>{item}</span>
+          {mobilitySignals.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Mobilità</p>
+              {mobilitySignals.map((s, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-foreground">
+                  <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary/70" />
+                  <div>
+                    <span>{s.label}</span>
+                    {s.source && <span className="text-[10px] text-muted-foreground/60 ml-1">· {s.source}</span>}
+                  </div>
                 </div>
               ))}
             </div>
-          ))}
+          )}
+          {connectivitySignals.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Connettività</p>
+              {connectivitySignals.map((s, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-foreground">
+                  <Zap className="h-3 w-3 mt-0.5 shrink-0 text-primary/70" />
+                  <div>
+                    <span>{s.label}</span>
+                    {s.source && <span className="text-[10px] text-muted-foreground/60 ml-1">· {s.source}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {publicWorksSignals.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Interventi pubblici</p>
+              {publicWorksSignals.map((s, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-foreground">
+                  <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/70" />
+                  <div>
+                    <span>{s.label}</span>
+                    {s.source && <span className="text-[10px] text-muted-foreground/60 ml-1">· {s.source}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -552,7 +611,10 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
           {risks.map((r, i) => (
             <div key={i} className="flex items-start gap-2">
               <TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
-              <p className="text-xs text-foreground leading-relaxed">{r}</p>
+              <div>
+                <p className="text-xs text-foreground leading-relaxed">{r.label}</p>
+                {r.source && <p className="text-[10px] text-muted-foreground/60">{r.source}</p>}
+              </div>
             </div>
           ))}
         </div>
