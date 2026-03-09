@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LEGAL_ENTITY, val } from "@/lib/legalEntity";
+import { LEGAL_ENTITY, APP_BRAND, val } from "@/lib/legalEntity";
 
 const CookiePolicy = () => {
   const navigate = useNavigate();
@@ -39,6 +39,7 @@ const CookiePolicy = () => {
           <section>
             <h2 className="font-semibold text-foreground mb-2">Titolare</h2>
             <p>{val(LEGAL_ENTITY.companyName)}</p>
+            <p className="mt-1">Per informazioni: <a href={`mailto:${APP_BRAND.infoEmail}`} className="text-primary underline">{APP_BRAND.infoEmail}</a></p>
           </section>
 
           <p className="text-xs text-muted-foreground pt-4">Ultimo aggiornamento: marzo 2026</p>
