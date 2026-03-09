@@ -157,7 +157,7 @@ function PricingCard({ data, loading, error, message }: { data: PricingData | nu
       <Section>
         <div className="flex items-center gap-2 mb-3"><TrendingUp className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Prezzi di Mercato</span></div>
         <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
-        <SourceLabel text={data.sourceLabel || "Fonte ufficiale non trovata per l'indirizzo analizzato"} tier="stima" />
+        <SourceLabel text={data.sourceLabel || "Fonte ufficiale non trovata per l'indirizzo analizzato"} tier="non_disponibile" />
       </Section>
     );
   }
