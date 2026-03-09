@@ -426,28 +426,147 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
   );
 }
 
-function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; loading: boolean }) {
+function InfrastrutureCard({ data, loading, error, message }: { data: InfrastrutureData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (!data) return null;
-  const nearby = data.progetti.filter(p => p.distanzaKm <= 3);
-  const statoBadge: Record<string, string> = { approvato: "bg-blue-500/20 text-blue-400 border-blue-500/30", in_costruzione: "bg-amber-500/20 text-amber-400 border-amber-500/30", completato: "bg-green-500/20 text-green-400 border-green-500/30" };
-  return (
+  if (error) return (
     <Section>
-      <div className="flex items-center gap-2 mb-3"><Construction className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Infrastrutture</span></div>
-      {nearby.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nessun cantiere nelle vicinanze</p>
-      ) : (
-        <div className="space-y-2">
-          {nearby.map((p, i) => (
-            <div key={i} className="flex items-center justify-between text-sm">
-              <div><span className="font-medium text-foreground">{p.nome}</span><span className="text-xs text-muted-foreground ml-2">{fmt(p.distanzaKm)} km</span></div>
-              <Badge className={`text-[10px] ${statoBadge[p.stato] ?? ""}`}>{p.stato.replace("_", " ")}</Badge>
+      <div className="flex items-center gap-2 mb-2"><Construction className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Infrastrutture e Reti</span></div>
+      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
+    </Section>
+  );
+  if (!data) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><Construction className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Infrastrutture e Reti</span></div>
+      <span className="text-sm text-muted-foreground">Dati in elaborazione...</span>
+    </Section>
+  );
+
+  const isUnavailable = data.sourceType === "unavailable" || (data.infrastructureScore == null && !data.narrativeObservation);
+  if (isUnavailable) {
+    return (
+      <Section>
+        <div className="flex items-center gap-2 mb-3"><Construction className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Infrastrutture e Reti</span></div>
+        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dati non disponibili per questa zona"}</p>
+        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
+      </Section>
+    );
+  }
+
+  const tier = sourceTypeToTier(data.sourceType) === "stima" ? "elaborato" as DataTier : sourceTypeToTier(data.sourceType);
+  const sourceText = data.sourceLabel || "Elaborazione da Open Data comunali e fonti pubbliche";
+  const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
+
+  const bandColors: Record<string, string> = {
+    elevata: "from-emerald-500/20 to-green-500/10 border-emerald-500/30",
+    significativa: "from-sky-500/20 to-blue-500/10 border-sky-500/30",
+    moderata: "from-amber-500/15 to-yellow-500/10 border-amber-500/30",
+    contenuta: "from-orange-500/15 to-amber-500/10 border-orange-500/30",
+    limitata: "from-stone-500/15 to-stone-400/10 border-stone-500/30",
+  };
+  const bandLabels: Record<string, string> = {
+    elevata: "Copertura elevata",
+    significativa: "Copertura significativa",
+    moderata: "Copertura moderata",
+    contenuta: "Copertura contenuta",
+    limitata: "Copertura limitata",
+  };
+
+  const bandClass = data.infrastructureBand ? bandColors[data.infrastructureBand] ?? "" : "";
+  const bandLabel = data.infrastructureBand ? bandLabels[data.infrastructureBand] ?? data.infrastructureBand : null;
+
+  const drivers = (data.topDrivers ?? []).slice(0, 3);
+  const risks = (data.topRisks ?? []).slice(0, 2);
+
+  // Collect signal highlights
+  const signalSections: { label: string; icon: React.ReactNode; items: string[] }[] = [];
+  const infraProjects = (data.infrastructureProjects ?? []).slice(0, 3);
+  if (infraProjects.length > 0) signalSections.push({ label: "Opere e progetti", icon: <Construction className="h-3 w-3 shrink-0 text-primary/70" />, items: infraProjects });
+  const mobility = (data.mobilitySignals ?? []).slice(0, 2);
+  if (mobility.length > 0) signalSections.push({ label: "Mobilità", icon: <MapPin className="h-3 w-3 shrink-0 text-primary/70" />, items: mobility });
+  const connectivity = (data.connectivitySignals ?? []).slice(0, 2);
+  if (connectivity.length > 0) signalSections.push({ label: "Connettività", icon: <Zap className="h-3 w-3 shrink-0 text-primary/70" />, items: connectivity });
+  const publicWorks = (data.publicWorksSignals ?? []).slice(0, 2);
+  if (publicWorks.length > 0) signalSections.push({ label: "Interventi pubblici", icon: <Rocket className="h-3 w-3 shrink-0 text-primary/70" />, items: publicWorks });
+
+  return (
+    <Section className={`bg-gradient-to-br ${bandClass}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Construction className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-foreground text-sm">Infrastrutture e Reti</span>
+        </div>
+        {bandLabel && <Badge variant="secondary" className="text-[10px] font-medium">{bandLabel}</Badge>}
+      </div>
+
+      {/* Score prominente */}
+      {data.infrastructureScore != null && (
+        <div className="flex items-center gap-3 mb-4">
+          <ScoreArc value={data.infrastructureScore} />
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {data.infrastructureScore >= 70
+                ? "La zona mostra segnali infrastrutturali rilevanti. Il contesto è sostenuto da interventi e reti che meritano attenzione."
+                : data.infrastructureScore >= 45
+                  ? "Area con supporti infrastrutturali da non sottovalutare. Territorio con elementi di trasformazione concreti."
+                  : "Contesto infrastrutturale contenuto. La zona presenta margini di sviluppo da monitorare nel tempo."
+              }
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Drivers */}
+      {drivers.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Fattori chiave</p>
+          {drivers.map((d, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" />
+              <p className="text-xs text-foreground leading-relaxed">{d}</p>
             </div>
           ))}
         </div>
       )}
-      <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Cantieri aperti: {nearby.length}</span><span>Impatto: <span className="font-medium text-foreground capitalize">{data.impattoStimato}</span></span></div>
-      <SourceLabel text="Elaborazione da Open Data comunali" tier="elaborato" />
+
+      {/* Signal sections */}
+      {signalSections.length > 0 && (
+        <div className="rounded-lg bg-background/50 border border-border/50 p-3 mb-3 space-y-3">
+          {signalSections.map((section, si) => (
+            <div key={si} className="space-y-1.5">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{section.label}</p>
+              {section.items.map((item, ii) => (
+                <div key={ii} className="flex items-center gap-2 text-xs text-foreground">
+                  {section.icon}
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Risks */}
+      {risks.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Elementi di attenzione</p>
+          {risks.map((r, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
+              <p className="text-xs text-foreground leading-relaxed">{r}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Narrative */}
+      {data.narrativeObservation && (
+        <div className="rounded-lg bg-background/40 border border-border/40 px-3 py-2.5 mb-3">
+          <p className="text-xs text-foreground/90 leading-relaxed italic">"{data.narrativeObservation}"</p>
+        </div>
+      )}
+
+      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mb-1">{data.confidenceReason}</p>}
+      <SourceLabel text={`${sourceText}${periodText}`} tier={tier} />
     </Section>
   );
 }
