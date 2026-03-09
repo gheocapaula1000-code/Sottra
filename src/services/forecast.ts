@@ -4,7 +4,7 @@ import {
   mockInfrastrutture, mockRischioZona, mockTrendDemografico,
 } from "./mockData";
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true" && import.meta.env.MODE !== "production";
 
 function delay(ms = 600) {
   return new Promise((r) => setTimeout(r, ms + Math.random() * 400));

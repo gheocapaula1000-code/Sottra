@@ -992,11 +992,11 @@ const Result = () => {
 
           <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} error={result.sviluppoArea.status === "error"} message={result.sviluppoArea.message} />
 
-          {/* Messaggio sezioni future */}
+          {/* Moduli in attivazione */}
           <Section>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Altre sezioni in arrivo: dati catastali, energia e dettagli condominiali.
-              Il report distingue chiaramente tra dati ufficiali, dati elaborati e stime indicative.
+              Nuovi moduli in fase di attivazione: dati catastali, classe energetica, dettagli condominiali, storico transazioni, annunci attivi nella zona.
+              Saranno visibili non appena collegati a fonti reali verificate.
             </p>
           </Section>
 
