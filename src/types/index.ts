@@ -94,10 +94,16 @@ export interface TimeViewData extends SourceMetadata {
 }
 
 /** Indice opportunità */
-export interface OpportunityData {
-  indice: number;
-  quadrante: "Stella Nascente" | "Diamante Grezzo" | "Picco Raggiunto" | "Allerta Rossa";
-  raccomandazione: string;
+export interface OpportunityData extends SourceMetadata {
+  score: number | null;
+  band?: "molto_forte" | "forte" | "interessante" | "limitata" | null;
+  drivers?: string[] | null;
+  risks?: string[] | null;
+  observation?: string | null;
+  /** Legacy fields — fallback */
+  indice?: number;
+  quadrante?: string;
+  raccomandazione?: string;
 }
 
 /** Info condominio */
