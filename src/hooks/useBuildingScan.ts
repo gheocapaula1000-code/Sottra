@@ -10,7 +10,7 @@ const initialState: ScanResult = {
   listings: idle, energy: idle, condominio: idle,
   storicoTransazioni: idle, moodScore: idle, timeView: idle,
   opportunity: idle, infrastrutture: idle, rischioZona: idle,
-  trendDemografico: idle,
+  trendDemografico: idle, sviluppoArea: idle,
 } as ScanResult;
 
 type Action =
