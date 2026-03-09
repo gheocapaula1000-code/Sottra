@@ -525,26 +525,82 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
           {drivers.map((d, i) => (
             <div key={i} className="flex items-start gap-2">
               <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" />
-              <p className="text-xs text-foreground leading-relaxed">{d}</p>
+              <div>
+                <p className="text-xs text-foreground leading-relaxed">{d.label}</p>
+                {d.source && <p className="text-[10px] text-muted-foreground/60">{d.source}</p>}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Signal sections */}
-      {signalSections.length > 0 && (
+      {/* Projects */}
+      {infraProjects.length > 0 && (
+        <div className="rounded-lg bg-background/50 border border-border/50 p-3 mb-3 space-y-2.5">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Opere e progetti</p>
+          {infraProjects.map((p, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <Construction className="h-3 w-3 mt-0.5 shrink-0 text-primary/70" />
+              <div className="min-w-0">
+                <p className="text-xs text-foreground leading-relaxed">{p.label}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                  {p.status && <span className="text-[10px] text-muted-foreground">{p.status}</span>}
+                  {p.category && <span className="text-[10px] text-muted-foreground">{p.category}</span>}
+                  {p.impact && <span className="text-[10px] text-primary/80 font-medium">{p.impact}</span>}
+                  {p.period && <span className="text-[10px] text-muted-foreground/60">{p.period}</span>}
+                </div>
+                {p.source && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{p.source}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Signals grid */}
+      {(mobilitySignals.length > 0 || connectivitySignals.length > 0 || publicWorksSignals.length > 0) && (
         <div className="rounded-lg bg-background/50 border border-border/50 p-3 mb-3 space-y-3">
-          {signalSections.map((section, si) => (
-            <div key={si} className="space-y-1.5">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{section.label}</p>
-              {section.items.map((item, ii) => (
-                <div key={ii} className="flex items-center gap-2 text-xs text-foreground">
-                  {section.icon}
-                  <span>{item}</span>
+          {mobilitySignals.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Mobilità</p>
+              {mobilitySignals.map((s, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-foreground">
+                  <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary/70" />
+                  <div>
+                    <span>{s.label}</span>
+                    {s.source && <span className="text-[10px] text-muted-foreground/60 ml-1">· {s.source}</span>}
+                  </div>
                 </div>
               ))}
             </div>
-          ))}
+          )}
+          {connectivitySignals.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Connettività</p>
+              {connectivitySignals.map((s, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-foreground">
+                  <Zap className="h-3 w-3 mt-0.5 shrink-0 text-primary/70" />
+                  <div>
+                    <span>{s.label}</span>
+                    {s.source && <span className="text-[10px] text-muted-foreground/60 ml-1">· {s.source}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {publicWorksSignals.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Interventi pubblici</p>
+              {publicWorksSignals.map((s, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-foreground">
+                  <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/70" />
+                  <div>
+                    <span>{s.label}</span>
+                    {s.source && <span className="text-[10px] text-muted-foreground/60 ml-1">· {s.source}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -555,7 +611,10 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
           {risks.map((r, i) => (
             <div key={i} className="flex items-start gap-2">
               <TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
-              <p className="text-xs text-foreground leading-relaxed">{r}</p>
+              <div>
+                <p className="text-xs text-foreground leading-relaxed">{r.label}</p>
+                {r.source && <p className="text-[10px] text-muted-foreground/60">{r.source}</p>}
+              </div>
             </div>
           ))}
         </div>
