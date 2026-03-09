@@ -1,6 +1,6 @@
 import { useReducer, useState, useCallback } from "react";
 import { identifyBuilding, getCadastral, getPricing, getListings, getEnergy, getCondominio, getStoricoTransazioni } from "@/services/scan";
-import { getMoodScore, getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico } from "@/services/forecast";
+import { getMoodScore, getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea } from "@/services/forecast";
 import type { ScanResult, SectionState } from "@/types";
 
 const idle = { status: "idle" as const, data: null, message: null };
