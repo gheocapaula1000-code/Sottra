@@ -11,6 +11,7 @@ import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import CookieBanner from "@/components/CookieBanner";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
+import TrialProtectedRoute from "@/components/TrialProtectedRoute";
 import Index from "./pages/Index";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -49,8 +50,8 @@ const App = () => (
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/app" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                     <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
-                    <Route path="/scan" element={<ProtectedRoute><Scan /></ProtectedRoute>} />
-                    <Route path="/result" element={<ProtectedRoute><Result /></ProtectedRoute>} />
+                    <Route path="/scan" element={<TrialProtectedRoute><Scan /></TrialProtectedRoute>} />
+                    <Route path="/result" element={<TrialProtectedRoute><Result /></TrialProtectedRoute>} />
                     <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
                     <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                     <Route path="/cookie-policy" element={<CookiePolicy />} />

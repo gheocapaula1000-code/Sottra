@@ -71,6 +71,47 @@ serve(async (req) => {
       });
     }
 
+    // ── Check trial/subscription limits before recording ──
+    const { data: trial } = await supabaseClient
+      .from("user_trials")
+      .select("scans_used, max_scans, trial_end")
+      .eq("user_id", user.id)
+      .single();
+
+    const now = new Date();
+    const trialActive = trial
+      ? now < new Date(trial.trial_end) && trial.scans_used < trial.max_scans
+      : false;
+
+    // Check Stripe subscription (optional, non-blocking)
+    let hasSubscription = false;
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (stripeKey && user.email) {
+      try {
+        const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
+        const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+        if (customers.data.length > 0) {
+          const subs = await stripe.subscriptions.list({ customer: customers.data[0].id, status: "active", limit: 1 });
+          hasSubscription = subs.data.length > 0;
+        }
+      } catch {
+        // Stripe not available — that's fine
+      }
+    }
+
+    if (!trialActive && !hasSubscription) {
+      return new Response(JSON.stringify({
+        error: "Limite scansioni raggiunto",
+        limit_reached: true,
+        scans_used: trial?.scans_used ?? 0,
+        max_scans: trial?.max_scans ?? 5,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403,
+      });
+    }
+
     // Call the idempotent DB function
     const { data, error } = await supabaseClient.rpc("record_scan", {
       _user_id: user.id,
