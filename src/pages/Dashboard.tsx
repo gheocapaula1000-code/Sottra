@@ -96,10 +96,10 @@ const Dashboard = () => {
           Ciò che sta sotto, lo sai solo tu.
         </p>
         <p className="mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
-          Inquadra qualsiasi edificio. Ottieni un quadro informativo in pochi secondi.
+          Inquadra un edificio e ottieni il quadro informativo della zona.
         </p>
         <Button className="mt-10" size="lg" onClick={() => navigate("/scan")}>
-          Inizia a scoprire
+          Scansiona un edificio
         </Button>
         <button
           onClick={() => navigate("/history")}
