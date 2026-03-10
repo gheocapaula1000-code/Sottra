@@ -11,12 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 
 const planFeatures: Record<PlanKey, string[]> = {
   agente: [
-    "Analisi completa — dati ufficiali ed elaborati separati",
-    "Quadro predittivo zona e trend demografico",
+    "Analisi completa — dati ufficiali ed elaborati distinti",
+    "Quadro demografico e indicatori di zona",
     "Prezzi di mercato, rischio zona, infrastrutture",
     "Indice opportunità e scenario evolutivo",
     "Storico scansioni 6 mesi",
-    "Solo visualizzazione in-app (no export PDF)",
+    "Visualizzazione in-app",
     "Dispositivo vincolato per durata abbonamento",
   ],
   agenzia: [
