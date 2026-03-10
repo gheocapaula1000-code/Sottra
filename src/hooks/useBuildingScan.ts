@@ -37,6 +37,7 @@ function reducer(state: ScanResult, action: Action): ScanResult {
 export function useBuildingScan() {
   const [result, dispatch] = useReducer(reducer, initialState);
   const [scanning, setScanning] = useState(false);
+  const [limitReached, setLimitReached] = useState(false);
   const scanIdRef = useRef<string | null>(null);
 
   const scan = useCallback(async (photo: string, lat: number, lng: number) => {
