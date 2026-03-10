@@ -54,7 +54,7 @@ export default function ValueModules() {
           Ogni modulo aggiunge un livello di lettura
         </h2>
         <p className="mx-auto mt-3 max-w-lg text-center text-sm text-muted-foreground sm:text-base">
-          Non un solo numero: un quadro strutturato, costruito su dati reali.
+          Non un solo numero: un quadro strutturato, costruito su fonti pubbliche e dati verificabili.
         </p>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

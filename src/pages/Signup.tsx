@@ -38,6 +38,7 @@ const Signup = () => {
         <div className="flex flex-col items-center gap-2">
           <SottraMark size="lg" />
           <p className="text-sm text-muted-foreground">Crea il tuo account</p>
+          <p className="text-xs text-primary font-medium">3 giorni gratis · 5 scansioni · Nessuna carta richiesta</p>
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4">

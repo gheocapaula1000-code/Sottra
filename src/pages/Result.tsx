@@ -98,7 +98,7 @@ function HeaderCard({ photo, identify, loading, lat, lng }: { photo: string; ide
           <h2 className="text-lg font-bold text-foreground">{identify.address}</h2>
           <p className="text-xs text-muted-foreground">ID: {identify.buildingId}</p>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">{Math.round(identify.confidence * 100)}% match</Badge>
+            <Badge variant="secondary">Attendibilità {Math.round(identify.confidence * 100)}%</Badge>
             {lat != null && lng != null && <span className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{lat.toFixed(4)}, {lng.toFixed(4)}</span>}
           </div>
         </div>
@@ -172,7 +172,7 @@ function PricingCard({ data, loading, error, message }: { data: PricingData | nu
     <Section>
       <div className="flex items-center gap-2 mb-3"><TrendingUp className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Prezzi di Mercato</span></div>
       <p className="text-2xl font-bold text-foreground">{fmtEur(data.prezzoMq)}<span className="text-sm font-normal text-muted-foreground">/m²</span></p>
-      <p className="text-xs text-muted-foreground mt-1">Range: {fmtEur(data.prezzoMqMin)} – {fmtEur(data.prezzoMqMax)}</p>
+      <p className="text-xs text-muted-foreground mt-1">Fascia: {fmtEur(data.prezzoMqMin)} – {fmtEur(data.prezzoMqMax)}</p>
       <div className="flex items-center gap-2 mt-2"><span className="text-xs text-muted-foreground">Media zona: {fmtEur(data.mediaZona)}</span><Badge variant={diff >= 0 ? "default" : "secondary"}>{diff >= 0 ? "Sopra" : "Sotto"} media</Badge></div>
       <p className="text-xs text-muted-foreground mt-2">Trend 5 anni: <span className="font-medium text-foreground">{data.trend5Anni != null && data.trend5Anni > 0 ? "+" : ""}{fmt(data.trend5Anni)}%</span></p>
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mt-1">{data.confidenceReason}</p>}
@@ -993,11 +993,18 @@ const Result = () => {
           <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} error={result.sviluppoArea.status === "error"} message={result.sviluppoArea.message} />
 
           {/* Moduli in attivazione */}
-          <Section>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Nuovi moduli in fase di attivazione: dati catastali, classe energetica, dettagli condominiali, storico transazioni, annunci attivi nella zona.
-              Saranno visibili non appena collegati a fonti reali verificate.
-            </p>
+          <Section className="border-dashed border-border/60">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                <Construction className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground mb-1">Moduli in attivazione</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Dati catastali, classe energetica, dettagli condominiali, storico transazioni e annunci nella zona saranno disponibili progressivamente, man mano che le fonti saranno integrate e verificate.
+                </p>
+              </div>
+            </div>
           </Section>
 
           {/* Card commentate — da riattivare con dati reali */}
@@ -1010,8 +1017,8 @@ const Result = () => {
         </div>
       </div>
 
-      <div className="fixed bottom-0 inset-x-0 bg-background/80 backdrop-blur-lg border-t border-border px-5 pb-[max(env(safe-area-inset-bottom,20px),20px)] pt-3 flex gap-3">
-        <Button className="flex-1" size="lg" onClick={() => navigate("/scan")}>Scansiona un altro</Button>
+      <div className="fixed bottom-0 inset-x-0 bg-background/80 backdrop-blur-lg border-t border-border px-5 pb-[max(env(safe-area-inset-bottom,20px),20px)] pt-3 flex gap-3 z-40">
+        <Button className="flex-1 min-h-[44px]" size="lg" onClick={() => navigate("/scan")}>Nuova scansione</Button>
         <Button variant="outline" size="lg" className="shrink-0" onClick={() => {
           if (!state) return;
           const identify = result.identify.data as IdentifyResult | null;

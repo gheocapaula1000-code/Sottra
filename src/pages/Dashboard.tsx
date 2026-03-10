@@ -45,12 +45,12 @@ const Dashboard = () => {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+      <header className="flex items-center justify-between gap-2 px-4 sm:px-6 py-4 border-b border-border">
         <SottraMark size="sm" />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
           {isAdmin && user?.email === "gheocapaula@gmail.com" && (
-            <span className="text-[10px] text-muted-foreground/60 font-mono">
-              Owner mode attivo
+            <span className="text-[10px] text-muted-foreground/60 font-mono hidden sm:inline">
+              Owner
             </span>
           )}
           {isAdmin && (
@@ -58,23 +58,23 @@ const Dashboard = () => {
               onClick={() => navigate("/admin")}
               className="text-xs text-primary font-medium hover:underline transition-colors"
             >
-              Admin →
+              Admin
             </button>
           )}
           {!isAdmin && trial?.active && !subscribed && (
-            <span className="text-xs text-primary font-medium">
-              Trial: {trial.scans_used}/{trial.max_scans} scansioni
+            <span className="text-xs text-primary font-medium whitespace-nowrap">
+              {trial.scans_used}/{trial.max_scans} scansioni
             </span>
           )}
           {subscribed && !isAdmin && (
             <button
               onClick={handleManageSubscription}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
             >
-              Gestisci abbonamento
+              Abbonamento
             </button>
           )}
-          <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
+          <span className="text-xs text-muted-foreground hidden sm:inline truncate max-w-[160px]">{user?.email}</span>
           <Button variant="ghost" size="sm" onClick={signOut}>Esci</Button>
         </div>
       </header>
@@ -96,10 +96,10 @@ const Dashboard = () => {
           Ciò che sta sotto, lo sai solo tu.
         </p>
         <p className="mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
-          Inquadra qualsiasi edificio. Ottieni un quadro informativo in pochi secondi.
+          Inquadra un edificio e ottieni il quadro informativo della zona.
         </p>
         <Button className="mt-10" size="lg" onClick={() => navigate("/scan")}>
-          Inizia a scoprire
+          Scansiona un edificio
         </Button>
         <button
           onClick={() => navigate("/history")}
