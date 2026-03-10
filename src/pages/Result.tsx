@@ -98,7 +98,7 @@ function HeaderCard({ photo, identify, loading, lat, lng }: { photo: string; ide
           <h2 className="text-lg font-bold text-foreground">{identify.address}</h2>
           <p className="text-xs text-muted-foreground">ID: {identify.buildingId}</p>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">{Math.round(identify.confidence * 100)}% match</Badge>
+            <Badge variant="secondary">Attendibilità {Math.round(identify.confidence * 100)}%</Badge>
             {lat != null && lng != null && <span className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{lat.toFixed(4)}, {lng.toFixed(4)}</span>}
           </div>
         </div>
