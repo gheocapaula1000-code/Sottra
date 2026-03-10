@@ -14,7 +14,7 @@ const levels = [
   {
     icon: Eye,
     title: "Lettura chiara e operativa",
-    desc: "Ogni dato è classificato: ufficiale, elaborato o non disponibile. Nessuna ambiguità.",
+    desc: "Ogni informazione è classificata: dato ufficiale, dato elaborato o non disponibile. Sempre trasparente.",
   },
 ];
 

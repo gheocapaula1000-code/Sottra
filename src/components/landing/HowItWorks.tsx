@@ -52,7 +52,7 @@ export default function HowItWorks() {
 
         <Button
           size="lg"
-          className="mt-10 gap-2 text-base"
+          className="mt-10 gap-2 text-base min-h-[48px]"
           onClick={() => navigate("/signup")}
         >
           Inizia senza carta

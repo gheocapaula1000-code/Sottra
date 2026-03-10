@@ -17,7 +17,7 @@ export default function CtaFinal() {
         </p>
         <Button
           size="lg"
-          className="mt-8 gap-2 text-base"
+          className="mt-8 gap-2 text-base min-h-[48px]"
           onClick={() => navigate("/signup")}
         >
           Inizia senza carta <ArrowRight className="h-4 w-4" />

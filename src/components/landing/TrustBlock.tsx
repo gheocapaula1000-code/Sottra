@@ -5,7 +5,7 @@ const items = [
   {
     icon: Database,
     title: "Fonti ufficiali dove disponibili",
-    desc: "OMI, ISTAT, ISPRA, INGV e dati catastali. Quando il dato è ufficiale, lo diciamo.",
+    desc: "OMI, ISTAT, ISPRA, INGV. Quando il dato proviene da una fonte istituzionale, lo indichiamo.",
     badge: "Dato ufficiale",
   },
   {

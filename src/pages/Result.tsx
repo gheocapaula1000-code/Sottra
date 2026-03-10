@@ -172,7 +172,7 @@ function PricingCard({ data, loading, error, message }: { data: PricingData | nu
     <Section>
       <div className="flex items-center gap-2 mb-3"><TrendingUp className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Prezzi di Mercato</span></div>
       <p className="text-2xl font-bold text-foreground">{fmtEur(data.prezzoMq)}<span className="text-sm font-normal text-muted-foreground">/m²</span></p>
-      <p className="text-xs text-muted-foreground mt-1">Range: {fmtEur(data.prezzoMqMin)} – {fmtEur(data.prezzoMqMax)}</p>
+      <p className="text-xs text-muted-foreground mt-1">Fascia: {fmtEur(data.prezzoMqMin)} – {fmtEur(data.prezzoMqMax)}</p>
       <div className="flex items-center gap-2 mt-2"><span className="text-xs text-muted-foreground">Media zona: {fmtEur(data.mediaZona)}</span><Badge variant={diff >= 0 ? "default" : "secondary"}>{diff >= 0 ? "Sopra" : "Sotto"} media</Badge></div>
       <p className="text-xs text-muted-foreground mt-2">Trend 5 anni: <span className="font-medium text-foreground">{data.trend5Anni != null && data.trend5Anni > 0 ? "+" : ""}{fmt(data.trend5Anni)}%</span></p>
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mt-1">{data.confidenceReason}</p>}

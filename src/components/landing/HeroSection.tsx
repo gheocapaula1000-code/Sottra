@@ -60,7 +60,7 @@ export default function HeroSection() {
         <div className="mt-8 flex w-full flex-col items-center gap-3 sm:mt-10 sm:flex-row sm:justify-center sm:gap-4">
           <Button
             size="lg"
-            className="w-full gap-2 text-base sm:w-auto"
+            className="w-full gap-2 text-base sm:w-auto min-h-[48px]"
             onClick={() => navigate("/signup")}
           >
             Prova gratis 3 giorni
