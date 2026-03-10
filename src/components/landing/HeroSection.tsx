@@ -54,7 +54,7 @@ export default function HeroSection() {
 
         <p className="mx-auto mt-5 max-w-[18rem] text-base leading-relaxed text-muted-foreground sm:mt-6 sm:max-w-md sm:text-lg" style={{ textWrap: "balance" as any }}>
           Da un solo scatto,{" "}
-          <strong className="text-foreground">il quadro generale.</strong>
+          <strong className="text-foreground">il contesto che conta.</strong>
         </p>
 
         <div className="mt-8 flex w-full flex-col items-center gap-3 sm:mt-10 sm:flex-row sm:justify-center sm:gap-4">
