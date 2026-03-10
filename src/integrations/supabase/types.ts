@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      scan_events: {
+        Row: {
+          created_at: string
+          id: string
+          scan_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          scan_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          scan_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -76,6 +97,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      record_scan: {
+        Args: { _scan_id: string; _user_id: string }
+        Returns: Json
       }
     }
     Enums: {
