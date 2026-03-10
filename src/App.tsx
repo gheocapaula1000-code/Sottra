@@ -11,6 +11,7 @@ import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import CookieBanner from "@/components/CookieBanner";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
+import TrialProtectedRoute from "@/components/TrialProtectedRoute";
 import Index from "./pages/Index";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
