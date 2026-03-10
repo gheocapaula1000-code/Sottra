@@ -1017,8 +1017,8 @@ const Result = () => {
         </div>
       </div>
 
-      <div className="fixed bottom-0 inset-x-0 bg-background/80 backdrop-blur-lg border-t border-border px-5 pb-[max(env(safe-area-inset-bottom,20px),20px)] pt-3 flex gap-3">
-        <Button className="flex-1" size="lg" onClick={() => navigate("/scan")}>Scansiona un altro</Button>
+      <div className="fixed bottom-0 inset-x-0 bg-background/80 backdrop-blur-lg border-t border-border px-5 pb-[max(env(safe-area-inset-bottom,20px),20px)] pt-3 flex gap-3 z-40">
+        <Button className="flex-1 min-h-[44px]" size="lg" onClick={() => navigate("/scan")}>Nuova scansione</Button>
         <Button variant="outline" size="lg" className="shrink-0" onClick={() => {
           if (!state) return;
           const identify = result.identify.data as IdentifyResult | null;
