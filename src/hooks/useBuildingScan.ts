@@ -59,12 +59,16 @@ export function useBuildingScan() {
       set(key, { status: "error", data: null, message: err instanceof Error ? err.message : "Errore imprevisto" });
     };
 
-    // Record scan consumption (idempotent, fire-and-forget)
-    supabase.functions.invoke("record-scan", {
-      body: { scan_id: scanId },
-    }).catch((err) => {
-      console.error("[SCAN] record-scan failed:", err);
-    });
+    let scanRecorded = false;
+    const recordOnce = () => {
+      if (scanRecorded) return;
+      scanRecorded = true;
+      supabase.functions.invoke("record-scan", {
+        body: { scan_id: scanId },
+      }).catch((err) => {
+        console.error("[SCAN] record-scan failed:", err);
+      });
+    };
 
     const scanEngine = async () => {
       const idRes = await identifyBuilding(photo, lat, lng);
@@ -75,6 +79,9 @@ export function useBuildingScan() {
       });
 
       if (idRes.error || !idRes.data) return;
+
+      // Pipeline started successfully — record consumption once
+      recordOnce();
 
       const address = (idRes.data as { address?: string }).address ?? "";
       if (!address) return;

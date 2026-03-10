@@ -20,7 +20,7 @@ const TerminiCondizioni = () => {
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Oggetto</h2>
-            <p>{APP_BRAND.name} è una PWA che permette di fotografare edifici e ottenere un quadro informativo composto da prezzi di mercato, indicatori di rischio, trend demografici, analisi infrastrutturale, dinamica territoriale e indicatori predittivi. Il report distingue chiaramente tra dati ufficiali e dati elaborati.</p>
+            <p>{APP_BRAND.name} è una PWA che permette di fotografare edifici e ottenere un quadro informativo composto da prezzi di mercato, indicatori di rischio, trend demografici, analisi infrastrutturale, dinamica territoriale e indicatori di contesto. Il report distingue chiaramente tra dati ufficiali e dati elaborati.</p>
             <p className="mt-2">Ulteriori moduli — tra cui dati catastali, classificazione energetica, annunci nella zona, storico transazioni e informazioni condominiali — sono in fase di attivazione progressiva e verranno resi disponibili man mano che le relative fonti saranno integrate.</p>
           </section>
 
