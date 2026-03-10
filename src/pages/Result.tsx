@@ -993,11 +993,18 @@ const Result = () => {
           <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} error={result.sviluppoArea.status === "error"} message={result.sviluppoArea.message} />
 
           {/* Moduli in attivazione */}
-          <Section>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Nuovi moduli in fase di attivazione: dati catastali, classe energetica, dettagli condominiali, storico transazioni, annunci attivi nella zona.
-              Saranno visibili non appena collegati a fonti reali verificate.
-            </p>
+          <Section className="border-dashed border-border/60">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                <Construction className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground mb-1">Moduli in attivazione</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Dati catastali, classe energetica, dettagli condominiali, storico transazioni e annunci nella zona saranno disponibili progressivamente, man mano che le fonti saranno integrate e verificate.
+                </p>
+              </div>
+            </div>
           </Section>
 
           {/* Card commentate — da riattivare con dati reali */}
