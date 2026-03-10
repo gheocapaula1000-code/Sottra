@@ -139,8 +139,9 @@ export function useBuildingScan() {
   return {
     result,
     scanning,
+    limitReached,
     scan,
     scanId: scanIdRef.current,
-    reset: () => { dispatch({ type: "RESET_IDLE" }); setScanning(false); },
+    reset: () => { dispatch({ type: "RESET_IDLE" }); setScanning(false); setLimitReached(false); },
   };
 }
