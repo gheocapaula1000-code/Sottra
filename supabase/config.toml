@@ -1,1 +1,4 @@
 project_id = "vveunbxfcfhnkkhrqutf"
+
+[functions.record-scan]
+verify_jwt = false

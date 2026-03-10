@@ -53,7 +53,7 @@ serve(async (req) => {
     }
 
     // ── 3. Check backend configuration ────────────────────
-    const CORE_API_URL = Deno.env.get("CORE_API_URL");
+    const CORE_API_URL = (Deno.env.get("CORE_API_URL") || "").replace(/\/+$/, "");
     const CORE_API_KEY = Deno.env.get("CORE_API_KEY");
 
     if (!CORE_API_URL || !CORE_API_KEY) {
@@ -75,7 +75,8 @@ serve(async (req) => {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${CORE_API_KEY}`,
+          "Authorization": `Bearer ${CORE_API_KEY}`,
+          "x-source-app": "sottra",
         },
         body: payload ? JSON.stringify(payload) : undefined,
         signal: controller.signal,

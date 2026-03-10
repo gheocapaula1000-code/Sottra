@@ -39,7 +39,7 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: "Sottra",
         short_name: "Sottra",
-        description: "Inquadra qualsiasi edificio. Scopri tutto in 3 secondi.",
+        description: "Quadro informativo immobiliare da fonti pubbliche e dati elaborati.",
         theme_color: "#0A0A0F",
         background_color: "#0A0A0F",
         display: "standalone",
