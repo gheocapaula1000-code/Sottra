@@ -70,7 +70,8 @@ export function useBuildingScan() {
       });
     };
 
-    const scanEngine = async () => {
+    const runPipeline = async () => {
+      // Step 1: Identify building
       const idRes = await identifyBuilding(photo, lat, lng);
       set("identify", {
         status: idRes.error ? "error" : "success",
@@ -80,20 +81,47 @@ export function useBuildingScan() {
 
       if (idRes.error || !idRes.data) return;
 
-      // Pipeline started successfully — record consumption once
-      recordOnce();
+      // Step 2: Record scan consumption — AWAIT and BLOCK if refused
+      try {
+        const { data: recordData, error: recordError } = await supabase.functions.invoke("record-scan", {
+          body: { scan_id: scanId },
+        });
 
+        if (recordError) {
+          console.error("[SCAN] record-scan invocation error:", recordError);
+          // Mark all remaining sections as error
+          const errMsg = "Errore durante la registrazione della scansione. Riprova.";
+          for (const k of Object.keys(initialState) as (keyof ScanResult)[]) {
+            if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
+          }
+          return;
+        }
+
+        // Server returned 403 / limit_reached
+        if (recordData?.limit_reached || recordData?.error) {
+          const errMsg = recordData?.error ?? "Limite scansioni raggiunto";
+          for (const k of Object.keys(initialState) as (keyof ScanResult)[]) {
+            if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
+          }
+          setLimitReached(true);
+          return;
+        }
+      } catch (err) {
+        console.error("[SCAN] record-scan failed:", err);
+        const errMsg = "Servizio temporaneamente non disponibile. Riprova.";
+        for (const k of Object.keys(initialState) as (keyof ScanResult)[]) {
+          if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
+        }
+        return;
+      }
+
+      // Step 3: Consumption confirmed — now launch all modules
       const address = (idRes.data as { address?: string }).address ?? "";
-      if (!address) return;
 
-      // Only live modules
       await Promise.allSettled([
-        getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing")),
-      ]);
-    };
-
-    const forecastEngine = async () => {
-      await Promise.allSettled([
+        // Pricing (needs address)
+        ...(address ? [getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing"))] : []),
+        // Forecast modules (coordinate-based)
         getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
         getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
         getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
@@ -103,7 +131,7 @@ export function useBuildingScan() {
       ]);
     };
 
-    await Promise.allSettled([scanEngine(), forecastEngine()]);
+    await runPipeline();
     setScanning(false);
   }, []);
 
