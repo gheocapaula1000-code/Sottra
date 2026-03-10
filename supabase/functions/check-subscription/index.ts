@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -7,11 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Centralized owner bypass — works independently of DB roles
 const OWNER_EMAILS = ["gheocapaula@gmail.com"];
-
-const isOwnerEmail = (email: string) =>
-  OWNER_EMAILS.includes(email.toLowerCase());
+const isOwnerEmail = (email: string) => OWNER_EMAILS.includes(email.toLowerCase());
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -34,7 +30,7 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    // Owner bypass — immediate return, no Stripe call needed
+    // Owner bypass
     if (isOwnerEmail(user.email)) {
       return new Response(JSON.stringify({
         subscribed: true,
@@ -48,7 +44,7 @@ serve(async (req) => {
       });
     }
 
-    // Check if user is admin via DB roles
+    // Check admin via DB roles
     const { data: roleData } = await supabaseClient
       .from("user_roles")
       .select("role")
@@ -71,31 +67,7 @@ serve(async (req) => {
       });
     }
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2025-08-27.basil",
-    });
-
-    // Check Stripe subscription
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let subscribed = false;
-    let productId = null;
-    let subscriptionEnd = null;
-
-    if (customers.data.length > 0) {
-      const subscriptions = await stripe.subscriptions.list({
-        customer: customers.data[0].id,
-        status: "active",
-        limit: 1,
-      });
-      if (subscriptions.data.length > 0) {
-        subscribed = true;
-        const sub = subscriptions.data[0];
-        subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
-        productId = sub.items.data[0].price.product;
-      }
-    }
-
-    // Get trial info
+    // ── Trial (always fetched, independent of Stripe) ──
     const { data: trial } = await supabaseClient
       .from("user_trials")
       .select("*")
@@ -106,6 +78,37 @@ serve(async (req) => {
     const trialActive = trial
       ? now < new Date(trial.trial_end) && trial.scans_used < trial.max_scans
       : false;
+
+    // ── Stripe subscription (optional, graceful failure) ──
+    let subscribed = false;
+    let productId = null;
+    let subscriptionEnd = null;
+
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (stripeKey) {
+      try {
+        const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
+        const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+
+        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+        if (customers.data.length > 0) {
+          const subscriptions = await stripe.subscriptions.list({
+            customer: customers.data[0].id,
+            status: "active",
+            limit: 1,
+          });
+          if (subscriptions.data.length > 0) {
+            subscribed = true;
+            const sub = subscriptions.data[0];
+            subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
+            productId = sub.items.data[0].price.product;
+          }
+        }
+      } catch (stripeErr) {
+        console.error("Stripe check failed (non-blocking):", stripeErr);
+        // Don't fail — trial still works
+      }
+    }
 
     return new Response(JSON.stringify({
       subscribed,

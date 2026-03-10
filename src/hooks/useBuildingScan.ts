@@ -1,6 +1,7 @@
-import { useReducer, useState, useCallback } from "react";
+import { useReducer, useState, useCallback, useRef } from "react";
 import { identifyBuilding, getPricing } from "@/services/scan";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea } from "@/services/forecast";
+import { supabase } from "@/integrations/supabase/client";
 import type { ScanResult, SectionState } from "@/types";
 
 const idle = { status: "idle" as const, data: null, message: null };
@@ -36,8 +37,13 @@ function reducer(state: ScanResult, action: Action): ScanResult {
 export function useBuildingScan() {
   const [result, dispatch] = useReducer(reducer, initialState);
   const [scanning, setScanning] = useState(false);
+  const scanIdRef = useRef<string | null>(null);
 
   const scan = useCallback(async (photo: string, lat: number, lng: number) => {
+    // Generate unique scan_id for idempotent counting
+    const scanId = crypto.randomUUID();
+    scanIdRef.current = scanId;
+
     setScanning(true);
     dispatch({ type: "RESET_ALL_LOADING" });
 
@@ -53,6 +59,13 @@ export function useBuildingScan() {
       set(key, { status: "error", data: null, message: err instanceof Error ? err.message : "Errore imprevisto" });
     };
 
+    // Record scan consumption (idempotent, fire-and-forget)
+    supabase.functions.invoke("record-scan", {
+      body: { scan_id: scanId },
+    }).catch((err) => {
+      console.error("[SCAN] record-scan failed:", err);
+    });
+
     const scanEngine = async () => {
       const idRes = await identifyBuilding(photo, lat, lng);
       set("identify", {
@@ -66,14 +79,13 @@ export function useBuildingScan() {
       const address = (idRes.data as { address?: string }).address ?? "";
       if (!address) return;
 
-      // Only call live modules — inactive modules (cadastral, listings, energy, condominio, storicoTransazioni) skipped
+      // Only live modules
       await Promise.allSettled([
         getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing")),
       ]);
     };
 
     const forecastEngine = async () => {
-      // moodScore skipped — not yet live
       await Promise.allSettled([
         getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
         getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
@@ -92,6 +104,7 @@ export function useBuildingScan() {
     result,
     scanning,
     scan,
+    scanId: scanIdRef.current,
     reset: () => { dispatch({ type: "RESET_IDLE" }); setScanning(false); },
   };
 }
