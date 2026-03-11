@@ -24,6 +24,23 @@ import type {
 
 /* ── helpers ─────────────────────────────────────────── */
 
+/** Safely extract display text from a value that may be a string or an object with a label/message key */
+function toText(v: unknown): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number") return String(v);
+  if (typeof v === "object") {
+    const obj = v as Record<string, unknown>;
+    if (typeof obj.label === "string") return obj.label;
+    if (typeof obj.message === "string") return obj.message;
+    if (typeof obj.text === "string") return obj.text;
+    if (typeof obj.title === "string") return obj.title;
+    if (typeof obj.name === "string") return obj.name;
+    return "";
+  }
+  return String(v);
+}
+
 function fmt(n: number | null | undefined): string {
   if (n == null) return "—";
   return n.toLocaleString("it-IT", { maximumFractionDigits: 1 });
