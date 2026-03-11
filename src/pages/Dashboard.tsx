@@ -240,7 +240,7 @@ const Dashboard = () => {
                     {subscribed ? "Pro" : trial?.active ? "Trial" : "Free"}
                   </Badge>
                 </div>
-                {!isAdmin && trial?.active && !subscribed && (
+                {trial?.active && !subscribed && (
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Scansioni</span>
                     <span className="text-xs font-medium text-foreground">{trial.scans_used}/{trial.max_scans}</span>
