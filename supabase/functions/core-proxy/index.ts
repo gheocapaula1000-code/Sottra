@@ -72,6 +72,7 @@ serve(async (req) => {
         method,
         headers: {
           "Content-Type": "application/json",
+          "x-internal-secret": CORE_API_KEY,
           "Authorization": `Bearer ${CORE_API_KEY}`,
           "x-source-app": "sottra",
         },

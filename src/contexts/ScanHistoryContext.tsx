@@ -9,6 +9,12 @@ export interface SavedScan {
   lng: number | null;
   date: string;
   moodScore: number | null;
+  convergenzaTerritoriale: {
+    score: number | null;
+    band: string | null;
+    convergenceLevel: string | null;
+    coverageLevel: string | null;
+  } | null;
   scanResult: Partial<ScanResult>;
 }
 
