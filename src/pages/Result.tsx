@@ -651,7 +651,7 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
           {highlights.map((h, i) => (
             <div key={i} className="flex items-center gap-2 text-xs text-foreground">
               <Construction className="h-3 w-3 shrink-0 text-primary/70" />
-              <span>{h}</span>
+              <span>{toText(h)}</span>
             </div>
           ))}
         </div>
