@@ -150,23 +150,6 @@ const Dashboard = () => {
           {/* Left column — 2/3 */}
           <div className="lg:col-span-2 space-y-4">
 
-            {/* CTA card */}
-            <Card className="border-primary/20 bg-primary/[0.04]">
-              <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <Camera className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Avvia una nuova scansione</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Inquadra un edificio e ottieni il quadro informativo della zona.</p>
-                </div>
-                <Button className="min-h-[44px] sm:min-h-0 sm:h-9 w-full sm:w-auto shrink-0 gap-1.5" onClick={() => navigate("/scan")}>
-                  <ScanLine className="h-4 w-4" />
-                  Scansiona
-                </Button>
-              </CardContent>
-            </Card>
-
             {/* Recent scans */}
             <Card>
               <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
