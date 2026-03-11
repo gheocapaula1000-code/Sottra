@@ -276,7 +276,7 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
           {drivers.map((d, i) => (
             <div key={i} className="flex items-start gap-2">
               <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" />
-              <p className="text-xs text-foreground leading-relaxed">{d}</p>
+              <p className="text-xs text-foreground leading-relaxed">{toText(d)}</p>
             </div>
           ))}
         </div>
