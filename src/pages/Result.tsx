@@ -746,7 +746,7 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
           {drivers.map((d, i) => (
             <div key={i} className="flex items-start gap-2">
               <div className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 bg-emerald-500" />
-              <p className="text-xs text-foreground leading-relaxed">{d}</p>
+              <p className="text-xs text-foreground leading-relaxed">{toText(d)}</p>
             </div>
           ))}
         </div>
