@@ -12,7 +12,11 @@ import CookieBanner from "@/components/CookieBanner";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
 import TrialProtectedRoute from "@/components/TrialProtectedRoute";
+import PwaUpdateBanner from "@/components/PwaUpdateBanner";
+import { BUILD_VERSION } from "@/lib/buildInfo";
 import Index from "./pages/Index";
+
+if (import.meta.env.DEV) console.log(`[Sottra] build ${BUILD_VERSION}`);
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -60,6 +64,7 @@ const App = () => (
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
+                <PwaUpdateBanner />
                 <CookieBanner />
               </BrowserRouter>
             </ScanHistoryProvider>
