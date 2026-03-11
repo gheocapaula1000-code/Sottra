@@ -24,6 +24,23 @@ import type {
 
 /* ── helpers ─────────────────────────────────────────── */
 
+/** Safely extract display text from a value that may be a string or an object with a label/message key */
+function toText(v: unknown): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number") return String(v);
+  if (typeof v === "object") {
+    const obj = v as Record<string, unknown>;
+    if (typeof obj.label === "string") return obj.label;
+    if (typeof obj.message === "string") return obj.message;
+    if (typeof obj.text === "string") return obj.text;
+    if (typeof obj.title === "string") return obj.title;
+    if (typeof obj.name === "string") return obj.name;
+    return "";
+  }
+  return String(v);
+}
+
 function fmt(n: number | null | undefined): string {
   if (n == null) return "—";
   return n.toLocaleString("it-IT", { maximumFractionDigits: 1 });
@@ -259,7 +276,7 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
           {drivers.map((d, i) => (
             <div key={i} className="flex items-start gap-2">
               <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" />
-              <p className="text-xs text-foreground leading-relaxed">{d}</p>
+              <p className="text-xs text-foreground leading-relaxed">{toText(d)}</p>
             </div>
           ))}
         </div>
@@ -271,7 +288,7 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
           {risks.map((r, i) => (
             <div key={i} className="flex items-start gap-2">
               <TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
-              <p className="text-xs text-foreground leading-relaxed">{r}</p>
+              <p className="text-xs text-foreground leading-relaxed">{toText(r)}</p>
             </div>
           ))}
         </div>
@@ -286,7 +303,7 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
       {(data.progettiInArrivo ?? []).length > 0 && (
         <div className="space-y-1 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Progetti in arrivo</p>
-          {(data.progettiInArrivo ?? []).map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-foreground"><Rocket className="h-3 w-3 text-primary" />{p}</div>)}
+          {(data.progettiInArrivo ?? []).map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-foreground"><Rocket className="h-3 w-3 text-primary" />{toText(p)}</div>)}
         </div>
       )}
 
@@ -634,7 +651,7 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
           {highlights.map((h, i) => (
             <div key={i} className="flex items-center gap-2 text-xs text-foreground">
               <Construction className="h-3 w-3 shrink-0 text-primary/70" />
-              <span>{h}</span>
+              <span>{toText(h)}</span>
             </div>
           ))}
         </div>
@@ -729,7 +746,7 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
           {drivers.map((d, i) => (
             <div key={i} className="flex items-start gap-2">
               <div className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 bg-emerald-500" />
-              <p className="text-xs text-foreground leading-relaxed">{d}</p>
+              <p className="text-xs text-foreground leading-relaxed">{toText(d)}</p>
             </div>
           ))}
         </div>
@@ -741,7 +758,7 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
           {risks.map((r, i) => (
             <div key={i} className="flex items-start gap-2">
               <div className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 bg-amber-500" />
-              <p className="text-xs text-foreground leading-relaxed">{r}</p>
+              <p className="text-xs text-foreground leading-relaxed">{toText(r)}</p>
             </div>
           ))}
         </div>
