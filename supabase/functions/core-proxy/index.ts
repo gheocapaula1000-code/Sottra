@@ -51,7 +51,7 @@ serve(async (req) => {
 
     // ── 3. Check backend configuration ────────────────────
     const CORE_API_URL = (Deno.env.get("CORE_API_URL") || "").replace(/\/+$/, "");
-    const CORE_API_KEY = Deno.env.get("CORE_API_KEY");
+    const CORE_API_KEY = Deno.env.get("AI_CORE_SECRET") || Deno.env.get("CORE_API_KEY");
 
     if (!CORE_API_URL || !CORE_API_KEY) {
       console.error("Core backend not configured: missing CORE_API_URL or CORE_API_KEY");
