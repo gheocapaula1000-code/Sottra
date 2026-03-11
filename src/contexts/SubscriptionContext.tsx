@@ -33,6 +33,7 @@ const SubscriptionContext = createContext<SubscriptionState>({
   trial: null,
   canScan: false,
   isAdmin: false,
+  isOwner: false,
   refresh: async () => {},
 });
 
