@@ -1,12 +1,11 @@
 import { useRegisterSW } from "virtual:pwa-register/react";
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { BUILD_VERSION } from "@/lib/buildInfo";
 
 const isDev = import.meta.env.DEV;
 
 /**
  * Cleans up legacy localStorage/sessionStorage keys from old builds.
- * Does NOT remove user-critical data (auth tokens, preferences).
  */
 function cleanLegacyStorage() {
   const legacyPrefixes = [
@@ -28,39 +27,62 @@ function cleanLegacyStorage() {
       keysToRemove.forEach((k) => store.removeItem(k));
     }
   } catch {
-    // storage access may fail in some contexts
+    // silent
   }
 }
 
-// Run once on import
 cleanLegacyStorage();
 
 export default function PwaUpdateBanner() {
+  const [showBanner, setShowBanner] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegisteredSW(swUrl, registration) {
-      if (isDev) console.log("[PWA] SW registered:", swUrl);
-      // Check for updates every 60 seconds
+    onRegisteredSW(_swUrl, registration) {
+      if (isDev) console.log("[PWA] SW registered, build:", BUILD_VERSION);
+      // Poll for updates every 30s — aggressive for stuck devices
       if (registration) {
         setInterval(() => {
           registration.update();
-        }, 60_000);
+        }, 30_000);
       }
+      // Store diagnostics
+      try {
+        localStorage.setItem("sottra-sw-status", JSON.stringify({
+          build: BUILD_VERSION,
+          swActive: true,
+          lastCheck: new Date().toISOString(),
+        }));
+      } catch { /* silent */ }
     },
     onRegisterError(error) {
-      console.error("[PWA] SW registration error:", error);
+      console.error("[PWA] SW error:", error);
     },
   });
 
+  // With autoUpdate + skipWaiting, the new SW activates immediately.
+  // We show a brief banner then auto-reload so user sees the new build.
+  useEffect(() => {
+    if (needRefresh && !dismissed) {
+      setShowBanner(true);
+      // Auto-reload after 2 seconds if user doesn't interact
+      const timer = setTimeout(() => {
+        window.location.reload();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [needRefresh, dismissed]);
+
   const handleUpdate = useCallback(() => {
     updateServiceWorker(true);
+    // Fallback reload in case SW update doesn't trigger page refresh
+    setTimeout(() => window.location.reload(), 500);
   }, [updateServiceWorker]);
 
-  if (!needRefresh || dismissed) return null;
+  if (!showBanner || dismissed) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-[9999] mx-auto max-w-md rounded-xl border border-border bg-card p-4 shadow-2xl sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-sm">
@@ -81,11 +103,6 @@ export default function PwaUpdateBanner() {
           Più tardi
         </button>
       </div>
-      {isDev && (
-        <p className="mt-2 text-[10px] text-muted-foreground font-mono">
-          build {BUILD_VERSION}
-        </p>
-      )}
     </div>
   );
 }
