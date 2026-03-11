@@ -81,10 +81,10 @@ const Dashboard = () => {
           <SottraMark size="sm" />
 
           <div className="flex items-center gap-1.5 sm:gap-2.5">
-            {isAdmin && (
-              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => navigate("/admin")}>
+            {isOwner && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={() => navigate("/admin")}>
                 <Shield className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Admin</span>
+                <span className="hidden sm:inline">Pannello admin</span>
               </Button>
             )}
             {subscribed && !isAdmin && (
