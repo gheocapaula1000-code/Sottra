@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPlanByProductId, PlanKey } from "@/lib/plans";
+import { isOwnerEmail } from "@/lib/ownerConfig";
 
 interface TrialInfo {
   active: boolean;
@@ -17,7 +18,10 @@ interface SubscriptionState {
   subscriptionEnd: string | null;
   trial: TrialInfo | null;
   canScan: boolean;
+  /** Has admin role or is owner — use for permission checks */
   isAdmin: boolean;
+  /** Is the super-owner account — use ONLY for showing admin panel link */
+  isOwner: boolean;
   refresh: () => Promise<void>;
 }
 
@@ -29,6 +33,7 @@ const SubscriptionContext = createContext<SubscriptionState>({
   trial: null,
   canScan: false,
   isAdmin: false,
+  isOwner: false,
   refresh: async () => {},
 });
 
@@ -81,9 +86,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   }, [session, refresh]);
 
   const canScan = isAdmin || subscribed || (trial?.active ?? false);
+  const isOwner = isOwnerEmail(session?.user?.email);
 
   return (
-    <SubscriptionContext.Provider value={{ loading, subscribed, planKey, subscriptionEnd, trial, canScan, isAdmin, refresh }}>
+    <SubscriptionContext.Provider value={{ loading, subscribed, planKey, subscriptionEnd, trial, canScan, isAdmin, isOwner, refresh }}>
       {children}
     </SubscriptionContext.Provider>
   );

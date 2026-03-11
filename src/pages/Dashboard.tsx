@@ -29,7 +29,7 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { loading, canScan, subscribed, trial, isAdmin, refresh } = useSubscription();
+  const { loading, canScan, subscribed, trial, isAdmin, isOwner, refresh } = useSubscription();
   const { toast } = useToast();
   const { scans } = useScanHistory();
 
@@ -66,13 +66,12 @@ const Dashboard = () => {
   const scansUsed = trial?.scans_used ?? totalScans;
   const scansMax = trial?.max_scans ?? null;
 
-  const accountLabel = isAdmin
-    ? "Admin"
-    : subscribed
-      ? "Abbonamento attivo"
-      : trial?.active
-        ? "Trial attivo"
-        : "Account";
+  // For the owner: show normal labels, never "Admin"
+  const accountLabel = subscribed
+    ? "Abbonamento attivo"
+    : trial?.active
+      ? "Trial attivo"
+      : "Account";
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -82,10 +81,10 @@ const Dashboard = () => {
           <SottraMark size="sm" />
 
           <div className="flex items-center gap-1.5 sm:gap-2.5">
-            {isAdmin && (
-              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => navigate("/admin")}>
+            {isOwner && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={() => navigate("/admin")}>
                 <Shield className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Admin</span>
+                <span className="hidden sm:inline">Pannello admin</span>
               </Button>
             )}
             {subscribed && !isAdmin && (
@@ -128,7 +127,7 @@ const Dashboard = () => {
           <OverviewCard
             icon={<Activity className="h-4 w-4" />}
             label="Disponibili"
-            value={scansMax !== null ? String(Math.max(0, scansMax - scansUsed)) : "∞"}
+            value={scansMax !== null && !isAdmin ? String(Math.max(0, scansMax - scansUsed)) : "–"}
           />
           <OverviewCard
             icon={<Clock className="h-4 w-4" />}
@@ -238,10 +237,10 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Tipo</span>
                   <Badge variant="secondary" className="text-xs font-medium">
-                    {isAdmin ? "Admin" : subscribed ? "Pro" : "Trial"}
+                    {subscribed ? "Pro" : trial?.active ? "Trial" : "Free"}
                   </Badge>
                 </div>
-                {!isAdmin && trial?.active && !subscribed && (
+                {trial?.active && !subscribed && (
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Scansioni</span>
                     <span className="text-xs font-medium text-foreground">{trial.scans_used}/{trial.max_scans}</span>
@@ -268,11 +267,8 @@ const Dashboard = () => {
               <CardContent className="pt-0 space-y-1">
                 <QuickAction icon={<ScanLine className="h-4 w-4" />} label="Nuova scansione" onClick={() => navigate("/scan")} />
                 <QuickAction icon={<History className="h-4 w-4" />} label="Cronologia scansioni" onClick={() => navigate("/history")} />
-                {subscribed && !isAdmin && (
+                {subscribed && (
                   <QuickAction icon={<CreditCard className="h-4 w-4" />} label="Gestisci abbonamento" onClick={handleManageSubscription} />
-                )}
-                {isAdmin && (
-                  <QuickAction icon={<Shield className="h-4 w-4" />} label="Pannello admin" onClick={() => navigate("/admin")} />
                 )}
               </CardContent>
             </Card>
