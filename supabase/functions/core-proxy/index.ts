@@ -54,7 +54,7 @@ serve(async (req) => {
     const CORE_API_KEY = Deno.env.get("AI_CORE_SECRET") || Deno.env.get("CORE_API_KEY");
 
     if (!CORE_API_URL || !CORE_API_KEY) {
-      console.error("Core backend not configured: missing CORE_API_URL or CORE_API_KEY");
+      console.error("Core backend not configured: missing CORE_API_URL or AI_CORE_SECRET/CORE_API_KEY");
       return jsonResponse(
         { error: { message: "Servizio non ancora disponibile. Configurazione in corso." } },
         503,
