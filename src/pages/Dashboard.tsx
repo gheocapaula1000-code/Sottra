@@ -243,13 +243,13 @@ const Dashboard = () => {
                     {displaySubscribed ? "Pro" : displayTrial?.active ? "Trial" : "Attivo"}
                   </Badge>
                 </div>
-                {trial?.active && !subscribed && (
+                {displayTrial?.active && !displaySubscribed && (
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Scansioni</span>
-                    <span className="text-xs font-medium text-foreground">{trial.scans_used}/{trial.max_scans}</span>
+                    <span className="text-xs font-medium text-foreground">{displayTrial.scans_used}/{displayTrial.max_scans}</span>
                   </div>
                 )}
-                {subscribed && (
+                {displaySubscribed && (
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Piano</span>
                     <span className="text-xs font-medium text-foreground">Attivo</span>
