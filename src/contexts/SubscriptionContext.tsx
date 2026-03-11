@@ -85,8 +85,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [session, refresh]);
 
-  const canScan = isOwner || isAdmin || subscribed || (trial?.active ?? false);
   const isOwner = isOwnerEmail(session?.user?.email);
+  const canScan = isOwner || isAdmin || subscribed || (trial?.active ?? false);
 
   return (
     <SubscriptionContext.Provider value={{ loading, subscribed, planKey, subscriptionEnd, trial, canScan, isAdmin, isOwner, refresh }}>
