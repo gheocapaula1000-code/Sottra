@@ -29,7 +29,7 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { loading, canScan, subscribed, trial, isAdmin, refresh } = useSubscription();
+  const { loading, canScan, subscribed, trial, isAdmin, isOwner, refresh } = useSubscription();
   const { toast } = useToast();
   const { scans } = useScanHistory();
 
