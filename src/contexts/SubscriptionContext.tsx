@@ -58,9 +58,26 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // Skip if JWT is expired (avoids 500 "Auth session missing")
+    const expiresAt = session.expires_at;
+    if (expiresAt && expiresAt * 1000 < Date.now()) {
+      console.warn("[Subscription] Session expired, skipping check-subscription");
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke("check-subscription");
-      if (error) throw error;
+      if (error) {
+        const msg = typeof error === "object" && error !== null && "message" in error ? (error as { message: string }).message : String(error);
+        // Treat auth errors as session expiry, not app crash
+        if (msg.includes("Auth session missing") || msg.includes("auth") || msg.includes("401")) {
+          console.warn("[Subscription] Auth expired during check:", msg);
+          setLoading(false);
+          return;
+        }
+        throw error;
+      }
 
       setSubscribed(data.subscribed);
       setPlanKey(data.product_id ? getPlanByProductId(data.product_id) : null);
@@ -78,10 +95,17 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     refresh();
   }, [refresh]);
 
-  // Refresh every 60s
+  // Refresh every 60s — only while session is valid
   useEffect(() => {
     if (!session) return;
-    const interval = setInterval(refresh, 60000);
+    const interval = setInterval(() => {
+      const expiresAt = session.expires_at;
+      if (expiresAt && expiresAt * 1000 < Date.now()) {
+        clearInterval(interval);
+        return;
+      }
+      refresh();
+    }, 60000);
     return () => clearInterval(interval);
   }, [session, refresh]);
 
