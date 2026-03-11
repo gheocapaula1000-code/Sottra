@@ -996,20 +996,6 @@ const Result = () => {
           <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} error={result.infrastrutture.status === "error"} message={result.infrastrutture.message} />
           <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} error={result.sviluppoArea.status === "error"} message={result.sviluppoArea.message} />
 
-          {/* Moduli in valutazione */}
-          <Section className="border-dashed border-border/60">
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
-                <Construction className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground mb-1">Ulteriori moduli in valutazione</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Dati catastali, classe energetica, dettagli condominiali, storico transazioni e annunci nella zona saranno disponibili progressivamente, man mano che le fonti saranno integrate e verificate.
-                </p>
-              </div>
-            </div>
-          </Section>
         </div>
       </div>
 

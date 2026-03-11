@@ -31,17 +31,6 @@ export interface SourceMetadata {
   limitations?: string[];
 }
 
-/** Dati catastali */
-export interface CadastralData {
-  foglio: number;
-  particella: number;
-  subalterno: number;
-  anno: number;
-  piani: number;
-  unitaImmobiliari: number;
-  renditaCatastale: number;
-}
-
 /** Dati prezzi di mercato */
 export interface PricingData extends SourceMetadata {
   prezzoMq: number;
@@ -49,35 +38,6 @@ export interface PricingData extends SourceMetadata {
   prezzoMqMax: number;
   mediaZona: number;
   trend5Anni: number;
-}
-
-/** Singolo annuncio immobiliare */
-export interface Listing {
-  tipo: "vendita" | "affitto";
-  prezzo: number;
-  mq: number;
-  locali: number;
-  piano: number;
-  link: string;
-}
-
-/** Contenitore annunci */
-export interface ListingsData {
-  annunci: Listing[];
-}
-
-/** Dati classe energetica */
-export interface EnergyData {
-  classeEnergetica: string;
-  epgl: number;
-  mediaZona: string;
-}
-
-/** MoodScore zona */
-export interface MoodScoreData {
-  score: number;
-  trend: string;
-  categorie: Record<string, number>;
 }
 
 /** Previsione futura */
@@ -104,32 +64,6 @@ export interface OpportunityData extends SourceMetadata {
   indice?: number;
   quadrante?: string;
   raccomandazione?: string;
-}
-
-/** Info condominio */
-export interface CondominioData {
-  tipoRiscaldamento: "centralizzato" | "autonomo";
-  ascensore: boolean;
-  statoConservazione: "ottimo" | "buono" | "sufficiente" | "mediocre";
-  annoUltimaRistrutturazione: number | null;
-  postiAuto: number;
-  giardino: boolean;
-  portineria: boolean;
-}
-
-/** Storico transazioni */
-export interface TransazioneStorica {
-  data: string;
-  prezzo: number;
-  mq: number;
-  piano: number;
-  tipo: "vendita" | "affitto";
-}
-
-export interface StoricoTransazioniData {
-  transazioni: TransazioneStorica[];
-  mediaZona12Mesi: number;
-  variazione12Mesi: number;
 }
 
 /** Progetto infrastrutturale */
@@ -235,18 +169,10 @@ export interface ConvergenzaTerritorialeData extends SourceMetadata {
   evidenceTrace: ConvergenzaEvidenceTrace[] | null;
 }
 
-/** Risultato completo di una scansione */
+/** Risultato completo di una scansione — solo moduli realmente operativi */
 export interface ScanResult {
-  // Motore Scan
   identify: SectionState<IdentifyResult>;
-  cadastral: SectionState<CadastralData>;
   pricing: SectionState<PricingData>;
-  listings: SectionState<ListingsData>;
-  energy: SectionState<EnergyData>;
-  condominio: SectionState<CondominioData>;
-  storicoTransazioni: SectionState<StoricoTransazioniData>;
-  // Motore Forecast
-  moodScore: SectionState<MoodScoreData>;
   timeView: SectionState<TimeViewData>;
   opportunity: SectionState<OpportunityData>;
   infrastrutture: SectionState<InfrastrutureData>;

@@ -4,9 +4,8 @@
  * Utilizzati solo quando VITE_USE_MOCK=true.
  */
 import type {
-  IdentifyResult, CadastralData, PricingData, ListingsData, EnergyData,
-  MoodScoreData, TimeViewData, OpportunityData,
-  CondominioData, StoricoTransazioniData,
+  IdentifyResult, PricingData,
+  TimeViewData, OpportunityData,
   InfrastrutureData, RischioZonaData, TrendDemograficoData,
 } from "@/types";
 
@@ -16,30 +15,9 @@ export const mockIdentify: IdentifyResult = {
   confidence: 0.92,
 };
 
-export const mockCadastral: CadastralData = {
-  foglio: 234, particella: 89, subalterno: 3,
-  anno: 1962, piani: 6, unitaImmobiliari: 24, renditaCatastale: 1850,
-};
-
 export const mockPricing: PricingData = {
   prezzoMq: 4200, prezzoMqMin: 3800, prezzoMqMax: 5100,
   mediaZona: 4050, trend5Anni: 18.5,
-};
-
-export const mockListings: ListingsData = {
-  annunci: [
-    { tipo: "vendita", prezzo: 320000, mq: 75, locali: 3, piano: 4, link: "#" },
-    { tipo: "affitto", prezzo: 1200, mq: 55, locali: 2, piano: 2, link: "#" },
-  ],
-};
-
-export const mockEnergy: EnergyData = {
-  classeEnergetica: "D", epgl: 142.5, mediaZona: "E",
-};
-
-export const mockMoodScore: MoodScoreData = {
-  score: 72, trend: "in crescita",
-  categorie: { commercio: 78, trasporti: 85, verde: 55, sicurezza: 68, socialLife: 74 },
 };
 
 export const mockTimeView: TimeViewData = {
@@ -62,27 +40,6 @@ export const mockOpportunity: OpportunityData = {
   observation: "Contesto con fattori convergenti da non sottovalutare. I driver identificati suggeriscono un quadro interessante che merita approfondimento.",
   indice: 76, quadrante: "Stella Nascente",
   raccomandazione: "Zona in decollo — finestra d'acquisto ideale",
-};
-
-export const mockCondominio: CondominioData = {
-  tipoRiscaldamento: "centralizzato",
-  ascensore: true,
-  statoConservazione: "buono",
-  annoUltimaRistrutturazione: 2018,
-  postiAuto: 12,
-  giardino: false,
-  portineria: true,
-};
-
-export const mockStoricoTransazioni: StoricoTransazioniData = {
-  transazioni: [
-    { data: "2025-09-15", prezzo: 310000, mq: 72, piano: 3, tipo: "vendita" },
-    { data: "2025-03-02", prezzo: 1150, mq: 50, piano: 1, tipo: "affitto" },
-    { data: "2024-11-20", prezzo: 285000, mq: 65, piano: 5, tipo: "vendita" },
-    { data: "2024-06-10", prezzo: 340000, mq: 85, piano: 6, tipo: "vendita" },
-  ],
-  mediaZona12Mesi: 4150,
-  variazione12Mesi: 3.2,
 };
 
 export const mockInfrastrutture: InfrastrutureData = {
