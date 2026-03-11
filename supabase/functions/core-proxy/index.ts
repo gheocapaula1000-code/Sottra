@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
+import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,17 +33,14 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
 
-    if (claimsError || !claimsData?.claims) {
-      console.error("Auth verification failed:", claimsError?.message);
+    if (userError || !userData?.user) {
+      console.error("Auth verification failed:", userError?.message);
       return jsonResponse({ error: { message: "Sessione non valida o scaduta" } }, 401);
     }
 
-    const userId = claimsData.claims.sub;
-    if (!userId) {
-      return jsonResponse({ error: { message: "Sessione non valida" } }, 401);
-    }
+    const userId = userData.user.id;
 
     // ── 2. Parse request body ─────────────────────────────
     const { endpoint, method = "POST", payload, timeout = 10000 } = await req.json();
