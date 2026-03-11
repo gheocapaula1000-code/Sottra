@@ -206,6 +206,35 @@ export interface SviluppoAreaData extends SourceMetadata {
   narrativeObservation: string | null;
 }
 
+/** Segnale convergenza territoriale */
+export interface ConvergenzaSignal {
+  label: string;
+  source: string;
+  weight: number;
+}
+
+/** Traccia evidenza convergenza */
+export interface ConvergenzaEvidenceTrace {
+  family: string;
+  direction: "positivo" | "negativo" | "neutro";
+  weightedScore: number;
+  sourceCount: number;
+}
+
+/** Convergenza territoriale */
+export interface ConvergenzaTerritorialeData extends SourceMetadata {
+  score: number | null;
+  band: "molto_forte" | "forte" | "interessante" | "debole" | null;
+  convergenceLevel: "alta" | "media" | "bassa" | "insufficiente" | null;
+  coverageLevel: "completa" | "buona" | "parziale" | "scarsa" | null;
+  identityConfidence: number | null;
+  positiveFamilies: string[] | null;
+  negativeFamilies: string[] | null;
+  topPositiveSignals: ConvergenzaSignal[] | null;
+  topNegativeSignals: ConvergenzaSignal[] | null;
+  evidenceTrace: ConvergenzaEvidenceTrace[] | null;
+}
+
 /** Risultato completo di una scansione */
 export interface ScanResult {
   // Motore Scan
@@ -224,6 +253,7 @@ export interface ScanResult {
   rischioZona: SectionState<RischioZonaData>;
   trendDemografico: SectionState<TrendDemograficoData>;
   sviluppoArea: SectionState<SviluppoAreaData>;
+  convergenzaTerritoriale: SectionState<ConvergenzaTerritorialeData>;
 }
 
 /** Errore restituito da coreRequest */

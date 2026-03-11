@@ -58,3 +58,13 @@ export async function getSviluppoArea(lat: number, lng: number) {
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
+
+export async function getConvergenzaTerritoriale(lat: number, lng: number, identityConfidence?: number, address?: string) {
+  if (USE_MOCK) { await delay(1400); return { error: false, message: null, data: null }; }
+  const payload: Record<string, unknown> = { lat, lng };
+  if (identityConfidence != null) payload.identityConfidence = identityConfidence;
+  if (address) payload.address = address;
+  const res = await coreRequest("/forecast/convergenza-territoriale", "POST", payload, 30000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}
