@@ -130,7 +130,7 @@ const Dashboard = () => {
           <OverviewCard
             icon={<Activity className="h-4 w-4" />}
             label="Disponibili"
-            value={scansMax !== null && !isAdmin ? String(Math.max(0, scansMax - scansUsed)) : "–"}
+            value={scansMax !== null && !isOwner && !isAdmin ? String(Math.max(0, scansMax - scansUsed)) : "Illimitate"}
           />
           <OverviewCard
             icon={<Clock className="h-4 w-4" />}
