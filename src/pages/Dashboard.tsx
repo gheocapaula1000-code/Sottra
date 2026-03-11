@@ -7,13 +7,16 @@ import { TrialExpiredScreen } from "@/components/TrialExpiredScreen";
 import { APP_BRAND } from "@/lib/legalEntity";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import SottraMark from "@/components/SottraMark";
+import { ScanLine, Clock, ChevronRight } from "lucide-react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { loading, canScan, subscribed, trial, planKey, isAdmin, refresh } = useSubscription();
+  const { loading, canScan, subscribed, trial, isAdmin, refresh } = useSubscription();
   const { toast } = useToast();
+  const { scans } = useScanHistory();
 
   const handleManageSubscription = async () => {
     try {
@@ -25,9 +28,7 @@ const Dashboard = () => {
     }
   };
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  useEffect(() => { refresh(); }, [refresh]);
 
   if (loading) {
     return (
@@ -41,16 +42,14 @@ const Dashboard = () => {
     return <TrialExpiredScreen scansUsed={trial?.scans_used ?? 0} />;
   }
 
+  const recentScans = scans.slice(0, 3);
+
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <header className="flex items-center justify-between gap-2 px-4 sm:px-6 py-4 border-b border-border">
+      {/* ── Header ── */}
+      <header className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 border-b border-border">
         <SottraMark size="sm" />
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
-          {isAdmin && user?.email === "gheocapaula@gmail.com" && (
-            <span className="text-[10px] text-primary font-mono px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
-              Owner mode attivo
-            </span>
-          )}
           {isAdmin && (
             <button
               onClick={() => navigate("/admin")}
@@ -58,11 +57,6 @@ const Dashboard = () => {
             >
               Admin
             </button>
-          )}
-          {!isAdmin && trial?.active && !subscribed && (
-            <span className="text-xs text-primary font-medium whitespace-nowrap">
-              {trial.scans_used}/{trial.max_scans} scansioni
-            </span>
           )}
           {subscribed && !isAdmin && (
             <button
@@ -77,27 +71,83 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-        <SottraMark size="xl" />
-        <p className="mt-4 text-lg font-medium text-foreground/80 sm:text-xl">
-          Ciò che sta sotto, lo sai solo tu.
-        </p>
-        <p className="mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
-          Inquadra un edificio e ottieni il quadro informativo della zona.
-        </p>
-        <Button className="mt-10" size="lg" onClick={() => navigate("/scan")}>
-          Scansiona un edificio
-        </Button>
-        <button
-          onClick={() => navigate("/history")}
-          className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Le tue scansioni →
-        </button>
+      {/* ── Main content ── */}
+      <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
+
+        {/* Quick action block */}
+        <section className="space-y-3">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Avvia una nuova scansione</h1>
+          <p className="text-sm text-muted-foreground">
+            Inquadra un edificio e ottieni il quadro informativo della zona in pochi secondi.
+          </p>
+          <Button size="lg" className="w-full sm:w-auto min-h-[48px]" onClick={() => navigate("/scan")}>
+            <ScanLine className="mr-2 h-5 w-5" />
+            Scansiona un edificio
+          </Button>
+        </section>
+
+        {/* Trial/subscription status */}
+        {!isAdmin && trial?.active && !subscribed && (
+          <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+            <Clock className="h-4 w-4 text-primary flex-shrink-0" />
+            <p className="text-sm text-muted-foreground">
+              Trial attivo — <span className="text-foreground font-medium">{trial.scans_used}/{trial.max_scans}</span> scansioni utilizzate
+            </p>
+          </div>
+        )}
+
+        {/* Recent scans */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground">Scansioni recenti</h2>
+            <button
+              onClick={() => navigate("/history")}
+              className="text-xs text-primary hover:underline transition-colors flex items-center gap-0.5"
+            >
+              Vedi tutte <ChevronRight className="h-3 w-3" />
+            </button>
+          </div>
+
+          {recentScans.length === 0 ? (
+            <div className="rounded-lg border border-border bg-card px-4 py-8 text-center">
+              <p className="text-sm text-muted-foreground">Nessuna scansione ancora. Inizia la tua prima analisi.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentScans.map((scan) => (
+                <button
+                  key={scan.id}
+                  onClick={() => navigate("/history")}
+                  className="w-full flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-left hover:bg-secondary/50 transition-colors"
+                >
+                  {scan.photo && (
+                    <img
+                      src={scan.photo}
+                      alt=""
+                      className="h-10 w-10 rounded object-cover flex-shrink-0 bg-muted"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {scan.address || "Indirizzo non disponibile"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(scan.date).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
       </main>
 
-      <footer className="py-6 text-center text-xs text-muted-foreground">
-        <p>Per trasferire il tuo account a un nuovo dispositivo, scrivi a <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary hover:underline">{APP_BRAND.supportEmail}</a></p>
+      {/* ── Footer ── */}
+      <footer className="py-4 text-center text-xs text-muted-foreground border-t border-border">
+        <p>
+          Assistenza: <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary hover:underline">{APP_BRAND.supportEmail}</a>
+        </p>
       </footer>
     </div>
   );
