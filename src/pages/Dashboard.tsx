@@ -240,7 +240,7 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Tipo</span>
                   <Badge variant="secondary" className="text-xs font-medium">
-                    {subscribed ? "Pro" : trial?.active ? "Trial" : "Free"}
+                    {displaySubscribed ? "Pro" : displayTrial?.active ? "Trial" : "Attivo"}
                   </Badge>
                 </div>
                 {trial?.active && !subscribed && (
