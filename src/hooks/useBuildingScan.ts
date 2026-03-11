@@ -5,25 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
 import type { ScanResult, SectionState, IdentifyResult } from "@/types";
 
 const idle: SectionState = { status: "idle", data: null, message: null };
-const unavailable: SectionState = { status: "success", data: null, message: "Modulo in attivazione" };
 
-/** Modules that are actually called during a scan */
-const ACTIVE_MODULES: (keyof ScanResult)[] = [
+/** All active modules */
+const MODULES: (keyof ScanResult)[] = [
   "identify", "pricing", "timeView", "opportunity",
   "infrastrutture", "rischioZona", "trendDemografico",
   "sviluppoArea", "convergenzaTerritoriale",
 ];
 
-/** Modules NOT yet integrated — always set to unavailable */
-const INACTIVE_MODULES: (keyof ScanResult)[] = [
-  "cadastral", "listings", "energy", "condominio",
-  "storicoTransazioni", "moodScore",
-];
-
 function buildInitialState(): ScanResult {
   const s = {} as Record<string, SectionState>;
-  for (const k of ACTIVE_MODULES) s[k] = idle;
-  for (const k of INACTIVE_MODULES) s[k] = idle;
+  for (const k of MODULES) s[k] = idle;
   return s as unknown as ScanResult;
 }
 
@@ -38,8 +30,7 @@ function reducer(state: ScanResult, action: Action): ScanResult {
   switch (action.type) {
     case "START_SCAN": {
       const s = {} as Record<string, SectionState>;
-      for (const k of ACTIVE_MODULES) s[k] = { status: "loading", data: null, message: null };
-      for (const k of INACTIVE_MODULES) s[k] = unavailable;
+      for (const k of MODULES) s[k] = { status: "loading", data: null, message: null };
       return s as unknown as ScanResult;
     }
     case "RESET_IDLE":
@@ -86,8 +77,7 @@ export function useBuildingScan() {
       });
 
       if (idRes.error || !idRes.data) {
-        // Mark all other active modules as error (except identify)
-        for (const k of ACTIVE_MODULES) {
+        for (const k of MODULES) {
           if (k !== "identify") set(k, { status: "error", data: null, message: "Identificazione non riuscita" });
         }
         return;
@@ -102,7 +92,7 @@ export function useBuildingScan() {
         if (recordError) {
           console.error("[SCAN] record-scan invocation error:", recordError);
           const errMsg = "Errore durante la registrazione della scansione. Riprova.";
-          for (const k of ACTIVE_MODULES) {
+          for (const k of MODULES) {
             if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
           }
           return;
@@ -110,7 +100,7 @@ export function useBuildingScan() {
 
         if (recordData?.limit_reached || recordData?.error) {
           const errMsg = recordData?.error ?? "Limite scansioni raggiunto";
-          for (const k of ACTIVE_MODULES) {
+          for (const k of MODULES) {
             if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
           }
           setLimitReached(true);
@@ -119,7 +109,7 @@ export function useBuildingScan() {
       } catch (err) {
         console.error("[SCAN] record-scan failed:", err);
         const errMsg = "Servizio temporaneamente non disponibile. Riprova.";
-        for (const k of ACTIVE_MODULES) {
+        for (const k of MODULES) {
           if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
         }
         return;
@@ -141,7 +131,6 @@ export function useBuildingScan() {
         getConvergenzaTerritoriale(lat, lng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
       ]);
 
-      // If pricing wasn't called (no address), set it to unavailable
       if (!address) {
         set("pricing", { status: "success", data: null, message: "Indirizzo non disponibile per la valutazione prezzi" });
       }

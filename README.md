@@ -6,8 +6,8 @@ PWA per professionisti immobiliari: fotografa un edificio, ottieni un quadro inf
 
 Due motori indipendenti che girano in parallelo:
 
-- **Motore Scan**: foto + GPS → identificazione → catasto, prezzi OMI, annunci, energia
-- **Motore Forecast**: GPS → Mood Score zona, proiezione valore, indice opportunità
+- **Motore Scan**: foto + GPS → identificazione → prezzi OMI
+- **Motore Forecast**: GPS → rischio zona, trend demografico, infrastrutture, dinamica territoriale, opportunity, timeview, convergenza territoriale
 ```
 Browser → Sottra PWA (React + Vite)
        → Central Core V3 (Edge Function server-side: /sottra/*)
@@ -50,24 +50,24 @@ npx vitest run   # Test
 npx eslint src/  # Lint
 ```
 
-## Endpoint Backend (8 rotte)
+## Moduli operativi (9)
 
 | Endpoint | Motore | Descrizione |
 |----------|--------|-------------|
 | /scan/identify | Scan | GPS → indirizzo + building ID |
-| /scan/cadastral | Scan | Dati catastali da fonti ufficiali |
 | /scan/pricing | Scan | Prezzi al m² (range + media zona) — fonte OMI |
-| /scan/listings | Scan | Annunci vendita/affitto in zona |
-| /scan/energy | Scan | Classe energetica (stima indicativa) |
-| /forecast/moodscore | Forecast | Score qualità quartiere 0-100 (elaborato) |
-| /forecast/timeview | Forecast | Proiezione valore 5/10/20 anni (stima) |
-| /forecast/opportunity | Forecast | Indice opportunità + quadrante (stima) |
+| /forecast/timeview | Forecast | Scenario evolutivo a medio periodo |
+| /forecast/opportunity | Forecast | Indice opportunità + quadrante |
+| /forecast/infrastrutture | Forecast | Opere, mobilità, connettività, interventi pubblici |
+| /forecast/rischio-zona | Forecast | Rischio sismico, idrogeologico, alluvionale |
+| /forecast/trend-demografico | Forecast | Popolazione, età, composizione |
+| /forecast/sviluppo-area | Forecast | Segnali di sviluppo e dinamica territoriale |
+| /forecast/convergenza-territoriale | Forecast | Indice di convergenza multi-sorgente |
 
 ## Classificazione dati
 
 Ogni sezione del report indica il tipo di dato:
 
-- **Dato ufficiale** — fonte istituzionale verificata (OMI, ISTAT, ISPRA, INGV, Catasto)
+- **Dato ufficiale** — fonte istituzionale verificata (OMI, ISTAT, ISPRA, INGV)
 - **Dato elaborato** — elaborazione strutturata da fonti pubbliche
-- **Stima indicativa** — valore indicativo, non certificato
-- **Contenuto dimostrativo** — esempio a scopo illustrativo (solo in modalità mock)
+- **Non disponibile** — copertura assente per l'area analizzata

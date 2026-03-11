@@ -1,6 +1,6 @@
 import { coreRequest, isError } from "./api";
 import {
-  mockMoodScore, mockTimeView, mockOpportunity,
+  mockTimeView, mockOpportunity,
   mockInfrastrutture, mockRischioZona, mockTrendDemografico,
 } from "./mockData";
 
@@ -8,13 +8,6 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true" && import.meta.env.MOD
 
 function delay(ms = 600) {
   return new Promise((r) => setTimeout(r, ms + Math.random() * 400));
-}
-
-export async function getMoodScore(lat: number, lng: number) {
-  if (USE_MOCK) { await delay(900); return { error: false, message: null, data: mockMoodScore }; }
-  const res = await coreRequest("/forecast/moodscore", "POST", { lat, lng }, 25000);
-  if (isError(res)) return { error: true, message: res.message, data: null };
-  return { error: false, message: null, data: res };
 }
 
 export async function getTimeView(lat: number, lng: number, horizon: number) {
