@@ -66,13 +66,12 @@ const Dashboard = () => {
   const scansUsed = trial?.scans_used ?? totalScans;
   const scansMax = trial?.max_scans ?? null;
 
-  const accountLabel = isAdmin
-    ? "Admin"
-    : subscribed
-      ? "Abbonamento attivo"
-      : trial?.active
-        ? "Trial attivo"
-        : "Account";
+  // For the owner: show normal labels, never "Admin"
+  const accountLabel = subscribed
+    ? "Abbonamento attivo"
+    : trial?.active
+      ? "Trial attivo"
+      : "Account";
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
