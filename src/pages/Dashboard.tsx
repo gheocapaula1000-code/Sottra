@@ -49,8 +49,8 @@ const Dashboard = () => {
         <SottraMark size="sm" />
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
           {isAdmin && user?.email === "gheocapaula@gmail.com" && (
-            <span className="text-[10px] text-muted-foreground/60 font-mono hidden sm:inline">
-              Owner
+            <span className="text-[10px] text-primary font-mono px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
+              Owner mode attivo
             </span>
           )}
           {isAdmin && (
