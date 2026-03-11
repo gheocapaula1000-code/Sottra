@@ -8,7 +8,6 @@ import { APP_BRAND } from "@/lib/legalEntity";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import SottraMark from "@/components/SottraMark";
-import logoS from "@/assets/logo-s-icon.png";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -26,7 +25,6 @@ const Dashboard = () => {
     }
   };
 
-  // Force refresh subscription state on dashboard mount
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -80,18 +78,7 @@ const Dashboard = () => {
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-        <h1 className="flex items-center text-6xl font-black tracking-tight text-foreground sm:text-8xl">
-          <img
-            src={logoS}
-            alt="S"
-            loading="eager"
-            decoding="sync"
-            fetchPriority="high"
-            className="inline-block h-[2.6em] w-auto object-contain -my-[0.6em]"
-            style={{ marginRight: '-1.1em', marginLeft: '-0.5em', mixBlendMode: 'lighten' }}
-          />
-          <span>ottra</span>
-        </h1>
+        <SottraMark size="xl" />
         <p className="mt-4 text-lg font-medium text-foreground/80 sm:text-xl">
           Ciò che sta sotto, lo sai solo tu.
         </p>
