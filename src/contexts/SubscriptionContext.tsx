@@ -18,7 +18,10 @@ interface SubscriptionState {
   subscriptionEnd: string | null;
   trial: TrialInfo | null;
   canScan: boolean;
+  /** Has admin role or is owner — use for permission checks */
   isAdmin: boolean;
+  /** Is the super-owner account — use ONLY for showing admin panel link */
+  isOwner: boolean;
   refresh: () => Promise<void>;
 }
 
