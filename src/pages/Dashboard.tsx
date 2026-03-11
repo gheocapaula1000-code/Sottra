@@ -267,11 +267,8 @@ const Dashboard = () => {
               <CardContent className="pt-0 space-y-1">
                 <QuickAction icon={<ScanLine className="h-4 w-4" />} label="Nuova scansione" onClick={() => navigate("/scan")} />
                 <QuickAction icon={<History className="h-4 w-4" />} label="Cronologia scansioni" onClick={() => navigate("/history")} />
-                {subscribed && !isAdmin && (
+                {subscribed && (
                   <QuickAction icon={<CreditCard className="h-4 w-4" />} label="Gestisci abbonamento" onClick={handleManageSubscription} />
-                )}
-                {isAdmin && (
-                  <QuickAction icon={<Shield className="h-4 w-4" />} label="Pannello admin" onClick={() => navigate("/admin")} />
                 )}
               </CardContent>
             </Card>
