@@ -4,6 +4,7 @@ import { ArrowLeft, Bookmark, Building2, Home, TrendingUp, History, ChevronRight
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { isValidGps, isValidImageDataUrl } from "@/lib/imageUtils";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
