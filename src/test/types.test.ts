@@ -1,8 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   mockIdentify,
-  mockCadastral,
-  mockMoodScore,
+  mockPricing,
   mockOpportunity,
 } from "@/services/mockData";
 
@@ -19,48 +18,23 @@ describe("mockIdentify matches IdentifyResult", () => {
   });
 });
 
-describe("mockCadastral matches CadastralData", () => {
-  it("has foglio (number)", () => {
-    expect(typeof mockCadastral.foglio).toBe("number");
+describe("mockPricing matches PricingData", () => {
+  it("has prezzoMq (number)", () => {
+    expect(typeof mockPricing.prezzoMq).toBe("number");
   });
-  it("has particella (number)", () => {
-    expect(typeof mockCadastral.particella).toBe("number");
-  });
-  it("has anno (number)", () => {
-    expect(typeof mockCadastral.anno).toBe("number");
-  });
-  it("has piani (number)", () => {
-    expect(typeof mockCadastral.piani).toBe("number");
-  });
-});
-
-describe("mockMoodScore matches MoodScoreData", () => {
-  it("has score (number)", () => {
-    expect(typeof mockMoodScore.score).toBe("number");
-  });
-  it("has trend (string)", () => {
-    expect(typeof mockMoodScore.trend).toBe("string");
-  });
-  it("has categorie (object with numeric values)", () => {
-    expect(typeof mockMoodScore.categorie).toBe("object");
-    Object.values(mockMoodScore.categorie).forEach((v) => {
-      expect(typeof v).toBe("number");
-    });
+  it("has mediaZona (number)", () => {
+    expect(typeof mockPricing.mediaZona).toBe("number");
   });
 });
 
 describe("mockOpportunity matches OpportunityData", () => {
-  it("has indice (number)", () => {
-    expect(typeof mockOpportunity.indice).toBe("number");
+  it("has score (number)", () => {
+    expect(typeof mockOpportunity.score).toBe("number");
   });
-  it("has quadrante (string)", () => {
-    expect(typeof mockOpportunity.quadrante).toBe("string");
+  it("has band (string)", () => {
+    expect(typeof mockOpportunity.band).toBe("string");
   });
-  it("has raccomandazione (string)", () => {
-    expect(typeof mockOpportunity.raccomandazione).toBe("string");
-  });
-  it("quadrante is one of 4 valid values", () => {
-    const valid = ["Stella Nascente", "Diamante Grezzo", "Picco Raggiunto", "Allerta Rossa"];
-    expect(valid).toContain(mockOpportunity.quadrante);
+  it("has drivers (array)", () => {
+    expect(Array.isArray(mockOpportunity.drivers)).toBe(true);
   });
 });
