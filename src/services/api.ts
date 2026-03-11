@@ -34,13 +34,15 @@ function recordFailure() {
 
 /** Map raw error messages to user-friendly Italian microcopy */
 function friendlyMessage(raw: string, status?: number): string {
-  if (status === 401) return "Sessione scaduta — effettua nuovamente l'accesso";
-  if (status === 503) return "Servizio non ancora disponibile";
-  if (status === 504) return "Il servizio non ha risposto in tempo — riprova";
-  if (status === 502) return "Errore di comunicazione — riprova più tardi";
-  if (/timeout/i.test(raw)) return "Il servizio non ha risposto in tempo — riprova";
-  if (/network|fetch|abort/i.test(raw)) return "Errore di connessione — verifica la rete";
-  return "Servizio temporaneamente non disponibile";
+  if (status === 413) return "Immagine troppo pesante. Riprova con una foto più leggera.";
+  if (status === 401) return "Configurazione di collegamento non valida.";
+  if (status === 503) return "Servizio in configurazione o temporaneamente non disponibile.";
+  if (status === 504) return "Il servizio ha impiegato troppo tempo. Riprova.";
+  if (status === 502) return "Errore di comunicazione — riprova più tardi.";
+  if (/timeout/i.test(raw)) return "Il servizio ha impiegato troppo tempo. Riprova.";
+  if (/network|fetch|abort/i.test(raw)) return "Errore di connessione — verifica la rete.";
+  if (/payload|too large|entity/i.test(raw)) return "Immagine troppo pesante. Riprova con una foto più leggera.";
+  return "Servizio temporaneamente non disponibile.";
 }
 
 /**

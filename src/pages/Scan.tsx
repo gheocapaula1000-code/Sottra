@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Upload, Camera, MapPin, ImagePlus } from "lucide-react";
+import { X, Upload, Camera, MapPin, ImagePlus, AlertTriangle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { normalizeImage, isValidImageDataUrl } from "@/lib/imageUtils";
+import { Button } from "@/components/ui/button";
 
 type CameraState = "loading" | "active" | "denied" | "unavailable";
-type ShootPhase = "idle" | "flash" | "gps";
+type ShootPhase = "idle" | "flash" | "gps" | "compressing" | "gps_denied";
+
+const isDev = import.meta.env.DEV;
+function devLog(...args: unknown[]) { if (isDev) console.log("[SCAN]", ...args); }
 
 const Scan = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraState, setCameraState] = useState<CameraState>("loading");
@@ -60,38 +67,80 @@ const Scan = () => {
     return canvas.toDataURL("image/jpeg", 0.85);
   }, []);
 
-  const navigateWithGps = useCallback(
-    (photo: string) => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => navigate("/result", { state: { photo, lat: pos.coords.latitude, lng: pos.coords.longitude } }),
-          () => navigate("/result", { state: { photo, lat: null, lng: null, gpsError: true } }),
-          { enableHighAccuracy: true, timeout: 8000 }
-        );
-      } else {
-        navigate("/result", { state: { photo, lat: null, lng: null, gpsError: true } });
+  /** Compress image, acquire GPS, then navigate to /result */
+  const processAndNavigate = useCallback(
+    async (rawPhoto: string) => {
+      // 1. Compress
+      setShootPhase("compressing");
+      let photo: string;
+      try {
+        photo = await normalizeImage(rawPhoto);
+        devLog("image normalized successfully");
+      } catch {
+        toast({ title: "Immagine non elaborabile", description: "Riprova con una foto più semplice o più vicina.", variant: "destructive" });
+        setShootPhase("idle");
+        return;
       }
+
+      if (!isValidImageDataUrl(photo)) {
+        toast({ title: "Immagine non valida", description: "Riprova con un'altra foto.", variant: "destructive" });
+        setShootPhase("idle");
+        return;
+      }
+
+      // 2. Acquire GPS
+      setShootPhase("gps");
+      devLog("gps acquisition started");
+
+      if (!navigator.geolocation) {
+        devLog("gps unavailable");
+        setShootPhase("gps_denied");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          devLog(`gps granted: ${lat}, ${lng}`);
+          if (lat === 0 && lng === 0) {
+            devLog("gps returned 0,0 — treating as denied");
+            setShootPhase("gps_denied");
+            return;
+          }
+          navigate("/result", { state: { photo, lat, lng } });
+        },
+        (err) => {
+          devLog("gps denied:", err.message);
+          setShootPhase("gps_denied");
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
     },
-    [navigate]
+    [navigate, toast]
   );
 
+  const retryGps = useCallback(() => {
+    if (!freezeFrame) return;
+    // Re-compress isn't needed since freezeFrame may be raw — but we already have the compressed version stored in processAndNavigate's closure.
+    // Simplest: re-run the full flow
+    processAndNavigate(freezeFrame);
+  }, [freezeFrame, processAndNavigate]);
+
   const handleShoot = useCallback(() => {
-    const photo = captureFrame();
-    if (!photo) return;
+    const rawPhoto = captureFrame();
+    if (!rawPhoto) return;
 
     // Stop stream
     streamRef.current?.getTracks().forEach((t) => t.stop());
 
     // Flash phase
-    setFreezeFrame(photo);
+    setFreezeFrame(rawPhoto);
     setShootPhase("flash");
 
     setTimeout(() => {
-      // GPS phase
-      setShootPhase("gps");
-      navigateWithGps(photo);
+      processAndNavigate(rawPhoto);
     }, 150);
-  }, [captureFrame, navigateWithGps]);
+  }, [captureFrame, processAndNavigate]);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,14 +148,13 @@ const Scan = () => {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
-        const photo = reader.result as string;
-        setFreezeFrame(photo);
-        setShootPhase("gps");
-        navigateWithGps(photo);
+        const rawPhoto = reader.result as string;
+        setFreezeFrame(rawPhoto);
+        processAndNavigate(rawPhoto);
       };
       reader.readAsDataURL(file);
     },
-    [navigateWithGps]
+    [processAndNavigate]
   );
 
   return (
@@ -125,6 +173,18 @@ const Scan = () => {
         <div className="absolute inset-0 z-50 animate-camera-flash bg-white" />
       )}
 
+      {/* Compressing overlay */}
+      {shootPhase === "compressing" && freezeFrame && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center">
+          <img src={freezeFrame} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative z-10 flex flex-col items-center gap-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+            <p className="text-base font-semibold text-white">Ottimizzazione immagine…</p>
+          </div>
+        </div>
+      )}
+
       {/* GPS waiting overlay */}
       {shootPhase === "gps" && freezeFrame && (
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-center">
@@ -136,6 +196,45 @@ const Scan = () => {
             </div>
             <p className="text-base font-semibold text-white">Acquisizione posizione…</p>
             <p className="text-sm text-white/50">Attendere qualche istante</p>
+          </div>
+        </div>
+      )}
+
+      {/* GPS denied overlay */}
+      {shootPhase === "gps_denied" && freezeFrame && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center">
+          <img src={freezeFrame} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative z-10 flex flex-col items-center gap-5 px-8 max-w-sm text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/20 backdrop-blur">
+              <AlertTriangle className="h-8 w-8 text-destructive" />
+            </div>
+            <p className="text-base font-semibold text-white">Posizione non disponibile</p>
+            <p className="text-sm text-white/70 leading-relaxed">
+              Per analizzare correttamente l'edificio serve la posizione del dispositivo. Consenti la geolocalizzazione e riprova.
+            </p>
+            <div className="flex flex-col gap-3 w-full">
+              <Button
+                onClick={retryGps}
+                className="w-full min-h-[48px]"
+                size="lg"
+              >
+                <MapPin className="h-4 w-4 mr-2" />
+                Riprova posizione
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShootPhase("idle");
+                  setFreezeFrame(null);
+                  navigate("/scan");
+                }}
+                className="w-full min-h-[48px] bg-white/10 border-white/20 text-white hover:bg-white/20"
+                size="lg"
+              >
+                Torna alla scansione
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -4,6 +4,7 @@ import { ArrowLeft, Bookmark, Building2, Home, TrendingUp, History, ChevronRight
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { isValidGps, isValidImageDataUrl } from "@/lib/imageUtils";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -942,7 +943,10 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
 
 /* ── page ─────────────────────────────────────────────── */
 
-interface ResultState { photo: string; lat: number | null; lng: number | null; gpsError?: boolean; }
+interface ResultState { photo: string; lat: number | null; lng: number | null; }
+
+const isDev = import.meta.env.DEV;
+function devLog(...args: unknown[]) { if (isDev) console.log("[RESULT]", ...args); }
 
 const Result = () => {
   const navigate = useNavigate();
@@ -953,13 +957,18 @@ const Result = () => {
   const { toast } = useToast();
   const started = useRef(false);
 
-  useEffect(() => {
-    if (!state?.photo || started.current) return;
-    started.current = true;
-    scan(state.photo, state.lat ?? 0, state.lng ?? 0);
-  }, [state, scan]);
+  const hasValidPhoto = isValidImageDataUrl(state?.photo);
+  const hasValidCoords = isValidGps(state?.lat, state?.lng);
 
-  if (!state?.photo) {
+  useEffect(() => {
+    if (!hasValidPhoto || !hasValidCoords || started.current) return;
+    started.current = true;
+    devLog("identify start", { lat: state!.lat, lng: state!.lng });
+    scan(state!.photo, state!.lat!, state!.lng!);
+  }, [state, scan, hasValidPhoto, hasValidCoords]);
+
+  // No photo at all
+  if (!hasValidPhoto) {
     return (
       <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6 text-center">
         <p className="text-muted-foreground">Nessuna immagine disponibile.</p>
@@ -968,9 +977,27 @@ const Result = () => {
     );
   }
 
+  // No valid GPS — blocked
+  if (!hasValidCoords) {
+    return (
+      <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 mb-4">
+          <MapPin className="h-8 w-8 text-destructive" />
+        </div>
+        <p className="text-lg font-semibold text-foreground mb-2">Posizione non disponibile</p>
+        <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-6">
+          Per analizzare correttamente l'edificio serve la posizione del dispositivo. Consenti la geolocalizzazione e riprova.
+        </p>
+        <Button className="min-h-[48px]" onClick={() => navigate("/scan")}>Torna alla scansione</Button>
+      </div>
+    );
+  }
+
+  const identifyFailed = result.identify.status === "error";
+  const identifyData = result.identify.data as IdentifyResult | null;
+
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      {/* Watermark rimosso — da riattivare con nome utente dinamico da auth */}
       <header className="flex items-center gap-3 px-5 pt-[env(safe-area-inset-top,12px)] pb-2">
         <button onClick={() => navigate("/scan")} className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary"><ArrowLeft className="h-5 w-5 text-foreground" /></button>
         <span className="text-base font-bold text-foreground flex-1">Risultato</span>
@@ -979,7 +1006,25 @@ const Result = () => {
 
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-3 px-5 pb-32 pt-2">
-          <HeaderCard photo={state.photo} identify={result.identify.data as IdentifyResult | null} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} />
+          {/* Identify error card */}
+          {identifyFailed && (
+            <Section className="border-destructive/30 bg-destructive/5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground mb-1">Identificazione non riuscita</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                    {result.identify.message || "Non è stato possibile identificare l'edificio. Assicurati che la foto sia nitida e ritenta."}
+                  </p>
+                  <Button size="sm" onClick={() => navigate("/scan")}>Nuova scansione</Button>
+                </div>
+              </div>
+            </Section>
+          )}
+
+          <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} />
           <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} error={result.pricing.status === "error"} message={result.pricing.message} />
 
            <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} error={result.rischioZona.status === "error"} message={result.rischioZona.message} />
@@ -1021,9 +1066,13 @@ const Result = () => {
         <Button className="flex-1 min-h-[44px]" size="lg" onClick={() => navigate("/scan")}>Nuova scansione</Button>
         <Button variant="outline" size="lg" className="shrink-0" onClick={() => {
           if (!state) return;
-          const identify = result.identify.data as IdentifyResult | null;
+          // Only save if identify succeeded
+          if (!identifyData) {
+            toast({ title: "Scansione non salvabile", description: "L'identificazione dell'edificio non è riuscita.", variant: "destructive" });
+            return;
+          }
           const mood = result.moodScore.data as MoodScoreData | null;
-          saveScan({ photo: state.photo, address: identify?.address ?? "Indirizzo sconosciuto", lat: state.lat ?? null, lng: state.lng ?? null, moodScore: mood?.score ?? null, scanResult: result });
+          saveScan({ photo: state.photo, address: identifyData.address ?? "Indirizzo sconosciuto", lat: state.lat ?? null, lng: state.lng ?? null, moodScore: mood?.score ?? null, scanResult: result });
           toast({ title: "Scansione salvata", description: "Trovi questa scansione nella cronologia." });
         }}><Bookmark className="h-4 w-4" /></Button>
       </div>
