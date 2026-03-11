@@ -68,11 +68,21 @@ serve(async (req) => {
     }
 
     // ── Trial (always fetched, independent of Stripe) ──
-    const { data: trial } = await supabaseClient
+    let { data: trial } = await supabaseClient
       .from("user_trials")
       .select("*")
       .eq("user_id", user.id)
       .single();
+
+    // Auto-create trial row if missing (trigger may not be attached)
+    if (!trial) {
+      const { data: newTrial } = await supabaseClient
+        .from("user_trials")
+        .insert({ user_id: user.id })
+        .select()
+        .single();
+      trial = newTrial;
+    }
 
     const now = new Date();
     const trialActive = trial
