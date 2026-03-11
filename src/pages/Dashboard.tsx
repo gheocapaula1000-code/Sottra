@@ -66,12 +66,15 @@ const Dashboard = () => {
   const scansUsed = trial?.scans_used ?? totalScans;
   const scansMax = trial?.max_scans ?? null;
 
-  // For the owner: show normal labels, never "Admin"
-  const accountLabel = subscribed
+  // Owner sees neutral UI — hide fake "Pro" / "Abbonamento attivo"
+  const displaySubscribed = isOwner ? false : subscribed;
+  const displayTrial = isOwner ? null : trial;
+
+  const accountLabel = displaySubscribed
     ? "Abbonamento attivo"
-    : trial?.active
+    : displayTrial?.active
       ? "Trial attivo"
-      : "Account";
+      : "Attivo";
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
