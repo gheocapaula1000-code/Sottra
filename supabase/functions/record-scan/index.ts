@@ -72,11 +72,21 @@ serve(async (req) => {
     }
 
     // ── Check trial/subscription limits before recording ──
-    const { data: trial } = await supabaseClient
+    let { data: trial } = await supabaseClient
       .from("user_trials")
       .select("scans_used, max_scans, trial_end")
       .eq("user_id", user.id)
       .single();
+
+    // Auto-create trial row if missing (trigger may not be attached)
+    if (!trial) {
+      const { data: newTrial } = await supabaseClient
+        .from("user_trials")
+        .insert({ user_id: user.id })
+        .select("scans_used, max_scans, trial_end")
+        .single();
+      trial = newTrial;
+    }
 
     const now = new Date();
     const trialActive = trial
