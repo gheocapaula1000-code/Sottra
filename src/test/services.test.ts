@@ -6,18 +6,12 @@ vi.mock("@/services/api", () => ({
   isError: (res: unknown) => typeof res === "object" && res !== null && (res as { error?: boolean }).error === true,
 }));
 
-import { identifyBuilding, getCadastral, getPricing, getListings, getEnergy } from "@/services/scan";
-import { getMoodScore, getTimeView, getOpportunityIndex } from "@/services/forecast";
+import { identifyBuilding, getPricing } from "@/services/scan";
+import { getTimeView, getOpportunityIndex, getConvergenzaTerritoriale } from "@/services/forecast";
 
 describe("scan.ts", () => {
   it("identifyBuilding returns data", async () => {
     const res = await identifyBuilding("photo", 41.9, 12.5);
-    expect(res.error).toBe(false);
-    expect(res.data).toBeTruthy();
-  });
-
-  it("getCadastral returns data", async () => {
-    const res = await getCadastral("Via Roma 1");
     expect(res.error).toBe(false);
     expect(res.data).toBeTruthy();
   });
@@ -27,27 +21,9 @@ describe("scan.ts", () => {
     expect(res.error).toBe(false);
     expect(res.data).toBeTruthy();
   });
-
-  it("getListings returns data", async () => {
-    const res = await getListings("Via Roma 1");
-    expect(res.error).toBe(false);
-    expect(res.data).toBeTruthy();
-  });
-
-  it("getEnergy returns data", async () => {
-    const res = await getEnergy("Via Roma 1");
-    expect(res.error).toBe(false);
-    expect(res.data).toBeTruthy();
-  });
 });
 
 describe("forecast.ts", () => {
-  it("getMoodScore returns data", async () => {
-    const res = await getMoodScore(41.9, 12.5);
-    expect(res.error).toBe(false);
-    expect(res.data).toBeTruthy();
-  });
-
   it("getTimeView returns data", async () => {
     const res = await getTimeView(41.9, 12.5, 12);
     expect(res.error).toBe(false);
@@ -56,6 +32,12 @@ describe("forecast.ts", () => {
 
   it("getOpportunityIndex returns data", async () => {
     const res = await getOpportunityIndex(41.9, 12.5);
+    expect(res.error).toBe(false);
+    expect(res.data).toBeTruthy();
+  });
+
+  it("getConvergenzaTerritoriale returns data", async () => {
+    const res = await getConvergenzaTerritoriale(41.9, 12.5, 0.85, "Via Test 1");
     expect(res.error).toBe(false);
     expect(res.data).toBeTruthy();
   });
