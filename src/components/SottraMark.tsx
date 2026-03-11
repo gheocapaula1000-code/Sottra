@@ -3,48 +3,36 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 interface SottraMarkProps {
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg";
   className?: string;
+  /** Hide the icon, show only text wordmark */
+  textOnly?: boolean;
 }
 
 const sizes = {
-  sm: { img: "h-8 sm:h-9", text: "text-lg sm:text-xl", ml: "-0.5rem", translateY: "2.5px" },
-  md: { img: "h-10 sm:h-11", text: "text-[1.4rem] sm:text-[1.6rem]", ml: "-0.55rem", translateY: "3px" },
-  lg: { img: "h-14 sm:h-16", text: "text-[1.75rem] sm:text-[2rem]", ml: "-0.6rem", translateY: "3.5px" },
-  xl: { img: "h-20 sm:h-24", text: "text-[2.5rem] sm:text-[3.5rem]", ml: "-0.7rem", translateY: "4px" },
+  sm: { icon: "h-5 w-5", text: "text-lg", gap: "gap-1.5" },
+  md: { icon: "h-6 w-6", text: "text-xl", gap: "gap-1.5" },
+  lg: { icon: "h-8 w-8", text: "text-2xl", gap: "gap-2" },
 };
 
-export default function SottraMark({ size = "md", className }: SottraMarkProps) {
+export default function SottraMark({ size = "md", className, textOnly }: SottraMarkProps) {
   const s = sizes[size];
-  const [imgFailed, setImgFailed] = useState(false);
+  const [imgOk, setImgOk] = useState(true);
 
   return (
-    <div className={cn("flex items-center", className)}>
-      {!imgFailed ? (
+    <div className={cn("flex items-center", s.gap, className)}>
+      {!textOnly && imgOk && (
         <img
           src={logoS}
           alt=""
           aria-hidden="true"
-          className={cn(s.img, "w-auto")}
-          style={{
-            mixBlendMode: "lighten",
-            transform: `translateY(${s.translateY})`,
-          }}
+          className={cn(s.icon, "object-contain flex-shrink-0")}
           fetchPriority="high"
-          onError={() => setImgFailed(true)}
+          onError={() => setImgOk(false)}
         />
-      ) : (
-        <span
-          className={cn(s.text, "font-black text-primary tracking-tight leading-none")}
-        >
-          S
-        </span>
       )}
-      <span
-        className={cn(s.text, "font-black text-foreground tracking-tight leading-none")}
-        style={{ marginLeft: imgFailed ? "0" : s.ml }}
-      >
-        ottra
+      <span className={cn(s.text, "font-black text-foreground tracking-tight leading-none select-none")}>
+        Sottra
       </span>
     </div>
   );
