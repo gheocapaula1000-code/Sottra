@@ -135,7 +135,7 @@ const Dashboard = () => {
           <OverviewCard
             icon={<Clock className="h-4 w-4" />}
             label="Ultima attività"
-            value={lastScanDate ?? "–"}
+            value={lastScanDate ?? "Nessuna"}
           />
           <OverviewCard
             icon={<Shield className="h-4 w-4" />}
