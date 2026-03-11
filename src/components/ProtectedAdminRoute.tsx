@@ -4,7 +4,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 
 const ProtectedAdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading: authLoading } = useAuth();
-  const { loading: subLoading, isAdmin } = useSubscription();
+  const { loading: subLoading, isAdmin, isOwner } = useSubscription();
 
   if (authLoading || subLoading) {
     return (
@@ -18,7 +18,7 @@ const ProtectedAdminRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!isAdmin) {
+  if (!isAdmin && !isOwner) {
     return <Navigate to="/app" replace />;
   }
 
