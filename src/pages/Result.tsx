@@ -303,7 +303,7 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
       {(data.progettiInArrivo ?? []).length > 0 && (
         <div className="space-y-1 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Progetti in arrivo</p>
-          {(data.progettiInArrivo ?? []).map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-foreground"><Rocket className="h-3 w-3 text-primary" />{p}</div>)}
+          {(data.progettiInArrivo ?? []).map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-foreground"><Rocket className="h-3 w-3 text-primary" />{toText(p)}</div>)}
         </div>
       )}
 
