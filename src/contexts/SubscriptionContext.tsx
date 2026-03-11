@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPlanByProductId, PlanKey } from "@/lib/plans";
+import { isOwnerEmail } from "@/lib/ownerConfig";
 
 interface TrialInfo {
   active: boolean;
