@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bookmark, Building2, Home, TrendingUp, History, ChevronRight, Zap, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Bookmark, Building2, Home, TrendingUp, History, ChevronRight, Zap, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers } from "lucide-react";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,12 @@ import { cn } from "@/lib/utils";
 import { DataBadge, type DataTier } from "@/components/DataBadge";
 import Watermark from "@/components/Watermark";
 import type {
-  IdentifyResult, CadastralData, PricingData, ListingsData,
-  EnergyData, MoodScoreData, TimeViewData, OpportunityData,
-  CondominioData, StoricoTransazioniData, InfrastrutureData,
-  RischioZonaData, TrendDemograficoData, SviluppoAreaData, ScanResult, SourceMetadata,
+  IdentifyResult, PricingData,
+  TimeViewData, OpportunityData,
+  InfrastrutureData,
+  RischioZonaData, TrendDemograficoData, SviluppoAreaData,
+  ConvergenzaTerritorialeData,
+  ScanResult, SourceMetadata,
   InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
 } from "@/types";
 
@@ -108,51 +110,11 @@ function HeaderCard({ photo, identify, loading, lat, lng }: { photo: string; ide
   );
 }
 
-function CadastralCard({ data, loading }: { data: CadastralData | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!data) return null;
-  return (
-    <Section>
-      <div className="flex items-center gap-2 mb-3"><Building2 className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Dati Catastali</span></div>
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <div><span className="text-muted-foreground">Anno</span><p className="font-medium text-foreground">{data.anno}</p></div>
-        <div><span className="text-muted-foreground">Piani</span><p className="font-medium text-foreground">{data.piani}</p></div>
-        <div><span className="text-muted-foreground">Unità</span><p className="font-medium text-foreground">{data.unitaImmobiliari}</p></div>
-        <div><span className="text-muted-foreground">Rendita</span><p className="font-medium text-foreground">{fmtEur(data.renditaCatastale)}</p></div>
-      </div>
-      <p className="mt-3 text-xs text-muted-foreground">Foglio {data.foglio} · Particella {data.particella} · Sub {data.subalterno}</p>
-      <SourceLabel text="Fonte in attivazione — collegamento a Sister/Catasto in corso" tier="non_disponibile" />
-    </Section>
-  );
-}
-
-function CondominioCard({ data, loading }: { data: CondominioData | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!data) return null;
-  const yn = (v: boolean) => v ? "Sì" : "No";
-  return (
-    <Section>
-      <div className="flex items-center gap-2 mb-3"><Home className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Condominio</span></div>
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <div><span className="text-muted-foreground">Riscaldamento</span><p className="font-medium text-foreground capitalize">{data.tipoRiscaldamento}</p></div>
-        <div><span className="text-muted-foreground">Stato</span><p className="font-medium text-foreground capitalize">{data.statoConservazione}</p></div>
-        <div><span className="text-muted-foreground">Ascensore</span><p className="font-medium text-foreground">{yn(data.ascensore)}</p></div>
-        <div><span className="text-muted-foreground">Posti auto</span><p className="font-medium text-foreground">{data.postiAuto}</p></div>
-        <div><span className="text-muted-foreground">Portineria</span><p className="font-medium text-foreground">{yn(data.portineria)}</p></div>
-        <div><span className="text-muted-foreground">Giardino</span><p className="font-medium text-foreground">{yn(data.giardino)}</p></div>
-        {data.annoUltimaRistrutturazione && <div className="col-span-2"><span className="text-muted-foreground">Ultima ristrutturazione</span><p className="font-medium text-foreground">{data.annoUltimaRistrutturazione}</p></div>}
-      </div>
-      <SourceLabel text="Elaborazione da fonti pubbliche" tier="elaborato" />
-    </Section>
-  );
-}
-
 function PricingCard({ data, loading, error, message }: { data: PricingData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
   if (error) return <Section><div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="font-semibold text-foreground text-sm">Prezzi di Mercato</span></div><p className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</p></Section>;
   if (!data) return null;
 
-  // Gestione unavailable
   const isUnavailable = data.sourceType === "unavailable" || data.prezzoMq == null;
   if (isUnavailable) {
     return (
@@ -182,83 +144,6 @@ function PricingCard({ data, loading, error, message }: { data: PricingData | nu
   );
 }
 
-function StoricoTransazioniCard({ data, loading }: { data: StoricoTransazioniData | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!data) return null;
-  return (
-    <Section>
-      <div className="flex items-center gap-2 mb-3"><History className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Storico Transazioni</span></div>
-      <div className="space-y-2">
-        {data.transazioni.map((t, i) => (
-          <div key={i} className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0">
-            <div><Badge variant={t.tipo === "vendita" ? "default" : "secondary"} className="text-[10px] mr-2">{t.tipo}</Badge><span className="text-muted-foreground">{t.data}</span></div>
-            <div className="text-right"><span className="font-medium text-foreground">{fmtEur(t.prezzo)}</span><span className="text-xs text-muted-foreground ml-1">{t.mq}m² · P{t.piano}</span></div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Media zona 12m: {fmtEur(data.mediaZona12Mesi)}/m²</span><span className="font-medium text-foreground">{data.variazione12Mesi > 0 ? "+" : ""}{fmt(data.variazione12Mesi)}%</span></div>
-      <SourceLabel text="Fonte in attivazione — collegamento OMI in corso" tier="non_disponibile" />
-    </Section>
-  );
-}
-
-function ListingsCard({ data, loading }: { data: ListingsData | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!data) return null;
-  return (
-    <Section>
-      <div className="flex items-center gap-2 mb-3"><ChevronRight className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Annunci Attivi</span></div>
-      <div className="space-y-2">
-        {data.annunci.map((a, i) => (
-          <a key={i} href={a.link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0 hover:bg-muted/50 -mx-1 px-1 rounded">
-            <div className="flex items-center gap-2"><Badge variant={a.tipo === "vendita" ? "default" : "secondary"} className="text-[10px]">{a.tipo}</Badge><span className="font-medium text-foreground">{fmtEur(a.prezzo)}</span></div>
-            <span className="text-xs text-muted-foreground">{a.mq}m² · {a.locali}loc · P{a.piano}</span>
-          </a>
-        ))}
-      </div>
-      <SourceLabel text="Elaborazione da portali immobiliari" tier="elaborato" />
-    </Section>
-  );
-}
-
-function EnergyCard({ data, loading }: { data: EnergyData | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!data) return null;
-  const classColors: Record<string, string> = { A: "text-green-500", B: "text-lime-500", C: "text-yellow-500", D: "text-amber-500", E: "text-orange-500", F: "text-red-400", G: "text-red-600" };
-  const letter = data.classeEnergetica.charAt(0).toUpperCase();
-  return (
-    <Section>
-      <div className="flex items-center gap-2 mb-3"><Zap className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Classe Energetica</span></div>
-      <div className="flex items-center gap-4">
-        <span className={`text-5xl font-black ${classColors[letter] ?? "text-muted-foreground"}`}>{data.classeEnergetica}</span>
-        <div className="text-sm space-y-1">
-          <p className="text-muted-foreground">EPgl: <span className="font-medium text-foreground">{fmt(data.epgl)} kWh/m²</span></p>
-          <p className="text-muted-foreground">Media zona: <span className="font-medium text-foreground">{data.mediaZona}</span></p>
-        </div>
-      </div>
-      <SourceLabel text="Fonte in attivazione — verificare con APE ufficiale" tier="non_disponibile" />
-    </Section>
-  );
-}
-
-function MoodScoreCard({ data, loading }: { data: MoodScoreData | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!data) return null;
-  return (
-    <Section>
-      <div className="flex items-center gap-2 mb-3"><span className="font-semibold text-foreground text-sm">Mood Score</span></div>
-      <div className="flex items-start gap-4">
-        <ScoreArc value={data.score} />
-        <div className="flex-1 space-y-1">
-          <p className="text-xs text-muted-foreground">Trend: <span className="font-medium text-foreground">{data.trend}</span></p>
-          {Object.entries(data.categorie).map(([k, v]) => <MiniBar key={k} label={k} value={v} />)}
-        </div>
-      </div>
-      <SourceLabel text="Indice elaborato internamente — non costituisce valutazione ufficiale" tier="elaborato" />
-    </Section>
-  );
-}
-
 function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDemograficoData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
   if (error) return (
@@ -267,14 +152,8 @@ function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDe
       <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
     </Section>
   );
-  if (!data) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
-      <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
-    </Section>
-  );
+  if (!data) return null;
 
-  // Gestione unavailable
   const isUnavailable = data.sourceType === "unavailable" || data.etaMedia == null;
   if (isUnavailable) {
     return (
@@ -317,12 +196,7 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
       <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
     </Section>
   );
-  if (!data) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><Eye className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Scenario Evolutivo</span></div>
-      <span className="text-sm text-muted-foreground">Dati in elaborazione...</span>
-    </Section>
-  );
+  if (!data) return null;
 
   const isUnavailable = data.sourceType === "unavailable" || (!data.scenarioBand && data.previsione5Anni == null);
   if (isUnavailable) {
@@ -371,7 +245,6 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
         <p className="text-xs text-muted-foreground mb-3">Orizzonte: <span className="font-medium text-foreground">{data.scenarioHorizon}</span></p>
       )}
 
-      {/* Legacy percentages if present */}
       {data.previsione5Anni != null && (
         <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4 rounded-lg bg-background/50 border border-border/50 p-3">
           <div><span className="text-muted-foreground text-[10px] uppercase tracking-wider">5 anni</span><p className="font-bold text-foreground text-lg">{fmt(data.previsione5Anni)}%</p></div>
@@ -380,7 +253,6 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
         </div>
       )}
 
-      {/* Drivers */}
       {drivers.length > 0 && (
         <div className="space-y-1.5 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Fattori trainanti</p>
@@ -393,7 +265,6 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
         </div>
       )}
 
-      {/* Risks */}
       {risks.length > 0 && (
         <div className="space-y-1.5 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Elementi di attenzione</p>
@@ -406,14 +277,12 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
         </div>
       )}
 
-      {/* Narrative */}
       {data.narrativeObservation && (
         <div className="rounded-lg bg-background/40 border border-border/40 px-3 py-2.5 mb-3">
           <p className="text-xs text-foreground/90 leading-relaxed italic">"{data.narrativeObservation}"</p>
         </div>
       )}
 
-      {/* Projects */}
       {(data.progettiInArrivo ?? []).length > 0 && (
         <div className="space-y-1 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Progetti in arrivo</p>
@@ -436,12 +305,7 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
       <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
     </Section>
   );
-  if (!data) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><Construction className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Infrastrutture e Reti</span></div>
-      <span className="text-sm text-muted-foreground">Dati in elaborazione...</span>
-    </Section>
-  );
+  if (!data) return null;
 
   const isUnavailable = data.sourceType === "unavailable" || (data.infrastructureScore == null && !data.narrativeObservation);
   if (isUnavailable) {
@@ -476,7 +340,6 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
   const bandClass = data.infrastructureBand ? bandColors[data.infrastructureBand] ?? "" : "";
   const bandLabel = data.infrastructureBand ? bandLabels[data.infrastructureBand] ?? data.infrastructureBand : null;
 
-  // Normalize helpers for mixed string | object arrays
   const toDriverRisk = (item: InfrastructureDriverRisk | string): InfrastructureDriverRisk =>
     typeof item === "string" ? { label: item } : item;
   const toSignal = (item: InfrastructureSignal | string): InfrastructureSignal =>
@@ -486,7 +349,6 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
 
   const drivers = (data.topDrivers ?? []).slice(0, 3).map(toDriverRisk);
   const risks = (data.topRisks ?? []).slice(0, 2).map(toDriverRisk);
-
   const infraProjects = (data.infrastructureProjects ?? []).slice(0, 3).map(toProject);
   const mobilitySignals = (data.mobilitySignals ?? []).slice(0, 2).map(toSignal);
   const connectivitySignals = (data.connectivitySignals ?? []).slice(0, 2).map(toSignal);
@@ -502,7 +364,6 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
         {bandLabel && <Badge variant="secondary" className="text-[10px] font-medium">{bandLabel}</Badge>}
       </div>
 
-      {/* Score prominente */}
       {data.infrastructureScore != null && (
         <div className="flex items-center gap-3 mb-4">
           <ScoreArc value={data.infrastructureScore} />
@@ -519,7 +380,6 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
         </div>
       )}
 
-      {/* Drivers */}
       {drivers.length > 0 && (
         <div className="space-y-1.5 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Fattori chiave</p>
@@ -535,7 +395,6 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
         </div>
       )}
 
-      {/* Projects */}
       {infraProjects.length > 0 && (
         <div className="rounded-lg bg-background/50 border border-border/50 p-3 mb-3 space-y-2.5">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Opere e progetti</p>
@@ -557,7 +416,6 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
         </div>
       )}
 
-      {/* Signals grid */}
       {(mobilitySignals.length > 0 || connectivitySignals.length > 0 || publicWorksSignals.length > 0) && (
         <div className="rounded-lg bg-background/50 border border-border/50 p-3 mb-3 space-y-3">
           {mobilitySignals.length > 0 && (
@@ -605,7 +463,6 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
         </div>
       )}
 
-      {/* Risks */}
       {risks.length > 0 && (
         <div className="space-y-1.5 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Elementi di attenzione</p>
@@ -621,7 +478,6 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
         </div>
       )}
 
-      {/* Narrative */}
       {data.narrativeObservation && (
         <div className="rounded-lg bg-background/40 border border-border/40 px-3 py-2.5 mb-3">
           <p className="text-xs text-foreground/90 leading-relaxed italic">"{data.narrativeObservation}"</p>
@@ -642,14 +498,8 @@ function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaD
       <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
     </Section>
   );
-  if (!data) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><AlertTriangle className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
-      <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
-    </Section>
-  );
+  if (!data) return null;
 
-  // Gestione unavailable
   const isUnavailable = data.sourceType === "unavailable" || data.scoreRischio == null;
   if (isUnavailable) {
     return (
@@ -693,12 +543,7 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
       <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
     </Section>
   );
-  if (!data) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><Compass className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Dinamica Territoriale</span></div>
-      <span className="text-sm text-muted-foreground">Dati in caricamento...</span>
-    </Section>
-  );
+  if (!data) return null;
 
   const isUnavailable = data.sourceType === "unavailable" || (data.areaDevelopmentScore == null && !data.narrativeObservation);
   if (isUnavailable) {
@@ -715,7 +560,6 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
   const sourceText = data.sourceLabel || "Elaborazione da fonti pubbliche";
   const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
 
-  // Band color mapping
   const bandColors: Record<string, string> = {
     elevata: "from-emerald-500/20 to-green-500/10 border-emerald-500/30",
     significativa: "from-sky-500/20 to-blue-500/10 border-sky-500/30",
@@ -723,7 +567,6 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
     contenuta: "from-orange-500/15 to-amber-500/10 border-orange-500/30",
     limitata: "from-stone-500/15 to-stone-400/10 border-stone-500/30",
   };
-
   const bandLabels: Record<string, string> = {
     elevata: "Dinamica elevata",
     significativa: "Dinamica significativa",
@@ -734,13 +577,7 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
 
   const bandClass = data.areaDevelopmentBand ? bandColors[data.areaDevelopmentBand] ?? "" : "";
   const bandLabel = data.areaDevelopmentBand ? bandLabels[data.areaDevelopmentBand] ?? data.areaDevelopmentBand : null;
-
-  // Collect top 3 signals
-  const topSignals = (data.developmentSignals ?? [])
-    .filter(s => s.label)
-    .slice(0, 3);
-
-  // Collect infrastructure + connectivity + investments for highlights
+  const topSignals = (data.developmentSignals ?? []).filter(s => s.label).slice(0, 3);
   const highlights: string[] = [
     ...(data.infrastructureProjects ?? []).slice(0, 2),
     ...(data.connectivitySignals ?? []).slice(0, 1),
@@ -754,12 +591,9 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
           <Compass className="h-4 w-4 text-primary" />
           <span className="font-semibold text-foreground text-sm">Dinamica Territoriale</span>
         </div>
-        {bandLabel && (
-          <Badge variant="secondary" className="text-[10px] font-medium">{bandLabel}</Badge>
-        )}
+        {bandLabel && <Badge variant="secondary" className="text-[10px] font-medium">{bandLabel}</Badge>}
       </div>
 
-      {/* Score prominente */}
       {data.areaDevelopmentScore != null && (
         <div className="flex items-center gap-3 mb-4">
           <ScoreArc value={data.areaDevelopmentScore} />
@@ -776,7 +610,6 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
         </div>
       )}
 
-      {/* Top signals */}
       {topSignals.length > 0 && (
         <div className="space-y-2 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Segnali rilevanti</p>
@@ -795,7 +628,6 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
         </div>
       )}
 
-      {/* Highlights: infra, connectivity, investments */}
       {highlights.length > 0 && (
         <div className="rounded-lg bg-background/50 border border-border/50 p-3 mb-3 space-y-1.5">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Opere e investimenti</p>
@@ -808,12 +640,9 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
         </div>
       )}
 
-      {/* Narrative observation */}
       {data.narrativeObservation && (
         <div className="rounded-lg bg-background/40 border border-border/40 px-3 py-2.5 mb-3">
-          <p className="text-xs text-foreground/90 leading-relaxed italic">
-            "{data.narrativeObservation}"
-          </p>
+          <p className="text-xs text-foreground/90 leading-relaxed italic">"{data.narrativeObservation}"</p>
         </div>
       )}
 
@@ -831,12 +660,7 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
       <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
     </Section>
   );
-  if (!data) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><Target className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Indice Opportunità</span></div>
-      <span className="text-sm text-muted-foreground">Dati in elaborazione...</span>
-    </Section>
-  );
+  if (!data) return null;
 
   const scoreValue = data.score ?? data.indice ?? null;
   const isUnavailable = data.sourceType === "unavailable" || scoreValue == null;
@@ -867,7 +691,6 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
     limitata: "Opportunità limitata",
   };
 
-  // Fallback to legacy quadrante for band styling
   const effectiveBand = data.band ?? null;
   const bandClass = effectiveBand ? bandColors[effectiveBand] ?? "" : "";
   const bandLabel = effectiveBand ? bandLabels[effectiveBand] ?? effectiveBand : (data.quadrante ?? null);
@@ -886,7 +709,6 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
         {bandLabel && <Badge variant="secondary" className="text-[10px] font-medium">{bandLabel}</Badge>}
       </div>
 
-      {/* Score prominente */}
       <div className="flex items-center gap-4 mb-4">
         <ScoreArc value={scoreValue} size={88} />
         <div className="flex-1">
@@ -901,7 +723,6 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
         </div>
       </div>
 
-      {/* Drivers */}
       {drivers.length > 0 && (
         <div className="space-y-1.5 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Driver principali</p>
@@ -914,7 +735,6 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
         </div>
       )}
 
-      {/* Risks */}
       {risks.length > 0 && (
         <div className="space-y-1.5 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Elementi di rischio</p>
@@ -927,7 +747,6 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
         </div>
       )}
 
-      {/* Observation */}
       {observation && (
         <div className="rounded-lg bg-background/40 border border-border/40 px-3 py-2.5 mb-3">
           <p className="text-xs text-foreground/90 leading-relaxed italic">"{observation}"</p>
@@ -937,6 +756,132 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/70 mb-1">{data.confidenceReason}</p>}
       <SourceLabel text={`${sourceText}${periodText}`} tier={tier} />
       <p className="text-[9px] text-muted-foreground/40 mt-1">Indice elaborato — non costituisce consulenza finanziaria o raccomandazione d'investimento</p>
+    </Section>
+  );
+}
+
+/* ── Convergenza Territoriale Card ───────────────────── */
+
+function ConvergenzaTerritorialeCard({ data, loading, error, message }: { data: ConvergenzaTerritorialeData | null; loading: boolean; error: boolean; message: string | null }) {
+  if (loading) return <SectionSkeleton />;
+  if (error) return (
+    <Section>
+      <div className="flex items-center gap-2 mb-2"><Layers className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Convergenza Territoriale</span></div>
+      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
+    </Section>
+  );
+  if (!data) return null;
+
+  const isUnavailable = data.sourceType === "unavailable" || data.score == null;
+  if (isUnavailable) {
+    return (
+      <Section>
+        <div className="flex items-center gap-2 mb-3"><Layers className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Convergenza Territoriale</span></div>
+        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dati insufficienti per elaborare la convergenza territoriale"}</p>
+        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
+      </Section>
+    );
+  }
+
+  const tier = sourceTypeToTier(data.sourceType) === "stima" ? "elaborato" as DataTier : sourceTypeToTier(data.sourceType);
+  const sourceText = data.sourceLabel || "Elaborazione da fonti strutturate e indicatori territoriali";
+  const periodText = data.sourcePeriod ? ` (${data.sourcePeriod})` : "";
+
+  const bandColors: Record<string, string> = {
+    molto_forte: "from-emerald-500/20 to-green-500/10 border-emerald-500/30",
+    forte: "from-sky-500/20 to-blue-500/10 border-sky-500/30",
+    interessante: "from-violet-500/15 to-indigo-500/10 border-violet-500/30",
+    debole: "from-stone-500/15 to-stone-400/10 border-stone-500/30",
+  };
+  const bandLabels: Record<string, string> = {
+    molto_forte: "Convergenza molto forte",
+    forte: "Convergenza forte",
+    interessante: "Convergenza interessante",
+    debole: "Convergenza debole",
+  };
+
+  const convergenceLevelLabels: Record<string, string> = {
+    alta: "Elevata", media: "Media", bassa: "Bassa", insufficiente: "Insufficiente",
+  };
+  const coverageLevelLabels: Record<string, string> = {
+    completa: "Completa", buona: "Buona", parziale: "Parziale", scarsa: "Scarsa",
+  };
+
+  const bandClass = data.band ? bandColors[data.band] ?? "" : "";
+  const bandLabel = data.band ? bandLabels[data.band] ?? data.band : null;
+
+  const positiveSignals = (data.topPositiveSignals ?? []).slice(0, 3);
+  const negativeSignals = (data.topNegativeSignals ?? []).slice(0, 3);
+
+  return (
+    <Section className={`bg-gradient-to-br ${bandClass}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Layers className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-foreground text-sm">Convergenza Territoriale</span>
+        </div>
+        {bandLabel && <Badge variant="secondary" className="text-[10px] font-medium">{bandLabel}</Badge>}
+      </div>
+
+      {/* Score + summary */}
+      <div className="flex items-center gap-3 mb-4">
+        <ScoreArc value={data.score ?? 0} size={88} />
+        <div className="flex-1 space-y-1.5">
+          {data.convergenceLevel && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">Convergenza:</span>
+              <span className="font-medium text-foreground">{convergenceLevelLabels[data.convergenceLevel] ?? data.convergenceLevel}</span>
+            </div>
+          )}
+          {data.coverageLevel && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">Copertura dati:</span>
+              <span className="font-medium text-foreground">{coverageLevelLabels[data.coverageLevel] ?? data.coverageLevel}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Positive signals */}
+      {positiveSignals.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Segnali favorevoli</p>
+          {positiveSignals.map((s, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" />
+              <div>
+                <p className="text-xs text-foreground leading-relaxed">{s.label}</p>
+                {s.source && <p className="text-[10px] text-muted-foreground/60">{s.source}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Negative signals */}
+      {negativeSignals.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Contro-segnali</p>
+          {negativeSignals.map((s, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
+              <div>
+                <p className="text-xs text-foreground leading-relaxed">{s.label}</p>
+                {s.source && <p className="text-[10px] text-muted-foreground/60">{s.source}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {data.confidenceReason && (
+        <div className="rounded-lg bg-background/40 border border-border/40 px-3 py-2.5 mb-3">
+          <p className="text-xs text-foreground/90 leading-relaxed italic">"{data.confidenceReason}"</p>
+        </div>
+      )}
+
+      <SourceLabel text={`${sourceText}${periodText}`} tier={tier} />
+      <p className="text-[9px] text-muted-foreground/40 mt-1">Indice di convergenza elaborato — non costituisce consulenza o raccomandazione</p>
     </Section>
   );
 }
@@ -1026,39 +971,28 @@ const Result = () => {
 
           <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} />
           <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} error={result.pricing.status === "error"} message={result.pricing.message} />
-
-           <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} error={result.rischioZona.status === "error"} message={result.rischioZona.message} />
+          <ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} error={result.convergenzaTerritoriale.status === "error"} message={result.convergenzaTerritoriale.message} />
+          <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} error={result.rischioZona.status === "error"} message={result.rischioZona.message} />
           <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} error={result.trendDemografico.status === "error"} message={result.trendDemografico.message} />
-
           <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} error={result.opportunity.status === "error"} message={result.opportunity.message} />
           <TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} error={result.timeView.status === "error"} message={result.timeView.message} />
-
           <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} error={result.infrastrutture.status === "error"} message={result.infrastrutture.message} />
-
           <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} error={result.sviluppoArea.status === "error"} message={result.sviluppoArea.message} />
 
-          {/* Moduli in attivazione */}
+          {/* Moduli in valutazione */}
           <Section className="border-dashed border-border/60">
             <div className="flex items-start gap-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
                 <Construction className="h-4 w-4 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground mb-1">Moduli in attivazione</p>
+                <p className="text-sm font-medium text-foreground mb-1">Ulteriori moduli in valutazione</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Dati catastali, classe energetica, dettagli condominiali, storico transazioni e annunci nella zona saranno disponibili progressivamente, man mano che le fonti saranno integrate e verificate.
                 </p>
               </div>
             </div>
           </Section>
-
-          {/* Card commentate — da riattivare con dati reali */}
-          {/* <CadastralCard data={result.cadastral.data as CadastralData | null} loading={result.cadastral.status === "loading"} /> */}
-          {/* <CondominioCard data={result.condominio.data as CondominioData | null} loading={result.condominio.status === "loading"} /> */}
-          {/* <StoricoTransazioniCard data={result.storicoTransazioni.data as StoricoTransazioniData | null} loading={result.storicoTransazioni.status === "loading"} /> */}
-          {/* <ListingsCard data={result.listings.data as ListingsData | null} loading={result.listings.status === "loading"} /> */}
-          {/* <EnergyCard data={result.energy.data as EnergyData | null} loading={result.energy.status === "loading"} /> */}
-          {/* <MoodScoreCard data={result.moodScore.data as MoodScoreData | null} loading={result.moodScore.status === "loading"} /> */}
         </div>
       </div>
 
@@ -1066,13 +1000,25 @@ const Result = () => {
         <Button className="flex-1 min-h-[44px]" size="lg" onClick={() => navigate("/scan")}>Nuova scansione</Button>
         <Button variant="outline" size="lg" className="shrink-0" onClick={() => {
           if (!state) return;
-          // Only save if identify succeeded
           if (!identifyData) {
             toast({ title: "Scansione non salvabile", description: "L'identificazione dell'edificio non è riuscita.", variant: "destructive" });
             return;
           }
-          const mood = result.moodScore.data as MoodScoreData | null;
-          saveScan({ photo: state.photo, address: identifyData.address ?? "Indirizzo sconosciuto", lat: state.lat ?? null, lng: state.lng ?? null, moodScore: mood?.score ?? null, scanResult: result });
+          const convergenza = result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null;
+          saveScan({
+            photo: state.photo,
+            address: identifyData.address ?? "Indirizzo sconosciuto",
+            lat: state.lat ?? null,
+            lng: state.lng ?? null,
+            moodScore: null,
+            convergenzaTerritoriale: convergenza ? {
+              score: convergenza.score,
+              band: convergenza.band,
+              convergenceLevel: convergenza.convergenceLevel,
+              coverageLevel: convergenza.coverageLevel,
+            } : null,
+            scanResult: result,
+          });
           toast({ title: "Scansione salvata", description: "Trovi questa scansione nella cronologia." });
         }}><Bookmark className="h-4 w-4" /></Button>
       </div>

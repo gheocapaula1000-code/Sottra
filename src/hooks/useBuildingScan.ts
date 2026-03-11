@@ -1,30 +1,47 @@
 import { useReducer, useState, useCallback, useRef } from "react";
 import { identifyBuilding, getPricing } from "@/services/scan";
-import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea } from "@/services/forecast";
+import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale } from "@/services/forecast";
 import { supabase } from "@/integrations/supabase/client";
-import type { ScanResult, SectionState } from "@/types";
+import type { ScanResult, SectionState, IdentifyResult } from "@/types";
 
-const idle = { status: "idle" as const, data: null, message: null };
+const idle: SectionState = { status: "idle", data: null, message: null };
+const unavailable: SectionState = { status: "success", data: null, message: "Modulo in attivazione" };
 
-const initialState: ScanResult = {
-  identify: idle, cadastral: idle, pricing: idle,
-  listings: idle, energy: idle, condominio: idle,
-  storicoTransazioni: idle, moodScore: idle, timeView: idle,
-  opportunity: idle, infrastrutture: idle, rischioZona: idle,
-  trendDemografico: idle, sviluppoArea: idle,
-} as ScanResult;
+/** Modules that are actually called during a scan */
+const ACTIVE_MODULES: (keyof ScanResult)[] = [
+  "identify", "pricing", "timeView", "opportunity",
+  "infrastrutture", "rischioZona", "trendDemografico",
+  "sviluppoArea", "convergenzaTerritoriale",
+];
+
+/** Modules NOT yet integrated — always set to unavailable */
+const INACTIVE_MODULES: (keyof ScanResult)[] = [
+  "cadastral", "listings", "energy", "condominio",
+  "storicoTransazioni", "moodScore",
+];
+
+function buildInitialState(): ScanResult {
+  const s = {} as Record<string, SectionState>;
+  for (const k of ACTIVE_MODULES) s[k] = idle;
+  for (const k of INACTIVE_MODULES) s[k] = idle;
+  return s as unknown as ScanResult;
+}
+
+const initialState = buildInitialState();
 
 type Action =
-  | { type: "RESET_ALL_LOADING" }
+  | { type: "START_SCAN" }
   | { type: "RESET_IDLE" }
-  | { type: "SET"; key: keyof ScanResult; value: { status: SectionState["status"]; data: unknown; message: string | null } };
+  | { type: "SET"; key: keyof ScanResult; value: SectionState };
 
 function reducer(state: ScanResult, action: Action): ScanResult {
   switch (action.type) {
-    case "RESET_ALL_LOADING":
-      return Object.fromEntries(
-        Object.keys(initialState).map((k) => [k, { status: "loading", data: null, message: null }])
-      ) as unknown as ScanResult;
+    case "START_SCAN": {
+      const s = {} as Record<string, SectionState>;
+      for (const k of ACTIVE_MODULES) s[k] = { status: "loading", data: null, message: null };
+      for (const k of INACTIVE_MODULES) s[k] = unavailable;
+      return s as unknown as ScanResult;
+    }
     case "RESET_IDLE":
       return initialState;
     case "SET":
@@ -41,14 +58,13 @@ export function useBuildingScan() {
   const scanIdRef = useRef<string | null>(null);
 
   const scan = useCallback(async (photo: string, lat: number, lng: number) => {
-    // Generate unique scan_id for idempotent counting
     const scanId = crypto.randomUUID();
     scanIdRef.current = scanId;
 
     setScanning(true);
-    dispatch({ type: "RESET_ALL_LOADING" });
+    dispatch({ type: "START_SCAN" });
 
-    const set = (key: keyof ScanResult, value: { status: SectionState["status"]; data: unknown; message: string | null }) =>
+    const set = (key: keyof ScanResult, value: SectionState) =>
       dispatch({ type: "SET", key, value });
 
     const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
@@ -60,9 +76,6 @@ export function useBuildingScan() {
       set(key, { status: "error", data: null, message: err instanceof Error ? err.message : "Errore imprevisto" });
     };
 
-
-
-
     const runPipeline = async () => {
       // Step 1: Identify building
       const idRes = await identifyBuilding(photo, lat, lng);
@@ -72,9 +85,15 @@ export function useBuildingScan() {
         message: idRes.message,
       });
 
-      if (idRes.error || !idRes.data) return;
+      if (idRes.error || !idRes.data) {
+        // Mark all other active modules as error (except identify)
+        for (const k of ACTIVE_MODULES) {
+          if (k !== "identify") set(k, { status: "error", data: null, message: "Identificazione non riuscita" });
+        }
+        return;
+      }
 
-      // Step 2: Record scan consumption — AWAIT and BLOCK if refused
+      // Step 2: Record scan consumption
       try {
         const { data: recordData, error: recordError } = await supabase.functions.invoke("record-scan", {
           body: { scan_id: scanId },
@@ -82,18 +101,16 @@ export function useBuildingScan() {
 
         if (recordError) {
           console.error("[SCAN] record-scan invocation error:", recordError);
-          // Mark all remaining sections as error
           const errMsg = "Errore durante la registrazione della scansione. Riprova.";
-          for (const k of Object.keys(initialState) as (keyof ScanResult)[]) {
+          for (const k of ACTIVE_MODULES) {
             if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
           }
           return;
         }
 
-        // Server returned 403 / limit_reached
         if (recordData?.limit_reached || recordData?.error) {
           const errMsg = recordData?.error ?? "Limite scansioni raggiunto";
-          for (const k of Object.keys(initialState) as (keyof ScanResult)[]) {
+          for (const k of ACTIVE_MODULES) {
             if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
           }
           setLimitReached(true);
@@ -102,26 +119,32 @@ export function useBuildingScan() {
       } catch (err) {
         console.error("[SCAN] record-scan failed:", err);
         const errMsg = "Servizio temporaneamente non disponibile. Riprova.";
-        for (const k of Object.keys(initialState) as (keyof ScanResult)[]) {
+        for (const k of ACTIVE_MODULES) {
           if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
         }
         return;
       }
 
-      // Step 3: Consumption confirmed — now launch all modules
-      const address = (idRes.data as { address?: string }).address ?? "";
+      // Step 3: Launch all active modules in parallel
+      const identifyData = idRes.data as IdentifyResult;
+      const address = identifyData.address ?? "";
+      const confidence = identifyData.confidence ?? undefined;
 
       await Promise.allSettled([
-        // Pricing (needs address)
         ...(address ? [getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing"))] : []),
-        // Forecast modules (coordinate-based)
         getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
         getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
         getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
         getRischioZona(lat, lng).then(resolve("rischioZona")).catch(reject("rischioZona")),
         getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
         getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
+        getConvergenzaTerritoriale(lat, lng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
       ]);
+
+      // If pricing wasn't called (no address), set it to unavailable
+      if (!address) {
+        set("pricing", { status: "success", data: null, message: "Indirizzo non disponibile per la valutazione prezzi" });
+      }
     };
 
     await runPipeline();
