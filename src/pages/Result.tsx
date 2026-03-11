@@ -758,7 +758,7 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
           {risks.map((r, i) => (
             <div key={i} className="flex items-start gap-2">
               <div className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 bg-amber-500" />
-              <p className="text-xs text-foreground leading-relaxed">{r}</p>
+              <p className="text-xs text-foreground leading-relaxed">{toText(r)}</p>
             </div>
           ))}
         </div>
