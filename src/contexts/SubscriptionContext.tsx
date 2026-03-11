@@ -85,7 +85,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [session, refresh]);
 
-  const canScan = isAdmin || subscribed || (trial?.active ?? false);
+  const canScan = isOwner || isAdmin || subscribed || (trial?.active ?? false);
   const isOwner = isOwnerEmail(session?.user?.email);
 
   return (
