@@ -25,7 +25,7 @@ export interface IdentifyResult {
 /** Source metadata dal backend */
 export interface SourceMetadata {
   sourceLabel?: string;
-  sourceType?: "official" | "elaborated" | "estimate" | "unavailable";
+  sourceType?: "official" | "elaborated" | "estimate" | "unavailable" | "commercial_verified" | "commercial_partial";
   sourcePeriod?: string;
   confidenceReason?: string;
   limitations?: string[];
