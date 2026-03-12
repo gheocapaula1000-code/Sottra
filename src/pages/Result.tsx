@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bookmark, TrendingUp, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers, Camera, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Bookmark, TrendingUp, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers, Camera, CheckCircle2, BarChart3, Gem } from "lucide-react";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import type {
   TimeViewData, OpportunityData,
   InfrastrutureData,
   RischioZonaData, TrendDemograficoData, SviluppoAreaData,
-  ConvergenzaTerritorialeData,
+  ConvergenzaTerritorialeData, MarketContextData, ComparablesSummary,
   ScanResult, SourceMetadata,
   InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
 } from "@/types";
