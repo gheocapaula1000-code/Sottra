@@ -882,7 +882,7 @@ const Result = () => {
   const lowConfidence = identifyDone && identifyData != null && identifyData.confidence < LOW_CONFIDENCE_THRESHOLD;
 
   // Count publishable vs excluded
-  const moduleKeys: (keyof ScanResult)[] = ["pricing", "convergenzaTerritoriale", "rischioZona", "trendDemografico", "opportunity", "timeView", "infrastrutture", "sviluppoArea"];
+  const moduleKeys: (keyof ScanResult)[] = ["pricing", "marketContext", "convergenzaTerritoriale", "rischioZona", "trendDemografico", "opportunity", "timeView", "infrastrutture", "sviluppoArea"];
   const completedModules = moduleKeys.filter(k => result[k].status !== "loading" && result[k].status !== "idle");
   const publishedCount = completedModules.filter(k => isSectionPublishable(result[k].status, result[k].data)).length;
   const excludedCount = completedModules.length - publishedCount;
