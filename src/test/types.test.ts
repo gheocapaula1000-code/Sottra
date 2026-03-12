@@ -22,8 +22,11 @@ describe("mockPricing matches PricingData", () => {
   it("has prezzoMq (number)", () => {
     expect(typeof mockPricing.prezzoMq).toBe("number");
   });
-  it("has mediaZona (number)", () => {
-    expect(typeof mockPricing.mediaZona).toBe("number");
+  it("accepts mediaZona as null", () => {
+    expect(mockPricing.mediaZona).toBeNull();
+  });
+  it("accepts trend5Anni as null", () => {
+    expect(mockPricing.trend5Anni).toBeNull();
   });
 });
 

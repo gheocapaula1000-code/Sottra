@@ -36,8 +36,8 @@ export interface PricingData extends SourceMetadata {
   prezzoMq: number;
   prezzoMqMin: number;
   prezzoMqMax: number;
-  mediaZona: number;
-  trend5Anni: number;
+  mediaZona: number | null;
+  trend5Anni: number | null;
 }
 
 /** Previsione futura */
