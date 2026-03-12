@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bookmark, Building2, Home, TrendingUp, History, ChevronRight, Zap, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers } from "lucide-react";
+import { ArrowLeft, Bookmark, Building2, Home, TrendingUp, History, ChevronRight, Zap, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers, Camera } from "lucide-react";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,6 @@ import type {
 
 /* ── helpers ─────────────────────────────────────────── */
 
-/** Safely extract display text from a value that may be a string or an object with a label/message key */
 function toText(v: unknown): string {
   if (v == null) return "";
   if (typeof v === "string") return v;
@@ -51,7 +50,6 @@ function fmtEur(n: number | null | undefined): string {
   return n.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 }
 
-/** Converte sourceType backend in DataTier */
 function sourceTypeToTier(sourceType?: string): DataTier {
   switch (sourceType) {
     case "official": return "ufficiale";
@@ -106,17 +104,34 @@ function MiniBar({ label, value, max = 100 }: { label: string; value: number; ma
   );
 }
 
+/* ── Section publishability check ─────────────────────── */
+
+/** Determines if a section has publishable data (not error/unavailable/null) */
+function isSectionPublishable(status: string, data: unknown): boolean {
+  if (status === "loading") return true; // still loading, show skeleton
+  if (status === "error" || !data) return false;
+  // Check for sourceType unavailable
+  if (typeof data === "object" && data !== null) {
+    const d = data as Record<string, unknown>;
+    if (d.sourceType === "unavailable") return false;
+  }
+  return true;
+}
+
 /* ── cards ────────────────────────────────────────────── */
 
-function HeaderCard({ photo, identify, loading, lat, lng }: { photo: string; identify: IdentifyResult | null; loading: boolean; lat: number | null; lng: number | null }) {
+function HeaderCard({ photo, identify, loading, lat, lng, lowConfidence }: { photo: string; identify: IdentifyResult | null; loading: boolean; lat: number | null; lng: number | null; lowConfidence: boolean }) {
   if (loading) return <SectionSkeleton />;
   return (
     <Section>
       <img src={photo} alt="Edificio" className="w-full aspect-video object-cover rounded-t-xl mb-3" />
       {identify && (
         <div className="space-y-2">
-          <h2 className="text-lg font-bold text-foreground">{identify.address}</h2>
-          <p className="text-xs text-muted-foreground">ID: {identify.buildingId}</p>
+          {!lowConfidence && <h2 className="text-lg font-bold text-foreground">{identify.address}</h2>}
+          {lowConfidence && identify.address && (
+            <h2 className="text-lg font-bold text-foreground/70">{identify.address}</h2>
+          )}
+          {!lowConfidence && <p className="text-xs text-muted-foreground">ID: {identify.buildingId}</p>}
           <div className="flex items-center gap-2">
             <Badge variant="secondary">Attendibilità {Math.round(identify.confidence * 100)}%</Badge>
             {lat != null && lng != null && <span className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{lat.toFixed(4)}, {lng.toFixed(4)}</span>}
@@ -129,19 +144,10 @@ function HeaderCard({ photo, identify, loading, lat, lng }: { photo: string; ide
 
 function PricingCard({ data, loading, error, message }: { data: PricingData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (error) return <Section><div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="font-semibold text-foreground text-sm">Prezzi di Mercato</span></div><p className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</p></Section>;
-  if (!data) return null;
+  if (error || !data) return null; // Hide unpublishable sections
 
   const isUnavailable = data.sourceType === "unavailable" || data.prezzoMq == null;
-  if (isUnavailable) {
-    return (
-      <Section>
-        <div className="flex items-center gap-2 mb-3"><TrendingUp className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Prezzi di Mercato</span></div>
-        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
-        <SourceLabel text={data.sourceLabel || "Fonte ufficiale non trovata per l'indirizzo analizzato"} tier="non_disponibile" />
-      </Section>
-    );
-  }
+  if (isUnavailable) return null; // Omit entirely
 
   const diff = (data.prezzoMq ?? 0) - (data.mediaZona ?? 0);
   const tier = sourceTypeToTier(data.sourceType);
@@ -163,24 +169,10 @@ function PricingCard({ data, loading, error, message }: { data: PricingData | nu
 
 function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDemograficoData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (error) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
-      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
-    </Section>
-  );
-  if (!data) return null;
+  if (error || !data) return null;
 
   const isUnavailable = data.sourceType === "unavailable" || data.etaMedia == null;
-  if (isUnavailable) {
-    return (
-      <Section>
-        <div className="flex items-center gap-2 mb-3"><Users className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Trend Demografico</span></div>
-        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
-        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
-      </Section>
-    );
-  }
+  if (isUnavailable) return null;
 
   const tier = sourceTypeToTier(data.sourceType);
   const sourceText = data.sourceLabel || (tier === "ufficiale" ? "Fonte: ISTAT" : "Elaborazione dati demografici");
@@ -207,24 +199,10 @@ function TrendDemograficoCard({ data, loading, error, message }: { data: TrendDe
 
 function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (error) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><Eye className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Scenario Evolutivo</span></div>
-      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
-    </Section>
-  );
-  if (!data) return null;
+  if (error || !data) return null;
 
   const isUnavailable = data.sourceType === "unavailable" || (!data.scenarioBand && data.previsione5Anni == null);
-  if (isUnavailable) {
-    return (
-      <Section>
-        <div className="flex items-center gap-2 mb-3"><Eye className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Scenario Evolutivo</span></div>
-        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dati insufficienti per elaborare uno scenario evolutivo"}</p>
-        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
-      </Section>
-    );
-  }
+  if (isUnavailable) return null;
 
   const tier = sourceTypeToTier(data.sourceType) === "stima" ? "elaborato" as DataTier : sourceTypeToTier(data.sourceType);
   const sourceText = data.sourceLabel || "Elaborazione da indicatori territoriali e infrastrutturali";
@@ -316,24 +294,10 @@ function TimeViewCard({ data, loading, error, message }: { data: TimeViewData | 
 
 function InfrastrutureCard({ data, loading, error, message }: { data: InfrastrutureData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (error) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><Construction className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Infrastrutture e Reti</span></div>
-      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
-    </Section>
-  );
-  if (!data) return null;
+  if (error || !data) return null;
 
   const isUnavailable = data.sourceType === "unavailable" || (data.infrastructureScore == null && !data.narrativeObservation);
-  if (isUnavailable) {
-    return (
-      <Section>
-        <div className="flex items-center gap-2 mb-3"><Construction className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Infrastrutture e Reti</span></div>
-        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dati non disponibili per questa zona"}</p>
-        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
-      </Section>
-    );
-  }
+  if (isUnavailable) return null;
 
   const tier = sourceTypeToTier(data.sourceType) === "stima" ? "elaborato" as DataTier : sourceTypeToTier(data.sourceType);
   const sourceText = data.sourceLabel || "Elaborazione da Open Data comunali e fonti pubbliche";
@@ -509,24 +473,10 @@ function InfrastrutureCard({ data, loading, error, message }: { data: Infrastrut
 
 function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (error) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><AlertTriangle className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
-      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
-    </Section>
-  );
-  if (!data) return null;
+  if (error || !data) return null;
 
   const isUnavailable = data.sourceType === "unavailable" || data.scoreRischio == null;
-  if (isUnavailable) {
-    return (
-      <Section>
-        <div className="flex items-center gap-2 mb-3"><AlertTriangle className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Rischio Zona</span></div>
-        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dato non disponibile per questo comune"}</p>
-        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
-      </Section>
-    );
-  }
+  if (isUnavailable) return null;
 
   const tier = sourceTypeToTier(data.sourceType);
   const sourceText = data.sourceLabel || (tier === "ufficiale" ? "Fonte: ISPRA IdroGEO + INGV" : "Elaborazione rischio zona");
@@ -554,24 +504,10 @@ function RischioZonaCard({ data, loading, error, message }: { data: RischioZonaD
 
 function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAreaData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (error) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><Compass className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Dinamica Territoriale</span></div>
-      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
-    </Section>
-  );
-  if (!data) return null;
+  if (error || !data) return null;
 
   const isUnavailable = data.sourceType === "unavailable" || (data.areaDevelopmentScore == null && !data.narrativeObservation);
-  if (isUnavailable) {
-    return (
-      <Section>
-        <div className="flex items-center gap-2 mb-3"><Compass className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Dinamica Territoriale</span></div>
-        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Copertura non disponibile per questa zona"}</p>
-        <SourceLabel text={data.sourceLabel || "Dati insufficienti per l'elaborazione"} tier="non_disponibile" />
-      </Section>
-    );
-  }
+  if (isUnavailable) return null;
 
   const tier = sourceTypeToTier(data.sourceType);
   const sourceText = data.sourceLabel || "Elaborazione da fonti pubbliche";
@@ -671,25 +607,11 @@ function SviluppoAreaCard({ data, loading, error, message }: { data: SviluppoAre
 
 function OpportunityCard({ data, loading, error, message }: { data: OpportunityData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (error) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><Target className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Indice Opportunità</span></div>
-      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
-    </Section>
-  );
-  if (!data) return null;
+  if (error || !data) return null;
 
   const scoreValue = data.score ?? data.indice ?? null;
   const isUnavailable = data.sourceType === "unavailable" || scoreValue == null;
-  if (isUnavailable) {
-    return (
-      <Section>
-        <div className="flex items-center gap-2 mb-3"><Target className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Indice Opportunità</span></div>
-        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dati insufficienti per elaborare un indice di opportunità"}</p>
-        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
-      </Section>
-    );
-  }
+  if (isUnavailable) return null;
 
   const tier = sourceTypeToTier(data.sourceType) === "stima" ? "elaborato" as DataTier : sourceTypeToTier(data.sourceType);
   const sourceText = data.sourceLabel || "Elaborazione da indicatori di contesto e mercato";
@@ -781,24 +703,10 @@ function OpportunityCard({ data, loading, error, message }: { data: OpportunityD
 
 function ConvergenzaTerritorialeCard({ data, loading, error, message }: { data: ConvergenzaTerritorialeData | null; loading: boolean; error: boolean; message: string | null }) {
   if (loading) return <SectionSkeleton />;
-  if (error) return (
-    <Section>
-      <div className="flex items-center gap-2 mb-2"><Layers className="h-4 w-4 text-destructive" /><span className="font-semibold text-foreground text-sm">Convergenza Territoriale</span></div>
-      <span className="text-sm text-muted-foreground">{message || "Servizio non ancora disponibile"}</span>
-    </Section>
-  );
-  if (!data) return null;
+  if (error || !data) return null;
 
   const isUnavailable = data.sourceType === "unavailable" || data.score == null;
-  if (isUnavailable) {
-    return (
-      <Section>
-        <div className="flex items-center gap-2 mb-3"><Layers className="h-4 w-4 text-primary" /><span className="font-semibold text-foreground text-sm">Convergenza Territoriale</span></div>
-        <p className="text-sm text-muted-foreground">{data.limitations?.[0] || "Dati insufficienti per elaborare la convergenza territoriale"}</p>
-        <SourceLabel text={data.sourceLabel || "Copertura non disponibile"} tier="non_disponibile" />
-      </Section>
-    );
-  }
+  if (isUnavailable) return null;
 
   const tier = sourceTypeToTier(data.sourceType) === "stima" ? "elaborato" as DataTier : sourceTypeToTier(data.sourceType);
   const sourceText = data.sourceLabel || "Elaborazione da fonti strutturate e indicatori territoriali";
@@ -840,7 +748,6 @@ function ConvergenzaTerritorialeCard({ data, loading, error, message }: { data: 
         {bandLabel && <Badge variant="secondary" className="text-[10px] font-medium">{bandLabel}</Badge>}
       </div>
 
-      {/* Score + summary */}
       <div className="flex items-center gap-3 mb-4">
         <ScoreArc value={data.score ?? 0} size={88} />
         <div className="flex-1 space-y-1.5">
@@ -859,7 +766,6 @@ function ConvergenzaTerritorialeCard({ data, loading, error, message }: { data: 
         </div>
       </div>
 
-      {/* Positive signals */}
       {positiveSignals.length > 0 && (
         <div className="space-y-1.5 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Segnali favorevoli</p>
@@ -875,7 +781,6 @@ function ConvergenzaTerritorialeCard({ data, loading, error, message }: { data: 
         </div>
       )}
 
-      {/* Negative signals */}
       {negativeSignals.length > 0 && (
         <div className="space-y-1.5 mb-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Contro-segnali</p>
@@ -903,9 +808,53 @@ function ConvergenzaTerritorialeCard({ data, loading, error, message }: { data: 
   );
 }
 
+/* ── Excluded sections note ──────────────────────────── */
+
+function ExcludedSectionsNote({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <div className="rounded-xl border border-border/50 bg-card/50 p-3 text-center">
+      <p className="text-xs text-muted-foreground/60">
+        {count === 1
+          ? "1 sezione esclusa dai controlli di pubblicazione"
+          : `${count} sezioni escluse dai controlli di pubblicazione`
+        }
+      </p>
+    </div>
+  );
+}
+
+/* ── Low confidence retry card ───────────────────────── */
+
+function LowConfidenceCard({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Section className="border-amber-500/20 bg-amber-500/5">
+      <div className="flex flex-col items-center text-center gap-4 py-2">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10">
+          <Camera className="h-7 w-7 text-amber-400" />
+        </div>
+        <div className="space-y-2 max-w-xs">
+          <p className="text-sm font-semibold text-foreground">
+            Acquisizione non ancora sufficiente per il report completo
+          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Per completare l'analisi, ripeti lo scatto includendo meglio facciata e civico dell'edificio.
+          </p>
+        </div>
+        <Button onClick={onRetry} size="lg" className="min-h-[48px] w-full max-w-[240px]">
+          <Camera className="h-4 w-4 mr-2" />
+          Riprova lo scatto
+        </Button>
+      </div>
+    </Section>
+  );
+}
+
 /* ── page ─────────────────────────────────────────────── */
 
 interface ResultState { photo: string; lat: number | null; lng: number | null; }
+
+const LOW_CONFIDENCE_THRESHOLD = 0.4;
 
 const isDev = import.meta.env.DEV;
 function devLog(...args: unknown[]) { if (isDev) console.log("[RESULT]", ...args); }
@@ -929,7 +878,6 @@ const Result = () => {
     scan(state!.photo, state!.lat!, state!.lng!);
   }, [state, scan, hasValidPhoto, hasValidCoords]);
 
-  // No photo at all
   if (!hasValidPhoto) {
     return (
       <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6 text-center">
@@ -939,7 +887,6 @@ const Result = () => {
     );
   }
 
-  // No valid GPS — blocked
   if (!hasValidCoords) {
     return (
       <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6 text-center">
@@ -957,6 +904,15 @@ const Result = () => {
 
   const identifyFailed = result.identify.status === "error";
   const identifyData = result.identify.data as IdentifyResult | null;
+  const identifyDone = result.identify.status === "success";
+  const lowConfidence = identifyDone && identifyData != null && identifyData.confidence < LOW_CONFIDENCE_THRESHOLD;
+
+  // Count excluded (non-publishable) sections among completed modules
+  const moduleKeys: (keyof ScanResult)[] = ["pricing", "convergenzaTerritoriale", "rischioZona", "trendDemografico", "opportunity", "timeView", "infrastrutture", "sviluppoArea"];
+  const excludedCount = moduleKeys.filter(k => {
+    const s = result[k];
+    return s.status === "error" || (s.status === "success" && !isSectionPublishable(s.status, s.data));
+  }).length;
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -968,34 +924,50 @@ const Result = () => {
 
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-3 px-5 pb-32 pt-2">
-          {/* Identify error card */}
+          {/* Identify error — premium retry prompt */}
           {identifyFailed && (
             <Section className="border-destructive/30 bg-destructive/5">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
+              <div className="flex flex-col items-center text-center gap-4 py-2">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+                  <Camera className="h-7 w-7 text-destructive" />
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-foreground mb-1">Identificazione non riuscita</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                    {result.identify.message || "Non è stato possibile identificare l'edificio. Assicurati che la foto sia nitida e ritenta."}
+                <div className="space-y-2 max-w-xs">
+                  <p className="text-sm font-semibold text-foreground">
+                    Scatto non ancora sufficiente per l'analisi
                   </p>
-                  <Button size="sm" onClick={() => navigate("/scan")}>Nuova scansione</Button>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Per pubblicare il report, ripeti lo scatto inquadrando la facciata intera e il civico dell'edificio.
+                  </p>
                 </div>
+                <Button size="lg" className="min-h-[48px]" onClick={() => navigate("/scan")}>
+                  <Camera className="h-4 w-4 mr-2" />
+                  Riprova lo scatto
+                </Button>
               </div>
             </Section>
           )}
 
-          <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} />
-          <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} error={result.pricing.status === "error"} message={result.pricing.message} />
-          <ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} error={result.convergenzaTerritoriale.status === "error"} message={result.convergenzaTerritoriale.message} />
-          <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} error={result.rischioZona.status === "error"} message={result.rischioZona.message} />
-          <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} error={result.trendDemografico.status === "error"} message={result.trendDemografico.message} />
-          <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} error={result.opportunity.status === "error"} message={result.opportunity.message} />
-          <TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} error={result.timeView.status === "error"} message={result.timeView.message} />
-          <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} error={result.infrastrutture.status === "error"} message={result.infrastrutture.message} />
-          <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} error={result.sviluppoArea.status === "error"} message={result.sviluppoArea.message} />
+          <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} lowConfidence={lowConfidence} />
 
+          {/* Low confidence — show retry instead of full report */}
+          {lowConfidence && <LowConfidenceCard onRetry={() => navigate("/scan")} />}
+
+          {/* Only show module cards if identification confidence is sufficient */}
+          {!lowConfidence && !identifyFailed && (
+            <>
+              <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} error={result.pricing.status === "error"} message={result.pricing.message} />
+              <ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} error={result.convergenzaTerritoriale.status === "error"} message={result.convergenzaTerritoriale.message} />
+              <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} error={result.rischioZona.status === "error"} message={result.rischioZona.message} />
+              <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} error={result.trendDemografico.status === "error"} message={result.trendDemografico.message} />
+              <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} error={result.opportunity.status === "error"} message={result.opportunity.message} />
+              <TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} error={result.timeView.status === "error"} message={result.timeView.message} />
+              <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} error={result.infrastrutture.status === "error"} message={result.infrastrutture.message} />
+              <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} error={result.sviluppoArea.status === "error"} message={result.sviluppoArea.message} />
+
+              {/* Discrete excluded sections note */}
+              {!scanning && <ExcludedSectionsNote count={excludedCount} />}
+            </>
+          )}
         </div>
       </div>
 
@@ -1004,7 +976,7 @@ const Result = () => {
         <Button variant="outline" size="lg" className="shrink-0" onClick={() => {
           if (!state) return;
           if (!identifyData) {
-            toast({ title: "Scansione non salvabile", description: "L'identificazione dell'edificio non è riuscita.", variant: "destructive" });
+            toast({ title: "Scansione non salvabile", description: "L'identificazione dell'edificio non è ancora completa.", variant: "destructive" });
             return;
           }
           const convergenza = result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null;
