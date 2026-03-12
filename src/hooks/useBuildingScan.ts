@@ -122,6 +122,7 @@ export function useBuildingScan() {
 
       await Promise.allSettled([
         ...(address ? [getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing"))] : []),
+        getMarketContext(lat, lng, address || undefined).then(resolve("marketContext")).catch(reject("marketContext")),
         getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
         getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
         getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
