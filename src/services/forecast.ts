@@ -62,3 +62,12 @@ export async function getConvergenzaTerritoriale(lat: number, lng: number, ident
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
+
+export async function getMarketContext(lat: number, lng: number, address?: string) {
+  if (USE_MOCK) { await delay(1100); return { error: false, message: null, data: mockMarketContext }; }
+  const payload: Record<string, unknown> = { lat, lng };
+  if (address) payload.address = address;
+  const res = await coreRequest("/scan/market-context", "POST", payload, 25000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}
