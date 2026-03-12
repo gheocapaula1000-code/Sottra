@@ -8,7 +8,7 @@ const idle: SectionState = { status: "idle", data: null, message: null };
 
 /** All active modules */
 const MODULES: (keyof ScanResult)[] = [
-  "identify", "pricing", "timeView", "opportunity",
+  "identify", "pricing", "marketContext", "timeView", "opportunity",
   "infrastrutture", "rischioZona", "trendDemografico",
   "sviluppoArea", "convergenzaTerritoriale",
 ];
