@@ -7,6 +7,7 @@ import type {
   IdentifyResult, PricingData,
   TimeViewData, OpportunityData,
   InfrastrutureData, RischioZonaData, TrendDemograficoData,
+  MarketContextData,
 } from "@/types";
 
 export const mockIdentify: IdentifyResult = {
@@ -91,4 +92,31 @@ export const mockTrendDemografico: TrendDemograficoData = {
   percentualeFamiglie: 38,
   percentualeGiovani: 28,
   percentualeStranieri: 15,
+};
+
+export const mockMarketContext: MarketContextData = {
+  marketConfidence: 78,
+  marketCoverageLevel: "buona",
+  comparablesSummary: {
+    count: 14,
+    medianPricePerSqm: 4150,
+    q1PricePerSqm: 3700,
+    q3PricePerSqm: 4800,
+    minPricePerSqm: 3200,
+    maxPricePerSqm: 5400,
+    marketDepth: "sufficiente",
+    marketFreshness: "recente",
+  },
+  marketSignals: [
+    { key: "priceBandLocale", label: "Fascia prezzo locale", value: "medio-alta", detail: "Posizionamento nella parte alta della fascia di zona" },
+    { key: "marketFreshness", label: "Freschezza mercato", value: "recente", detail: "Dati aggiornati agli ultimi 6 mesi" },
+    { key: "sellerPressure", label: "Pressione venditore", value: "moderata" },
+  ],
+  providerBreakdown: [
+    { provider: "Fonte A", listingsUsed: 9, coverageLevel: "buona" },
+    { provider: "Fonte B", listingsUsed: 5, coverageLevel: "parziale" },
+  ],
+  narrativeObservation: "Il contesto di mercato locale mostra segnali coerenti con una dinamica equilibrata, sostenuta da volumi di transazione stabili e una buona profondità dei comparabili disponibili.",
+  sourceType: "elaborated",
+  sourceLabel: "Elaborazione da fonti di mercato verificate",
 };

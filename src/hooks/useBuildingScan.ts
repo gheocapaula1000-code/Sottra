@@ -1,6 +1,6 @@
 import { useReducer, useState, useCallback, useRef } from "react";
 import { identifyBuilding, getPricing } from "@/services/scan";
-import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale } from "@/services/forecast";
+import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
 import { supabase } from "@/integrations/supabase/client";
 import type { ScanResult, SectionState, IdentifyResult } from "@/types";
 
@@ -8,7 +8,7 @@ const idle: SectionState = { status: "idle", data: null, message: null };
 
 /** All active modules */
 const MODULES: (keyof ScanResult)[] = [
-  "identify", "pricing", "timeView", "opportunity",
+  "identify", "pricing", "marketContext", "timeView", "opportunity",
   "infrastrutture", "rischioZona", "trendDemografico",
   "sviluppoArea", "convergenzaTerritoriale",
 ];
@@ -122,6 +122,7 @@ export function useBuildingScan() {
 
       await Promise.allSettled([
         ...(address ? [getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing"))] : []),
+        getMarketContext(lat, lng, address || undefined).then(resolve("marketContext")).catch(reject("marketContext")),
         getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
         getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
         getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
