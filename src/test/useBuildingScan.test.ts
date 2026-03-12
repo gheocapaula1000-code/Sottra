@@ -28,6 +28,7 @@ vi.mock("@/services/forecast", () => ({
   getTrendDemografico: vi.fn().mockResolvedValue({ error: false, message: null, data: { etaMedia: 42 } }),
   getSviluppoArea: vi.fn().mockResolvedValue({ error: false, message: null, data: null }),
   getConvergenzaTerritoriale: vi.fn().mockResolvedValue({ error: false, message: null, data: null }),
+  getMarketContext: vi.fn().mockResolvedValue({ error: false, message: null, data: { marketConfidence: 78, comparablesSummary: { count: 14 }, sourceType: "elaborated" } }),
 }));
 
 import { useBuildingScan } from "@/hooks/useBuildingScan";
