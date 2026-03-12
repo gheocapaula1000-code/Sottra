@@ -673,7 +673,120 @@ function SviluppoAreaCard({ data, loading }: { data: SviluppoAreaData | null; lo
   );
 }
 
-/* ── Low confidence retry card ───────────────────────── */
+/* ── Market Context Card ──────────────────────────────── */
+
+function isMarketPublishable(data: MarketContextData | null): boolean {
+  if (!data) return false;
+  const st = data.sourceType;
+  if (st === "unavailable") return false;
+  // Must have at least comparables or signals
+  const hasComparables = data.comparablesSummary != null && data.comparablesSummary.count != null && data.comparablesSummary.count > 0;
+  const hasSignals = (data.marketSignals ?? []).length > 0;
+  return hasComparables || hasSignals;
+}
+
+function MarketContextCard({ data, loading }: { data: MarketContextData | null; loading: boolean }) {
+  if (loading) return <SectionSkeleton />;
+  if (!data || !isMarketPublishable(data)) return null;
+
+  const coverageLabels: Record<string, string> = { completa: "Completa", buona: "Buona", parziale: "Parziale", scarsa: "Scarsa" };
+  const isPartial = data.sourceType === "commercial_partial";
+
+  return (
+    <Section gradient="from-indigo-500/10 to-violet-500/5 border-indigo-500/15">
+      <SectionHeader icon={BarChart3} title="Mercato Locale" badge={data.marketCoverageLevel ? coverageLabels[data.marketCoverageLevel] : null} />
+
+      {data.comparablesSummary && data.comparablesSummary.count != null && data.comparablesSummary.count > 0 && (
+        <ComparablesBlock comp={data.comparablesSummary} isPartial={isPartial} />
+      )}
+
+      {(data.marketSignals ?? []).length > 0 && (
+        <MarketSignalsBlock signals={data.marketSignals!} />
+      )}
+
+      {data.narrativeObservation && (
+        <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3 mt-3">
+          <p className="text-xs text-foreground/80 leading-relaxed italic">"{data.narrativeObservation}"</p>
+        </div>
+      )}
+
+      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mt-2">{data.confidenceReason}</p>}
+      <SourceTag meta={data} />
+      {isPartial && <p className="text-[9px] text-muted-foreground/30 mt-1">Analisi basata su copertura parziale — dati indicativi</p>}
+    </Section>
+  );
+}
+
+function ComparablesBlock({ comp, isPartial }: { comp: ComparablesSummary; isPartial: boolean }) {
+  const depthLabels: Record<string, string> = { profondo: "Profondo", sufficiente: "Sufficiente", limitato: "Limitato" };
+  const freshnessLabels: Record<string, string> = { recente: "Recente", moderata: "Moderata", datata: "Datata" };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-baseline gap-2">
+        <span className="text-2xl font-extrabold text-foreground tracking-tight">{comp.count}</span>
+        <span className="text-xs text-muted-foreground font-medium">comparabili analizzati</span>
+      </div>
+
+      {(comp.q1PricePerSqm != null || comp.medianPricePerSqm != null) && (
+        <div className="grid grid-cols-2 gap-2">
+          {comp.medianPricePerSqm != null && (
+            <div className="rounded-lg bg-muted/50 px-3 py-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Mediana €/m²</span>
+              <p className="font-bold text-foreground text-sm mt-0.5">{fmtEur(comp.medianPricePerSqm)}</p>
+            </div>
+          )}
+          {comp.q1PricePerSqm != null && comp.q3PricePerSqm != null && (
+            <div className="rounded-lg bg-muted/50 px-3 py-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Intervallo</span>
+              <p className="font-bold text-foreground text-sm mt-0.5">{fmtEur(comp.q1PricePerSqm)} – {fmtEur(comp.q3PricePerSqm)}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-3 flex-wrap">
+        {comp.marketDepth && (
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground">Profondità:</span>
+            <span className="font-semibold text-foreground">{depthLabels[comp.marketDepth] ?? comp.marketDepth}</span>
+          </div>
+        )}
+        {comp.marketFreshness && (
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground">Freschezza:</span>
+            <span className="font-semibold text-foreground">{freshnessLabels[comp.marketFreshness] ?? comp.marketFreshness}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MarketSignalsBlock({ signals }: { signals: { key: string; label: string; value?: string | number | null; detail?: string | null }[] }) {
+  const publishable = signals.filter(s => s.label && s.value != null).slice(0, 5);
+  if (publishable.length === 0) return null;
+
+  return (
+    <div className="space-y-2 mt-3">
+      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Segnali di mercato</p>
+      {publishable.map((s, i) => (
+        <div key={i} className="flex items-start gap-2">
+          <Gem className="h-3 w-3 mt-0.5 shrink-0 text-indigo-400" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-xs font-medium text-foreground">{s.label}</span>
+              <span className="text-xs text-primary font-semibold">{String(s.value)}</span>
+            </div>
+            {s.detail && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{s.detail}</p>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
 
 function LowConfidenceCard({ onRetry }: { onRetry: () => void }) {
   return (
