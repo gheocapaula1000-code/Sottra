@@ -1,6 +1,6 @@
 import { useReducer, useState, useCallback, useRef } from "react";
 import { identifyBuilding, getPricing } from "@/services/scan";
-import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale } from "@/services/forecast";
+import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
 import { supabase } from "@/integrations/supabase/client";
 import type { ScanResult, SectionState, IdentifyResult } from "@/types";
 
