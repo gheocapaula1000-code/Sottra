@@ -50,10 +50,10 @@ function fmtEur(n: number | null | undefined): string {
 function sourceTypeToTier(sourceType?: string): DataTier {
   switch (sourceType) {
     case "official": return "ufficiale";
-    case "commercial_verified": return "ufficiale";
+    case "commercial_verified": return "mercato_verificato";
+    case "commercial_partial": return "mercato_parziale";
     case "elaborated": return "elaborato";
     case "estimate": return "elaborato";
-    case "commercial_partial": return "elaborato";
     case "unavailable": return "non_disponibile";
     default: return "elaborato";
   }
@@ -65,7 +65,13 @@ function SourceTag({ meta }: { meta?: SourceMetadata }) {
   if (!meta) return null;
   const tier = sourceTypeToTier(meta.sourceType);
   if (tier === "non_disponibile") return null;
-  const label = meta.sourceLabel || (tier === "ufficiale" ? "Fonte istituzionale verificata" : "Elaborazione da fonti verificate");
+  const defaultLabels: Partial<Record<DataTier, string>> = {
+    ufficiale: "Fonte istituzionale verificata",
+    mercato_verificato: "Fonte di mercato verificata",
+    mercato_parziale: "Copertura di mercato parziale",
+    elaborato: "Elaborazione da fonti verificate",
+  };
+  const label = meta.sourceLabel || defaultLabels[tier] || "Elaborazione da fonti verificate";
   const period = meta.sourcePeriod ? ` · ${meta.sourcePeriod}` : "";
   return (
     <div className="mt-3 flex items-center gap-2 flex-wrap">

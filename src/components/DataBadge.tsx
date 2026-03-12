@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export type DataTier = "ufficiale" | "elaborato" | "stima" | "non_disponibile" | "demo";
+export type DataTier = "ufficiale" | "mercato_verificato" | "mercato_parziale" | "elaborato" | "stima" | "non_disponibile" | "demo";
 
 const config: Record<DataTier, { label: string; className: string; desc: string }> = {
   ufficiale: {
@@ -8,10 +8,20 @@ const config: Record<DataTier, { label: string; className: string; desc: string 
     className: "bg-green-500/15 text-green-400 border-green-500/30",
     desc: "Fonte istituzionale verificata",
   },
+  mercato_verificato: {
+    label: "Mercato verificato",
+    className: "bg-teal-500/15 text-teal-400 border-teal-500/30",
+    desc: "Fonte di mercato verificata",
+  },
+  mercato_parziale: {
+    label: "Mercato parziale",
+    className: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+    desc: "Copertura di mercato parziale",
+  },
   elaborato: {
     label: "Dato elaborato",
     className: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-    desc: "Elaborazione da fonti pubbliche",
+    desc: "Elaborazione da fonti verificate",
   },
   stima: {
     label: "Stima indicativa",
