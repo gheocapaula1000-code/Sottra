@@ -189,7 +189,8 @@ function PricingCard({ data, loading }: { data: PricingData | null; loading: boo
   if (loading) return <SectionSkeleton />;
   if (!data || data.sourceType === "unavailable" || data.prezzoMq == null) return null;
 
-  const diff = (data.prezzoMq ?? 0) - (data.mediaZona ?? 0);
+  const hasMediaZona = data.mediaZona != null;
+  const hasTrend = data.trend5Anni != null;
 
   return (
     <Section>
@@ -198,22 +199,26 @@ function PricingCard({ data, loading }: { data: PricingData | null; loading: boo
         <span className="text-3xl font-extrabold text-foreground tracking-tight">{fmtEur(data.prezzoMq)}</span>
         <span className="text-sm text-muted-foreground font-medium">/m²</span>
       </div>
-      <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+      <div className={cn("grid gap-3 text-sm mb-3", hasMediaZona ? "grid-cols-2" : "grid-cols-1")}>
         <div className="rounded-lg bg-muted/50 px-3 py-2">
           <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Fascia</span>
           <p className="font-semibold text-foreground text-sm mt-0.5">{fmtEur(data.prezzoMqMin)} – {fmtEur(data.prezzoMqMax)}</p>
         </div>
-        <div className="rounded-lg bg-muted/50 px-3 py-2">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Media zona</span>
-          <p className="font-semibold text-foreground text-sm mt-0.5">{fmtEur(data.mediaZona)}</p>
+        {hasMediaZona && (
+          <div className="rounded-lg bg-muted/50 px-3 py-2">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Media zona</span>
+            <p className="font-semibold text-foreground text-sm mt-0.5">{fmtEur(data.mediaZona)}</p>
+          </div>
+        )}
+      </div>
+      {hasTrend && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Trend 5 anni</span>
+          <span className={cn("font-bold", data.trend5Anni! >= 0 ? "text-emerald-400" : "text-destructive")}>
+            {data.trend5Anni! > 0 ? "+" : ""}{fmt(data.trend5Anni)}%
+          </span>
         </div>
-      </div>
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">Trend 5 anni</span>
-        <span className={cn("font-bold", (data.trend5Anni ?? 0) >= 0 ? "text-emerald-400" : "text-destructive")}>
-          {data.trend5Anni != null && data.trend5Anni > 0 ? "+" : ""}{fmt(data.trend5Anni)}%
-        </span>
-      </div>
+      )}
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mt-2">{data.confidenceReason}</p>}
       <SourceTag meta={data} />
     </Section>
