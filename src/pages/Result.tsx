@@ -50,8 +50,10 @@ function fmtEur(n: number | null | undefined): string {
 function sourceTypeToTier(sourceType?: string): DataTier {
   switch (sourceType) {
     case "official": return "ufficiale";
+    case "commercial_verified": return "ufficiale";
     case "elaborated": return "elaborato";
-    case "estimate": return "elaborato"; // promote estimate → elaborato
+    case "estimate": return "elaborato";
+    case "commercial_partial": return "elaborato";
     case "unavailable": return "non_disponibile";
     default: return "elaborato";
   }
