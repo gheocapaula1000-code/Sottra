@@ -4,9 +4,11 @@ import { X, Upload, Camera, MapPin, ImagePlus, AlertTriangle } from "lucide-reac
 import { useToast } from "@/hooks/use-toast";
 import { normalizeImage, isValidImageDataUrl } from "@/lib/imageUtils";
 import { Button } from "@/components/ui/button";
+import CaptureGate from "@/components/CaptureGate";
 
 type CameraState = "loading" | "active" | "denied" | "unavailable";
 type ShootPhase = "idle" | "flash" | "gps" | "compressing" | "gps_denied";
+type PagePhase = "gate" | "camera";
 
 const isDev = import.meta.env.DEV;
 function devLog(...args: unknown[]) { if (isDev) console.log("[SCAN]", ...args); }
@@ -16,12 +18,16 @@ const Scan = () => {
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const [pagePhase, setPagePhase] = useState<PagePhase>("gate");
   const [cameraState, setCameraState] = useState<CameraState>("loading");
   const [shootPhase, setShootPhase] = useState<ShootPhase>("idle");
   const [freezeFrame, setFreezeFrame] = useState<string | null>(null);
+  const [showTips, setShowTips] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Start camera only when moving past gate
   useEffect(() => {
+    if (pagePhase !== "camera") return;
     let cancelled = false;
 
     const start = async () => {
@@ -41,6 +47,8 @@ const Scan = () => {
           await videoRef.current.play();
         }
         setCameraState("active");
+        // Auto-hide tips after 4s
+        setTimeout(() => setShowTips(false), 4000);
       } catch (err: unknown) {
         if (!cancelled) {
           const name = err instanceof DOMException ? err.name : "";
@@ -55,7 +63,7 @@ const Scan = () => {
       cancelled = true;
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [pagePhase]);
 
   const captureFrame = useCallback((): string | null => {
     const video = videoRef.current;
@@ -67,10 +75,8 @@ const Scan = () => {
     return canvas.toDataURL("image/jpeg", 0.85);
   }, []);
 
-  /** Compress image, acquire GPS, then navigate to /result */
   const processAndNavigate = useCallback(
     async (rawPhoto: string) => {
-      // 1. Compress
       setShootPhase("compressing");
       let photo: string;
       try {
@@ -88,7 +94,6 @@ const Scan = () => {
         return;
       }
 
-      // 2. Acquire GPS
       setShootPhase("gps");
       devLog("gps acquisition started");
 
@@ -121,22 +126,15 @@ const Scan = () => {
 
   const retryGps = useCallback(() => {
     if (!freezeFrame) return;
-    // Re-compress isn't needed since freezeFrame may be raw — but we already have the compressed version stored in processAndNavigate's closure.
-    // Simplest: re-run the full flow
     processAndNavigate(freezeFrame);
   }, [freezeFrame, processAndNavigate]);
 
   const handleShoot = useCallback(() => {
     const rawPhoto = captureFrame();
     if (!rawPhoto) return;
-
-    // Stop stream
     streamRef.current?.getTracks().forEach((t) => t.stop());
-
-    // Flash phase
     setFreezeFrame(rawPhoto);
     setShootPhase("flash");
-
     setTimeout(() => {
       processAndNavigate(rawPhoto);
     }, 150);
@@ -157,9 +155,13 @@ const Scan = () => {
     [processAndNavigate]
   );
 
+  // Show capture gate first
+  if (pagePhase === "gate") {
+    return <CaptureGate onContinue={() => setPagePhase("camera")} />;
+  }
+
   return (
     <div className="fixed inset-0 bg-black">
-      {/* Video feed */}
       <video
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover"
@@ -214,11 +216,7 @@ const Scan = () => {
               Per analizzare correttamente l'edificio serve la posizione del dispositivo. Consenti la geolocalizzazione e riprova.
             </p>
             <div className="flex flex-col gap-3 w-full">
-              <Button
-                onClick={retryGps}
-                className="w-full min-h-[48px]"
-                size="lg"
-              >
+              <Button onClick={retryGps} className="w-full min-h-[48px]" size="lg">
                 <MapPin className="h-4 w-4 mr-2" />
                 Riprova posizione
               </Button>
@@ -255,6 +253,17 @@ const Scan = () => {
             <>
               <Viewfinder />
               <p className="mt-6 text-sm font-medium text-white/70 drop-shadow">Inquadra un edificio</p>
+
+              {/* Non-invasive shooting tips */}
+              {showTips && (
+                <div className="mt-4 flex flex-wrap justify-center gap-2 px-6 animate-in fade-in duration-500">
+                  {["Facciata intera", "Frontalmente", "Civico visibile"].map((tip) => (
+                    <span key={tip} className="rounded-full bg-white/10 backdrop-blur-sm px-3 py-1.5 text-xs text-white/60">
+                      {tip}
+                    </span>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
@@ -293,7 +302,6 @@ const Scan = () => {
         {/* Bottom controls */}
         {cameraState === "active" && shootPhase === "idle" && (
           <div className="z-10 flex items-center justify-center gap-8 pb-[max(env(safe-area-inset-bottom,24px),24px)] pt-4 px-6">
-            {/* Gallery button */}
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors active:bg-white/20"
@@ -302,7 +310,6 @@ const Scan = () => {
               <ImagePlus className="h-5 w-5 text-white/80" />
             </button>
 
-            {/* Shutter */}
             <button
               onClick={handleShoot}
               className="group flex h-[72px] w-[72px] items-center justify-center rounded-full border-[3px] border-white/90 bg-transparent transition-transform active:scale-90"
@@ -311,13 +318,11 @@ const Scan = () => {
               <div className="h-[58px] w-[58px] rounded-full bg-white transition-colors group-active:bg-white/70" />
             </button>
 
-            {/* Spacer for symmetry */}
             <div className="h-11 w-11" />
           </div>
         )}
       </div>
 
-      {/* Hidden file input for gallery */}
       <input
         ref={fileInputRef}
         type="file"
