@@ -17,7 +17,9 @@ export const mockIdentify: IdentifyResult = {
 
 export const mockPricing: PricingData = {
   prezzoMq: 4200, prezzoMqMin: 3800, prezzoMqMax: 5100,
-  mediaZona: 4050, trend5Anni: 18.5,
+  mediaZona: null, trend5Anni: null,
+  sourceType: "official",
+  sourceLabel: "Fonte: Agenzia Entrate — OMI",
 };
 
 export const mockTimeView: TimeViewData = {

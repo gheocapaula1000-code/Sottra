@@ -9,7 +9,7 @@ vi.mock("@/services/scan", () => ({
   }),
   getPricing: vi.fn().mockResolvedValue({
     error: false, message: null,
-    data: { prezzoMq: 4000, prezzoMqMin: 3500, prezzoMqMax: 4800, mediaZona: 3900, trend5Anni: 12 },
+    data: { prezzoMq: 4000, prezzoMqMin: 3500, prezzoMqMax: 4800, mediaZona: null, trend5Anni: null },
   }),
 }));
 
