@@ -7,6 +7,7 @@ import type {
   IdentifyResult, PricingData,
   TimeViewData, OpportunityData,
   InfrastrutureData, RischioZonaData, TrendDemograficoData,
+  MarketContextData,
 } from "@/types";
 
 export const mockIdentify: IdentifyResult = {

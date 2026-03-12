@@ -2,6 +2,7 @@ import { coreRequest, isError } from "./api";
 import {
   mockTimeView, mockOpportunity,
   mockInfrastrutture, mockRischioZona, mockTrendDemografico,
+  mockMarketContext,
 } from "./mockData";
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true" && import.meta.env.MODE !== "production";

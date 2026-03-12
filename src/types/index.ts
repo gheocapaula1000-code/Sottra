@@ -169,10 +169,48 @@ export interface ConvergenzaTerritorialeData extends SourceMetadata {
   evidenceTrace: ConvergenzaEvidenceTrace[] | null;
 }
 
+/** Segnale di mercato premium */
+export interface MarketSignal {
+  key: string;
+  label: string;
+  value?: string | number | null;
+  detail?: string | null;
+}
+
+/** Provider breakdown */
+export interface MarketProviderBreakdown {
+  provider: string;
+  listingsUsed?: number | null;
+  coverageLevel?: string | null;
+}
+
+/** Comparables summary */
+export interface ComparablesSummary {
+  count: number | null;
+  medianPricePerSqm?: number | null;
+  q1PricePerSqm?: number | null;
+  q3PricePerSqm?: number | null;
+  minPricePerSqm?: number | null;
+  maxPricePerSqm?: number | null;
+  marketDepth?: "profondo" | "sufficiente" | "limitato" | null;
+  marketFreshness?: "recente" | "moderata" | "datata" | null;
+}
+
+/** Market context */
+export interface MarketContextData extends SourceMetadata {
+  marketConfidence?: number | null;
+  marketCoverageLevel?: "completa" | "buona" | "parziale" | "scarsa" | null;
+  comparablesSummary?: ComparablesSummary | null;
+  marketSignals?: MarketSignal[] | null;
+  providerBreakdown?: MarketProviderBreakdown[] | null;
+  narrativeObservation?: string | null;
+}
+
 /** Risultato completo di una scansione — solo moduli realmente operativi */
 export interface ScanResult {
   identify: SectionState<IdentifyResult>;
   pricing: SectionState<PricingData>;
+  marketContext: SectionState<MarketContextData>;
   timeView: SectionState<TimeViewData>;
   opportunity: SectionState<OpportunityData>;
   infrastrutture: SectionState<InfrastrutureData>;
