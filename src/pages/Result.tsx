@@ -360,7 +360,7 @@ function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | 
   if (d.percentualeGiovani != null) metrics.push({ label: "Under 35", value: `${fmt(d.percentualeGiovani)}%` });
 
   const hasBars = d.percentualeFamiglie != null || d.percentualeStranieri != null;
-  const totalVisibleItems = metrics.length + (d.percentualeFamiglie != null ? 1 : 0) + (d.percentualeStranieri != null ? 1 : 0);
+  const totalVisibleItems = getAvailableDemographicMetricCount(d);
 
   return (
     <Section>
