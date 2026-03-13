@@ -81,7 +81,7 @@ function parsePayload(data: unknown): {
 }
 
 export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
-  const { session } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [subscribed, setSubscribed] = useState(false);
   const [planKey, setPlanKey] = useState<PlanKey | null>(null);
@@ -95,10 +95,14 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setSubscriptionEnd(null);
     setTrial(null);
     setIsAdmin(false);
-    setLoading(false);
-  }, []);
+    // Only mark loading done if auth is already resolved
+    if (!authLoading) setLoading(false);
+  }, [authLoading]);
 
   const refresh = useCallback(async () => {
+    // While auth is still loading, stay in loading state — don't resolve yet
+    if (authLoading) return;
+
     if (!session) {
       applyDefaults();
       return;
@@ -148,7 +152,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [session, applyDefaults]);
+  }, [session, authLoading, applyDefaults]);
 
   useEffect(() => {
     refresh();
