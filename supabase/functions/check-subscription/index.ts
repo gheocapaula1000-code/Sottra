@@ -136,9 +136,11 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const msg = error.message ?? String(error);
+    const isAuthError = msg.includes("Auth") || msg.includes("auth") || msg.includes("session") || msg.includes("authorization");
+    return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: isAuthError ? 401 : 500,
     });
   }
 });
