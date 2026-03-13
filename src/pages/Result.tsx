@@ -20,6 +20,7 @@ import type {
   ScanResult, SourceMetadata,
   InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
 } from "@/types";
+import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
 
 /* ── helpers ─────────────────────────────────────────── */
 
