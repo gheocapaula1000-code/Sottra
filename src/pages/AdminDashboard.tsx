@@ -45,14 +45,14 @@ const AdminDashboard = () => {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       {/* Header */}
-      <header className="border-b border-border px-4 sm:px-6">
-        <div className="mx-auto grid h-20 sm:h-[88px] max-w-5xl grid-cols-[1fr_auto_1fr] items-center">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md px-4 sm:px-6">
+        <div className="mx-auto grid h-16 sm:h-[72px] max-w-5xl grid-cols-[1fr_auto_1fr] items-center">
           <SottraMark size="sm" textOnly linkTo="/app" />
 
           <img
             src={logoS}
             alt="Sottra"
-            className="h-16 w-16 sm:h-[72px] sm:w-[72px] object-contain"
+            className="h-12 w-12 sm:h-14 sm:w-14 object-contain"
           />
 
           <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
