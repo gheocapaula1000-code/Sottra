@@ -5,13 +5,8 @@ import {
   mockOpportunity,
   mockTrendDemografico,
 } from "@/services/mockData";
+import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
 import type { TrendDemograficoData } from "@/types";
-
-/** Mirrors the gating logic in Result.tsx */
-function isRenderableTrendDemografico(data: TrendDemograficoData | null): boolean {
-  if (!data || data.sourceType === "unavailable") return false;
-  return [data.etaMedia, data.densitaAbitanti, data.flussoResidenti12Mesi, data.percentualeFamiglie, data.percentualeGiovani, data.percentualeStranieri].some(v => v != null);
-}
 
 describe("mockIdentify matches IdentifyResult", () => {
   it("has address (string)", () => {
@@ -76,43 +71,16 @@ describe("mockTrendDemografico — no false zeros", () => {
   });
 });
 
-describe("isRenderableTrendDemografico — visibility gating", () => {
-  it("A) renders when etaMedia is null but densita exists", () => {
-    const data: TrendDemograficoData = {
-      etaMedia: null, densitaAbitanti: 3200, flussoResidenti12Mesi: null,
-      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
-      geoLevel: "quartiere", geoLabel: "Arcella",
-    };
-    expect(isRenderableTrendDemografico(data)).toBe(true);
+describe("isRenderableTrendDemografico — real exported helper", () => {
+  it("A) null input → false", () => {
+    expect(isRenderableTrendDemografico(null)).toBe(false);
   });
 
-  it("B) hidden when ALL metrics are null", () => {
-    const data: TrendDemograficoData = {
-      etaMedia: null, densitaAbitanti: null, flussoResidenti12Mesi: null,
-      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
-    };
-    expect(isRenderableTrendDemografico(data)).toBe(false);
+  it("A2) undefined input → false", () => {
+    expect(isRenderableTrendDemografico(undefined)).toBe(false);
   });
 
-  it("C) geoLevel+geoLabel alone are NOT enough", () => {
-    const data: TrendDemograficoData = {
-      etaMedia: null, densitaAbitanti: null, flussoResidenti12Mesi: null,
-      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
-      geoLevel: "quartiere", geoLabel: "Arcella",
-    };
-    expect(isRenderableTrendDemografico(data)).toBe(false);
-  });
-
-  it("D) renderable with comune geoLevel if a real metric exists", () => {
-    const data: TrendDemograficoData = {
-      etaMedia: 43, densitaAbitanti: null, flussoResidenti12Mesi: null,
-      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
-      geoLevel: "comune", geoLabel: "Milano",
-    };
-    expect(isRenderableTrendDemografico(data)).toBe(true);
-  });
-
-  it("E) hidden when sourceType is unavailable even with metrics", () => {
+  it("B) unavailable sourceType → false even with metrics", () => {
     const data: TrendDemograficoData = {
       etaMedia: 41, densitaAbitanti: 7800, flussoResidenti12Mesi: null,
       percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
@@ -121,7 +89,59 @@ describe("isRenderableTrendDemografico — visibility gating", () => {
     expect(isRenderableTrendDemografico(data)).toBe(false);
   });
 
-  it("E2) no numeric null field is coerced to 0 in mock data", () => {
+  it("C) etaMedia null but densita exists → true", () => {
+    const data: TrendDemograficoData = {
+      etaMedia: null, densitaAbitanti: 3200, flussoResidenti12Mesi: null,
+      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
+      geoLevel: "quartiere", geoLabel: "Arcella",
+    };
+    expect(isRenderableTrendDemografico(data)).toBe(true);
+  });
+
+  it("D) all metrics null → false", () => {
+    const data: TrendDemograficoData = {
+      etaMedia: null, densitaAbitanti: null, flussoResidenti12Mesi: null,
+      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
+    };
+    expect(isRenderableTrendDemografico(data)).toBe(false);
+  });
+
+  it("E) geoLevel+geoLabel alone NOT enough", () => {
+    const data: TrendDemograficoData = {
+      etaMedia: null, densitaAbitanti: null, flussoResidenti12Mesi: null,
+      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
+      geoLevel: "quartiere", geoLabel: "Arcella",
+    };
+    expect(isRenderableTrendDemografico(data)).toBe(false);
+  });
+
+  it("F) single metric (percentualeStranieri) → true", () => {
+    const data: TrendDemograficoData = {
+      etaMedia: null, densitaAbitanti: null, flussoResidenti12Mesi: null,
+      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: 12.4,
+    };
+    expect(isRenderableTrendDemografico(data)).toBe(true);
+  });
+
+  it("G) comune + flussoResidenti → true", () => {
+    const data: TrendDemograficoData = {
+      etaMedia: null, densitaAbitanti: null, flussoResidenti12Mesi: 2.4,
+      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
+      geoLevel: "comune", geoLabel: "Milano",
+    };
+    expect(isRenderableTrendDemografico(data)).toBe(true);
+  });
+
+  it("H) comune + etaMedia → true", () => {
+    const data: TrendDemograficoData = {
+      etaMedia: 43, densitaAbitanti: null, flussoResidenti12Mesi: null,
+      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
+      geoLevel: "comune", geoLabel: "Milano",
+    };
+    expect(isRenderableTrendDemografico(data)).toBe(true);
+  });
+
+  it("I) no numeric null field coerced to 0 in mock data", () => {
     const numericFields: (keyof TrendDemograficoData)[] = [
       "etaMedia", "densitaAbitanti", "flussoResidenti12Mesi",
       "percentualeFamiglie", "percentualeGiovani", "percentualeStranieri",
@@ -132,5 +152,28 @@ describe("isRenderableTrendDemografico — visibility gating", () => {
         throw new Error(`Mock field ${f} is 0 — must be null or a real value`);
       }
     }
+  });
+});
+
+describe("getAvailableDemographicMetricCount", () => {
+  it("returns 0 for null", () => {
+    expect(getAvailableDemographicMetricCount(null)).toBe(0);
+  });
+
+  it("counts only non-null metrics", () => {
+    const data: TrendDemograficoData = {
+      etaMedia: 41, densitaAbitanti: 7800, flussoResidenti12Mesi: null,
+      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
+    };
+    expect(getAvailableDemographicMetricCount(data)).toBe(2);
+  });
+
+  it("does not count geoLevel/geoLabel", () => {
+    const data: TrendDemograficoData = {
+      etaMedia: null, densitaAbitanti: null, flussoResidenti12Mesi: null,
+      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
+      geoLevel: "quartiere", geoLabel: "Arcella",
+    };
+    expect(getAvailableDemographicMetricCount(data)).toBe(0);
   });
 });
