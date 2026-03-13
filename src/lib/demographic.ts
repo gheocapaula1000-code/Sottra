@@ -29,6 +29,6 @@ export function isRenderableTrendDemografico(
 export function getAvailableDemographicMetricCount(
   data: TrendDemograficoData | null | undefined,
 ): number {
-  if (!data) return 0;
+  if (!data || data.sourceType === "unavailable") return 0;
   return DEMOGRAPHIC_METRIC_KEYS.filter((k) => data[k] != null).length;
 }
