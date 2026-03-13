@@ -46,22 +46,20 @@ const AdminDashboard = () => {
     <div className="flex min-h-svh flex-col bg-background">
       {/* Header */}
       <header className="border-b border-border px-4 sm:px-6">
-        <div className="mx-auto grid h-14 max-w-5xl grid-cols-[1fr_auto_1fr] items-center">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/app")} aria-label="Torna alla dashboard">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <SottraMark size="sm" textOnly />
-            <span className="text-xs font-semibold text-primary">Admin</span>
-          </div>
+        <div className="mx-auto grid h-20 sm:h-[88px] max-w-5xl grid-cols-[1fr_auto_1fr] items-center">
+          <SottraMark size="sm" textOnly linkTo="/app" />
 
           <img
             src={logoS}
             alt="Sottra"
-            className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
+            className="h-16 w-16 sm:h-[72px] sm:w-[72px] object-contain"
           />
 
-          <div className="flex items-center justify-end gap-3">
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
+            <span className="text-xs font-semibold text-primary">Admin</span>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/app")} aria-label="Torna alla dashboard">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
             <Button variant="ghost" size="sm" onClick={signOut}>Esci</Button>
           </div>

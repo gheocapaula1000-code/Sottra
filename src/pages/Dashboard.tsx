@@ -81,10 +81,10 @@ const Dashboard = () => {
     <div className="flex min-h-svh flex-col bg-background">
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto grid h-14 max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
+        <div className="mx-auto grid h-20 sm:h-[88px] max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
           <SottraMark size="sm" textOnly linkTo="/app" />
 
-          <img src={logoS} alt="Sottra" className="h-8 w-8 sm:h-9 sm:w-9 object-contain" />
+          <img src={logoS} alt="Sottra" className="h-16 w-16 sm:h-[72px] sm:w-[72px] object-contain" />
 
           <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
             {isOwner && (
