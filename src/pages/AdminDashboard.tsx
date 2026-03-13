@@ -46,16 +46,16 @@ const AdminDashboard = () => {
     <div className="flex min-h-svh flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md px-4 sm:px-6">
-        <div className="mx-auto grid h-16 sm:h-[72px] max-w-5xl grid-cols-[1fr_auto_1fr] items-center">
+        <div className="relative mx-auto flex h-16 sm:h-[72px] max-w-5xl items-center">
           <SottraMark size="sm" textOnly linkTo="/app" />
 
           <img
             src={logoS}
             alt="Sottra"
-            className="h-12 w-12 sm:h-14 sm:w-14 object-contain"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-12 w-12 sm:h-14 sm:w-14 object-contain pointer-events-none"
           />
 
-          <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
             <span className="text-xs font-semibold text-primary">Admin</span>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/app")} aria-label="Torna alla dashboard">
               <ArrowLeft className="h-4 w-4" />

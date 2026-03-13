@@ -81,12 +81,12 @@ const Dashboard = () => {
     <div className="flex min-h-svh flex-col bg-background">
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto grid h-20 sm:h-[88px] max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
+        <div className="relative mx-auto flex h-20 sm:h-[88px] max-w-6xl items-center px-4 sm:px-6">
           <SottraMark size="sm" textOnly linkTo="/app" />
 
-          <img src={logoS} alt="Sottra" className="h-16 w-16 sm:h-[72px] sm:w-[72px] object-contain" />
+          <img src={logoS} alt="Sottra" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-16 w-16 sm:h-[72px] sm:w-[72px] object-contain pointer-events-none" />
 
-          <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
             {isOwner && (
               <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={() => navigate("/admin")}>
                 <Shield className="h-3.5 w-3.5" />
