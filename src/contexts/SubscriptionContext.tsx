@@ -70,8 +70,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase.functions.invoke("check-subscription");
       if (error) {
         const msg = typeof error === "object" && error !== null && "message" in error ? (error as { message: string }).message : String(error);
-        // Treat auth errors as session expiry, not app crash
-        if (msg.includes("Auth session missing") || msg.includes("auth") || msg.includes("401")) {
+        // Treat auth / 401 / 403 errors as session expiry, not app crash
+        const isAuthIssue = msg.includes("Auth session missing") || msg.includes("auth") || msg.includes("401") || msg.includes("non-2xx");
+        if (isAuthIssue) {
           console.warn("[Subscription] Auth expired during check:", msg);
           setLoading(false);
           return;
