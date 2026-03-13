@@ -81,7 +81,7 @@ const Dashboard = () => {
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <SottraMark size="sm" />
+          <SottraMark size="sm" linkTo="/app" />
 
           <div className="flex items-center gap-1.5 sm:gap-2.5">
             {isOwner && (
