@@ -100,6 +100,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   }, [authLoading]);
 
   const refresh = useCallback(async () => {
+    // While auth is still loading, stay in loading state — don't resolve yet
+    if (authLoading) return;
+
     if (!session) {
       applyDefaults();
       return;
