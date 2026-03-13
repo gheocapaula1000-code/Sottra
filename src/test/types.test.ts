@@ -160,6 +160,19 @@ describe("getAvailableDemographicMetricCount", () => {
     expect(getAvailableDemographicMetricCount(null)).toBe(0);
   });
 
+  it("returns 0 for undefined", () => {
+    expect(getAvailableDemographicMetricCount(undefined)).toBe(0);
+  });
+
+  it("returns 0 when sourceType is unavailable even with metrics", () => {
+    const data: TrendDemograficoData = {
+      etaMedia: 41, densitaAbitanti: 7800, flussoResidenti12Mesi: null,
+      percentualeFamiglie: null, percentualeGiovani: null, percentualeStranieri: null,
+      sourceType: "unavailable",
+    };
+    expect(getAvailableDemographicMetricCount(data)).toBe(0);
+  });
+
   it("counts only non-null metrics", () => {
     const data: TrendDemograficoData = {
       etaMedia: 41, densitaAbitanti: 7800, flussoResidenti12Mesi: null,
