@@ -344,23 +344,34 @@ function GeoLevelTag({ geoLevel, geoLabel }: { geoLevel?: string | null; geoLabe
   );
 }
 
+/** Returns true if at least one real demographic metric is present */
+function isRenderableTrendDemografico(data: TrendDemograficoData | null): boolean {
+  if (!data || data.sourceType === "unavailable") return false;
+  return [data.etaMedia, data.densitaAbitanti, data.flussoResidenti12Mesi, data.percentualeFamiglie, data.percentualeGiovani, data.percentualeStranieri].some(v => v != null);
+}
+
 function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
-  if (!data || data.sourceType === "unavailable" || data.etaMedia == null) return null;
+  if (!isRenderableTrendDemografico(data)) return null;
+  // data is guaranteed non-null by the check above
+  const d = data!;
 
   // Build only non-null metric tiles
   const metrics: { label: string; value: string }[] = [];
-  if (data.etaMedia != null) metrics.push({ label: "Età media", value: fmt(data.etaMedia) });
-  if (data.densitaAbitanti != null) metrics.push({ label: "Densità", value: `${fmt(data.densitaAbitanti)} ab/km²` });
-  if (data.flussoResidenti12Mesi != null) metrics.push({ label: "Flusso 12m", value: `${data.flussoResidenti12Mesi > 0 ? "+" : ""}${fmt(data.flussoResidenti12Mesi)}%` });
-  if (data.percentualeGiovani != null) metrics.push({ label: "Under 35", value: `${fmt(data.percentualeGiovani)}%` });
+  if (d.etaMedia != null) metrics.push({ label: "Età media", value: fmt(d.etaMedia) });
+  if (d.densitaAbitanti != null) metrics.push({ label: "Densità", value: `${fmt(d.densitaAbitanti)} ab/km²` });
+  if (d.flussoResidenti12Mesi != null) metrics.push({ label: "Flusso 12m", value: `${d.flussoResidenti12Mesi > 0 ? "+" : ""}${fmt(d.flussoResidenti12Mesi)}%` });
+  if (d.percentualeGiovani != null) metrics.push({ label: "Under 35", value: `${fmt(d.percentualeGiovani)}%` });
+
+  const hasBars = d.percentualeFamiglie != null || d.percentualeStranieri != null;
+  const totalVisibleItems = metrics.length + (d.percentualeFamiglie != null ? 1 : 0) + (d.percentualeStranieri != null ? 1 : 0);
 
   return (
     <Section>
       <SectionHeader icon={Users} title="Trend Demografico" />
-      <GeoLevelTag geoLevel={data.geoLevel} geoLabel={data.geoLabel} />
+      <GeoLevelTag geoLevel={d.geoLevel} geoLabel={d.geoLabel} />
       {metrics.length > 0 && (
-        <div className={cn("grid gap-3 mb-4", metrics.length >= 4 ? "grid-cols-2" : metrics.length >= 2 ? "grid-cols-2" : "grid-cols-1")}>
+        <div className={cn("grid gap-3 mb-4", metrics.length >= 2 ? "grid-cols-2" : "grid-cols-1")}>
           {metrics.map((item, i) => (
             <div key={i} className="rounded-lg bg-muted/40 px-3 py-2">
               <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</span>
@@ -369,15 +380,20 @@ function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | 
           ))}
         </div>
       )}
-      <div className="space-y-2">
-        {data.percentualeFamiglie != null && <MiniBar label="Famiglie" value={data.percentualeFamiglie} />}
-        {data.percentualeStranieri != null && <MiniBar label="Stranieri" value={data.percentualeStranieri} />}
-      </div>
-      {data.geoLevel === "comune" && (
+      {hasBars && (
+        <div className="space-y-2">
+          {d.percentualeFamiglie != null && <MiniBar label="Famiglie" value={d.percentualeFamiglie} />}
+          {d.percentualeStranieri != null && <MiniBar label="Stranieri" value={d.percentualeStranieri} />}
+        </div>
+      )}
+      {d.geoLevel === "comune" && (
         <p className="text-[10px] text-amber-400/70 mt-2">Dato riferito al livello comunale — la zona specifica potrebbe variare</p>
       )}
-      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mt-3">{data.confidenceReason}</p>}
-      <SourceTag meta={data} />
+      {totalVisibleItems <= 2 && totalVisibleItems > 0 && (
+        <p className="text-[10px] text-muted-foreground/50 mt-2">Alcuni indicatori non sono disponibili per questa zona</p>
+      )}
+      {d.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mt-3">{d.confidenceReason}</p>}
+      <SourceTag meta={d} />
     </Section>
   );
 }
