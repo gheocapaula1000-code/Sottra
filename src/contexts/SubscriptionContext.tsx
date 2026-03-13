@@ -152,7 +152,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [session, applyDefaults]);
+  }, [session, authLoading, applyDefaults]);
 
   useEffect(() => {
     refresh();
