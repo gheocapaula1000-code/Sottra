@@ -88,10 +88,14 @@ export const mockRischioZona: RischioZonaData = {
 export const mockTrendDemografico: TrendDemograficoData = {
   etaMedia: 41,
   densitaAbitanti: 7800,
-  flussoResidenti12Mesi: 245,
+  flussoResidenti12Mesi: 2.4,
   percentualeFamiglie: 38,
   percentualeGiovani: 28,
-  percentualeStranieri: 15,
+  percentualeStranieri: null,
+  geoLevel: "quartiere",
+  geoLabel: "Zona Ticinese",
+  sourceType: "elaborated",
+  sourceLabel: "Elaborazione da fonti ISTAT e comunali",
 };
 
 export const mockMarketContext: MarketContextData = {

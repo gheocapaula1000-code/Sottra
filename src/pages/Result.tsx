@@ -325,30 +325,57 @@ function RischioZonaCard({ data, loading }: { data: RischioZonaData | null; load
   );
 }
 
+function GeoLevelTag({ geoLevel, geoLabel }: { geoLevel?: string | null; geoLabel?: string | null }) {
+  if (!geoLevel) return null;
+  const labels: Record<string, string> = {
+    microzona: "Dato di microzona",
+    quartiere: "Dato di quartiere",
+    zona: "Zona stimata dell'immobile",
+    comune: "Dato riferito al comune",
+    area_vasta: "Dato di area vasta",
+    stimato: "Zona stimata",
+  };
+  const text = labels[geoLevel] ?? "Dato territoriale";
+  return (
+    <p className="text-[10px] text-muted-foreground/60 mb-3 flex items-center gap-1">
+      <MapPin className="h-3 w-3" />
+      {text}{geoLabel ? ` · ${geoLabel}` : ""}
+    </p>
+  );
+}
+
 function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
   if (!data || data.sourceType === "unavailable" || data.etaMedia == null) return null;
 
+  // Build only non-null metric tiles
+  const metrics: { label: string; value: string }[] = [];
+  if (data.etaMedia != null) metrics.push({ label: "Età media", value: fmt(data.etaMedia) });
+  if (data.densitaAbitanti != null) metrics.push({ label: "Densità", value: `${fmt(data.densitaAbitanti)} ab/km²` });
+  if (data.flussoResidenti12Mesi != null) metrics.push({ label: "Flusso 12m", value: `${data.flussoResidenti12Mesi > 0 ? "+" : ""}${fmt(data.flussoResidenti12Mesi)}%` });
+  if (data.percentualeGiovani != null) metrics.push({ label: "Under 35", value: `${fmt(data.percentualeGiovani)}%` });
+
   return (
     <Section>
       <SectionHeader icon={Users} title="Trend Demografico" />
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        {[
-          { label: "Età media", value: fmt(data.etaMedia) },
-          { label: "Densità", value: `${fmt(data.densitaAbitanti)} ab/km²` },
-          { label: "Flusso 12m", value: `${data.flussoResidenti12Mesi != null && data.flussoResidenti12Mesi > 0 ? "+" : ""}${fmt(data.flussoResidenti12Mesi)}%` },
-          { label: "Under 35", value: `${fmt(data.percentualeGiovani)}%` },
-        ].map((item, i) => (
-          <div key={i} className="rounded-lg bg-muted/40 px-3 py-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</span>
-            <p className="font-bold text-foreground text-sm mt-0.5">{item.value}</p>
-          </div>
-        ))}
-      </div>
+      <GeoLevelTag geoLevel={data.geoLevel} geoLabel={data.geoLabel} />
+      {metrics.length > 0 && (
+        <div className={cn("grid gap-3 mb-4", metrics.length >= 4 ? "grid-cols-2" : metrics.length >= 2 ? "grid-cols-2" : "grid-cols-1")}>
+          {metrics.map((item, i) => (
+            <div key={i} className="rounded-lg bg-muted/40 px-3 py-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</span>
+              <p className="font-bold text-foreground text-sm mt-0.5">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="space-y-2">
-        <MiniBar label="Famiglie" value={data.percentualeFamiglie ?? 0} />
-        <MiniBar label="Stranieri" value={data.percentualeStranieri ?? 0} />
+        {data.percentualeFamiglie != null && <MiniBar label="Famiglie" value={data.percentualeFamiglie} />}
+        {data.percentualeStranieri != null && <MiniBar label="Stranieri" value={data.percentualeStranieri} />}
       </div>
+      {data.geoLevel === "comune" && (
+        <p className="text-[10px] text-amber-400/70 mt-2">Dato riferito al livello comunale — la zona specifica potrebbe variare</p>
+      )}
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mt-3">{data.confidenceReason}</p>}
       <SourceTag meta={data} />
     </Section>

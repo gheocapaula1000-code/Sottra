@@ -111,6 +111,9 @@ export interface RischioZonaData extends SourceMetadata {
   scoreRischio: number | null;
 }
 
+/** Livello geografico del dato territoriale */
+export type GeoLevel = "microzona" | "quartiere" | "zona" | "comune" | "area_vasta" | "stimato";
+
 /** Trend demografico */
 export interface TrendDemograficoData extends SourceMetadata {
   etaMedia: number | null;
@@ -119,6 +122,10 @@ export interface TrendDemograficoData extends SourceMetadata {
   percentualeFamiglie: number | null;
   percentualeGiovani: number | null;
   percentualeStranieri: number | null;
+  /** Livello geografico di riferimento del dato */
+  geoLevel?: GeoLevel | null;
+  /** Nome leggibile della zona/quartiere */
+  geoLabel?: string | null;
 }
 
 /** Segnale di sviluppo area */
