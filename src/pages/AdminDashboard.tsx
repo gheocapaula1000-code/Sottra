@@ -52,7 +52,7 @@ const AdminDashboard = () => {
           <img
             src={logoS}
             alt="Sottra"
-            className="h-16 w-16 sm:h-[72px] sm:w-[72px] object-contain"
+            className="h-12 w-12 sm:h-14 sm:w-14 object-contain"
           />
 
           <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
