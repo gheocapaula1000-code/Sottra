@@ -32,6 +32,7 @@ const NoteLegali = lazy(() => import("./pages/NoteLegali"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const Diagnostics = lazy(() => import("./pages/Diagnostics"));
 
 const queryClient = new QueryClient();
 
