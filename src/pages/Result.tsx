@@ -344,8 +344,6 @@ function GeoLevelTag({ geoLevel, geoLabel }: { geoLevel?: string | null; geoLabe
   );
 }
 
-// Demographic visibility — single source of truth
-import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
 
 function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
