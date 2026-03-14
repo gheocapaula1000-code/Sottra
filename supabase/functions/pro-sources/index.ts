@@ -17,7 +17,360 @@ function json(body: unknown, status = 200) {
   });
 }
 
-/* ── POI Categories for Overpass ─────────────────────── */
+/* ── Fetch with timeout helper ───────────────────────── */
+
+async function fetchT(url: string, timeout: number, headers?: Record<string, string>): Promise<Response> {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), timeout);
+  try {
+    const r = await fetch(url, { headers, signal: c.signal });
+    clearTimeout(t);
+    return r;
+  } catch (e) {
+    clearTimeout(t);
+    throw e;
+  }
+}
+
+/* ── Unavailable helpers ─────────────────────────────── */
+
+function unavailableIstat(reason: string) {
+  return { sourceType: "unavailable", sourceProvider: "istat", availabilityReason: reason, sourceLabel: "ISTAT" };
+}
+
+function unavailableOmi(reason: string) {
+  return { sourceType: "unavailable", sourceProvider: "omi", availabilityReason: reason, sourceLabel: "OMI / Agenzia delle Entrate" };
+}
+
+/* ══════════════════════════════════════════════════════
+   NOMINATIM — Reverse geocode to identify Italian municipality
+   ══════════════════════════════════════════════════════ */
+
+interface GeoIdentity {
+  comuneLabel: string | null;
+  provinciaLabel: string | null;
+  istatCode: string | null;
+  cadastralCode: string | null;
+}
+
+async function identifyMunicipality(lat: number, lng: number): Promise<GeoIdentity> {
+  const empty: GeoIdentity = { comuneLabel: null, provinciaLabel: null, istatCode: null, cadastralCode: null };
+
+  try {
+    // Step 1: Reverse geocode to get comune name
+    const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&addressdetails=1&accept-language=it&zoom=10`;
+    const revRes = await fetchT(revUrl, 5000, { "User-Agent": "Sottra/1.0 (real-estate-analysis)" });
+
+    if (!revRes.ok) {
+      const t = await revRes.text();
+      log("nominatim reverse error", `${revRes.status}: ${t.slice(0, 100)}`);
+      return empty;
+    }
+
+    const revData = await revRes.json();
+    const addr = revData.address ?? {};
+    const comuneName = addr.city ?? addr.town ?? addr.village ?? addr.municipality ?? null;
+    const provinciaName = addr.county ?? addr.state_district ?? null;
+
+    if (!comuneName) {
+      log("nominatim", "no comune found in reverse geocode");
+      return { comuneLabel: null, provinciaLabel: provinciaName, istatCode: null, cadastralCode: null };
+    }
+
+    log("nominatim reverse", `comune=${comuneName}, provincia=${provinciaName}`);
+
+    // Rate limit: Nominatim requires max 1 req/sec
+    await new Promise(r => setTimeout(r, 1100));
+
+    // Step 2: Search for the municipality boundary to get ISTAT + catastale codes
+    const searchQ = provinciaName
+      ? `${comuneName}, ${provinciaName}, Italia`
+      : `${comuneName}, Italia`;
+    const searchUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQ)}&format=jsonv2&extratags=1&limit=3&countrycodes=it`;
+    const searchRes = await fetchT(searchUrl, 5000, { "User-Agent": "Sottra/1.0 (real-estate-analysis)" });
+
+    if (!searchRes.ok) {
+      const t = await searchRes.text();
+      log("nominatim search error", `${searchRes.status}: ${t.slice(0, 100)}`);
+      return { comuneLabel: comuneName, provinciaLabel: provinciaName, istatCode: null, cadastralCode: null };
+    }
+
+    const searchData = await searchRes.json();
+    if (!Array.isArray(searchData) || searchData.length === 0) {
+      log("nominatim search", "no results");
+      return { comuneLabel: comuneName, provinciaLabel: provinciaName, istatCode: null, cadastralCode: null };
+    }
+
+    // Find the best match — prefer administrative boundaries
+    const best = searchData.find((r: Record<string, unknown>) =>
+      r.type === "administrative" || r.type === "city" || r.type === "town" || r.type === "village"
+    ) ?? searchData[0];
+
+    const extratags = (best as Record<string, unknown>).extratags as Record<string, string> | undefined;
+    const istatCode = extratags?.["ref:ISTAT"] ?? extratags?.["istat:code"] ?? null;
+    const cadastralCode = extratags?.["ref:catasto"] ?? null;
+
+    log("nominatim codes", `istat=${istatCode}, catastale=${cadastralCode}`);
+
+    return { comuneLabel: comuneName, provinciaLabel: provinciaName, istatCode, cadastralCode };
+  } catch (e) {
+    log("nominatim exception", String(e));
+    return empty;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   ISTAT — Real SDMX REST API query for demographic data
+   ══════════════════════════════════════════════════════
+
+   Uses the ISTAT SDMX endpoint with CSV output for easy parsing.
+   Primary dataflow: DCIS_POPRES1 (Popolazione residente al 1° gennaio)
+   Fallback: 22_289 (Bilancio demografico)
+
+   Rate limit: 5 queries/minute per IP. We use max 1 query per scan.
+   ══════════════════════════════════════════════════════ */
+
+interface IstatResult {
+  popolazione?: number | null;
+  nucleiFamiliari?: number | null;
+  densita?: number | null;
+  indiceVecchiaia?: number | null;
+  percentualeStranieri?: number | null;
+  comuneLabel?: string | null;
+  annoRilevazione?: string | null;
+  sourceType: string;
+  sourceProvider: string;
+  sourceLabel: string;
+  sourceFreshness?: string;
+  sourceCoverageLevel?: string;
+  availabilityReason?: string;
+  licensingNote?: string;
+}
+
+function parseSdmxCsv(csvText: string): Record<string, string>[] {
+  const lines = csvText.split("\n").filter(l => l.trim());
+  if (lines.length < 2) return [];
+
+  // Handle both comma and semicolon separators
+  const sep = lines[0].includes("\t") ? "\t" : lines[0].includes(";") ? ";" : ",";
+  const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g, ""));
+
+  return lines.slice(1).map(line => {
+    const vals = line.split(sep).map(v => v.trim().replace(/^"|"$/g, ""));
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => { obj[h] = vals[i] ?? ""; });
+    return obj;
+  });
+}
+
+async function queryIstatSdmx(istatCode: string, comuneLabel: string): Promise<IstatResult> {
+  const baseUrl = "https://esploradati.istat.it/SDMXWS/rest/data";
+
+  // Try DCIS_POPRES1 — Popolazione residente
+  // Key format: FREQ.ITTER107.SEXISTAT1.ETA1.STATCIV2
+  // A = annual, {code} = territory, rest = wildcards
+  const dataflows = [
+    { id: "DCIS_POPRES1", label: "Popolazione residente" },
+    { id: "22_289", label: "Bilancio demografico" },
+  ];
+
+  for (const df of dataflows) {
+    try {
+      // Use minimal key: just territory code with wildcards for other dims
+      const url = `${baseUrl}/${df.id}/.${istatCode}?lastNObservations=1`;
+
+      log("istat query", `dataflow=${df.id}, code=${istatCode}`);
+
+      const res = await fetchT(url, 10000, {
+        "Accept": "application/vnd.sdmx.data+csv;version=1.0.0",
+        "User-Agent": "Sottra/1.0",
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        log("istat http error", `${df.id}: ${res.status} — ${errText.slice(0, 150)}`);
+
+        if (res.status === 404 || res.status === 400) {
+          // Try next dataflow
+          continue;
+        }
+        // Rate limited or server error
+        return unavailableIstat(res.status === 429 ? "provider_unavailable" : "provider_unavailable") as IstatResult;
+      }
+
+      const csvText = await res.text();
+      const rows = parseSdmxCsv(csvText);
+
+      if (rows.length === 0) {
+        log("istat", `${df.id}: no data rows`);
+        continue;
+      }
+
+      log("istat", `${df.id}: ${rows.length} rows received`);
+
+      // Extract population: find row with total sex + total age
+      let bestPopulation: number | null = null;
+      let bestPeriod: string | null = null;
+
+      for (const row of rows) {
+        const obsValue = parseFloat(row.OBS_VALUE);
+        if (isNaN(obsValue) || obsValue <= 0) continue;
+
+        const period = row.TIME_PERIOD ?? "";
+
+        // For DCIS_POPRES1: look for total sex (9 or T) and total age (TOTAL, 99, Y_GE0)
+        const sex = row.SEXISTAT1 ?? row.SEX ?? "";
+        const age = row.ETA1 ?? row.AGE ?? row.CLASSE_ETA ?? "";
+        const marital = row.STATCIV2 ?? "";
+
+        const isTotalSex = sex === "9" || sex === "T" || sex === "TOTAL" || sex === "";
+        const isTotalAge = age === "TOTAL" || age === "99" || age === "Y_GE0" || age === "Y99" || age === "";
+        const isTotalMarital = marital === "99" || marital === "TOTAL" || marital === "";
+
+        if (isTotalSex && isTotalAge && isTotalMarital) {
+          if (!bestPeriod || period > bestPeriod) {
+            bestPopulation = obsValue;
+            bestPeriod = period;
+          }
+        }
+      }
+
+      // If we couldn't find the "total" row, try the row with the largest population value
+      if (bestPopulation == null) {
+        let maxVal = 0;
+        for (const row of rows) {
+          const v = parseFloat(row.OBS_VALUE);
+          if (!isNaN(v) && v > maxVal) {
+            maxVal = v;
+            bestPopulation = v;
+            bestPeriod = row.TIME_PERIOD ?? null;
+          }
+        }
+      }
+
+      if (bestPopulation == null || bestPopulation <= 0) {
+        log("istat", `${df.id}: no usable population value found`);
+        continue;
+      }
+
+      log("istat result", `pop=${bestPopulation}, period=${bestPeriod}`);
+
+      return {
+        popolazione: Math.round(bestPopulation),
+        comuneLabel,
+        annoRilevazione: bestPeriod,
+        sourceType: "official",
+        sourceProvider: "istat",
+        sourceLabel: `ISTAT — ${df.label}`,
+        sourceFreshness: bestPeriod ?? undefined,
+        sourceCoverageLevel: "comune",
+        licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
+      };
+    } catch (e) {
+      log("istat exception", `${df.id}: ${String(e)}`);
+      // Try next dataflow
+      continue;
+    }
+  }
+
+  return unavailableIstat("no_coverage") as IstatResult;
+}
+
+/* ══════════════════════════════════════════════════════
+   OMI — Real database lookup for official property valuations
+   ══════════════════════════════════════════════════════
+
+   Queries the omi_quotazioni table populated via the omi-ingest
+   edge function with real Agenzia delle Entrate data.
+
+   Lookup priority: catastale code > ISTAT code > comune name
+   ══════════════════════════════════════════════════════ */
+
+async function queryOmiReal(
+  cadastralCode: string | null,
+  istatCode: string | null,
+  comuneLabel: string | null,
+  supabase: ReturnType<typeof createClient>,
+): Promise<unknown> {
+  if (!cadastralCode && !istatCode && !comuneLabel) {
+    return unavailableOmi("no_match");
+  }
+
+  try {
+    // Build query — priority: catastale > istat > nome comune
+    let query = supabase
+      .from("omi_quotazioni")
+      .select("*")
+      .eq("tipologia", "Abitazioni civili")
+      .order("anno", { ascending: false })
+      .order("semestre", { ascending: false })
+      .limit(20);
+
+    if (cadastralCode) {
+      query = query.eq("codice_comune_catastale", cadastralCode);
+    } else if (istatCode) {
+      query = query.eq("codice_comune_istat", istatCode);
+    } else if (comuneLabel) {
+      query = query.ilike("comune_label", comuneLabel);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      log("omi db error", error.message);
+      return unavailableOmi("provider_unavailable");
+    }
+
+    if (!data || data.length === 0) {
+      log("omi", "no data in database for this location");
+      return unavailableOmi("no_coverage");
+    }
+
+    // Get the most recent semester
+    const latest = data[0];
+    const samePeriod = data.filter(
+      (d: Record<string, unknown>) => d.anno === latest.anno && d.semestre === latest.semestre
+    );
+
+    // Calculate overall min/max across all zones for the same period
+    const allMin = Math.min(...samePeriod.map((d: Record<string, unknown>) => Number(d.quotazione_min)));
+    const allMax = Math.max(...samePeriod.map((d: Record<string, unknown>) => Number(d.quotazione_max)));
+
+    // Identify zones
+    const zones = [...new Set(samePeriod.map((d: Record<string, unknown>) => String(d.zona_omi)))];
+    const zoneLabels = [...new Set(samePeriod.map((d: Record<string, unknown>) => d.zona_omi_label).filter(Boolean))];
+
+    log("omi result", `zones=${zones.join(",")}, range=${allMin}-${allMax}, period=${latest.semestre}S${latest.anno}`);
+
+    return {
+      zonaOmi: zones.length === 1 ? zones[0] : zones.join(", "),
+      zonaOmiLabel: zones.length === 1
+        ? (latest.zona_omi_label ?? zones[0])
+        : `${zones.length} zone nel comune di ${latest.comune_label ?? comuneLabel}`,
+      comuneLabel: latest.comune_label ?? comuneLabel,
+      quotazioneMinResidenziale: allMin,
+      quotazioneMaxResidenziale: allMax,
+      semestre: `${latest.semestre}° semestre ${latest.anno}`,
+      tipologia: latest.tipologia,
+      statoConservazione: latest.stato_conservazione,
+      sourceType: "official",
+      sourceProvider: "omi",
+      sourceLabel: "OMI / Agenzia delle Entrate",
+      sourceFreshness: `${latest.anno}-S${latest.semestre}`,
+      sourcePeriod: `${latest.semestre}° semestre ${latest.anno}`,
+      sourceCoverageLevel: zones.length === 1 ? "zone_omi" : "comune",
+      licensingNote: "Dati OMI — Osservatorio del Mercato Immobiliare, Agenzia delle Entrate",
+    };
+  } catch (e) {
+    log("omi exception", String(e));
+    return unavailableOmi("provider_unavailable");
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   OVERPASS — POI query (unchanged, always available)
+   ══════════════════════════════════════════════════════ */
+
 const POI_CATEGORIES = [
   { key: "transport", label: "Trasporti", tags: ["railway=station", "amenity=bus_station", "station=subway"] },
   { key: "education", label: "Istruzione", tags: ["amenity=school", "amenity=university", "amenity=kindergarten"] },
@@ -27,7 +380,6 @@ const POI_CATEGORIES = [
   { key: "culture", label: "Cultura", tags: ["amenity=library", "tourism=museum", "amenity=theatre"] },
 ];
 
-/* ── Overpass POI Query ──────────────────────────────── */
 async function queryOverpassPoi(lat: number, lng: number, radius: number): Promise<unknown[]> {
   const allTags = POI_CATEGORIES.flatMap(c => c.tags);
   const nodeFilters = allTags.map(tag => {
@@ -41,28 +393,28 @@ async function queryOverpassPoi(lat: number, lng: number, radius: number): Promi
 
   const query = `[out:json][timeout:8];(\n${nodeFilters}\n${wayFilters}\n);out center tags 50;`;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9000);
-
   try {
-    const res = await fetch("https://overpass-api.de/api/interpreter", {
+    const res = await fetchT("https://overpass-api.de/api/interpreter", 9000);
+    // Use POST for Overpass
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 9000);
+    const postRes = await fetch("https://overpass-api.de/api/interpreter", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: `data=${encodeURIComponent(query)}`,
       signal: controller.signal,
     });
-    clearTimeout(timeoutId);
+    clearTimeout(tid);
 
-    if (!res.ok) {
-      const text = await res.text();
-      log("overpass http error", `${res.status}: ${text.slice(0, 200)}`);
+    if (!postRes.ok) {
+      const text = await postRes.text();
+      log("overpass http error", `${postRes.status}: ${text.slice(0, 200)}`);
       return [];
     }
 
-    const data = await res.json();
+    const data = await postRes.json();
     return data.elements ?? [];
   } catch (e) {
-    clearTimeout(timeoutId);
     log("overpass exception", String(e));
     return [];
   }
@@ -89,13 +441,8 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 
 function buildPoiResult(elements: unknown[], lat: number, lng: number, radius: number) {
   const pois: {
-    name: string;
-    category: string;
-    categoryLabel: string;
-    distance: number;
-    lat: number;
-    lng: number;
-    provider: string;
+    name: string; category: string; categoryLabel: string;
+    distance: number; lat: number; lng: number; provider: string;
   }[] = [];
 
   for (const raw of elements) {
@@ -111,18 +458,9 @@ function buildPoiResult(elements: unknown[], lat: number, lng: number, radius: n
     const name = tags.name || tags["name:it"] || cat.categoryLabel;
     const distance = Math.round(haversine(lat, lng, elLat, elLng));
 
-    pois.push({
-      name,
-      category: cat.category,
-      categoryLabel: cat.categoryLabel,
-      distance,
-      lat: elLat,
-      lng: elLng,
-      provider: "overpass",
-    });
+    pois.push({ name, category: cat.category, categoryLabel: cat.categoryLabel, distance, lat: elLat, lng: elLng, provider: "overpass" });
   }
 
-  // Sort by distance, deduplicate by name+category
   pois.sort((a, b) => a.distance - b.distance);
   const seen = new Set<string>();
   const unique = pois.filter(p => {
@@ -132,7 +470,6 @@ function buildPoiResult(elements: unknown[], lat: number, lng: number, radius: n
     return true;
   });
 
-  // Build category summaries
   const catMap = new Map<string, typeof unique>();
   for (const p of unique) {
     if (!catMap.has(p.category)) catMap.set(p.category, []);
@@ -140,16 +477,13 @@ function buildPoiResult(elements: unknown[], lat: number, lng: number, radius: n
   }
 
   const categories = Array.from(catMap.entries()).map(([category, items]) => ({
-    category,
-    categoryLabel: items[0].categoryLabel,
-    count: items.length,
-    nearest: items[0],
+    category, categoryLabel: items[0].categoryLabel, count: items.length, nearest: items[0],
   }));
 
   return {
     totalPois: unique.length,
     categories,
-    pois: unique.slice(0, 30), // Limit to 30 POIs
+    pois: unique.slice(0, 30),
     searchRadius: radius,
     sourceType: "verified_geo",
     sourceProvider: "overpass",
@@ -160,19 +494,16 @@ function buildPoiResult(elements: unknown[], lat: number, lng: number, radius: n
   };
 }
 
-/* ── Google Places POI Enrichment ───────────────────── */
+/* ── Google Places POI Enrichment (unchanged, optional) ── */
+
 async function queryGooglePlaces(lat: number, lng: number, radius: number, apiKey: string): Promise<unknown> {
   const types = ["school", "hospital", "pharmacy", "supermarket", "park", "transit_station", "library", "museum"];
   const allResults: unknown[] = [];
 
-  for (const type of types.slice(0, 4)) { // Limit API calls
+  for (const type of types.slice(0, 4)) {
     try {
       const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${apiKey}&language=it`;
-      const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 4000);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(tid);
-
+      const res = await fetchT(url, 4000);
       if (res.ok) {
         const data = await res.json();
         if (data.results) allResults.push(...data.results);
@@ -189,78 +520,24 @@ async function queryGooglePlaces(lat: number, lng: number, radius: number, apiKe
     const loc = (place.geometry as Record<string, unknown>)?.location as Record<string, number> | undefined;
     return {
       name: String(place.name ?? ""),
-      category: "general",
-      categoryLabel: "Servizio",
+      category: "general", categoryLabel: "Servizio",
       distance: loc ? Math.round(haversine(lat, lng, loc.lat, loc.lng)) : 0,
-      lat: loc?.lat ?? lat,
-      lng: loc?.lng ?? lng,
+      lat: loc?.lat ?? lat, lng: loc?.lng ?? lng,
       provider: "google_places",
     };
   });
 
   return {
-    pois: pois.slice(0, 20),
-    totalPois: pois.length,
-    sourceType: "premium",
-    sourceProvider: "google_places",
-    sourceLabel: "Google Places API",
-    licensingNote: "Powered by Google",
+    pois: pois.slice(0, 20), totalPois: pois.length,
+    sourceType: "premium", sourceProvider: "google_places",
+    sourceLabel: "Google Places API", licensingNote: "Powered by Google",
   };
 }
 
-/* ── ISTAT Query (structured stub, ready for real API) ── */
-async function queryIstat(lat: number, lng: number): Promise<unknown> {
-  // ISTAT SDMX API requires specific dataset codes and geographic identifiers.
-  // This function is structured to connect to I.Stat when endpoint is configured.
-  // For now, return unavailable with proper reason.
-  const istatEnabled = Deno.env.get("ISTAT_ENABLED") === "true";
-  if (!istatEnabled) {
-    return {
-      sourceType: "unavailable",
-      sourceProvider: "istat",
-      availabilityReason: "provider_unavailable",
-      sourceLabel: "ISTAT",
-    };
-  }
+/* ══════════════════════════════════════════════════════
+   MAIN HANDLER
+   ══════════════════════════════════════════════════════ */
 
-  // TODO: Implement actual ISTAT SDMX query
-  // Example endpoint: https://esploradati.istat.it/SDMXWS/rest/data/...
-  log("istat query", `lat=${lat}, lng=${lng}`);
-  return {
-    sourceType: "unavailable",
-    sourceProvider: "istat",
-    availabilityReason: "no_coverage",
-    sourceLabel: "ISTAT — I.Stat SDMX",
-  };
-}
-
-/* ── OMI Query (structured stub, ready for data) ──── */
-async function queryOmi(lat: number, lng: number): Promise<unknown> {
-  const omiEnabled = Deno.env.get("OMI_ENABLED") === "true";
-  if (!omiEnabled) {
-    return {
-      sourceType: "unavailable",
-      sourceProvider: "omi",
-      availabilityReason: "provider_unavailable",
-      sourceLabel: "OMI / Agenzia delle Entrate",
-    };
-  }
-
-  // TODO: Implement OMI data lookup
-  // OMI publishes CSV data per semester. Integration requires:
-  // 1. Pre-processed OMI zone shapefile/geojson in storage
-  // 2. Point-in-polygon lookup for zone identification
-  // 3. Price lookup from OMI quotation tables
-  log("omi query", `lat=${lat}, lng=${lng}`);
-  return {
-    sourceType: "unavailable",
-    sourceProvider: "omi",
-    availabilityReason: "no_coverage",
-    sourceLabel: "OMI / Agenzia delle Entrate",
-  };
-}
-
-/* ── Main Handler ────────────────────────────────────── */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -273,27 +550,30 @@ serve(async (req) => {
       return json({ error: "Missing authorization" }, 200);
     }
 
-    const token = authHeader.replace("Bearer ", "").trim();
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
       auth: { persistSession: false },
     });
 
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    // Use service role client for OMI reads (bypasses RLS for internal data)
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false },
+    });
+
+    const token = authHeader.replace("Bearer ", "").trim();
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData?.user) {
       return json({ error: "Auth verification failed" }, 200);
     }
 
     // Parse request
     const body = await req.json();
     const { lat, lng, modules, radius = 800 } = body as {
-      lat: number;
-      lng: number;
-      modules?: string[];
-      radius?: number;
+      lat: number; lng: number; modules?: string[]; radius?: number;
     };
 
     if (lat == null || lng == null) {
@@ -305,18 +585,25 @@ serve(async (req) => {
 
     const results: Record<string, unknown> = {};
 
-    // Execute requested modules in parallel with individual error handling
+    // Step 1: Identify municipality (needed for ISTAT + OMI)
+    let geoId: GeoIdentity | null = null;
+
+    if (requestedModules.includes("omi") || requestedModules.includes("istat")) {
+      geoId = await identifyMunicipality(lat, lng);
+      log("geo identity", `comune=${geoId.comuneLabel}, istat=${geoId.istatCode}, catastale=${geoId.cadastralCode}`);
+    }
+
+    // Step 2: Execute all modules in parallel
     const promises: Promise<void>[] = [];
 
     if (requestedModules.includes("poi")) {
       promises.push(
         (async () => {
           try {
-            // Level 1: Overpass (free, always available)
             const elements = await queryOverpassPoi(lat, lng, radius);
             const poiResult = buildPoiResult(elements, lat, lng, radius);
 
-            // Level 2: Google Places enrichment (if key available)
+            // Optional Google Places enrichment
             const googleKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
             if (googleKey && Deno.env.get("GOOGLE_PLACES_ENABLED") === "true") {
               try {
@@ -334,26 +621,10 @@ serve(async (req) => {
           } catch (e) {
             log("poi module failed", String(e));
             results.poi = {
-              sourceType: "unavailable",
-              sourceProvider: "overpass",
+              sourceType: "unavailable", sourceProvider: "overpass",
               availabilityReason: "provider_unavailable",
-              totalPois: 0,
-              categories: [],
-              pois: [],
+              totalPois: 0, categories: [], pois: [],
             };
-          }
-        })()
-      );
-    }
-
-    if (requestedModules.includes("omi")) {
-      promises.push(
-        (async () => {
-          try {
-            results.omi = await queryOmi(lat, lng);
-          } catch (e) {
-            log("omi module failed", String(e));
-            results.omi = { sourceType: "unavailable", sourceProvider: "omi", availabilityReason: "provider_unavailable" };
           }
         })()
       );
@@ -363,10 +634,33 @@ serve(async (req) => {
       promises.push(
         (async () => {
           try {
-            results.istat = await queryIstat(lat, lng);
+            if (!geoId?.istatCode) {
+              log("istat", "no ISTAT code available — skipping");
+              results.istat = unavailableIstat(geoId?.comuneLabel ? "no_match" : "no_coverage");
+              return;
+            }
+            results.istat = await queryIstatSdmx(geoId.istatCode, geoId.comuneLabel ?? "");
           } catch (e) {
             log("istat module failed", String(e));
-            results.istat = { sourceType: "unavailable", sourceProvider: "istat", availabilityReason: "provider_unavailable" };
+            results.istat = unavailableIstat("provider_unavailable");
+          }
+        })()
+      );
+    }
+
+    if (requestedModules.includes("omi")) {
+      promises.push(
+        (async () => {
+          try {
+            results.omi = await queryOmiReal(
+              geoId?.cadastralCode ?? null,
+              geoId?.istatCode ?? null,
+              geoId?.comuneLabel ?? null,
+              supabaseAdmin,
+            );
+          } catch (e) {
+            log("omi module failed", String(e));
+            results.omi = unavailableOmi("provider_unavailable");
           }
         })()
       );
@@ -377,6 +671,12 @@ serve(async (req) => {
     return json({
       ok: true,
       data: results,
+      geoIdentity: geoId ? {
+        comuneLabel: geoId.comuneLabel,
+        provinciaLabel: geoId.provinciaLabel,
+        istatCode: geoId.istatCode ? "resolved" : null,
+        cadastralCode: geoId.cadastralCode ? "resolved" : null,
+      } : null,
       timestamp: new Date().toISOString(),
     });
   } catch (topErr) {

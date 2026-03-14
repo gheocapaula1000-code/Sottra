@@ -836,6 +836,87 @@ function MarketSignalsBlock({ signals }: { signals: { key: string; label: string
   );
 }
 
+/* ── OMI Card ─────────────────────────────────────────── */
+
+function OmiCard({ data, loading }: { data: import("@/types").OmiZoneData | null; loading: boolean }) {
+  if (loading) return <SectionSkeleton />;
+  if (!data || data.sourceType === "unavailable" || (data.quotazioneMinResidenziale == null && data.quotazioneMaxResidenziale == null)) return null;
+
+  return (
+    <Section gradient="from-green-500/10 to-emerald-500/5 border-green-500/15">
+      <SectionHeader icon={TrendingUp} title="Quotazioni OMI" badge={data.semestre ?? null} />
+      {data.zonaOmiLabel && (
+        <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
+          <MapPin className="h-3 w-3" />Zona OMI: <span className="font-semibold text-foreground">{data.zonaOmiLabel}</span>
+          {data.comuneLabel && <span className="text-muted-foreground/60"> · {data.comuneLabel}</span>}
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        {data.quotazioneMinResidenziale != null && (
+          <div className="rounded-lg bg-muted/50 px-3 py-2">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Min €/m²</span>
+            <p className="font-bold text-foreground text-sm mt-0.5">{fmtEur(data.quotazioneMinResidenziale)}</p>
+          </div>
+        )}
+        {data.quotazioneMaxResidenziale != null && (
+          <div className="rounded-lg bg-muted/50 px-3 py-2">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Max €/m²</span>
+            <p className="font-bold text-foreground text-sm mt-0.5">{fmtEur(data.quotazioneMaxResidenziale)}</p>
+          </div>
+        )}
+      </div>
+      {data.tipologia && <p className="text-[10px] text-muted-foreground/60">Tipologia: {data.tipologia}</p>}
+      <SourceTag meta={data} />
+    </Section>
+  );
+}
+
+/* ── ISTAT Card ───────────────────────────────────────── */
+
+function IstatCard({ data, loading }: { data: import("@/types").IstatDemographicData | null; loading: boolean }) {
+  if (loading) return <SectionSkeleton />;
+  if (!data || data.sourceType === "unavailable" || data.popolazione == null) return null;
+
+  return (
+    <Section gradient="from-blue-500/10 to-indigo-500/5 border-blue-500/15">
+      <SectionHeader icon={Users} title="Dati ISTAT Ufficiali" badge={data.annoRilevazione ?? null} />
+      {data.comuneLabel && (
+        <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
+          <MapPin className="h-3 w-3" />Comune: <span className="font-semibold text-foreground">{data.comuneLabel}</span>
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="rounded-lg bg-muted/50 px-3 py-2">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Popolazione</span>
+          <p className="font-bold text-foreground text-sm mt-0.5">{fmt(data.popolazione)}</p>
+        </div>
+        {data.densita != null && (
+          <div className="rounded-lg bg-muted/50 px-3 py-2">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Densità</span>
+            <p className="font-bold text-foreground text-sm mt-0.5">{fmt(data.densita)} ab/km²</p>
+          </div>
+        )}
+        {data.indiceVecchiaia != null && (
+          <div className="rounded-lg bg-muted/50 px-3 py-2">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Indice vecchiaia</span>
+            <p className="font-bold text-foreground text-sm mt-0.5">{fmt(data.indiceVecchiaia)}</p>
+          </div>
+        )}
+        {data.percentualeStranieri != null && (
+          <div className="rounded-lg bg-muted/50 px-3 py-2">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Stranieri</span>
+            <p className="font-bold text-foreground text-sm mt-0.5">{fmt(data.percentualeStranieri)}%</p>
+          </div>
+        )}
+      </div>
+      {data.sourceCoverageLevel === "comune" && (
+        <p className="text-[10px] text-amber-400/70 mt-1">Dato riferito al livello comunale</p>
+      )}
+      <SourceTag meta={data} />
+    </Section>
+  );
+}
+
 /* ── POI Enrichment Card ─────────────────────────────── */
 
 function PoiEnrichmentCard({ data, loading }: { data: PoiEnrichmentData | null; loading: boolean }) {
@@ -1020,12 +1101,15 @@ const Result = () => {
           {!lowConfidence && !identifyFailed && (
             <>
               {/* Tier 1 — verified / official data first */}
+              {/* Tier 1 — Official sources */}
               <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} />
+              <OmiCard data={result.omiZone.data as import("@/types").OmiZoneData | null} loading={result.omiZone.status === "loading"} />
 
-              {/* Tier 1.5 — Market layer (premium, only if publishable) */}
+              {/* Tier 1.5 — Market layer */}
               <MarketContextCard data={result.marketContext.data as MarketContextData | null} loading={result.marketContext.status === "loading"} />
 
               <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} />
+              <IstatCard data={result.istatDemographic.data as import("@/types").IstatDemographicData | null} loading={result.istatDemographic.status === "loading"} />
               <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} />
 
               {/* Tier 1.5 — Pro Sources: POI geo-verified */}
