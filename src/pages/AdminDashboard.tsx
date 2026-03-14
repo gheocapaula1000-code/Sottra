@@ -167,7 +167,7 @@ function AdminCenterLogo() {
     <img
       src={logoS}
       alt="Sottra logo"
-      className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
+      className="h-12 w-12 sm:h-14 sm:w-14 object-contain"
       fetchPriority="high"
       onError={() => setOk(false)}
     />
