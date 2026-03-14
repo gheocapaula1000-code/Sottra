@@ -44,30 +44,20 @@ const AdminDashboard = () => {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="relative mx-auto grid h-16 sm:h-[72px] max-w-5xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
-          {/* Left — text only */}
-          <SottraMark size="md" textOnly linkTo="/app" className="shrink-0 justify-self-start" />
-
-          {/* Center — logo icon */}
-          <AdminCenterLogo />
-
-          {/* Right — actions */}
-          <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
-            <span className="text-xs font-semibold text-primary">Admin</span>
-            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground" onClick={() => navigate("/admin/diagnostics")}>
-              <Activity className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Diagnostica</span>
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/app")} aria-label="Torna alla dashboard">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
-            <Button variant="ghost" size="sm" onClick={signOut}>Esci</Button>
-          </div>
-        </div>
-      </header>
+      <AppHeader rightContent={
+        <>
+          <span className="text-xs font-semibold text-primary">Admin</span>
+          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground" onClick={() => navigate("/admin/diagnostics")}>
+            <Activity className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Diagnostica</span>
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/app")} aria-label="Torna alla dashboard">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
+          <Button variant="ghost" size="sm" onClick={signOut}>Esci</Button>
+        </>
+      } />
 
       {/* Content */}
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
