@@ -51,10 +51,13 @@ function fmtEur(n: number | null | undefined): string {
 function sourceTypeToTier(sourceType?: string): DataTier {
   switch (sourceType) {
     case "official": return "ufficiale";
+    case "verified_geo": return "geo_verificato";
+    case "premium": return "premium";
     case "commercial_verified": return "mercato_verificato";
     case "commercial_partial": return "mercato_parziale";
     case "elaborated": return "elaborato";
     case "estimate": return "elaborato";
+    case "derived": return "elaborato";
     case "unavailable": return "non_disponibile";
     default: return "elaborato";
   }
