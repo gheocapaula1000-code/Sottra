@@ -1067,13 +1067,14 @@ const Result = () => {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <header className="flex items-center gap-3 px-5 pt-[env(safe-area-inset-top,12px)] pb-2">
-        <button onClick={() => navigate("/scan")} className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
-          <ArrowLeft className="h-5 w-5 text-foreground" />
-        </button>
-        <span className="text-base font-bold text-foreground flex-1">Report</span>
-        {scanning && <span className="text-[11px] text-primary font-medium animate-pulse">Elaborazione in corso…</span>}
-      </header>
+      <AppHeader rightContent={
+        <>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/scan")} aria-label="Indietro">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          {scanning && <span className="text-[11px] text-primary font-medium animate-pulse">Elaborazione…</span>}
+        </>
+      } />
 
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-3 px-4 sm:px-5 pb-32 pt-2">
