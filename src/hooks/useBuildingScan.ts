@@ -176,12 +176,17 @@ export function useBuildingScan() {
     setScanning(false);
   }, []);
 
+  const restoreResult = useCallback((saved: Partial<ScanResult>) => {
+    dispatch({ type: "RESTORE", payload: saved });
+  }, []);
+
   return {
     result,
     scanning,
     limitReached,
     scan,
     scanId: scanIdRef.current,
+    restoreResult,
     reset: () => { dispatch({ type: "RESET_IDLE" }); setScanning(false); setLimitReached(false); },
   };
 }
