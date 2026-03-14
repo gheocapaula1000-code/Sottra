@@ -4,7 +4,7 @@ import {
   mockPricing,
   mockOpportunity,
   mockTrendDemografico,
-} from "@/services/mockData";
+} from "@/test/mockData";
 import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
 import type { TrendDemograficoData } from "@/types";
 
