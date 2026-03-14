@@ -159,14 +159,19 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     try {
       let responseData: unknown = null;
       let responseErrorMessage: string | null = null;
-      let currentToken = accessToken;
 
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        const { data, error } = await supabase.functions.invoke("check-subscription", {
-          headers: {
-            Authorization: `Bearer ${currentToken}`,
-          },
-        });
+        let data: unknown = null;
+        let error: unknown = null;
+
+        try {
+          // IMPORTANT: rely on SDK-managed auth header to avoid stale-token 401s.
+          const result = await supabase.functions.invoke("check-subscription");
+          data = result.data;
+          error = result.error;
+        } catch (invokeError) {
+          error = invokeError;
+        }
 
         if (!error) {
           responseData = data;
@@ -184,12 +189,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         if (isAuthIssue && attempt < 2) {
           console.warn(`[Subscription] auth not ready, retry ${attempt + 1}/2`);
           await wait(180);
-
-          const { data: freshSessionData } = await supabase.auth.getSession();
-          if (freshSessionData.session?.access_token) {
-            currentToken = freshSessionData.session.access_token;
-          }
-
+          await supabase.auth.getSession();
           continue;
         }
 
