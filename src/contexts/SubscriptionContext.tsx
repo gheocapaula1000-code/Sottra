@@ -30,6 +30,7 @@ interface SubscriptionState {
 const SubscriptionContext = createContext<SubscriptionState>({
   loading: true,
   accessResolved: false,
+  checked: false,
   subscribed: false,
   planKey: null,
   subscriptionEnd: null,
