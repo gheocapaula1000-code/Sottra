@@ -48,15 +48,6 @@ const SAFE_DEFAULTS = {
   isAdmin: false,
 };
 
-const isAuthIssueMessage = (msg: string) => {
-  const lower = msg.toLowerCase();
-  return (
-    msg.includes("Auth session missing") ||
-    lower.includes("auth") ||
-    msg.includes("401") ||
-    msg.includes("non-2xx")
-  );
-};
 
 /** Validate that payload is a non-null object with expected shape */
 function parsePayload(data: unknown): {
@@ -154,7 +145,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setResolved(false);
     }
 
-    const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+    
 
     try {
       let responseData: unknown = null;
@@ -183,19 +174,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      // Check if the function reported an auth/error condition in the body
+      // Check if the function reported an error condition in the body
       const body = responseData as Record<string, unknown> | null;
       if (body && typeof body.error === "string" && body.error) {
-        const isAuth = isAuthIssueMessage(body.error);
-        if (isAuth) {
-          console.warn("[Subscription] auth not ready per function response, neutral state");
-          setResolved(false);
-          setLoading(false);
-          return;
-        }
-        // Non-auth error from function — apply safe defaults
-        console.warn("[Subscription] function error:", body.error);
-        applyDefaults(false);
+        console.warn("[Subscription] function error (non-fatal):", body.error);
+        // ALWAYS resolve with safe defaults — never hang on loading
+        applyDefaults(true);
         return;
       }
 
