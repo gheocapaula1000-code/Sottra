@@ -60,6 +60,7 @@ const History = () => {
                       photo: scan.photo,
                       lat: scan.lat,
                       lng: scan.lng,
+                      savedResult: scan.scanResult,
                     },
                   })
                 }
