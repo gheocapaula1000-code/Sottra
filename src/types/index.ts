@@ -22,13 +22,41 @@ export interface IdentifyResult {
   confidence: number;
 }
 
+/** Source provider identifiers */
+export type SourceProvider =
+  | "core_v3" | "istat" | "omi" | "here" | "overpass" | "mapillary"
+  | "google_places" | "geoapify" | "internal" | "unknown";
+
+/** Extended source type taxonomy */
+export type SourceType =
+  | "official" | "verified_geo" | "premium" | "elaborated"
+  | "estimate" | "derived" | "unavailable"
+  | "commercial_verified" | "commercial_partial";
+
+/** Geographic coverage level */
+export type CoverageLevel =
+  | "address" | "zone_omi" | "quartiere" | "comune"
+  | "provincia" | "area_vasta" | "unknown";
+
+/** Reason why data is unavailable */
+export type AvailabilityReason =
+  | "no_match" | "provider_unavailable" | "no_coverage"
+  | "requires_premium" | "requires_agreement" | "parsing_error" | "timeout";
+
 /** Source metadata dal backend */
 export interface SourceMetadata {
   sourceLabel?: string;
-  sourceType?: "official" | "elaborated" | "estimate" | "unavailable" | "commercial_verified" | "commercial_partial";
+  sourceType?: SourceType;
+  sourceProvider?: SourceProvider;
   sourcePeriod?: string;
+  sourceFreshness?: string;
+  sourceConfidence?: number;
   confidenceReason?: string;
   limitations?: string[];
+  coverageLevel?: CoverageLevel;
+  availabilityReason?: AvailabilityReason;
+  licensingNote?: string;
+  attributionNote?: string;
 }
 
 /** Dati prezzi di mercato */

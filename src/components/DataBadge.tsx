@@ -1,12 +1,25 @@
 import { cn } from "@/lib/utils";
 
-export type DataTier = "ufficiale" | "mercato_verificato" | "mercato_parziale" | "elaborato" | "stima" | "non_disponibile" | "demo";
+export type DataTier =
+  | "ufficiale" | "geo_verificato" | "premium"
+  | "mercato_verificato" | "mercato_parziale"
+  | "elaborato" | "stima" | "non_disponibile" | "demo";
 
 const config: Record<DataTier, { label: string; className: string; desc: string }> = {
   ufficiale: {
     label: "Dato ufficiale",
     className: "bg-green-500/15 text-green-400 border-green-500/30",
     desc: "Fonte istituzionale verificata",
+  },
+  geo_verificato: {
+    label: "Dato geo verificato",
+    className: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+    desc: "Fonte geospaziale professionale verificata",
+  },
+  premium: {
+    label: "Dato premium",
+    className: "bg-violet-500/15 text-violet-400 border-violet-500/30",
+    desc: "Fonte premium esterna",
   },
   mercato_verificato: {
     label: "Mercato verificato",
