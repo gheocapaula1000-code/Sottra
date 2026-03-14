@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import SottraMark from "@/components/SottraMark";
-import logoS from "@/assets/logo-s-icon.png";
+
 import {
   ScanLine,
   ChevronRight,
@@ -81,10 +81,8 @@ const Dashboard = () => {
     <div className="flex min-h-svh flex-col bg-background">
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="relative mx-auto flex h-20 sm:h-[88px] max-w-6xl items-center px-4 sm:px-6">
-          <SottraMark size="sm" textOnly linkTo="/app" />
-
-          <img src={logoS} alt="Sottra" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-16 w-16 sm:h-[72px] sm:w-[72px] object-contain pointer-events-none" />
+        <div className="mx-auto flex h-14 sm:h-16 max-w-6xl items-center px-4 sm:px-6">
+          <SottraMark size="md" linkTo="/app" className="shrink-0" />
 
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
             {isOwner && (
