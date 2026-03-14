@@ -158,53 +158,43 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       let responseData: unknown = null;
-      let responseErrorMessage: string | null = null;
 
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        let data: unknown = null;
-        let error: unknown = null;
+      try {
+        // SDK returns { data, error } — with HTTP 200 from the function, error should be null.
+        const result = await supabase.functions.invoke("check-subscription");
+        responseData = result.data;
 
-        try {
-          // IMPORTANT: rely on SDK-managed auth header to avoid stale-token 401s.
-          const result = await supabase.functions.invoke("check-subscription");
-          data = result.data;
-          error = result.error;
-        } catch (invokeError) {
-          error = invokeError;
-        }
-
-        if (!error) {
-          responseData = data;
-          responseErrorMessage = null;
-          break;
-        }
-
-        const msg = typeof error === "object" && error !== null && "message" in error
-          ? (error as { message: string }).message
-          : String(error);
-
-        responseErrorMessage = msg;
-        const isAuthIssue = isAuthIssueMessage(msg);
-
-        if (isAuthIssue && attempt < 2) {
-          console.warn(`[Subscription] auth not ready, retry ${attempt + 1}/2`);
-          await wait(180);
-          await supabase.auth.getSession();
-          continue;
-        }
-
-        break;
-      }
-
-      if (responseErrorMessage) {
-        if (isAuthIssueMessage(responseErrorMessage)) {
-          console.warn("[Subscription] access unresolved after auth retries, keeping neutral state");
+        // If SDK still reports an error (network failure, etc.), treat as auth issue
+        if (result.error) {
+          const msg = typeof result.error === "object" && "message" in result.error
+            ? (result.error as { message: string }).message
+            : String(result.error);
+          console.warn("[Subscription] invoke error (non-fatal):", msg);
+          // Keep neutral state — don't crash
           setResolved(false);
           setLoading(false);
           return;
         }
+      } catch (invokeError) {
+        // Network error or unexpected throw — never crash
+        console.warn("[Subscription] invoke exception (non-fatal):", invokeError);
+        setResolved(false);
+        setLoading(false);
+        return;
+      }
 
-        console.error("[Subscription] check failed:", responseErrorMessage);
+      // Check if the function reported an auth/error condition in the body
+      const body = responseData as Record<string, unknown> | null;
+      if (body && typeof body.error === "string" && body.error) {
+        const isAuth = isAuthIssueMessage(body.error);
+        if (isAuth) {
+          console.warn("[Subscription] auth not ready per function response, neutral state");
+          setResolved(false);
+          setLoading(false);
+          return;
+        }
+        // Non-auth error from function — apply safe defaults
+        console.warn("[Subscription] function error:", body.error);
         applyDefaults(false);
         return;
       }
@@ -218,7 +208,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setResolved(true);
       setLoading(false);
     } catch (e) {
-      console.error("[Subscription] unexpected error:", e);
+      // Absolute safety net — never let /app blank-screen
+      console.error("[Subscription] unexpected error (non-fatal):", e);
       applyDefaults(false);
     }
   }, [session, authLoading, applyDefaults, setResolved]);
