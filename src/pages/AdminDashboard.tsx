@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AppHeader from "@/components/AppHeader";
 
-import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft, Activity, Database } from "lucide-react";
+import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft, Activity, Database, Map } from "lucide-react";
 
 interface AdminStats {
   total_users: number;
