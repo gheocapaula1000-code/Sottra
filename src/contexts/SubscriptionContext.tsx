@@ -222,7 +222,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const canScan = isOwner || isAdmin || subscribed || (trial?.active ?? false);
 
   return (
-    <SubscriptionContext.Provider value={{ loading, accessResolved, subscribed, planKey, subscriptionEnd, trial, canScan, isAdmin, isOwner, refresh }}>
+    <SubscriptionContext.Provider value={{ loading, accessResolved, checked, subscribed, planKey, subscriptionEnd, trial, canScan, isAdmin, isOwner, refresh }}>
       {children}
     </SubscriptionContext.Provider>
   );
