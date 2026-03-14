@@ -1,4 +1,3 @@
-import { useState as useCenterLogoState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +9,7 @@ import { APP_BRAND } from "@/lib/legalEntity";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
-import SottraMark from "@/components/SottraMark";
-import logoS from "@/assets/logo-s-icon.png";
+import AppHeader from "@/components/AppHeader";
 
 import {
   ScanLine,
