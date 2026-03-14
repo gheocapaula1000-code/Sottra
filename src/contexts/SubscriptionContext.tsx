@@ -183,19 +183,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      // Check if the function reported an auth/error condition in the body
+      // Check if the function reported an error condition in the body
       const body = responseData as Record<string, unknown> | null;
       if (body && typeof body.error === "string" && body.error) {
-        const isAuth = isAuthIssueMessage(body.error);
-        if (isAuth) {
-          console.warn("[Subscription] auth not ready per function response, neutral state");
-          setResolved(false);
-          setLoading(false);
-          return;
-        }
-        // Non-auth error from function — apply safe defaults
-        console.warn("[Subscription] function error:", body.error);
-        applyDefaults(false);
+        console.warn("[Subscription] function error (non-fatal):", body.error);
+        // ALWAYS resolve with safe defaults — never hang on loading
+        applyDefaults(true);
         return;
       }
 

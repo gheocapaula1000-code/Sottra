@@ -26,7 +26,7 @@ const BASE_RESPONSE = {
 
 type ResponseShape = typeof BASE_RESPONSE;
 
-/** Always returns HTTP 200 with a stable JSON envelope to prevent SDK FunctionsHttpError */
+/** Always returns HTTP 200 with a stable JSON envelope */
 const json = (body: Partial<ResponseShape>) =>
   new Response(JSON.stringify({ ...BASE_RESPONSE, ...body }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -52,38 +52,47 @@ serve(async (req) => {
       return json({ error: "Empty token", code: "auth_empty" });
     }
 
-    let supabaseClient: ReturnType<typeof createClient>;
+    // Use anon-key client with user's Authorization header for getClaims
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+    let anonClient: ReturnType<typeof createClient>;
+    let serviceClient: ReturnType<typeof createClient>;
     try {
-      supabaseClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-        { auth: { persistSession: false } },
-      );
+      anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+        auth: { persistSession: false },
+      });
+      serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { persistSession: false },
+      });
     } catch (e) {
       log("supabase client init failed", String(e));
       return json({ error: "Internal configuration error", code: "init_error" });
     }
 
-    let user: { id: string; email?: string | null } | null = null;
+    // Use getClaims to validate the JWT (works with signing-keys)
+    let userId: string;
+    let email: string | undefined;
     try {
-      const { data, error } = await supabaseClient.auth.getUser(token);
-      if (error || !data?.user) {
-        log("auth invalid", error?.message ?? "no user");
-        return json({ error: `Auth error: ${error?.message ?? "session missing"}`, code: "auth_invalid" });
+      const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        log("auth invalid via getClaims", claimsError?.message ?? "no claims");
+        return json({ error: `Auth error: ${claimsError?.message ?? "invalid token"}`, code: "auth_invalid" });
       }
-      user = data.user;
+      userId = claimsData.claims.sub as string;
+      email = claimsData.claims.email as string | undefined;
     } catch (e) {
       log("auth exception", String(e));
       return json({ error: "Auth verification failed", code: "auth_exception" });
     }
 
-    if (!user?.email) {
+    if (!email) {
       log("auth no email");
       return json({ error: "Auth error: no email", code: "auth_no_email" });
     }
 
-    const userId = user.id;
-    const email = user.email;
     log("authenticated", userId);
 
     // ── 2. Owner bypass ──────────────────────────────────────
@@ -95,7 +104,7 @@ serve(async (req) => {
     // ── 3. Admin check (non-blocking) ───────────────────────
     let isAdmin = false;
     try {
-      const { data: roleData, error: roleErr } = await supabaseClient
+      const { data: roleData, error: roleErr } = await serviceClient
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
@@ -118,7 +127,7 @@ serve(async (req) => {
     // ── 4. Trial (non-blocking) ─────────────────────────────
     let trialPayload: Record<string, unknown> | null = null;
     try {
-      let { data: trial, error: trialErr } = await supabaseClient
+      let { data: trial, error: trialErr } = await serviceClient
         .from("user_trials")
         .select("*")
         .eq("user_id", userId)
@@ -131,7 +140,7 @@ serve(async (req) => {
       // Auto-create if missing
       if (!trial) {
         try {
-          const { data: newTrial, error: insertErr } = await supabaseClient
+          const { data: newTrial, error: insertErr } = await serviceClient
             .from("user_trials")
             .insert({ user_id: userId })
             .select()
@@ -219,7 +228,6 @@ serve(async (req) => {
       code: "resolved",
     });
   } catch (topLevelErr) {
-    // Absolute safety net — never crash
     log("FATAL top-level catch", String(topLevelErr));
     return json({ error: "Internal error", code: "fatal" });
   }
