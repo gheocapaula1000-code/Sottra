@@ -52,12 +52,7 @@ const AdminDashboard = () => {
           <SottraMark size="md" textOnly linkTo="/app" className="shrink-0 justify-self-start" />
 
           {/* Center — logo icon */}
-          <img
-            src={logoS}
-            alt="Sottra logo"
-            className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
-            fetchPriority="high"
-          />
+          <AdminCenterLogo />
 
           {/* Right — actions */}
           <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
