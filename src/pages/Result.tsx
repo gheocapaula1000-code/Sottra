@@ -17,7 +17,7 @@ import type {
   InfrastrutureData,
   RischioZonaData, TrendDemograficoData, SviluppoAreaData,
   ConvergenzaTerritorialeData, MarketContextData, ComparablesSummary,
-  ScanResult, SourceMetadata,
+  ScanResult, SourceMetadata, PoiEnrichmentData,
   InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
 } from "@/types";
 import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
