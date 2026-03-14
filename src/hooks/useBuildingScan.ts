@@ -26,6 +26,7 @@ const initialState = buildInitialState();
 type Action =
   | { type: "START_SCAN" }
   | { type: "RESET_IDLE" }
+  | { type: "RESTORE"; payload: Partial<ScanResult> }
   | { type: "SET"; key: keyof ScanResult; value: SectionState };
 
 function reducer(state: ScanResult, action: Action): ScanResult {
@@ -37,6 +38,14 @@ function reducer(state: ScanResult, action: Action): ScanResult {
     }
     case "RESET_IDLE":
       return initialState;
+    case "RESTORE": {
+      const restored = { ...initialState } as Record<string, SectionState>;
+      for (const k of MODULES) {
+        const saved = (action.payload as Record<string, SectionState>)[k];
+        if (saved) restored[k] = saved;
+      }
+      return restored as unknown as ScanResult;
+    }
     case "SET":
       return { ...state, [action.key]: action.value } as ScanResult;
     default:
