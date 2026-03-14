@@ -1,4 +1,3 @@
-import { useState as useCenterLogoState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +9,7 @@ import { APP_BRAND } from "@/lib/legalEntity";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
-import SottraMark from "@/components/SottraMark";
-import logoS from "@/assets/logo-s-icon.png";
+import AppHeader from "@/components/AppHeader";
 
 import {
   ScanLine,
@@ -80,36 +78,27 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="relative mx-auto grid h-16 sm:h-[72px] max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
-          {/* Left — text only */}
-          <SottraMark size="md" textOnly linkTo="/app" className="shrink-0 justify-self-start" />
-
-          {/* Center — logo icon */}
-          <CenterLogo />
-
-          {/* Right — actions */}
-          <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
-            {isOwner && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={() => navigate("/admin")}>
-                <Shield className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Pannello admin</span>
-              </Button>
-            )}
-            {displaySubscribed && !isAdmin && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={handleManageSubscription}>
-                <CreditCard className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Abbonamento</span>
-              </Button>
-            )}
-            <span className="hidden md:inline text-xs text-muted-foreground truncate max-w-[180px]">{user?.email}</span>
-            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={signOut}>
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Esci</span>
+      <AppHeader rightContent={
+        <>
+          {isOwner && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={() => navigate("/admin")}>
+              <Shield className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Pannello admin</span>
             </Button>
-          </div>
-        </div>
-      </header>
+          )}
+          {displaySubscribed && !isAdmin && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={handleManageSubscription}>
+              <CreditCard className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Abbonamento</span>
+            </Button>
+          )}
+          <span className="hidden md:inline text-xs text-muted-foreground truncate max-w-[180px]">{user?.email}</span>
+          <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={signOut}>
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Esci</span>
+          </Button>
+        </>
+      } />
 
       {/* ── Main ── */}
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-6">
@@ -294,20 +283,6 @@ const Dashboard = () => {
 };
 
 /* ── Sub-components ── */
-
-function CenterLogo() {
-  const [ok, setOk] = useCenterLogoState(true);
-  if (!ok) return null;
-  return (
-    <img
-      src={logoS}
-      alt="Sottra logo"
-      className="h-12 w-12 sm:h-14 sm:w-14 object-contain"
-      fetchPriority="high"
-      onError={() => setOk(false)}
-    />
-  );
-}
 
 function OverviewCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (

@@ -55,7 +55,7 @@ const ResetPassword = () => {
     return (
       <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6">
         <div className="w-full max-w-sm space-y-6 text-center">
-          <SottraMark size="lg" />
+          <SottraMark size="lg" textOnly />
           <p className="text-sm text-muted-foreground">Verifica del link in corso…</p>
           <div className="h-8 w-8 mx-auto animate-spin rounded-full border-2 border-muted border-t-primary" />
         </div>
@@ -67,7 +67,7 @@ const ResetPassword = () => {
     <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm space-y-8">
         <div className="flex flex-col items-center gap-2">
-          <SottraMark size="lg" />
+          <SottraMark size="lg" textOnly />
           <p className="text-sm text-muted-foreground">Imposta la nuova password</p>
         </div>
 

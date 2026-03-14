@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
+import AppHeader from "@/components/AppHeader";
 
 function scoreVariant(score: number): "default" | "secondary" | "destructive" {
   if (score >= 60) return "default";
@@ -22,23 +23,18 @@ const History = () => {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <header className="flex items-center gap-3 px-5 pt-[env(safe-area-inset-top,12px)] pb-2">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary"
-        >
-          <ArrowLeft className="h-5 w-5 text-foreground" />
-        </button>
-        <span className="text-base font-bold text-foreground flex-1">Le tue scansioni</span>
-        {scans.length > 0 && (
-          <button
-            onClick={clearAll}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary"
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </button>
-        )}
-      </header>
+      <AppHeader rightContent={
+        <>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)} aria-label="Indietro">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          {scans.length > 0 && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={clearAll} aria-label="Cancella tutto">
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          )}
+        </>
+      } />
 
       <ScrollArea className="flex-1">
         <div className="px-5 pb-10 pt-2 space-y-3">

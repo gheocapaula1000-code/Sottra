@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import AppHeader from "@/components/AppHeader";
 
 interface DiagResult {
   proxy_local: string;
@@ -52,17 +53,20 @@ export default function Diagnostics() {
   const healthPass = data?.health === "PASS";
 
   return (
-    <div className="min-h-svh bg-background px-4 py-8">
-      <div className="mx-auto max-w-xl space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/app")}>
+    <div className="min-h-svh bg-background">
+      <AppHeader rightContent={
+        <>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/app")} aria-label="Indietro">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-lg font-semibold text-foreground">Core Diagnostics</h1>
-          <Button variant="ghost" size="icon" className="ml-auto" onClick={refresh} disabled={loading}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={refresh} disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           </Button>
-        </div>
+        </>
+      } />
+      <div className="px-4 py-8">
+      <div className="mx-auto max-w-xl space-y-6">
+        <h1 className="text-lg font-semibold text-foreground">Core Diagnostics</h1>
 
         {error && (
           <Alert variant="destructive">
@@ -149,6 +153,7 @@ export default function Diagnostics() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         )}
+      </div>
       </div>
     </div>
   );

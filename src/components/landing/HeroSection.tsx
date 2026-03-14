@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ChevronDown, ShieldCheck, CreditCard, CalendarOff, ScanLine, Clock } from "lucide-react";
 import SottraMark from "@/components/SottraMark";
+import logoS from "@/assets/logo-s-icon.png";
 
 const trustItems = [
   { icon: Clock, text: "3 giorni gratis" },
@@ -19,9 +21,10 @@ export default function HeroSection() {
       <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[420px] w-[660px] rounded-full bg-primary/8 blur-[140px]" />
 
       {/* Nav */}
-      <nav className="relative mx-auto flex w-full max-w-6xl items-center justify-between py-5">
-        <SottraMark size="md" />
-        <div className="flex items-center gap-2 sm:gap-3">
+      <nav className="relative mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center py-5">
+        <SottraMark size="md" textOnly className="justify-self-start" />
+        <LandingCenterLogo />
+        <div className="flex items-center justify-end gap-2 sm:gap-3">
           <Button size="sm" variant="ghost" onClick={() => navigate("/login")}>
             Accedi
           </Button>
@@ -106,5 +109,19 @@ export default function HeroSection() {
         <ChevronDown className="h-5 w-5 text-muted-foreground/50" />
       </div>
     </section>
+  );
+}
+
+function LandingCenterLogo() {
+  const [ok, setOk] = useState(true);
+  if (!ok) return null;
+  return (
+    <img
+      src={logoS}
+      alt="Sottra logo"
+      className="h-12 w-12 sm:h-14 sm:w-14 object-contain justify-self-center"
+      fetchPriority="high"
+      onError={() => setOk(false)}
+    />
   );
 }
