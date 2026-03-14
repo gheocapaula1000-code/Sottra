@@ -145,7 +145,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setResolved(false);
     }
 
-    const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+    
 
     try {
       let responseData: unknown = null;
