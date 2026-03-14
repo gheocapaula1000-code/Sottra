@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import SottraMark from "@/components/SottraMark";
+import logoS from "@/assets/logo-s-icon.png";
 
 import {
   ScanLine,
