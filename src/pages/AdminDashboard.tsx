@@ -145,6 +145,17 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
 
+            {/* OMI KML Ingest */}
+            <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/admin/omi-kml")}>
+              <CardContent className="py-8 text-center space-y-2">
+                <Map className="h-6 w-6 mx-auto text-primary" />
+                <p className="text-sm font-medium text-foreground">Import Poligoni KML</p>
+                <p className="text-xs text-muted-foreground">
+                  Carica file KML dei perimetri OMI per il point-in-polygon reale
+                </p>
+              </CardContent>
+            </Card>
+
             {/* Future blocks placeholder */}
             <Card className="border-dashed">
               <CardContent className="py-8 text-center">
