@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import AppHeader from "@/components/AppHeader";
 
 interface DiagResult {
   proxy_local: string;
