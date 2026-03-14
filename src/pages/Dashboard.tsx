@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { TrialExpiredScreen } from "@/components/TrialExpiredScreen";
@@ -19,7 +18,6 @@ import {
   BarChart3,
   Activity,
   Shield,
-  Mail,
   LogOut,
   Camera,
   Clock,
@@ -30,7 +28,7 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { loading, canScan, subscribed, trial, isAdmin, isOwner, refresh } = useSubscription();
+  const { loading, accessResolved, canScan, subscribed, trial, isAdmin, isOwner } = useSubscription();
   const { toast } = useToast();
   const { scans } = useScanHistory();
 
@@ -44,9 +42,7 @@ const Dashboard = () => {
     }
   };
 
-  useEffect(() => { refresh(); }, [refresh]);
-
-  if (loading) {
+  if (loading || !accessResolved) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
@@ -254,6 +250,10 @@ const Dashboard = () => {
               <CardContent className="pt-0 space-y-1">
                 <QuickAction icon={<ScanLine className="h-4 w-4" />} label="Nuova scansione" onClick={() => navigate("/scan")} />
                 <QuickAction icon={<History className="h-4 w-4" />} label="Cronologia scansioni" onClick={() => navigate("/history")} />
+                <QuickAction icon={<Activity className="h-4 w-4" />} label="Diagnostica Core" onClick={() => navigate("/app/diagnostics")} />
+                {(isAdmin || isOwner) && (
+                  <QuickAction icon={<Shield className="h-4 w-4" />} label="Diagnostica admin" onClick={() => navigate("/admin/diagnostics")} />
+                )}
                 {displaySubscribed && (
                   <QuickAction icon={<CreditCard className="h-4 w-4" />} label="Gestisci abbonamento" onClick={handleManageSubscription} />
                 )}

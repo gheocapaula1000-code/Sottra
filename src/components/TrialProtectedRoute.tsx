@@ -11,9 +11,9 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
  */
 const TrialProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading: authLoading } = useAuth();
-  const { loading: subLoading, canScan, isAdmin } = useSubscription();
+  const { loading: subLoading, accessResolved, canScan, isAdmin } = useSubscription();
 
-  if (authLoading || subLoading) {
+  if (authLoading || subLoading || !accessResolved) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />

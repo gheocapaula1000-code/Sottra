@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SottraMark from "@/components/SottraMark";
 
-import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft } from "lucide-react";
+import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft, Activity } from "lucide-react";
 
 interface AdminStats {
   total_users: number;
@@ -51,6 +51,10 @@ const AdminDashboard = () => {
 
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
             <span className="text-xs font-semibold text-primary">Admin</span>
+            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground" onClick={() => navigate("/admin/diagnostics")}>
+              <Activity className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Diagnostica</span>
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/app")} aria-label="Torna alla dashboard">
               <ArrowLeft className="h-4 w-4" />
             </Button>
