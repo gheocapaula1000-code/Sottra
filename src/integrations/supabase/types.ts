@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      omi_quotazioni: {
+        Row: {
+          anno: number
+          codice_comune_catastale: string
+          codice_comune_istat: string | null
+          comune_label: string
+          created_at: string | null
+          id: string
+          provincia: string | null
+          quotazione_max: number
+          quotazione_min: number
+          semestre: number
+          stato_conservazione: string | null
+          superficie_ref: string | null
+          tipologia: string
+          zona_omi: string
+          zona_omi_label: string | null
+        }
+        Insert: {
+          anno: number
+          codice_comune_catastale: string
+          codice_comune_istat?: string | null
+          comune_label: string
+          created_at?: string | null
+          id?: string
+          provincia?: string | null
+          quotazione_max: number
+          quotazione_min: number
+          semestre: number
+          stato_conservazione?: string | null
+          superficie_ref?: string | null
+          tipologia?: string
+          zona_omi: string
+          zona_omi_label?: string | null
+        }
+        Update: {
+          anno?: number
+          codice_comune_catastale?: string
+          codice_comune_istat?: string | null
+          comune_label?: string
+          created_at?: string | null
+          id?: string
+          provincia?: string | null
+          quotazione_max?: number
+          quotazione_min?: number
+          semestre?: number
+          stato_conservazione?: string | null
+          superficie_ref?: string | null
+          tipologia?: string
+          zona_omi?: string
+          zona_omi_label?: string | null
+        }
+        Relationships: []
+      }
       scan_events: {
         Row: {
           created_at: string
