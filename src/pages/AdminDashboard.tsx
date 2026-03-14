@@ -6,51 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SottraMark from "@/components/SottraMark";
 
-import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft } from "lucide-react";
-
-interface AdminStats {
-  total_users: number;
-  recent_users_7d: number;
-  total_trials: number;
-  active_trials: number;
-  expired_trials: number;
-  total_scans: number;
-  admin_emails: string[];
-  admin_count: number;
-}
-
-const AdminDashboard = () => {
-  const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("admin-stats");
-        if (error) throw error;
-        setStats(data);
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        setError(msg.includes("Forbidden") ? "Accesso non autorizzato." : "Impossibile caricare i dati. Riprova più tardi.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
-
-  return (
-    <div className="flex min-h-svh flex-col bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 sm:h-16 max-w-5xl items-center px-4 sm:px-6">
-          <SottraMark size="md" linkTo="/app" className="shrink-0" />
-
+import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft, Activity } from "lucide-react";
+...
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
             <span className="text-xs font-semibold text-primary">Admin</span>
+            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground" onClick={() => navigate("/admin/diagnostics")}>
+              <Activity className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Diagnostica</span>
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/app")} aria-label="Torna alla dashboard">
               <ArrowLeft className="h-4 w-4" />
             </Button>
