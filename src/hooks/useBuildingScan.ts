@@ -1,6 +1,7 @@
 import { useReducer, useState, useCallback, useRef } from "react";
 import { identifyBuilding, getPricing } from "@/services/scan";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
+import { fetchProSources } from "@/services/proSources";
 import { supabase } from "@/integrations/supabase/client";
 import type { ScanResult, SectionState, IdentifyResult } from "@/types";
 
@@ -11,6 +12,7 @@ const MODULES: (keyof ScanResult)[] = [
   "identify", "pricing", "marketContext", "timeView", "opportunity",
   "infrastrutture", "rischioZona", "trendDemografico",
   "sviluppoArea", "convergenzaTerritoriale",
+  "poiEnrichment", "omiZone", "istatDemographic",
 ];
 
 function buildInitialState(): ScanResult {
@@ -115,12 +117,13 @@ export function useBuildingScan() {
         return;
       }
 
-      // Step 3: Launch all active modules in parallel
+      // Step 3: Launch all modules in parallel (Core V3 + Pro Sources)
       const identifyData = idRes.data as IdentifyResult;
       const address = identifyData.address ?? "";
       const confidence = identifyData.confidence ?? undefined;
 
       await Promise.allSettled([
+        // Core V3 modules
         ...(address ? [getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing"))] : []),
         getMarketContext(lat, lng, address || undefined).then(resolve("marketContext")).catch(reject("marketContext")),
         getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
@@ -130,6 +133,29 @@ export function useBuildingScan() {
         getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
         getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
         getConvergenzaTerritoriale(lat, lng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
+        // Pro Sources (POI, OMI, ISTAT) — non-blocking
+        fetchProSources(lat, lng).then((proData) => {
+          set("poiEnrichment", {
+            status: proData.poi ? "success" : "error",
+            data: proData.poi,
+            message: proData.poi ? null : "Dati POI non disponibili",
+          });
+          set("omiZone", {
+            status: proData.omi ? "success" : "error",
+            data: proData.omi,
+            message: proData.omi ? null : "Dati OMI non disponibili",
+          });
+          set("istatDemographic", {
+            status: proData.istat ? "success" : "error",
+            data: proData.istat,
+            message: proData.istat ? null : "Dati ISTAT non disponibili",
+          });
+        }).catch((e) => {
+          console.error("[SCAN] pro-sources failed:", e);
+          set("poiEnrichment", { status: "error", data: null, message: "Servizio non disponibile" });
+          set("omiZone", { status: "error", data: null, message: "Servizio non disponibile" });
+          set("istatDemographic", { status: "error", data: null, message: "Servizio non disponibile" });
+        }),
       ]);
 
       if (!address) {

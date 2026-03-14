@@ -17,7 +17,7 @@ import type {
   InfrastrutureData,
   RischioZonaData, TrendDemograficoData, SviluppoAreaData,
   ConvergenzaTerritorialeData, MarketContextData, ComparablesSummary,
-  ScanResult, SourceMetadata,
+  ScanResult, SourceMetadata, PoiEnrichmentData,
   InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
 } from "@/types";
 import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
@@ -51,10 +51,13 @@ function fmtEur(n: number | null | undefined): string {
 function sourceTypeToTier(sourceType?: string): DataTier {
   switch (sourceType) {
     case "official": return "ufficiale";
+    case "verified_geo": return "geo_verificato";
+    case "premium": return "premium";
     case "commercial_verified": return "mercato_verificato";
     case "commercial_partial": return "mercato_parziale";
     case "elaborated": return "elaborato";
     case "estimate": return "elaborato";
+    case "derived": return "elaborato";
     case "unavailable": return "non_disponibile";
     default: return "elaborato";
   }
@@ -833,6 +836,44 @@ function MarketSignalsBlock({ signals }: { signals: { key: string; label: string
   );
 }
 
+/* ── POI Enrichment Card ─────────────────────────────── */
+
+function PoiEnrichmentCard({ data, loading }: { data: PoiEnrichmentData | null; loading: boolean }) {
+  if (loading) return <SectionSkeleton />;
+  if (!data || data.sourceType === "unavailable" || data.totalPois === 0) return null;
+
+  const categoryIcons: Record<string, React.ElementType> = {
+    transport: MapPin, education: Users, health: AlertTriangle,
+    shopping: Gem, parks: Compass, culture: Eye,
+  };
+
+  return (
+    <Section gradient="from-cyan-500/10 to-teal-500/5 border-cyan-500/15">
+      <SectionHeader icon={MapPin} title="Servizi e POI nelle vicinanze" badge={`${data.totalPois} trovati`} />
+      <p className="text-xs text-muted-foreground mb-3">Raggio di ricerca: {data.searchRadius}m</p>
+
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        {data.categories.slice(0, 6).map((cat, i) => {
+          const Icon = categoryIcons[cat.category] ?? MapPin;
+          return (
+            <div key={i} className="rounded-lg bg-muted/40 px-3 py-2 flex items-center gap-2">
+              <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-foreground truncate">{cat.categoryLabel}</p>
+                <p className="text-[10px] text-muted-foreground">{cat.count} · {cat.nearest ? `${cat.nearest.distance}m` : ""}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {data.attributionNote && (
+        <p className="text-[9px] text-muted-foreground/40 mt-1">{data.attributionNote}</p>
+      )}
+      <SourceTag meta={data} />
+    </Section>
+  );
+}
 
 
 function LowConfidenceCard({ onRetry }: { onRetry: () => void }) {
@@ -927,7 +968,7 @@ const Result = () => {
   const lowConfidence = identifyDone && identifyData != null && identifyData.confidence < LOW_CONFIDENCE_THRESHOLD;
 
   // Count publishable vs excluded
-  const moduleKeys: (keyof ScanResult)[] = ["pricing", "marketContext", "convergenzaTerritoriale", "rischioZona", "trendDemografico", "opportunity", "timeView", "infrastrutture", "sviluppoArea"];
+  const moduleKeys: (keyof ScanResult)[] = ["pricing", "marketContext", "convergenzaTerritoriale", "rischioZona", "trendDemografico", "opportunity", "timeView", "infrastrutture", "sviluppoArea", "poiEnrichment"];
   const completedModules = moduleKeys.filter(k => result[k].status !== "loading" && result[k].status !== "idle");
   const publishedCount = completedModules.filter(k => isSectionPublishable(result[k].status, result[k].data)).length;
   const excludedCount = completedModules.length - publishedCount;
@@ -976,6 +1017,9 @@ const Result = () => {
 
               <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} />
               <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} />
+
+              {/* Tier 1.5 — Pro Sources: POI geo-verified */}
+              <PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} />
 
               {/* Tier 2 — synthetic indices & elaborated insights */}
               <ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} />

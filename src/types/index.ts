@@ -22,13 +22,41 @@ export interface IdentifyResult {
   confidence: number;
 }
 
+/** Source provider identifiers */
+export type SourceProvider =
+  | "core_v3" | "istat" | "omi" | "here" | "overpass" | "mapillary"
+  | "google_places" | "geoapify" | "internal" | "unknown";
+
+/** Extended source type taxonomy */
+export type SourceType =
+  | "official" | "verified_geo" | "premium" | "elaborated"
+  | "estimate" | "derived" | "unavailable"
+  | "commercial_verified" | "commercial_partial";
+
+/** Geographic coverage level */
+export type CoverageLevel =
+  | "address" | "zone_omi" | "quartiere" | "comune"
+  | "provincia" | "area_vasta" | "unknown";
+
+/** Reason why data is unavailable */
+export type AvailabilityReason =
+  | "no_match" | "provider_unavailable" | "no_coverage"
+  | "requires_premium" | "requires_agreement" | "parsing_error" | "timeout";
+
 /** Source metadata dal backend */
 export interface SourceMetadata {
   sourceLabel?: string;
-  sourceType?: "official" | "elaborated" | "estimate" | "unavailable" | "commercial_verified" | "commercial_partial";
+  sourceType?: SourceType;
+  sourceProvider?: SourceProvider;
   sourcePeriod?: string;
+  sourceFreshness?: string;
+  sourceConfidence?: number;
   confidenceReason?: string;
   limitations?: string[];
+  sourceCoverageLevel?: CoverageLevel;
+  availabilityReason?: AvailabilityReason;
+  licensingNote?: string;
+  attributionNote?: string;
 }
 
 /** Dati prezzi di mercato */
@@ -213,6 +241,58 @@ export interface MarketContextData extends SourceMetadata {
   narrativeObservation?: string | null;
 }
 
+/* ── PRO SOURCES TYPES ─────────────────────────────────── */
+
+/** Single POI near the scanned building */
+export interface NearbyPoi {
+  name: string;
+  category: string;
+  categoryLabel: string;
+  distance: number;
+  lat: number;
+  lng: number;
+  provider: SourceProvider;
+}
+
+/** POI category summary */
+export interface PoiCategorySummary {
+  category: string;
+  categoryLabel: string;
+  count: number;
+  nearest?: NearbyPoi;
+}
+
+/** POI enrichment data */
+export interface PoiEnrichmentData extends SourceMetadata {
+  totalPois: number;
+  categories: PoiCategorySummary[];
+  pois: NearbyPoi[];
+  searchRadius: number;
+}
+
+/** OMI zone data */
+export interface OmiZoneData extends SourceMetadata {
+  zonaOmi?: string | null;
+  zonaOmiLabel?: string | null;
+  comuneLabel?: string | null;
+  quotazioneMinResidenziale?: number | null;
+  quotazioneMaxResidenziale?: number | null;
+  semestre?: string | null;
+  tipologia?: string | null;
+  statoConservazione?: string | null;
+}
+
+/** ISTAT enhanced demographic data */
+export interface IstatDemographicData extends SourceMetadata {
+  popolazione?: number | null;
+  nucleiFamiliari?: number | null;
+  densita?: number | null;
+  indiceVecchiaia?: number | null;
+  percentualeStranieri?: number | null;
+  comuneLabel?: string | null;
+  annoRilevazione?: string | null;
+}
+
 /** Risultato completo di una scansione — solo moduli realmente operativi */
 export interface ScanResult {
   identify: SectionState<IdentifyResult>;
@@ -225,6 +305,9 @@ export interface ScanResult {
   trendDemografico: SectionState<TrendDemograficoData>;
   sviluppoArea: SectionState<SviluppoAreaData>;
   convergenzaTerritoriale: SectionState<ConvergenzaTerritorialeData>;
+  poiEnrichment: SectionState<PoiEnrichmentData>;
+  omiZone: SectionState<OmiZoneData>;
+  istatDemographic: SectionState<IstatDemographicData>;
 }
 
 /** Errore restituito da coreRequest */

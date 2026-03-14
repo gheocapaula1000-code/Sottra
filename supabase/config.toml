@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.check-subscription]
 verify_jwt = false
+
+[functions.pro-sources]
+verify_jwt = false
