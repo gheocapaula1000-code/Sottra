@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPlanByProductId, PlanKey } from "@/lib/plans";
@@ -13,6 +13,7 @@ interface TrialInfo {
 
 interface SubscriptionState {
   loading: boolean;
+  accessResolved: boolean;
   subscribed: boolean;
   planKey: PlanKey | null;
   subscriptionEnd: string | null;
@@ -25,6 +26,7 @@ interface SubscriptionState {
 
 const SubscriptionContext = createContext<SubscriptionState>({
   loading: true,
+  accessResolved: false,
   subscribed: false,
   planKey: null,
   subscriptionEnd: null,
@@ -44,6 +46,16 @@ const SAFE_DEFAULTS = {
   subscriptionEnd: null as string | null,
   trial: null as TrialInfo | null,
   isAdmin: false,
+};
+
+const isAuthIssueMessage = (msg: string) => {
+  const lower = msg.toLowerCase();
+  return (
+    msg.includes("Auth session missing") ||
+    lower.includes("auth") ||
+    msg.includes("401") ||
+    msg.includes("non-2xx")
+  );
 };
 
 /** Validate that payload is a non-null object with expected shape */
@@ -83,82 +95,112 @@ function parsePayload(data: unknown): {
 export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const { session, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [accessResolved, setAccessResolved] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [planKey, setPlanKey] = useState<PlanKey | null>(null);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [trial, setTrial] = useState<TrialInfo | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const accessResolvedRef = useRef(false);
 
-  const applyDefaults = useCallback(() => {
+  const setResolved = useCallback((resolved: boolean) => {
+    accessResolvedRef.current = resolved;
+    setAccessResolved(resolved);
+  }, []);
+
+  const applyDefaults = useCallback((resolved: boolean) => {
     setSubscribed(false);
     setPlanKey(null);
     setSubscriptionEnd(null);
     setTrial(null);
     setIsAdmin(false);
-    // Only mark loading done if auth is already resolved
+    setResolved(resolved);
     if (!authLoading) setLoading(false);
-  }, [authLoading]);
+  }, [authLoading, setResolved]);
 
   const refresh = useCallback(async () => {
-    // While auth is still loading, stay in loading state — don't resolve yet
     if (authLoading) return;
 
     if (!session) {
-      applyDefaults();
+      applyDefaults(true);
       return;
     }
 
-    // Skip if JWT is expired
     const expiresAt = session.expires_at;
     if (expiresAt && expiresAt * 1000 < Date.now()) {
       console.warn("[Subscription] session expired, skipping");
-      applyDefaults();
+      applyDefaults(true);
       return;
     }
 
-    try {
-      const { data, error } = await supabase.functions.invoke("check-subscription");
+    const isBootstrap = !accessResolvedRef.current;
+    if (isBootstrap) {
+      setLoading(true);
+      setResolved(false);
+    }
 
-      if (error) {
+    const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+    try {
+      let responseData: unknown = null;
+      let responseErrorMessage: string | null = null;
+
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const { data, error } = await supabase.functions.invoke("check-subscription");
+
+        if (!error) {
+          responseData = data;
+          responseErrorMessage = null;
+          break;
+        }
+
         const msg = typeof error === "object" && error !== null && "message" in error
           ? (error as { message: string }).message
           : String(error);
 
-        const isAuthIssue =
-          msg.includes("Auth session missing") ||
-          msg.includes("auth") ||
-          msg.includes("401") ||
-          msg.includes("non-2xx");
+        responseErrorMessage = msg;
+        const isAuthIssue = isAuthIssueMessage(msg);
 
-        if (isAuthIssue) {
-          console.warn("[Subscription] auth expired:", msg);
-        } else {
-          console.error("[Subscription] check failed:", msg);
+        if (isAuthIssue && attempt < 2) {
+          console.warn(`[Subscription] auth not ready, retry ${attempt + 1}/2`);
+          await wait(180);
+          continue;
         }
-        applyDefaults();
+
+        break;
+      }
+
+      if (responseErrorMessage) {
+        if (isAuthIssueMessage(responseErrorMessage)) {
+          console.warn("[Subscription] access unresolved after auth retries, keeping neutral state");
+          setResolved(false);
+          setLoading(false);
+          return;
+        }
+
+        console.error("[Subscription] check failed:", responseErrorMessage);
+        applyDefaults(false);
         return;
       }
 
-      const parsed = parsePayload(data);
+      const parsed = parsePayload(responseData);
       setSubscribed(parsed.subscribed);
       setPlanKey(parsed.planKey);
       setSubscriptionEnd(parsed.subscriptionEnd);
       setTrial(parsed.trial);
       setIsAdmin(parsed.isAdmin);
+      setResolved(true);
+      setLoading(false);
     } catch (e) {
       console.error("[Subscription] unexpected error:", e);
-      applyDefaults();
-      return;
-    } finally {
-      setLoading(false);
+      applyDefaults(false);
     }
-  }, [session, authLoading, applyDefaults]);
+  }, [session, authLoading, applyDefaults, setResolved]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
-  // Refresh every 60s while session is valid
   useEffect(() => {
     if (!session) return;
     const interval = setInterval(() => {
@@ -167,7 +209,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         clearInterval(interval);
         return;
       }
-      refresh();
+      void refresh();
     }, 60000);
     return () => clearInterval(interval);
   }, [session, refresh]);
@@ -176,7 +218,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const canScan = isOwner || isAdmin || subscribed || (trial?.active ?? false);
 
   return (
-    <SubscriptionContext.Provider value={{ loading, subscribed, planKey, subscriptionEnd, trial, canScan, isAdmin, isOwner, refresh }}>
+    <SubscriptionContext.Provider value={{ loading, accessResolved, subscribed, planKey, subscriptionEnd, trial, canScan, isAdmin, isOwner, refresh }}>
       {children}
     </SubscriptionContext.Provider>
   );
