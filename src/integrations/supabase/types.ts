@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      omi_polygons: {
+        Row: {
+          anno: number
+          codice_comune_catastale: string
+          comune_label: string
+          created_at: string | null
+          id: string
+          polygon_coords: Json
+          semestre: number
+          zona_omi: string
+        }
+        Insert: {
+          anno?: number
+          codice_comune_catastale: string
+          comune_label?: string
+          created_at?: string | null
+          id?: string
+          polygon_coords: Json
+          semestre?: number
+          zona_omi: string
+        }
+        Update: {
+          anno?: number
+          codice_comune_catastale?: string
+          comune_label?: string
+          created_at?: string | null
+          id?: string
+          polygon_coords?: Json
+          semestre?: number
+          zona_omi?: string
+        }
+        Relationships: []
+      }
       omi_quotazioni: {
         Row: {
           anno: number
