@@ -33,8 +33,8 @@ export default function Diagnostics() {
       const { data: d, error: e } = await supabase.functions.invoke("diagnostics");
       if (e) throw e;
       setData(d as DiagResult);
-    } catch (err: any) {
-      setError(err?.message || "Errore di comunicazione");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Errore di comunicazione");
     } finally {
       setLoading(false);
     }

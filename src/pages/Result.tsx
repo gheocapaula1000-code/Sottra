@@ -912,7 +912,7 @@ function ReportFooter({ excludedCount, totalPublished }: { excludedCount: number
 
 /* ── page ─────────────────────────────────────────────── */
 
-interface ResultState { photo: string; lat: number | null; lng: number | null; }
+interface ResultState { photo: string; lat: number | null; lng: number | null; savedResult?: Partial<ScanResult>; }
 
 const LOW_CONFIDENCE_THRESHOLD = 0.4;
 
@@ -923,20 +923,30 @@ const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as ResultState | null;
-  const { result, scanning, scan } = useBuildingScan();
+  const { result, scanning, scan, restoreResult } = useBuildingScan();
   const { saveScan } = useScanHistory();
   const { toast } = useToast();
   const started = useRef(false);
 
   const hasValidPhoto = isValidImageDataUrl(state?.photo);
   const hasValidCoords = isValidGps(state?.lat, state?.lng);
+  const hasSavedResult = state?.savedResult != null && Object.keys(state.savedResult).length > 0;
 
   useEffect(() => {
-    if (!hasValidPhoto || !hasValidCoords || started.current) return;
+    if (started.current) return;
     started.current = true;
+
+    // If navigating from history with a saved result, restore it instead of re-scanning
+    if (hasSavedResult) {
+      devLog("restoring saved result from history");
+      restoreResult(state!.savedResult!);
+      return;
+    }
+
+    if (!hasValidPhoto || !hasValidCoords) return;
     devLog("identify start", { lat: state!.lat, lng: state!.lng });
     scan(state!.photo, state!.lat!, state!.lng!);
-  }, [state, scan, hasValidPhoto, hasValidCoords]);
+  }, [state, scan, restoreResult, hasValidPhoto, hasValidCoords, hasSavedResult]);
 
   if (!hasValidPhoto) {
     return (
