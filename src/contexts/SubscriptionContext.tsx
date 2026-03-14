@@ -174,7 +174,6 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         console.warn("[Subscription] invoke exception (non-fatal):", invokeError);
         applyDefaults(true);
         return;
-        return;
       }
 
       // Check if the function reported an error condition in the body
