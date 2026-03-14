@@ -14,6 +14,9 @@ interface TrialInfo {
 interface SubscriptionState {
   loading: boolean;
   accessResolved: boolean;
+  /** True only after at least one successful check-subscription response was parsed.
+   *  Use this to guard TrialExpiredScreen — never show paywall from default/error state. */
+  checked: boolean;
   subscribed: boolean;
   planKey: PlanKey | null;
   subscriptionEnd: string | null;
