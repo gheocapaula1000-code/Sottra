@@ -46,11 +46,6 @@ const config: Record<DataTier, { label: string; className: string; desc: string 
     className: "bg-stone-500/15 text-stone-400 border-stone-500/30",
     desc: "Dato non disponibile per questa zona",
   },
-  demo: {
-    label: "Contenuto dimostrativo",
-    className: "bg-purple-500/15 text-purple-400 border-purple-500/30",
-    desc: "Esempio a scopo illustrativo",
-  },
 };
 
 export function DataBadge({ tier, className }: { tier: DataTier; className?: string }) {
