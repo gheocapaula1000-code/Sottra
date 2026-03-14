@@ -1,7 +1,8 @@
+import { forwardRef } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const ProtectedRoute = forwardRef<HTMLDivElement, { children: React.ReactNode }>(({ children }, _ref) => {
   const { session, loading } = useAuth();
 
   if (loading) {
@@ -17,6 +18,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   return <>{children}</>;
-};
+});
+
+ProtectedRoute.displayName = "ProtectedRoute";
 
 export default ProtectedRoute;

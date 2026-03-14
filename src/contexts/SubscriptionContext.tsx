@@ -126,9 +126,24 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    const expiresAt = session.expires_at;
+    let activeSession = session;
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) activeSession = data.session;
+    } catch {
+      // Ignore and fallback to context session
+    }
+
+    const expiresAt = activeSession.expires_at;
     if (expiresAt && expiresAt * 1000 < Date.now()) {
       console.warn("[Subscription] session expired, skipping");
+      applyDefaults(true);
+      return;
+    }
+
+    const accessToken = activeSession.access_token;
+    if (!accessToken) {
+      console.warn("[Subscription] missing access token, skipping");
       applyDefaults(true);
       return;
     }
@@ -144,9 +159,14 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     try {
       let responseData: unknown = null;
       let responseErrorMessage: string | null = null;
+      let currentToken = accessToken;
 
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        const { data, error } = await supabase.functions.invoke("check-subscription");
+        const { data, error } = await supabase.functions.invoke("check-subscription", {
+          headers: {
+            Authorization: `Bearer ${currentToken}`,
+          },
+        });
 
         if (!error) {
           responseData = data;
@@ -164,6 +184,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         if (isAuthIssue && attempt < 2) {
           console.warn(`[Subscription] auth not ready, retry ${attempt + 1}/2`);
           await wait(180);
+
+          const { data: freshSessionData } = await supabase.auth.getSession();
+          if (freshSessionData.session?.access_token) {
+            currentToken = freshSessionData.session.access_token;
+          }
+
           continue;
         }
 
