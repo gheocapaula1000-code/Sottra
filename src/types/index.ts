@@ -241,6 +241,58 @@ export interface MarketContextData extends SourceMetadata {
   narrativeObservation?: string | null;
 }
 
+/* ── PRO SOURCES TYPES ─────────────────────────────────── */
+
+/** Single POI near the scanned building */
+export interface NearbyPoi {
+  name: string;
+  category: string;
+  categoryLabel: string;
+  distance: number;
+  lat: number;
+  lng: number;
+  provider: SourceProvider;
+}
+
+/** POI category summary */
+export interface PoiCategorySummary {
+  category: string;
+  categoryLabel: string;
+  count: number;
+  nearest?: NearbyPoi;
+}
+
+/** POI enrichment data */
+export interface PoiEnrichmentData extends SourceMetadata {
+  totalPois: number;
+  categories: PoiCategorySummary[];
+  pois: NearbyPoi[];
+  searchRadius: number;
+}
+
+/** OMI zone data */
+export interface OmiZoneData extends SourceMetadata {
+  zonaOmi?: string | null;
+  zonaOmiLabel?: string | null;
+  comuneLabel?: string | null;
+  quotazioneMinResidenziale?: number | null;
+  quotazioneMaxResidenziale?: number | null;
+  semestre?: string | null;
+  tipologia?: string | null;
+  statoConservazione?: string | null;
+}
+
+/** ISTAT enhanced demographic data */
+export interface IstatDemographicData extends SourceMetadata {
+  popolazione?: number | null;
+  nucleiFamiliari?: number | null;
+  densita?: number | null;
+  indiceVecchiaia?: number | null;
+  percentualeStranieri?: number | null;
+  comuneLabel?: string | null;
+  annoRilevazione?: string | null;
+}
+
 /** Risultato completo di una scansione — solo moduli realmente operativi */
 export interface ScanResult {
   identify: SectionState<IdentifyResult>;
@@ -253,6 +305,9 @@ export interface ScanResult {
   trendDemografico: SectionState<TrendDemograficoData>;
   sviluppoArea: SectionState<SviluppoAreaData>;
   convergenzaTerritoriale: SectionState<ConvergenzaTerritorialeData>;
+  poiEnrichment: SectionState<PoiEnrichmentData>;
+  omiZone: SectionState<OmiZoneData>;
+  istatDemographic: SectionState<IstatDemographicData>;
 }
 
 /** Errore restituito da coreRequest */
