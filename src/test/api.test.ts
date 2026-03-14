@@ -1,80 +1,85 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+
+// Mock the supabase client — coreRequest uses supabase.functions.invoke, not raw fetch
+const mockInvoke = vi.fn();
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    functions: { invoke: (...args: unknown[]) => mockInvoke(...args) },
+  },
+}));
+
 import { coreRequest, isError, _resetCircuitBreaker } from "@/services/api";
 
 describe("api.ts", () => {
-  const originalFetch = globalThis.fetch;
-
   beforeEach(() => {
     _resetCircuitBreaker();
+    mockInvoke.mockReset();
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 
   describe("coreRequest", () => {
     it("returns parsed JSON on success", async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ id: 1, name: "test" }),
+      mockInvoke.mockResolvedValue({
+        data: { ok: true, data: { id: 1, name: "test" } },
+        error: null,
       });
 
       const result = await coreRequest("/test", "GET");
       expect(result).toEqual({ id: 1, name: "test" });
     });
 
-    it("returns CoreError on HTTP error", async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-        text: () => Promise.resolve("Internal Server Error"),
+    it("returns CoreError on invoke error", async () => {
+      mockInvoke.mockResolvedValue({
+        data: null,
+        error: { message: "Edge Function returned a non-2xx status code" },
       });
 
       const result = await coreRequest("/test", "GET");
       expect(isError(result)).toBe(true);
-      if (isError(result)) {
-        expect(result.message).toContain("500");
-      }
     });
 
-    it("returns CoreError on network failure", async () => {
-      globalThis.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
+    it("returns CoreError on error envelope", async () => {
+      mockInvoke.mockResolvedValue({
+        data: { error: { message: "Something went wrong" }, status: 500 },
+        error: null,
+      });
 
       const result = await coreRequest("/test", "GET");
       expect(isError(result)).toBe(true);
-      if (isError(result)) {
-        expect(result.message).toBe("Network error");
-      }
     });
 
-    it("sends JSON body on POST", async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({}),
+    it("sends correct payload to invoke", async () => {
+      mockInvoke.mockResolvedValue({
+        data: { ok: true, data: {} },
+        error: null,
       });
 
       await coreRequest("/test", "POST", { foo: "bar" });
-      const call = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(JSON.parse(call[1].body)).toEqual({ foo: "bar" });
+      expect(mockInvoke).toHaveBeenCalledWith("core-proxy", {
+        body: { endpoint: "/test", method: "POST", payload: { foo: "bar" }, timeout: 10000 },
+      });
     });
 
-    it("retries once on 503 then succeeds", async () => {
-      let calls = 0;
-      globalThis.fetch = vi.fn().mockImplementation(() => {
-        calls++;
-        if (calls === 1) return Promise.resolve({ ok: false, status: 503, text: () => Promise.resolve("Unavailable") });
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 1 }) });
-      });
+    it("retries once on invoke error then succeeds", async () => {
+      mockInvoke
+        .mockResolvedValueOnce({ data: null, error: { message: "temporary" } })
+        .mockResolvedValueOnce({ data: { ok: true, data: { id: 1 } }, error: null });
 
       const result = await coreRequest("/test", "GET");
       expect(isError(result)).toBe(false);
-      expect(calls).toBe(2);
+      expect(mockInvoke).toHaveBeenCalledTimes(2);
     });
 
     it("returns circuit breaker error after repeated failures", async () => {
       vi.useFakeTimers();
-      globalThis.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
+      mockInvoke.mockResolvedValue({
+        data: null,
+        error: { message: "fail" },
+      });
+
       for (let i = 0; i < 5; i++) {
         const p = coreRequest("/test", "GET");
         await vi.advanceTimersByTimeAsync(2000);
