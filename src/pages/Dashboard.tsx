@@ -295,6 +295,20 @@ const Dashboard = () => {
 
 /* ── Sub-components ── */
 
+function CenterLogo() {
+  const [ok, setOk] = useReactState(true);
+  if (!ok) return null;
+  return (
+    <img
+      src={logoS}
+      alt="Sottra logo"
+      className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
+      fetchPriority="high"
+      onError={() => setOk(false)}
+    />
+  );
+}
+
 function OverviewCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <Card>

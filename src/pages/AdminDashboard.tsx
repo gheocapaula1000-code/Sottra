@@ -160,6 +160,20 @@ const AdminDashboard = () => {
   );
 };
 
+function AdminCenterLogo() {
+  const [ok, setOk] = useReactState(true);
+  if (!ok) return null;
+  return (
+    <img
+      src={logoS}
+      alt="Sottra logo"
+      className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
+      fetchPriority="high"
+      onError={() => setOk(false)}
+    />
+  );
+}
+
 const StatCard = ({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: number }) => (
   <Card>
     <CardContent className="pt-4 pb-4 px-4">
