@@ -1101,9 +1101,11 @@ const Result = () => {
           {!lowConfidence && !identifyFailed && (
             <>
               {/* Tier 1 — verified / official data first */}
+              {/* Tier 1 — Official sources */}
               <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} />
+              <OmiCard data={result.omiZone.data as import("@/types").OmiZoneData | null} loading={result.omiZone.status === "loading"} />
 
-              {/* Tier 1.5 — Market layer (premium, only if publishable) */}
+              {/* Tier 1.5 — Market layer */}
               <MarketContextCard data={result.marketContext.data as MarketContextData | null} loading={result.marketContext.status === "loading"} />
 
               <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} />
