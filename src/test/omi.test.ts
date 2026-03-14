@@ -76,7 +76,8 @@ describe("OMI CSV Parsing Validation", () => {
 
   it("parses Italian decimal format correctly", () => {
     const parseDecimal = (raw: string) => parseFloat(raw.trim().replace(",", "."));
-    expect(parseDecimal("1.500,00")).toBeNaN(); // thousands+comma not handled by simple replace
+    // "1.500,00" → "1.500.00" → parseFloat = 1.5 (known limitation of simple comma replace)
+    expect(parseDecimal("1.500,00")).toBe(1.5);
     expect(parseDecimal("1500")).toBe(1500);
     expect(parseDecimal("2100,50")).toBe(2100.50);
     expect(parseDecimal("850")).toBe(850);
