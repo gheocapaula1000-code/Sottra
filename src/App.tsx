@@ -34,6 +34,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Diagnostics = lazy(() => import("./pages/Diagnostics"));
 const AdminOmiIngest = lazy(() => import("./pages/AdminOmiIngest"));
+const AdminOmiKmlIngest = lazy(() => import("./pages/AdminOmiKmlIngest"));
 
 const queryClient = new QueryClient();
 

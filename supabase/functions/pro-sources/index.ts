@@ -57,7 +57,6 @@ async function identifyMunicipality(lat: number, lng: number): Promise<GeoIdenti
   const empty: GeoIdentity = { comuneLabel: null, provinciaLabel: null, istatCode: null, cadastralCode: null };
 
   try {
-    // Step 1: Reverse geocode to get comune name
     const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&addressdetails=1&accept-language=it&zoom=10`;
     const revRes = await fetchT(revUrl, 5000, { "User-Agent": "Sottra/1.0 (real-estate-analysis)" });
 
@@ -79,10 +78,8 @@ async function identifyMunicipality(lat: number, lng: number): Promise<GeoIdenti
 
     log("nominatim reverse", `comune=${comuneName}, provincia=${provinciaName}`);
 
-    // Rate limit: Nominatim requires max 1 req/sec
     await new Promise(r => setTimeout(r, 1100));
 
-    // Step 2: Search for the municipality boundary to get ISTAT + catastale codes
     const searchQ = provinciaName
       ? `${comuneName}, ${provinciaName}, Italia`
       : `${comuneName}, Italia`;
@@ -101,7 +98,6 @@ async function identifyMunicipality(lat: number, lng: number): Promise<GeoIdenti
       return { comuneLabel: comuneName, provinciaLabel: provinciaName, istatCode: null, cadastralCode: null };
     }
 
-    // Find the best match — prefer administrative boundaries
     const best = searchData.find((r: Record<string, unknown>) =>
       r.type === "administrative" || r.type === "city" || r.type === "town" || r.type === "village"
     ) ?? searchData[0];
@@ -121,13 +117,6 @@ async function identifyMunicipality(lat: number, lng: number): Promise<GeoIdenti
 
 /* ══════════════════════════════════════════════════════
    ISTAT — Real SDMX REST API query for demographic data
-   ══════════════════════════════════════════════════════
-
-   Uses the ISTAT SDMX endpoint with CSV output for easy parsing.
-   Primary dataflow: DCIS_POPRES1 (Popolazione residente al 1° gennaio)
-   Fallback: 22_289 (Bilancio demografico)
-
-   Rate limit: 5 queries/minute per IP. We use max 1 query per scan.
    ══════════════════════════════════════════════════════ */
 
 interface IstatResult {
@@ -148,9 +137,6 @@ interface IstatResult {
 }
 
 async function queryIstatSdmx(istatCode: string, comuneLabel: string): Promise<IstatResult> {
-  // DCIS_POPRES1 via dataflow 22_289
-  // Dimensions: FREQ.REF_AREA.DATA_TYPE.SEX.AGE.MARITAL_STATUS
-  // JAN = population on Jan 1st, 9 = total sex, TOTAL = all ages, 99 = all marital statuses
   const url = `https://esploradati.istat.it/SDMXWS/rest/data/22_289/A.${istatCode}.JAN.9.TOTAL.99?lastNObservations=1`;
 
   log("istat query", `url key=A.${istatCode}.JAN.9.TOTAL.99`);
@@ -170,8 +156,6 @@ async function queryIstatSdmx(istatCode: string, comuneLabel: string): Promise<I
 
     const xmlText = await res.text();
 
-    // Parse OBS_VALUE and TIME_PERIOD from SDMX Generic XML
-    // Pattern: <generic:obsdimension ... value="YEAR"> <generic:obsvalue value="NUMBER">
     const obsValueMatch = xmlText.match(/obsvalue\s+value="([^"]+)"/i);
     const timePeriodMatch = xmlText.match(/obsdimension[^>]*value="([^"]+)"/i);
 
@@ -208,16 +192,44 @@ async function queryIstatSdmx(istatCode: string, comuneLabel: string): Promise<I
 }
 
 /* ══════════════════════════════════════════════════════
-   OMI — Real database lookup for official property valuations
-   ══════════════════════════════════════════════════════
-
-   Queries the omi_quotazioni table populated via the omi-ingest
-   edge function with real Agenzia delle Entrate data.
-
-   Lookup priority: catastale code > ISTAT code > comune name
+   POINT-IN-POLYGON — Ray casting algorithm
    ══════════════════════════════════════════════════════ */
 
-async function queryOmiReal(
+function pointInPolygon(lat: number, lng: number, ring: number[][]): boolean {
+  // ring is array of [lng, lat] pairs
+  let inside = false;
+  const n = ring.length;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1];
+    const xj = ring[j][0], yj = ring[j][1];
+    // x = lng, y = lat in our coordinate system
+    if (((yi > lat) !== (yj > lat)) &&
+        (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function pointInMultiPolygon(lat: number, lng: number, polygons: number[][][]): boolean {
+  for (const ring of polygons) {
+    if (pointInPolygon(lat, lng, ring)) return true;
+  }
+  return false;
+}
+
+/* ══════════════════════════════════════════════════════
+   OMI — Real database lookup with polygon point-in-polygon
+   ══════════════════════════════════════════════════════
+
+   Two-tier lookup:
+   1. Try polygon match (omi_polygons) for exact zone
+   2. Fall back to municipal aggregate (omi_quotazioni)
+   ══════════════════════════════════════════════════════ */
+
+async function queryOmiWithPolygons(
+  lat: number,
+  lng: number,
   cadastralCode: string | null,
   istatCode: string | null,
   comuneLabel: string | null,
@@ -228,7 +240,43 @@ async function queryOmiReal(
   }
 
   try {
-    // Build query — priority: catastale > istat > nome comune
+    // ── Step 1: Try polygon-based zone identification ──
+    let matchedZone: string | null = null;
+    let matchedComuneLabel: string | null = null;
+    let matchedCodCatastale: string | null = cadastralCode;
+    let polygonMatch = false;
+
+    if (cadastralCode) {
+      const { data: polyData, error: polyError } = await supabase
+        .from("omi_polygons")
+        .select("zona_omi, comune_label, polygon_coords")
+        .eq("codice_comune_catastale", cadastralCode)
+        .order("anno", { ascending: false })
+        .order("semestre", { ascending: false });
+
+      if (!polyError && polyData && polyData.length > 0) {
+        log("omi polygons", `found ${polyData.length} zones for ${cadastralCode}`);
+
+        for (const row of polyData) {
+          const coords = row.polygon_coords as number[][][];
+          if (coords && pointInMultiPolygon(lat, lng, coords)) {
+            matchedZone = row.zona_omi;
+            matchedComuneLabel = row.comune_label || comuneLabel;
+            polygonMatch = true;
+            log("omi polygon match", `zone=${matchedZone} for ${cadastralCode}`);
+            break;
+          }
+        }
+
+        if (!polygonMatch) {
+          log("omi polygons", "point not inside any polygon for this comune");
+        }
+      } else {
+        log("omi polygons", polyError ? `error: ${polyError.message}` : "no polygons for this comune");
+      }
+    }
+
+    // ── Step 2: Query quotazioni ──
     let query = supabase
       .from("omi_quotazioni")
       .select("*")
@@ -237,7 +285,12 @@ async function queryOmiReal(
       .order("semestre", { ascending: false })
       .limit(20);
 
-    if (cadastralCode) {
+    if (polygonMatch && matchedZone && matchedCodCatastale) {
+      // Exact zone match from polygon
+      query = query
+        .eq("codice_comune_catastale", matchedCodCatastale)
+        .eq("zona_omi", matchedZone);
+    } else if (cadastralCode) {
       query = query.eq("codice_comune_catastale", cadastralCode);
     } else if (istatCode) {
       query = query.eq("codice_comune_istat", istatCode);
@@ -253,6 +306,37 @@ async function queryOmiReal(
     }
 
     if (!data || data.length === 0) {
+      // If we had a polygon match but no quotazioni, still return zone info
+      if (polygonMatch && matchedZone) {
+        log("omi", `polygon match zone=${matchedZone} but no quotazioni data`);
+
+        // Try to get zone description
+        let zoneDescr = matchedZone;
+        try {
+          const { data: zd } = await supabase
+            .from("omi_zone")
+            .select("zona_descr")
+            .eq("codice_comune_catastale", matchedCodCatastale!)
+            .eq("zona_omi", matchedZone)
+            .limit(1);
+          if (zd?.[0]?.zona_descr) zoneDescr = zd[0].zona_descr;
+        } catch { /* non-fatal */ }
+
+        return {
+          zonaOmi: matchedZone,
+          zonaOmiLabel: zoneDescr,
+          comuneLabel: matchedComuneLabel ?? comuneLabel,
+          quotazioneMinResidenziale: null,
+          quotazioneMaxResidenziale: null,
+          sourceType: "official",
+          sourceProvider: "omi",
+          sourceLabel: "OMI / Agenzia delle Entrate",
+          sourceCoverageLevel: "zone_omi",
+          availabilityReason: "zone_identified_no_quotazioni",
+          licensingNote: "Dati OMI — Osservatorio del Mercato Immobiliare, Agenzia delle Entrate",
+        };
+      }
+
       log("omi", "no data in database for this location");
       return unavailableOmi("no_coverage");
     }
@@ -263,17 +347,14 @@ async function queryOmiReal(
       (d: Record<string, unknown>) => d.anno === latest.anno && d.semestre === latest.semestre
     );
 
-    // Calculate overall min/max across all zones for the same period
     const allMin = Math.min(...samePeriod.map((d: Record<string, unknown>) => Number(d.quotazione_min)));
     const allMax = Math.max(...samePeriod.map((d: Record<string, unknown>) => Number(d.quotazione_max)));
 
-    // Identify zones
     const zones = [...new Set(samePeriod.map((d: Record<string, unknown>) => String(d.zona_omi)))];
-    const zoneLabels = [...new Set(samePeriod.map((d: Record<string, unknown>) => d.zona_omi_label).filter(Boolean))];
 
-    log("omi result", `zones=${zones.join(",")}, range=${allMin}-${allMax}, period=${latest.semestre}S${latest.anno}`);
+    log("omi result", `zones=${zones.join(",")}, range=${allMin}-${allMax}, period=${latest.semestre}S${latest.anno}, polygonMatch=${polygonMatch}`);
 
-    // Try to get zone descriptions from omi_zone table
+    // Get zone descriptions
     let zoneDescriptions: string[] = [];
     try {
       const { data: zoneData } = await supabase
@@ -287,13 +368,14 @@ async function queryOmiReal(
       if (zoneData && zoneData.length > 0) {
         zoneDescriptions = zoneData.map((z: Record<string, unknown>) => String(z.zona_descr)).filter(Boolean);
       }
-    } catch {
-      // non-fatal
-    }
+    } catch { /* non-fatal */ }
 
     const zoneLabel = zones.length === 1
       ? (zoneDescriptions[0] || latest.zona_omi_label || zones[0])
       : `${zones.length} zone nel comune di ${latest.comune_label ?? comuneLabel}`;
+
+    // Determine coverage level
+    const coverageLevel = polygonMatch ? "zone_omi" : (zones.length === 1 ? "zone_omi" : "comune");
 
     return {
       zonaOmi: zones.length === 1 ? zones[0] : zones.join(", "),
@@ -309,7 +391,8 @@ async function queryOmiReal(
       sourceLabel: "OMI / Agenzia delle Entrate",
       sourceFreshness: `${latest.anno}-S${latest.semestre}`,
       sourcePeriod: `${latest.semestre}° semestre ${latest.anno}`,
-      sourceCoverageLevel: zones.length === 1 ? "zone_omi" : "comune",
+      sourceCoverageLevel: coverageLevel,
+      polygonMatch,
       licensingNote: "Dati OMI — Osservatorio del Mercato Immobiliare, Agenzia delle Entrate",
     };
   } catch (e) {
@@ -345,8 +428,6 @@ async function queryOverpassPoi(lat: number, lng: number, radius: number): Promi
   const query = `[out:json][timeout:8];(\n${nodeFilters}\n${wayFilters}\n);out center tags 50;`;
 
   try {
-    const res = await fetchT("https://overpass-api.de/api/interpreter", 9000);
-    // Use POST for Overpass
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), 9000);
     const postRes = await fetch("https://overpass-api.de/api/interpreter", {
@@ -554,7 +635,6 @@ serve(async (req) => {
             const elements = await queryOverpassPoi(lat, lng, radius);
             const poiResult = buildPoiResult(elements, lat, lng, radius);
 
-            // Optional Google Places enrichment
             const googleKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
             if (googleKey && Deno.env.get("GOOGLE_PLACES_ENABLED") === "true") {
               try {
@@ -603,7 +683,9 @@ serve(async (req) => {
       promises.push(
         (async () => {
           try {
-            results.omi = await queryOmiReal(
+            results.omi = await queryOmiWithPolygons(
+              lat,
+              lng,
               geoId?.cadastralCode ?? null,
               geoId?.istatCode ?? null,
               geoId?.comuneLabel ?? null,
