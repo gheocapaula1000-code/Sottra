@@ -161,9 +161,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             ? (result.error as { message: string }).message
             : String(result.error);
           console.warn("[Subscription] invoke error (non-fatal):", msg);
-          // Keep neutral state — don't crash
-          setResolved(false);
-          setLoading(false);
+          applyDefaults(true);
           return;
         }
       } catch (invokeError) {
