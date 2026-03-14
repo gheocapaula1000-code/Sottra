@@ -1,7 +1,18 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
-// Mock scan services (only active ones)
+// Mock supabase client — record-scan needs to succeed without real auth
+const mockInvoke = vi.fn().mockResolvedValue({
+  data: { recorded: true, scans_used: 1, max_scans: 5, trial_end: "2099-12-31" },
+  error: null,
+});
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    functions: { invoke: (...args: unknown[]) => mockInvoke(...args) },
+  },
+}));
+
+// Mock scan services
 vi.mock("@/services/scan", () => ({
   identifyBuilding: vi.fn().mockResolvedValue({
     error: false, message: null,
@@ -13,7 +24,7 @@ vi.mock("@/services/scan", () => ({
   }),
 }));
 
-// Mock forecast services (only active ones)
+// Mock forecast services
 vi.mock("@/services/forecast", () => ({
   getTimeView: vi.fn().mockResolvedValue({
     error: false, message: null,
@@ -29,6 +40,11 @@ vi.mock("@/services/forecast", () => ({
   getSviluppoArea: vi.fn().mockResolvedValue({ error: false, message: null, data: null }),
   getConvergenzaTerritoriale: vi.fn().mockResolvedValue({ error: false, message: null, data: null }),
   getMarketContext: vi.fn().mockResolvedValue({ error: false, message: null, data: { marketConfidence: 78, comparablesSummary: { count: 14 }, sourceType: "elaborated" } }),
+}));
+
+// Mock proSources
+vi.mock("@/services/proSources", () => ({
+  fetchProSources: vi.fn().mockResolvedValue({ poi: null, omi: null, istat: null }),
 }));
 
 import { useBuildingScan } from "@/hooks/useBuildingScan";
