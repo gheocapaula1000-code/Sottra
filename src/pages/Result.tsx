@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import AppHeader from "@/components/AppHeader";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Bookmark, TrendingUp, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers, Camera, CheckCircle2, BarChart3, Gem } from "lucide-react";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
