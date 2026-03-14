@@ -14,6 +14,9 @@ interface TrialInfo {
 interface SubscriptionState {
   loading: boolean;
   accessResolved: boolean;
+  /** True only after at least one successful check-subscription response was parsed.
+   *  Use this to guard TrialExpiredScreen — never show paywall from default/error state. */
+  checked: boolean;
   subscribed: boolean;
   planKey: PlanKey | null;
   subscriptionEnd: string | null;
@@ -27,6 +30,7 @@ interface SubscriptionState {
 const SubscriptionContext = createContext<SubscriptionState>({
   loading: true,
   accessResolved: false,
+  checked: false,
   subscribed: false,
   planKey: null,
   subscriptionEnd: null,
@@ -92,6 +96,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [trial, setTrial] = useState<TrialInfo | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [checked, setChecked] = useState(false);
   const accessResolvedRef = useRef(false);
 
   const setResolved = useCallback((resolved: boolean) => {
@@ -169,7 +174,6 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         console.warn("[Subscription] invoke exception (non-fatal):", invokeError);
         applyDefaults(true);
         return;
-        return;
       }
 
       // Check if the function reported an error condition in the body
@@ -187,12 +191,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setSubscriptionEnd(parsed.subscriptionEnd);
       setTrial(parsed.trial);
       setIsAdmin(parsed.isAdmin);
+      setChecked(true);
       setResolved(true);
       setLoading(false);
     } catch (e) {
       // Absolute safety net — never let /app blank-screen
       console.error("[Subscription] unexpected error (non-fatal):", e);
-      applyDefaults(false);
+      applyDefaults(true);
     }
   }, [session, authLoading, applyDefaults, setResolved]);
 
@@ -217,7 +222,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const canScan = isOwner || isAdmin || subscribed || (trial?.active ?? false);
 
   return (
-    <SubscriptionContext.Provider value={{ loading, accessResolved, subscribed, planKey, subscriptionEnd, trial, canScan, isAdmin, isOwner, refresh }}>
+    <SubscriptionContext.Provider value={{ loading, accessResolved, checked, subscribed, planKey, subscriptionEnd, trial, canScan, isAdmin, isOwner, refresh }}>
       {children}
     </SubscriptionContext.Provider>
   );
