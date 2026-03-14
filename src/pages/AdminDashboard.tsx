@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SottraMark from "@/components/SottraMark";
+import logoS from "@/assets/logo-s-icon.png";
 
 import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft, Activity } from "lucide-react";
 
@@ -46,10 +47,20 @@ const AdminDashboard = () => {
     <div className="flex min-h-svh flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 sm:h-16 max-w-5xl items-center px-4 sm:px-6">
-          <SottraMark size="md" linkTo="/app" className="shrink-0" />
+        <div className="relative mx-auto grid h-16 sm:h-[72px] max-w-5xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
+          {/* Left — text only */}
+          <SottraMark size="md" textOnly linkTo="/app" className="shrink-0 justify-self-start" />
 
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
+          {/* Center — logo icon */}
+          <img
+            src={logoS}
+            alt="Sottra logo"
+            className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
+            fetchPriority="high"
+          />
+
+          {/* Right — actions */}
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
             <span className="text-xs font-semibold text-primary">Admin</span>
             <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground" onClick={() => navigate("/admin/diagnostics")}>
               <Activity className="h-3.5 w-3.5" />
