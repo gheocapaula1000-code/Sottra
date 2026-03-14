@@ -53,7 +53,7 @@ export interface SourceMetadata {
   sourceConfidence?: number;
   confidenceReason?: string;
   limitations?: string[];
-  coverageLevel?: CoverageLevel;
+  sourceCoverageLevel?: CoverageLevel;
   availabilityReason?: AvailabilityReason;
   licensingNote?: string;
   attributionNote?: string;
