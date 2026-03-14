@@ -273,11 +273,31 @@ async function queryOmiReal(
 
     log("omi result", `zones=${zones.join(",")}, range=${allMin}-${allMax}, period=${latest.semestre}S${latest.anno}`);
 
+    // Try to get zone descriptions from omi_zone table
+    let zoneDescriptions: string[] = [];
+    try {
+      const { data: zoneData } = await supabase
+        .from("omi_zone")
+        .select("zona_omi, zona_descr, fascia")
+        .eq("codice_comune_catastale", latest.codice_comune_catastale)
+        .eq("anno", latest.anno)
+        .eq("semestre", latest.semestre)
+        .in("zona_omi", zones);
+
+      if (zoneData && zoneData.length > 0) {
+        zoneDescriptions = zoneData.map((z: Record<string, unknown>) => String(z.zona_descr)).filter(Boolean);
+      }
+    } catch {
+      // non-fatal
+    }
+
+    const zoneLabel = zones.length === 1
+      ? (zoneDescriptions[0] || latest.zona_omi_label || zones[0])
+      : `${zones.length} zone nel comune di ${latest.comune_label ?? comuneLabel}`;
+
     return {
       zonaOmi: zones.length === 1 ? zones[0] : zones.join(", "),
-      zonaOmiLabel: zones.length === 1
-        ? (latest.zona_omi_label ?? zones[0])
-        : `${zones.length} zone nel comune di ${latest.comune_label ?? comuneLabel}`,
+      zonaOmiLabel: zoneLabel,
       comuneLabel: latest.comune_label ?? comuneLabel,
       quotazioneMinResidenziale: allMin,
       quotazioneMaxResidenziale: allMax,
