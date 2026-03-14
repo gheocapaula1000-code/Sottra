@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SottraMark from "@/components/SottraMark";
-import logoS from "@/assets/logo-s-icon.png";
+
 import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft } from "lucide-react";
 
 interface AdminStats {
