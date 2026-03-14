@@ -48,15 +48,6 @@ const SAFE_DEFAULTS = {
   isAdmin: false,
 };
 
-const isAuthIssueMessage = (msg: string) => {
-  const lower = msg.toLowerCase();
-  return (
-    msg.includes("Auth session missing") ||
-    lower.includes("auth") ||
-    msg.includes("401") ||
-    msg.includes("non-2xx")
-  );
-};
 
 /** Validate that payload is a non-null object with expected shape */
 function parsePayload(data: unknown): {
