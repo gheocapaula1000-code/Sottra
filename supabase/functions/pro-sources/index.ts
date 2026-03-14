@@ -147,133 +147,64 @@ interface IstatResult {
   licensingNote?: string;
 }
 
-function parseSdmxCsv(csvText: string): Record<string, string>[] {
-  const lines = csvText.split("\n").filter(l => l.trim());
-  if (lines.length < 2) return [];
-
-  // Handle both comma and semicolon separators
-  const sep = lines[0].includes("\t") ? "\t" : lines[0].includes(";") ? ";" : ",";
-  const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g, ""));
-
-  return lines.slice(1).map(line => {
-    const vals = line.split(sep).map(v => v.trim().replace(/^"|"$/g, ""));
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => { obj[h] = vals[i] ?? ""; });
-    return obj;
-  });
-}
-
 async function queryIstatSdmx(istatCode: string, comuneLabel: string): Promise<IstatResult> {
-  const baseUrl = "https://esploradati.istat.it/SDMXWS/rest/data";
+  // DCIS_POPRES1 via dataflow 22_289
+  // Dimensions: FREQ.REF_AREA.DATA_TYPE.SEX.AGE.MARITAL_STATUS
+  // JAN = population on Jan 1st, 9 = total sex, TOTAL = all ages, 99 = all marital statuses
+  const url = `https://esploradati.istat.it/SDMXWS/rest/data/22_289/A.${istatCode}.JAN.9.TOTAL.99?lastNObservations=1`;
 
-  // Try DCIS_POPRES1 — Popolazione residente
-  // Key format: FREQ.ITTER107.SEXISTAT1.ETA1.STATCIV2
-  // A = annual, {code} = territory, rest = wildcards
-  const dataflows = [
-    { id: "DCIS_POPRES1", label: "Popolazione residente" },
-    { id: "22_289", label: "Bilancio demografico" },
-  ];
+  log("istat query", `url key=A.${istatCode}.JAN.9.TOTAL.99`);
 
-  for (const df of dataflows) {
-    try {
-      // Use minimal key: just territory code with wildcards for other dims
-      const url = `${baseUrl}/${df.id}/.${istatCode}?lastNObservations=1`;
+  try {
+    const res = await fetchT(url, 12000, {
+      "Accept": "application/xml",
+      "User-Agent": "Sottra/1.0 (real-estate-analysis)",
+    });
 
-      log("istat query", `dataflow=${df.id}, code=${istatCode}`);
-
-      const res = await fetchT(url, 10000, {
-        "Accept": "application/vnd.sdmx.data+csv;version=1.0.0",
-        "User-Agent": "Sottra/1.0",
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        log("istat http error", `${df.id}: ${res.status} — ${errText.slice(0, 150)}`);
-
-        if (res.status === 404 || res.status === 400) {
-          // Try next dataflow
-          continue;
-        }
-        // Rate limited or server error
-        return unavailableIstat(res.status === 429 ? "provider_unavailable" : "provider_unavailable") as IstatResult;
-      }
-
-      const csvText = await res.text();
-      const rows = parseSdmxCsv(csvText);
-
-      if (rows.length === 0) {
-        log("istat", `${df.id}: no data rows`);
-        continue;
-      }
-
-      log("istat", `${df.id}: ${rows.length} rows received`);
-
-      // Extract population: find row with total sex + total age
-      let bestPopulation: number | null = null;
-      let bestPeriod: string | null = null;
-
-      for (const row of rows) {
-        const obsValue = parseFloat(row.OBS_VALUE);
-        if (isNaN(obsValue) || obsValue <= 0) continue;
-
-        const period = row.TIME_PERIOD ?? "";
-
-        // For DCIS_POPRES1: look for total sex (9 or T) and total age (TOTAL, 99, Y_GE0)
-        const sex = row.SEXISTAT1 ?? row.SEX ?? "";
-        const age = row.ETA1 ?? row.AGE ?? row.CLASSE_ETA ?? "";
-        const marital = row.STATCIV2 ?? "";
-
-        const isTotalSex = sex === "9" || sex === "T" || sex === "TOTAL" || sex === "";
-        const isTotalAge = age === "TOTAL" || age === "99" || age === "Y_GE0" || age === "Y99" || age === "";
-        const isTotalMarital = marital === "99" || marital === "TOTAL" || marital === "";
-
-        if (isTotalSex && isTotalAge && isTotalMarital) {
-          if (!bestPeriod || period > bestPeriod) {
-            bestPopulation = obsValue;
-            bestPeriod = period;
-          }
-        }
-      }
-
-      // If we couldn't find the "total" row, try the row with the largest population value
-      if (bestPopulation == null) {
-        let maxVal = 0;
-        for (const row of rows) {
-          const v = parseFloat(row.OBS_VALUE);
-          if (!isNaN(v) && v > maxVal) {
-            maxVal = v;
-            bestPopulation = v;
-            bestPeriod = row.TIME_PERIOD ?? null;
-          }
-        }
-      }
-
-      if (bestPopulation == null || bestPopulation <= 0) {
-        log("istat", `${df.id}: no usable population value found`);
-        continue;
-      }
-
-      log("istat result", `pop=${bestPopulation}, period=${bestPeriod}`);
-
-      return {
-        popolazione: Math.round(bestPopulation),
-        comuneLabel,
-        annoRilevazione: bestPeriod,
-        sourceType: "official",
-        sourceProvider: "istat",
-        sourceLabel: `ISTAT — ${df.label}`,
-        sourceFreshness: bestPeriod ?? undefined,
-        sourceCoverageLevel: "comune",
-        licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
-      };
-    } catch (e) {
-      log("istat exception", `${df.id}: ${String(e)}`);
-      // Try next dataflow
-      continue;
+    if (!res.ok) {
+      const errText = await res.text();
+      log("istat http error", `${res.status} — ${errText.slice(0, 200)}`);
+      if (res.status === 404) return unavailableIstat("no_coverage") as IstatResult;
+      return unavailableIstat("provider_unavailable") as IstatResult;
     }
-  }
 
-  return unavailableIstat("no_coverage") as IstatResult;
+    const xmlText = await res.text();
+
+    // Parse OBS_VALUE and TIME_PERIOD from SDMX Generic XML
+    // Pattern: <generic:obsdimension ... value="YEAR"> <generic:obsvalue value="NUMBER">
+    const obsValueMatch = xmlText.match(/obsvalue\s+value="([^"]+)"/i);
+    const timePeriodMatch = xmlText.match(/obsdimension[^>]*value="([^"]+)"/i);
+
+    if (!obsValueMatch) {
+      log("istat", "no obsvalue found in XML response");
+      return unavailableIstat("no_coverage") as IstatResult;
+    }
+
+    const population = parseFloat(obsValueMatch[1]);
+    const period = timePeriodMatch ? timePeriodMatch[1] : null;
+
+    if (isNaN(population) || population <= 0) {
+      log("istat", `invalid population value: ${obsValueMatch[1]}`);
+      return unavailableIstat("no_coverage") as IstatResult;
+    }
+
+    log("istat result", `pop=${population}, period=${period}`);
+
+    return {
+      popolazione: Math.round(population),
+      comuneLabel,
+      annoRilevazione: period,
+      sourceType: "official",
+      sourceProvider: "istat",
+      sourceLabel: "ISTAT — Popolazione residente al 1° gennaio",
+      sourceFreshness: period ?? undefined,
+      sourceCoverageLevel: "comune",
+      licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
+    };
+  } catch (e) {
+    log("istat exception", String(e));
+    return unavailableIstat("provider_unavailable") as IstatResult;
+  }
 }
 
 /* ══════════════════════════════════════════════════════
