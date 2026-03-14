@@ -167,8 +167,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       } catch (invokeError) {
         // Network error or unexpected throw — never crash
         console.warn("[Subscription] invoke exception (non-fatal):", invokeError);
-        setResolved(false);
-        setLoading(false);
+        applyDefaults(true);
+        return;
         return;
       }
 
