@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
+import AppHeader from "@/components/AppHeader";
 
 function scoreVariant(score: number): "default" | "secondary" | "destructive" {
   if (score >= 60) return "default";
