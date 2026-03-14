@@ -2,3 +2,6 @@ project_id = "vveunbxfcfhnkkhrqutf"
 
 [functions.record-scan]
 verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
