@@ -296,7 +296,7 @@ const Dashboard = () => {
 /* ── Sub-components ── */
 
 function CenterLogo() {
-  const [ok, setOk] = useReactState(true);
+  const [ok, setOk] = useCenterLogoState(true);
   if (!ok) return null;
   return (
     <img
