@@ -1,3 +1,4 @@
+import { useState as useCenterLogoState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -85,12 +86,7 @@ const Dashboard = () => {
           <SottraMark size="md" textOnly linkTo="/app" className="shrink-0 justify-self-start" />
 
           {/* Center — logo icon */}
-          <img
-            src={logoS}
-            alt="Sottra logo"
-            className="h-12 w-12 sm:h-14 sm:w-14 object-contain"
-            fetchPriority="high"
-          />
+          <CenterLogo />
 
           {/* Right — actions */}
           <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
@@ -298,6 +294,20 @@ const Dashboard = () => {
 };
 
 /* ── Sub-components ── */
+
+function CenterLogo() {
+  const [ok, setOk] = useCenterLogoState(true);
+  if (!ok) return null;
+  return (
+    <img
+      src={logoS}
+      alt="Sottra logo"
+      className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
+      fetchPriority="high"
+      onError={() => setOk(false)}
+    />
+  );
+}
 
 function OverviewCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (

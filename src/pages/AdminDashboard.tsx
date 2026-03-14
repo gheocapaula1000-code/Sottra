@@ -52,12 +52,7 @@ const AdminDashboard = () => {
           <SottraMark size="md" textOnly linkTo="/app" className="shrink-0 justify-self-start" />
 
           {/* Center — logo icon */}
-          <img
-            src={logoS}
-            alt="Sottra logo"
-            className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
-            fetchPriority="high"
-          />
+          <AdminCenterLogo />
 
           {/* Right — actions */}
           <div className="flex items-center justify-end gap-1.5 sm:gap-2.5">
@@ -164,6 +159,20 @@ const AdminDashboard = () => {
     </div>
   );
 };
+
+function AdminCenterLogo() {
+  const [ok, setOk] = useState(true);
+  if (!ok) return null;
+  return (
+    <img
+      src={logoS}
+      alt="Sottra logo"
+      className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
+      fetchPriority="high"
+      onError={() => setOk(false)}
+    />
+  );
+}
 
 const StatCard = ({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: number }) => (
   <Card>
