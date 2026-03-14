@@ -23,15 +23,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Track whether getSession has resolved — prevents onAuthStateChange
+    // from prematurely setting loading=false with a null session before
+    // the persisted session is hydrated.
+    let initialised = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setLoading(false);
+      (_event, sess) => {
+        setSession(sess);
+        if (initialised) setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    supabase.auth.getSession().then(({ data: { session: sess } }) => {
+      initialised = true;
+      setSession(sess);
       setLoading(false);
     });
 
