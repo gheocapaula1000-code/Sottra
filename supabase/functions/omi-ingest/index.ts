@@ -2,22 +2,10 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 /**
- * OMI Ingest Edge Function
+ * OMI Ingest Edge Function — handles both VALORI and ZONE CSV imports.
  *
- * Admin-only endpoint to upload real OMI quotation data from
- * Agenzia delle Entrate CSV files into the omi_quotazioni table.
- *
- * Expected CSV format (semicolon-separated, from OMI official downloads):
- * Area_territoriale;Regione;Prov;Comune_ISTAT;Comune_catastale;Comune_amm;
- * Sez;Zona;LinkZona;Cod_Tip;Descr_Tipologia;Stato_conservativo;
- * Compr_min;Compr_max;Sup_NL;Loc_min;Loc_max
- *
- * Usage:
  * POST /omi-ingest
- * Body: { csvData: "...", anno: 2024, semestre: 1, provincia: "MI" }
- *
- * The function parses the CSV and upserts rows into omi_quotazioni.
- * It is idempotent: re-uploading the same semestre+anno overwrites existing data.
+ * Body: { csvData: "...", anno: 2025, semestre: 1, mode: "valori"|"zone" }
  */
 
 const corsHeaders = {
@@ -33,41 +21,43 @@ function json(body: unknown, status = 200) {
   });
 }
 
-/* ── CSV Parsing Helpers ──────────────────────────────── */
+/* ── CSV Parsing — VALORI ────────────────────────────── */
 
-interface ColumnIndex {
+interface ValoriIndex {
   comuneIstat: number;
-  comuneCatastale: number;
+  comuneCat: number;
   comuneAmm: number;
   prov: number;
   zona: number;
   linkZona: number;
   descrTipologia: number;
   codTip: number;
-  statoConservativo: number;
+  stato: number;
   comprMin: number;
   comprMax: number;
   supNl: number;
 }
 
-function detectColumns(headers: string[]): { idx: ColumnIndex; missing: string[] } {
-  const idx: ColumnIndex = {
-    comuneIstat: headers.findIndex(h => /comune.?istat/i.test(h)),
-    comuneCatastale: headers.findIndex(h => /comune.?catast/i.test(h)),
-    comuneAmm: headers.findIndex(h => /comune.?amm/i.test(h)),
-    prov: headers.findIndex(h => /^prov$/i.test(h)),
-    zona: headers.findIndex(h => /^zona$/i.test(h)),
-    linkZona: headers.findIndex(h => /link.?zona/i.test(h)),
-    descrTipologia: headers.findIndex(h => /descr.?tipolog/i.test(h)),
-    codTip: headers.findIndex(h => /cod.?tip/i.test(h)),
-    statoConservativo: headers.findIndex(h => /stato.?conserv/i.test(h)),
-    comprMin: headers.findIndex(h => /compr.?min/i.test(h)),
-    comprMax: headers.findIndex(h => /compr.?max/i.test(h)),
-    supNl: headers.findIndex(h => /sup.?nl/i.test(h)),
+function detectValoriColumns(headers: string[]): { idx: ValoriIndex; missing: string[] } {
+  const find = (pattern: RegExp) => headers.findIndex(h => pattern.test(h));
+
+  const idx: ValoriIndex = {
+    comuneIstat: find(/comune.?istat/i),
+    comuneCat: find(/comune.?cat/i),
+    comuneAmm: find(/comune.?amm/i),
+    prov: find(/^prov$/i),
+    zona: find(/^zona$/i),
+    linkZona: find(/link.?zona/i),
+    descrTipologia: find(/descr.?tipolog/i),
+    codTip: find(/cod.?tip/i),
+    stato: find(/^stato$/i),
+    comprMin: find(/compr.?min/i),
+    comprMax: find(/compr.?max/i),
+    supNl: find(/sup.?nl/i),
   };
 
   const missing: string[] = [];
-  if (idx.comuneCatastale === -1 && idx.comuneIstat === -1) missing.push("Comune_catastale or Comune_ISTAT");
+  if (idx.comuneCat === -1 && idx.comuneIstat === -1) missing.push("Comune_cat or Comune_ISTAT");
   if (idx.comprMin === -1) missing.push("Compr_min");
   if (idx.comprMax === -1) missing.push("Compr_max");
   if (idx.zona === -1) missing.push("Zona");
@@ -77,7 +67,6 @@ function detectColumns(headers: string[]): { idx: ColumnIndex; missing: string[]
 
 function parseDecimal(raw: string | undefined): number {
   if (!raw) return NaN;
-  // Handle Italian decimal separator (comma) and thousands separator (dot)
   const cleaned = raw.trim().replace(/\s/g, "").replace(",", ".");
   return parseFloat(cleaned);
 }
@@ -91,7 +80,7 @@ type SkipReason =
   | "non_residential"
   | "malformed_row";
 
-interface ParsedRow {
+interface ParsedValoriRow {
   codice_comune_catastale: string;
   codice_comune_istat: string | null;
   comune_label: string;
@@ -107,76 +96,68 @@ interface ParsedRow {
   anno: number;
 }
 
-interface ParseResult {
-  rows: ParsedRow[];
-  skipped: number;
-  skipReasons: Record<SkipReason, number>;
+function isResidential(tipologia: string): boolean {
+  const t = tipologia.toLowerCase();
+  return (
+    t.includes("abitazion") ||
+    t.includes("residen") ||
+    t.includes("civili") ||
+    t.includes("economic") ||
+    t.includes("ville") ||
+    t.includes("villini") ||
+    t.includes("signorili")
+  );
 }
 
-function parseCsvRows(
+function parseValoriRows(
   lines: string[],
-  idx: ColumnIndex,
+  idx: ValoriIndex,
   anno: number,
   semestre: number,
-  provinciaFallback: string,
-): ParseResult {
-  const rows: ParsedRow[] = [];
+): { rows: ParsedValoriRow[]; skipped: number; skipReasons: Record<SkipReason, number> } {
+  const rows: ParsedValoriRow[] = [];
   let skipped = 0;
   const skipReasons: Record<SkipReason, number> = {
-    missing_identifier: 0,
-    invalid_price_min: 0,
-    invalid_price_max: 0,
-    non_positive_price: 0,
-    missing_zona: 0,
-    non_residential: 0,
-    malformed_row: 0,
+    missing_identifier: 0, invalid_price_min: 0, invalid_price_max: 0,
+    non_positive_price: 0, missing_zona: 0, non_residential: 0, malformed_row: 0,
   };
+  const skip = (r: SkipReason) => { skipped++; skipReasons[r]++; };
 
-  const skip = (reason: SkipReason) => { skipped++; skipReasons[reason]++; };
-
-  for (let i = 0; i < lines.length; i++) {
-    // Safely parse each row — never crash
+  for (const line of lines) {
     try {
-      const vals = lines[i].split(";").map(v => v.trim().replace(/^"|"$/g, ""));
+      const vals = line.split(";").map(v => v.trim().replace(/^"|"$/g, ""));
 
-      const codCatastale = idx.comuneCatastale >= 0 ? (vals[idx.comuneCatastale] || "") : "";
+      const codCat = idx.comuneCat >= 0 ? (vals[idx.comuneCat] || "") : "";
       const codIstat = idx.comuneIstat >= 0 ? (vals[idx.comuneIstat] || null) : null;
-
-      if (!codCatastale && !codIstat) { skip("missing_identifier"); continue; }
+      if (!codCat && !codIstat) { skip("missing_identifier"); continue; }
 
       const zona = idx.zona >= 0 ? (vals[idx.zona] || "") : "";
       if (!zona) { skip("missing_zona"); continue; }
 
-      const rawMin = idx.comprMin >= 0 ? vals[idx.comprMin] : undefined;
-      const rawMax = idx.comprMax >= 0 ? vals[idx.comprMax] : undefined;
-      const comprMin = parseDecimal(rawMin);
-      const comprMax = parseDecimal(rawMax);
+      const tipologia = idx.descrTipologia >= 0 ? (vals[idx.descrTipologia] || "") : "";
+      if (!isResidential(tipologia)) { skip("non_residential"); continue; }
 
+      const comprMin = parseDecimal(idx.comprMin >= 0 ? vals[idx.comprMin] : undefined);
+      const comprMax = parseDecimal(idx.comprMax >= 0 ? vals[idx.comprMax] : undefined);
       if (isNaN(comprMin)) { skip("invalid_price_min"); continue; }
       if (isNaN(comprMax)) { skip("invalid_price_max"); continue; }
       if (comprMin <= 0 || comprMax <= 0) { skip("non_positive_price"); continue; }
 
-      const tipologia = idx.descrTipologia >= 0 ? (vals[idx.descrTipologia] || "Abitazioni civili") : "Abitazioni civili";
-      const tipLower = tipologia.toLowerCase();
-      if (!tipLower.includes("abitazion") && !tipLower.includes("residen") && !tipLower.includes("civili") && !tipLower.includes("economic")) {
-        skip("non_residential"); continue;
-      }
-
       const comuneAmm = idx.comuneAmm >= 0 ? (vals[idx.comuneAmm] || "") : "";
-      const provLabel = idx.prov >= 0 ? (vals[idx.prov] || provinciaFallback) : provinciaFallback;
-      const zonaLabel = idx.linkZona >= 0 ? (vals[idx.linkZona] || zona) : zona;
-      const statoConservativo = idx.statoConservativo >= 0 ? (vals[idx.statoConservativo] || "NORMALE") : "NORMALE";
+      const prov = idx.prov >= 0 ? (vals[idx.prov] || "") : "";
+      const linkZona = idx.linkZona >= 0 ? (vals[idx.linkZona] || zona) : zona;
+      const stato = idx.stato >= 0 ? (vals[idx.stato] || "NORMALE") : "NORMALE";
       const supNl = idx.supNl >= 0 ? (vals[idx.supNl] || "L") : "L";
 
       rows.push({
-        codice_comune_catastale: codCatastale,
+        codice_comune_catastale: codCat,
         codice_comune_istat: codIstat,
         comune_label: comuneAmm,
-        provincia: provLabel,
+        provincia: prov,
         zona_omi: zona,
-        zona_omi_label: zonaLabel,
+        zona_omi_label: linkZona,
         tipologia,
-        stato_conservazione: statoConservativo,
+        stato_conservazione: stato,
         quotazione_min: comprMin,
         quotazione_max: comprMax,
         superficie_ref: supNl,
@@ -191,6 +172,118 @@ function parseCsvRows(
   return { rows, skipped, skipReasons };
 }
 
+/* ── CSV Parsing — ZONE ──────────────────────────────── */
+
+interface ZoneIndex {
+  comuneIstat: number;
+  comuneCat: number;
+  comuneAmm: number;
+  comuneDescr: number;
+  prov: number;
+  fascia: number;
+  zona: number;
+  zonaDescr: number;
+  linkZona: number;
+  codTipPrev: number;
+  descrTipPrev: number;
+  statoPrev: number;
+  microzona: number;
+}
+
+function detectZoneColumns(headers: string[]): { idx: ZoneIndex; missing: string[] } {
+  const find = (pattern: RegExp) => headers.findIndex(h => pattern.test(h));
+
+  const idx: ZoneIndex = {
+    comuneIstat: find(/comune.?istat/i),
+    comuneCat: find(/comune.?cat/i),
+    comuneAmm: find(/comune.?amm/i),
+    comuneDescr: find(/comune.?descri/i),
+    prov: find(/^prov$/i),
+    fascia: find(/^fascia$/i),
+    zona: find(/^zona$/i),
+    zonaDescr: find(/zona.?descr/i),
+    linkZona: find(/link.?zona/i),
+    codTipPrev: find(/cod.?tip.?prev/i),
+    descrTipPrev: find(/descr.?tip.?prev/i),
+    statoPrev: find(/stato.?prev/i),
+    microzona: find(/^microzona$/i),
+  };
+
+  const missing: string[] = [];
+  if (idx.comuneCat === -1 && idx.comuneIstat === -1) missing.push("Comune_cat or Comune_ISTAT");
+  if (idx.zona === -1) missing.push("Zona");
+
+  return { idx, missing };
+}
+
+interface ParsedZoneRow {
+  codice_comune_catastale: string;
+  codice_comune_istat: string | null;
+  comune_label: string;
+  provincia: string;
+  fascia: string;
+  zona_omi: string;
+  zona_descr: string;
+  link_zona: string;
+  tipologia_prevalente: string;
+  microzona: number;
+  semestre: number;
+  anno: number;
+}
+
+function parseZoneRows(
+  lines: string[],
+  idx: ZoneIndex,
+  anno: number,
+  semestre: number,
+): { rows: ParsedZoneRow[]; skipped: number } {
+  const rows: ParsedZoneRow[] = [];
+  let skipped = 0;
+
+  for (const line of lines) {
+    try {
+      const vals = line.split(";").map(v => v.trim().replace(/^"|"$/g, "").replace(/^'|'$/g, ""));
+
+      const codCat = idx.comuneCat >= 0 ? (vals[idx.comuneCat] || "") : "";
+      const codIstat = idx.comuneIstat >= 0 ? (vals[idx.comuneIstat] || null) : null;
+      if (!codCat && !codIstat) { skipped++; continue; }
+
+      const zona = idx.zona >= 0 ? (vals[idx.zona] || "") : "";
+      if (!zona) { skipped++; continue; }
+
+      rows.push({
+        codice_comune_catastale: codCat,
+        codice_comune_istat: codIstat,
+        comune_label: idx.comuneAmm >= 0 ? (vals[idx.comuneAmm] || "") : "",
+        provincia: idx.prov >= 0 ? (vals[idx.prov] || "") : "",
+        fascia: idx.fascia >= 0 ? (vals[idx.fascia] || "") : "",
+        zona_omi: zona,
+        zona_descr: idx.zonaDescr >= 0 ? (vals[idx.zonaDescr] || "") : "",
+        link_zona: idx.linkZona >= 0 ? (vals[idx.linkZona] || "") : "",
+        tipologia_prevalente: idx.descrTipPrev >= 0 ? (vals[idx.descrTipPrev] || "") : "",
+        microzona: idx.microzona >= 0 ? parseInt(vals[idx.microzona] || "0", 10) || 0 : 0,
+        semestre,
+        anno,
+      });
+    } catch {
+      skipped++;
+    }
+  }
+
+  return { rows, skipped };
+}
+
+/* ── Utility: strip title line ───────────────────────── */
+
+function stripTitleLine(rawLines: string[]): string[] {
+  // OMI CSVs often have a title on line 1 like "Quotazioni Immobiliari : ..."
+  // The real header contains semicolons as separators
+  if (rawLines.length > 0 && rawLines[0].split(";").length < 5) {
+    return rawLines.slice(1);
+  }
+  return rawLines;
+}
+
 /* ── Main Handler ─────────────────────────────────────── */
 
 serve(async (req) => {
@@ -199,7 +292,6 @@ serve(async (req) => {
   }
 
   try {
-    // Auth: admin only
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return json({ error: "Missing authorization" }, 401);
@@ -232,7 +324,6 @@ serve(async (req) => {
       return json({ error: "Admin access required" }, 403);
     }
 
-    // Parse request body
     let body: Record<string, unknown>;
     try {
       body = await req.json();
@@ -240,126 +331,174 @@ serve(async (req) => {
       return json({ error: "Invalid JSON body" }, 400);
     }
 
-    const { csvData, anno, semestre, provincia } = body as {
-      csvData: string;
-      anno: number;
-      semestre: number;
-      provincia?: string;
-    };
+    const mode = (body.mode as string) || "valori";
+    const csvData = body.csvData as string;
+    const anno = body.anno as number;
+    const semestre = body.semestre as number;
 
-    // Validate required fields
     if (!csvData || typeof csvData !== "string") {
-      return json({ error: "Required field: csvData (string)" }, 400);
+      return json({ error: "Required: csvData (string)" }, 400);
     }
     if (!anno || typeof anno !== "number" || anno < 2000 || anno > 2100) {
-      return json({ error: "Required field: anno (number, 2000–2100)" }, 400);
+      return json({ error: "Required: anno (2000–2100)" }, 400);
     }
     if (semestre !== 1 && semestre !== 2) {
-      return json({ error: "Required field: semestre (1 or 2)" }, 400);
+      return json({ error: "Required: semestre (1 or 2)" }, 400);
     }
 
-    // Parse CSV
-    const lines = csvData.split("\n").filter(l => l.trim());
+    // Parse CSV lines, strip title if present
+    let lines = csvData.split("\n").filter(l => l.trim());
+    lines = stripTitleLine(lines);
+
     if (lines.length < 2) {
-      return json({ error: "CSV has no data rows (need header + at least 1 row)" }, 400);
+      return json({ error: "CSV has no data rows" }, 400);
     }
 
     const headers = lines[0].split(";").map(h => h.trim().replace(/^"|"$/g, ""));
-    console.log(`[omi-ingest] CSV headers (${headers.length}): ${headers.join(", ")}`);
-
-    const { idx, missing } = detectColumns(headers);
-    if (missing.length > 0) {
-      return json({
-        error: `Missing required columns: ${missing.join(", ")}`,
-        detectedHeaders: headers,
-        format: {
-          description: "OMI CSV from Agenzia delle Entrate, semicolon-separated",
-          requiredColumns: ["Comune_catastale or Comune_ISTAT", "Zona", "Compr_min", "Compr_max"],
-          optionalColumns: ["Comune_amm", "Prov", "LinkZona", "Descr_Tipologia", "Stato_conservativo", "Sup_NL"],
-        },
-      }, 400);
-    }
-
-    // Parse data rows (skip header at lines[0])
     const dataLines = lines.slice(1);
-    const { rows, skipped, skipReasons } = parseCsvRows(dataLines, idx, anno, semestre, provincia ?? "");
 
-    console.log(`[omi-ingest] Parsed ${rows.length} residential rows, skipped ${skipped}`);
+    console.log(`[omi-ingest] mode=${mode}, headers=${headers.length}, dataLines=${dataLines.length}`);
 
-    if (rows.length === 0) {
-      return json({
-        ok: false,
-        error: "No valid residential rows found after parsing",
-        linesRead: dataLines.length,
-        skipped,
-        skipReasons,
-      }, 400);
-    }
-
-    // Use service role for upsert (admin already verified)
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
 
-    // Batch upsert in chunks of 200 (idempotent via onConflict)
-    const BATCH_SIZE = 200;
-    let inserted = 0;
-    let batchErrors = 0;
-    const errorDetails: string[] = [];
-
-    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      const batch = rows.slice(i, i + BATCH_SIZE);
-      const { error: upsertError } = await supabaseAdmin
-        .from("omi_quotazioni")
-        .upsert(batch, {
-          onConflict: "codice_comune_catastale,zona_omi,tipologia,stato_conservazione,semestre,anno",
-        });
-
-      if (upsertError) {
-        console.error(`[omi-ingest] Batch ${Math.floor(i / BATCH_SIZE)} error: ${upsertError.message}`);
-        batchErrors++;
-        errorDetails.push(`Batch ${Math.floor(i / BATCH_SIZE)}: ${upsertError.message}`);
-      } else {
-        inserted += batch.length;
-      }
+    if (mode === "zone") {
+      return await handleZoneIngest(headers, dataLines, anno, semestre, supabaseAdmin);
+    } else {
+      return await handleValoriIngest(headers, dataLines, anno, semestre, supabaseAdmin);
     }
-
-    // Post-ingest stats
-    const { count: totalRows } = await supabaseAdmin
-      .from("omi_quotazioni")
-      .select("*", { count: "exact", head: true });
-
-    const { data: coverageData } = await supabaseAdmin
-      .from("omi_quotazioni")
-      .select("codice_comune_catastale, anno, semestre")
-      .limit(1000);
-
-    const distinctComuni = new Set(coverageData?.map((r: Record<string, unknown>) => r.codice_comune_catastale)).size;
-    const distinctPeriods = new Set(coverageData?.map((r: Record<string, unknown>) => `${r.anno}-S${r.semestre}`)).size;
-
-    return json({
-      ok: true,
-      ingest: {
-        linesRead: dataLines.length,
-        rowsParsed: rows.length,
-        rowsInserted: inserted,
-        rowsSkipped: skipped,
-        skipReasons,
-        batchErrors,
-        errorDetails: errorDetails.length > 0 ? errorDetails : undefined,
-        anno,
-        semestre,
-        provincia: provincia ?? "all",
-        idempotent: true,
-      },
-      database: {
-        totalRows: totalRows ?? 0,
-        distinctComuni,
-        distinctPeriods,
-      },
-    });
   } catch (e) {
     console.error("[omi-ingest] Fatal:", e);
     return json({ error: "Internal error", detail: String(e) }, 500);
   }
 });
+
+/* ── VALORI ingest handler ───────────────────────────── */
+
+async function handleValoriIngest(
+  headers: string[],
+  dataLines: string[],
+  anno: number,
+  semestre: number,
+  supabaseAdmin: ReturnType<typeof createClient>,
+) {
+  const { idx, missing } = detectValoriColumns(headers);
+  if (missing.length > 0) {
+    return json({ error: `Missing columns: ${missing.join(", ")}`, detectedHeaders: headers }, 400);
+  }
+
+  const { rows, skipped, skipReasons } = parseValoriRows(dataLines, idx, anno, semestre);
+  console.log(`[omi-ingest] VALORI: parsed ${rows.length} residential rows, skipped ${skipped}`);
+
+  if (rows.length === 0) {
+    return json({ ok: false, error: "No valid residential rows", skipped, skipReasons }, 400);
+  }
+
+  const BATCH = 500;
+  let inserted = 0;
+  let batchErrors = 0;
+  const errorDetails: string[] = [];
+
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const batch = rows.slice(i, i + BATCH);
+    const { error } = await supabaseAdmin
+      .from("omi_quotazioni")
+      .upsert(batch, {
+        onConflict: "codice_comune_catastale,zona_omi,tipologia,stato_conservazione,semestre,anno",
+      });
+
+    if (error) {
+      console.error(`[omi-ingest] batch ${Math.floor(i / BATCH)} error: ${error.message}`);
+      batchErrors++;
+      errorDetails.push(error.message);
+    } else {
+      inserted += batch.length;
+    }
+  }
+
+  const { count } = await supabaseAdmin
+    .from("omi_quotazioni")
+    .select("*", { count: "exact", head: true });
+
+  return json({
+    ok: true,
+    mode: "valori",
+    ingest: {
+      linesRead: dataLines.length,
+      rowsParsed: rows.length,
+      rowsInserted: inserted,
+      rowsSkipped: skipped,
+      skipReasons,
+      batchErrors,
+      errorDetails: errorDetails.length > 0 ? errorDetails : undefined,
+      anno,
+      semestre,
+    },
+    database: { totalRows: count ?? 0 },
+  });
+}
+
+/* ── ZONE ingest handler ─────────────────────────────── */
+
+async function handleZoneIngest(
+  headers: string[],
+  dataLines: string[],
+  anno: number,
+  semestre: number,
+  supabaseAdmin: ReturnType<typeof createClient>,
+) {
+  const { idx, missing } = detectZoneColumns(headers);
+  if (missing.length > 0) {
+    return json({ error: `Missing columns: ${missing.join(", ")}`, detectedHeaders: headers }, 400);
+  }
+
+  const { rows, skipped } = parseZoneRows(dataLines, idx, anno, semestre);
+  console.log(`[omi-ingest] ZONE: parsed ${rows.length} rows, skipped ${skipped}`);
+
+  if (rows.length === 0) {
+    return json({ ok: false, error: "No valid zone rows", skipped }, 400);
+  }
+
+  const BATCH = 500;
+  let inserted = 0;
+  let batchErrors = 0;
+  const errorDetails: string[] = [];
+
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const batch = rows.slice(i, i + BATCH);
+    const { error } = await supabaseAdmin
+      .from("omi_zone")
+      .upsert(batch, {
+        onConflict: "codice_comune_catastale,zona_omi,semestre,anno",
+      });
+
+    if (error) {
+      console.error(`[omi-ingest] zone batch error: ${error.message}`);
+      batchErrors++;
+      errorDetails.push(error.message);
+    } else {
+      inserted += batch.length;
+    }
+  }
+
+  const { count } = await supabaseAdmin
+    .from("omi_zone")
+    .select("*", { count: "exact", head: true });
+
+  return json({
+    ok: true,
+    mode: "zone",
+    ingest: {
+      linesRead: dataLines.length,
+      rowsParsed: rows.length,
+      rowsInserted: inserted,
+      rowsSkipped: skipped,
+      batchErrors,
+      errorDetails: errorDetails.length > 0 ? errorDetails : undefined,
+      anno,
+      semestre,
+    },
+    database: { totalZoneRows: count ?? 0 },
+  });
+}
