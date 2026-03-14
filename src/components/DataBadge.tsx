@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 export type DataTier =
   | "ufficiale" | "geo_verificato" | "premium"
   | "mercato_verificato" | "mercato_parziale"
-  | "elaborato" | "stima" | "non_disponibile" | "demo";
+  | "elaborato" | "stima" | "non_disponibile";
 
 const config: Record<DataTier, { label: string; className: string; desc: string }> = {
   ufficiale: {
