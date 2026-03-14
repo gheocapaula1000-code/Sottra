@@ -192,12 +192,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setSubscriptionEnd(parsed.subscriptionEnd);
       setTrial(parsed.trial);
       setIsAdmin(parsed.isAdmin);
+      setChecked(true);
       setResolved(true);
       setLoading(false);
     } catch (e) {
       // Absolute safety net — never let /app blank-screen
       console.error("[Subscription] unexpected error (non-fatal):", e);
-      applyDefaults(false);
+      applyDefaults(true);
     }
   }, [session, authLoading, applyDefaults, setResolved]);
 
