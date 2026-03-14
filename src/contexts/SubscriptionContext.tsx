@@ -96,6 +96,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [trial, setTrial] = useState<TrialInfo | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [checked, setChecked] = useState(false);
   const accessResolvedRef = useRef(false);
 
   const setResolved = useCallback((resolved: boolean) => {
