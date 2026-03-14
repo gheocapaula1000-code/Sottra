@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 export type DataTier =
   | "ufficiale" | "geo_verificato" | "premium"
   | "mercato_verificato" | "mercato_parziale"
-  | "elaborato" | "stima" | "non_disponibile" | "demo";
+  | "elaborato" | "stima" | "non_disponibile";
 
 const config: Record<DataTier, { label: string; className: string; desc: string }> = {
   ufficiale: {
@@ -45,11 +45,6 @@ const config: Record<DataTier, { label: string; className: string; desc: string 
     label: "Non disponibile",
     className: "bg-stone-500/15 text-stone-400 border-stone-500/30",
     desc: "Dato non disponibile per questa zona",
-  },
-  demo: {
-    label: "Contenuto dimostrativo",
-    className: "bg-purple-500/15 text-purple-400 border-purple-500/30",
-    desc: "Esempio a scopo illustrativo",
   },
 };
 
