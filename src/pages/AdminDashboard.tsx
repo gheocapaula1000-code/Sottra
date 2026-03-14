@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AppHeader from "@/components/AppHeader";
 
-import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft, Activity } from "lucide-react";
+import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft, Activity, Database } from "lucide-react";
 
 interface AdminStats {
   total_users: number;
@@ -131,6 +131,17 @@ const AdminDashboard = () => {
                 ) : (
                   <p className="text-sm text-muted-foreground">Nessun admin trovato</p>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* OMI Ingest */}
+            <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/admin/omi-ingest")}>
+              <CardContent className="py-8 text-center space-y-2">
+                <Database className="h-6 w-6 mx-auto text-primary" />
+                <p className="text-sm font-medium text-foreground">Import OMI</p>
+                <p className="text-xs text-muted-foreground">
+                  Carica CSV quotazioni e zone OMI dall'Agenzia delle Entrate
+                </p>
               </CardContent>
             </Card>
 

@@ -68,6 +68,57 @@ export type Database = {
         }
         Relationships: []
       }
+      omi_zone: {
+        Row: {
+          anno: number
+          codice_comune_catastale: string
+          codice_comune_istat: string | null
+          comune_label: string
+          created_at: string | null
+          fascia: string | null
+          id: string
+          link_zona: string | null
+          microzona: number | null
+          provincia: string | null
+          semestre: number
+          tipologia_prevalente: string | null
+          zona_descr: string | null
+          zona_omi: string
+        }
+        Insert: {
+          anno: number
+          codice_comune_catastale: string
+          codice_comune_istat?: string | null
+          comune_label?: string
+          created_at?: string | null
+          fascia?: string | null
+          id?: string
+          link_zona?: string | null
+          microzona?: number | null
+          provincia?: string | null
+          semestre: number
+          tipologia_prevalente?: string | null
+          zona_descr?: string | null
+          zona_omi: string
+        }
+        Update: {
+          anno?: number
+          codice_comune_catastale?: string
+          codice_comune_istat?: string | null
+          comune_label?: string
+          created_at?: string | null
+          fascia?: string | null
+          id?: string
+          link_zona?: string | null
+          microzona?: number | null
+          provincia?: string | null
+          semestre?: number
+          tipologia_prevalente?: string | null
+          zona_descr?: string | null
+          zona_omi?: string
+        }
+        Relationships: []
+      }
       scan_events: {
         Row: {
           created_at: string
