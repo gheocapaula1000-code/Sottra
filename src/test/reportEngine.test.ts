@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { resolveGeoContext } from "@/lib/reportMapper";
 import {
   isFieldAvailable, isSectionRenderable, countAvailableFields,
   unavailableField, sourceTypeLabels, availabilityLabels,
@@ -454,7 +455,7 @@ describe("buildProfiloArea", () => {
     expect(area!.sintesiArea).toBeDefined();
     expect(area!.sintesiArea?.sourceType).toBe("territorial_verified");
     expect(area!.sintesiArea?.value).toContain("Area con");
-    expect(area!.sintesiArea?.note).toContain("indicatori territoriali");
+    expect(area!.sintesiArea?.note).toContain("indicatori");
   });
 
   it("does NOT generate sintesiArea with fewer than 3 indicators", () => {
@@ -1286,5 +1287,114 @@ describe("Fix verification — 4 final hardening checks", () => {
     const cat = { categoryKey: "transport", categoryLabel: "Trasporti", count: 3, nearest: { name: "Bus", distance: 200 }, items: [] };
     const distanceStr = cat.nearest?.distance != null ? ` · ${cat.nearest.distance}m` : "";
     expect(distanceStr).toBe(" · 200m");
+  });
+});
+
+/* ── Geo-level resolution tests ─────────────────────────── */
+
+describe("resolveGeoContext", () => {
+  it("returns microzona_omi when OMI polygon match is true", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { zonaOmi: "B1", zonaOmiLabel: "Centro", polygonMatch: true }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("microzona_omi");
+    expect(geo.geoLabel).toContain("Centro");
+  });
+
+  it("returns comune when OMI has no polygon match and ISTAT has comuneLabel", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { zonaOmi: "B1", zonaOmiLabel: "Centro", polygonMatch: false, comuneLabel: "Padova" }, message: null },
+      istatDemographic: { status: "success", data: { popolazione: 200000, comuneLabel: "Padova" }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("comune");
+    expect(geo.geoLabel).toContain("Padova");
+  });
+
+  it("returns non_determinato when no geo data available", () => {
+    const result = baseScanResult();
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("non_determinato");
+  });
+
+  it("uses trendDemografico geoLevel when available and not comune", () => {
+    const result = baseScanResult({
+      trendDemografico: { status: "success", data: { geoLevel: "quartiere", geoLabel: "Arcella", etaMedia: 40 }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("quartiere");
+    expect(geo.geoLabel).toBe("Arcella");
+  });
+});
+
+describe("buildProfiloArea — geo transparency", () => {
+  it("marks livelloUrbanizzazione as partial with municipal note when geoLevel=comune", () => {
+    const result = baseScanResult({
+      istatDemographic: { status: "success", data: { popolazione: 200000, densita: 4000, comuneLabel: "Padova" }, message: null },
+      rischioZona: { status: "success", data: { scoreRischio: 25, idrogeologico: "basso", sismico: "zona3", inquinamento: "basso", alluvionale: false }, message: null },
+    });
+    const area = buildProfiloArea(result);
+    expect(area).not.toBeNull();
+    expect(area!.geo?.geoLevel).toBe("comune");
+    expect(area!.livelloUrbanizzazione?.label).toContain("comunale");
+    expect(area!.livelloUrbanizzazione?.availabilityStatus).toBe("partial");
+    expect(area!.livelloUrbanizzazione?.note).toContain("comune");
+  });
+
+  it("does not mark as partial when OMI polygon match provides zone-level precision", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { zonaOmi: "B1", zonaOmiLabel: "Centro", polygonMatch: true }, message: null },
+      istatDemographic: { status: "success", data: { popolazione: 200000, densita: 4000, comuneLabel: "Milano" }, message: null },
+      rischioZona: { status: "success", data: { scoreRischio: 20, idrogeologico: "basso", sismico: "zona3", inquinamento: "basso", alluvionale: false }, message: null },
+    });
+    const area = buildProfiloArea(result);
+    expect(area).not.toBeNull();
+    expect(area!.geo?.geoLevel).toBe("microzona_omi");
+    expect(area!.livelloUrbanizzazione?.label).not.toContain("comunale");
+    expect(area!.livelloUrbanizzazione?.availabilityStatus).toBe("available");
+  });
+});
+
+describe("buildSintesiFinale — geo transparency", () => {
+  it("carries geo context in output", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
+      convergenzaTerritoriale: {
+        status: "success",
+        data: { score: 72, band: "forte", convergenceLevel: "alta", coverageLevel: "buona", identityConfidence: 0.9, positiveFamilies: ["A"], negativeFamilies: [], topPositiveSignals: [], topNegativeSignals: [], evidenceTrace: [] },
+        message: null,
+      },
+      istatDemographic: { status: "success", data: { popolazione: 200000, comuneLabel: "Padova" }, message: null },
+    });
+    const sf = buildSintesiFinale(result);
+    expect(sf).not.toBeNull();
+    expect(sf!.geo?.geoLevel).toBe("comune");
+    expect(sf!.geo?.geoLabel).toContain("Padova");
+  });
+});
+
+describe("buildPrioritaCriticita — municipal warning", () => {
+  it("adds municipal-level warning when geoLevel=comune", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
+      istatDemographic: { status: "success", data: { popolazione: 200000, comuneLabel: "Padova" }, message: null },
+    });
+    const pc = buildPrioritaCriticita(result);
+    expect(pc).not.toBeNull();
+    const municipalItem = pc!.items.find(i => i.testo.includes("comunale") || i.testo.includes("Comune"));
+    expect(municipalItem).toBeTruthy();
+    expect(municipalItem!.categoria).toBe("copertura_parziale");
+  });
+
+  it("does not add municipal warning when zone-level precision is available", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
+      omiZone: { status: "success", data: { zonaOmi: "B1", zonaOmiLabel: "Centro", polygonMatch: true }, message: null },
+    });
+    const pc = buildPrioritaCriticita(result);
+    // Should not have a municipal warning
+    const municipalItem = pc?.items.find(i => i.testo.includes("comunale") || i.testo.includes("Comune"));
+    expect(municipalItem).toBeUndefined();
   });
 });

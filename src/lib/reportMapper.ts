@@ -15,6 +15,7 @@ import type {
   ProfiloAreaData, ScenarioTemporaleData, ScenarioTemporaleEntry,
   SintesiFinaleData, ReportSourceType, AvailabilityStatus,
   PrioritaCriticitaData, PrioritaCriticaItem, PrioritaCriticaCategoria,
+  GeoContext, ReportGeoLevel,
 } from "@/types/report";
 import type {
   IdentifyResult, PricingData, MarketContextData,
@@ -39,6 +40,38 @@ function sectionData<T>(result: ScanResult, key: keyof ScanResult): T | null {
   const s = result[key];
   if (s.status !== "success" || !s.data) return null;
   return s.data as T;
+}
+
+/* ── Geographic resolution helper ─────────────────────── */
+
+/**
+ * Determines the best geographic resolution from available data sources.
+ * Priority: OMI polygon match > POI (local radius) > coordinate-based > comune fallback.
+ */
+export function resolveGeoContext(result: ScanResult): GeoContext {
+  const omi = sectionData<OmiZoneData>(result, "omiZone");
+  const istat = sectionData<IstatDemographicData>(result, "istatDemographic");
+  const trendDemo = sectionData<import("@/types").TrendDemograficoData>(result, "trendDemografico");
+
+  // Best case: OMI polygon match = microzone-level
+  if (omi?.polygonMatch && omi?.zonaOmiLabel) {
+    return { geoLevel: "microzona_omi", geoLabel: `Zona OMI ${omi.zonaOmiLabel}` };
+  }
+
+  // TrendDemografico may carry its own geoLevel from the backend
+  if (trendDemo?.geoLevel && trendDemo.geoLevel !== "comune" && trendDemo.geoLevel !== "stimato") {
+    return { geoLevel: trendDemo.geoLevel as ReportGeoLevel, geoLabel: trendDemo.geoLabel ?? undefined };
+  }
+
+  // Fallback: if we only have ISTAT or OMI without polygon match → comunale
+  if (istat?.comuneLabel) {
+    return { geoLevel: "comune", geoLabel: `Comune di ${istat.comuneLabel}` };
+  }
+  if (omi?.comuneLabel) {
+    return { geoLevel: "comune", geoLabel: `Comune di ${omi.comuneLabel}` };
+  }
+
+  return { geoLevel: "non_determinato" };
 }
 
 /* ── Coverage helper (centralized) ───────────────────────── */
@@ -307,9 +340,10 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
   const rischio = sectionData<RischioZonaData>(result, "rischioZona");
   const istat = sectionData<IstatDemographicData>(result, "istatDemographic");
 
-  const data: ProfiloAreaData = {};
+  const geo = resolveGeoContext(result);
+  const data: ProfiloAreaData = { geo };
 
-  // accessibilitaTrasporti
+  // accessibilitaTrasporti — POI is always local (coordinate-based radius)
   if (poi) {
     const transport = poi.categories?.find(c => c.category === "transport");
     if (transport && transport.count > 0) {
@@ -323,7 +357,7 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     }
   }
 
-  // presenzaServiziPrimari
+  // presenzaServiziPrimari — POI is local
   if (poi && poi.totalPois > 0) {
     const primary = poi.categories?.filter(c =>
       ["health", "education", "shopping"].includes(c.category)
@@ -350,7 +384,7 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     data.qualitaAmbientale = field(qualita, "Profilo ambientale", "territorial_verified", "available");
   }
 
-  // livelloUrbanizzazione
+  // livelloUrbanizzazione — ISTAT is municipal
   if (istat?.densita != null) {
     let level: string;
     if (istat.densita > 3000) level = "Alta densità abitativa";
@@ -358,12 +392,13 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     else if (istat.densita > 300) level = "Bassa densità abitativa";
     else level = "Area a bassa urbanizzazione";
 
+    const isMunicipal = geo.geoLevel === "comune" || geo.geoLevel === "non_determinato";
     data.livelloUrbanizzazione = field(
       level,
-      "Urbanizzazione",
+      isMunicipal ? "Urbanizzazione (dato comunale)" : "Urbanizzazione",
       "official_data",
-      "available",
-      `${istat.densita.toLocaleString("it-IT")} ab/km²`,
+      isMunicipal ? "partial" : "available",
+      `${istat.densita.toLocaleString("it-IT")} ab/km²${isMunicipal ? " — dato riferito al comune" : ""}`,
     );
   }
 
@@ -392,13 +427,16 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     }
 
     if (parts.length >= 2) {
+      const isMunicipal = geo.geoLevel === "comune" || geo.geoLevel === "non_determinato";
       const synthesis = `Area con ${parts.slice(0, 3).join(", ")}.`;
       data.sintesiArea = field(
         synthesis,
-        "Quadro sintetico dell'area",
+        isMunicipal ? "Quadro indicativo (livello comunale)" : "Quadro sintetico dell'area",
         "territorial_verified",
-        signalCount >= 4 ? "available" : "partial",
-        `Basato su ${signalCount} indicatori territoriali verificati`,
+        isMunicipal ? "partial" : (signalCount >= 4 ? "available" : "partial"),
+        isMunicipal
+          ? `Basato su ${signalCount} indicatori — alcuni riferiti al livello comunale`
+          : `Basato su ${signalCount} indicatori territoriali verificati`,
       );
     }
   }
@@ -469,7 +507,8 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
 
   if (!opportunity && !convergenza) return null;
 
-  const data: SintesiFinaleData = {};
+  const geo = resolveGeoContext(result);
+  const data: SintesiFinaleData = { geo };
 
   // Executive summary — build from convergence of real signals
   if (convergenza?.band && convergenza.score != null) {
@@ -593,7 +632,21 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
   const convergenza = sectionData<ConvergenzaTerritorialeData>(result, "convergenzaTerritoriale");
   const market = sectionData<MarketContextData>(result, "marketContext");
 
+  const geo = resolveGeoContext(result);
   const items: PrioritaCriticaItem[] = [];
+
+  // Municipal-only data warning
+  if (geo.geoLevel === "comune") {
+    items.push({
+      testo: geo.geoLabel
+        ? `Alcuni dati sono riferiti al ${geo.geoLabel} e non alla zona specifica dell'immobile`
+        : "Alcuni dati territoriali sono riferiti al livello comunale",
+      categoria: "copertura_parziale",
+      sourceType: "territorial_verified",
+      availabilityStatus: "partial",
+      nota: "Risoluzione geografica limitata al livello comunale",
+    });
+  }
 
   // Image readability issue
   if (identify?.streetEvidence?.photoAnalysis?.photoReadability === "poor") {
