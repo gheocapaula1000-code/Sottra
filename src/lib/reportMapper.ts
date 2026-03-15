@@ -198,12 +198,21 @@ export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: 
   }
 
   if (omi?.zonaOmiLabel) {
+    const omiGeo = resolveOmiGeoLevel(omi);
+    const isZoneLevel = omiGeo === "microzona_omi" || omiGeo === "zona_specifica" || omiGeo === "quartiere";
+    const isFallback = omi.matchMethod === "ai_estimate" || omi.matchMethod === "catastale_fallback";
+
+    let note: string;
+    if (isZoneLevel && !isFallback) note = "Identificata da coordinate";
+    else if (isZoneLevel && isFallback) note = "Zona stimata (da verificare)";
+    else note = "Riferimento comunale";
+
     data.zonaOmiRiferimento = field(
       omi.zonaOmiLabel,
       "Zona OMI",
       "official_data",
-      omi.polygonMatch ? "available" : "partial",
-      omi.polygonMatch ? "Identificata da coordinate" : "Riferimento comunale",
+      isZoneLevel && !isFallback ? "available" : "partial",
+      note,
     );
   }
 
