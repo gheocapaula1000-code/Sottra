@@ -13,6 +13,9 @@ const MODULES: (keyof ScanResult)[] = [
   "infrastrutture", "rischioZona", "trendDemografico",
   "sviluppoArea", "convergenzaTerritoriale",
   "poiEnrichment", "omiZone", "istatDemographic",
+  // Phase 1 report engine — framework only, no data source yet
+  "profiloRapido", "immobileFacciata", "contestoVicinato",
+  "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
 ];
 
 function buildInitialState(): ScanResult {
@@ -130,6 +133,15 @@ export function useBuildingScan() {
       const identifyData = idRes.data as IdentifyResult;
       const address = identifyData.address ?? "";
       const confidence = identifyData.confidence ?? undefined;
+
+      // Phase 1 report engine modules — no data source yet, set to idle
+      const phase1Modules: (keyof ScanResult)[] = [
+        "profiloRapido", "immobileFacciata", "contestoVicinato",
+        "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
+      ];
+      for (const m of phase1Modules) {
+        set(m, { status: "idle", data: null, message: null });
+      }
 
       await Promise.allSettled([
         // Core V3 modules

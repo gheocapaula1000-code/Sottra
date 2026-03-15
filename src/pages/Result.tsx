@@ -22,6 +22,12 @@ import type {
   InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
 } from "@/types";
 import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
+import {
+  ProfiloRapidoCard, ImmobileFacciataCard, ContestoVicinatoCard,
+  PosizionamentoCommercialeCard, ProfiloAreaCard,
+  ScenarioTemporaleCard, SintesiFinaleCard, TrasparenzaFontiCard,
+} from "@/components/report/ReportSections";
+import type { TrasparenzaFontiData, FonteEntry } from "@/types/report";
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -1011,6 +1017,43 @@ function LowConfidenceCard({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+/* ── Trasparenza Fonti builder ────────────────────────── */
+
+function buildTrasparenzaFonti(result: ScanResult): TrasparenzaFontiData | null {
+  const fonti: FonteEntry[] = [];
+
+  if (result.identify.status === "success" && result.identify.data) {
+    fonti.push({ categoria: "immagine", categoriaLabel: "Analisi immagine", provider: "Intelligenza artificiale", dettaglio: "Identificazione edificio da foto e coordinate GPS" });
+  }
+  if (result.omiZone.status === "success" && result.omiZone.data) {
+    const omi = result.omiZone.data as import("@/types").OmiZoneData;
+    fonti.push({ categoria: "dato_ufficiale", categoriaLabel: "Quotazioni OMI", provider: "Agenzia delle Entrate", periodo: omi.semestre ?? undefined, copertura: omi.polygonMatch ? "Zona identificata da coordinate" : "Media comunale" });
+  }
+  if (result.istatDemographic.status === "success" && result.istatDemographic.data) {
+    fonti.push({ categoria: "dato_ufficiale", categoriaLabel: "Dati demografici ISTAT", provider: "ISTAT", copertura: "Livello comunale" });
+  }
+  if (result.pricing.status === "success" && result.pricing.data) {
+    fonti.push({ categoria: "dato_mercato", categoriaLabel: "Prezzi di mercato", provider: "Fonti di mercato verificate", dettaglio: "Elaborazione da comparabili e dati di mercato" });
+  }
+  if (result.marketContext.status === "success" && result.marketContext.data) {
+    fonti.push({ categoria: "dato_mercato", categoriaLabel: "Contesto di mercato", provider: "Fonti commerciali", dettaglio: "Analisi comparabili e segnali di mercato" });
+  }
+  if (result.poiEnrichment.status === "success" && result.poiEnrichment.data) {
+    fonti.push({ categoria: "dato_territoriale", categoriaLabel: "Servizi e POI", provider: "Fonti geospaziali verificate", dettaglio: "Punti di interesse nelle vicinanze" });
+  }
+  if (result.rischioZona.status === "success" && result.rischioZona.data) {
+    fonti.push({ categoria: "dato_territoriale", categoriaLabel: "Rischio zona", provider: "Fonti istituzionali", dettaglio: "Rischio idrogeologico, sismico e ambientale" });
+  }
+  if (result.timeView.status === "success" && result.timeView.data) {
+    fonti.push({ categoria: "scenario", categoriaLabel: "Scenario evolutivo", provider: "Elaborazione Sottra", dettaglio: "Proiezione indicativa basata su trend e segnali" });
+  }
+  if (result.convergenzaTerritoriale.status === "success" && result.convergenzaTerritoriale.data) {
+    fonti.push({ categoria: "elaborazione", categoriaLabel: "Convergenza territoriale", provider: "Indice elaborato Sottra", dettaglio: "Sintesi da fonti multiple" });
+  }
+
+  return fonti.length > 0 ? { fonti } : null;
+}
+
 /* ── Report quality footer ───────────────────────────── */
 
 function ReportFooter({ excludedCount, totalPublished }: { excludedCount: number; totalPublished: number }) {
@@ -1136,27 +1179,53 @@ const Result = () => {
 
           {!lowConfidence && !identifyFailed && (
             <>
-              {/* Tier 1 — verified / official data first */}
-              {/* Tier 1 — Official sources */}
-              <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} />
+              {/* A) Profilo Rapido — from image analysis (Phase 1 framework) */}
+              <ProfiloRapidoCard data={result.profiloRapido.data as import("@/types/report").ProfiloRapidoData | null} loading={result.profiloRapido.status === "loading"} />
+
+              {/* B) Immobile e Facciata — visual analysis (Phase 1 framework) */}
+              <ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} />
+
+              {/* C) Contesto e Vicinato — visual + territorial (Phase 1 framework) */}
+              <ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} />
+
+              {/* D) Zona OMI e valori ufficiali — FROZEN, do not modify */}
               <OmiCard data={result.omiZone.data as import("@/types").OmiZoneData | null} loading={result.omiZone.status === "loading"} />
 
-              {/* Tier 1.5 — Market layer */}
+              {/* E) Servizi e accessibilità */}
+              <PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} />
+
+              {/* F) Mercato live */}
+              <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} />
               <MarketContextCard data={result.marketContext.data as MarketContextData | null} loading={result.marketContext.status === "loading"} />
 
+              {/* G) Posizionamento commerciale (Phase 1 framework) */}
+              <PosizionamentoCommercialeCard data={result.posizionamentoCommerciale.data as import("@/types/report").PosizionamentoCommercialeData | null} loading={result.posizionamentoCommerciale.status === "loading"} />
+
+              {/* H) Profilo Area */}
+              <ProfiloAreaCard data={result.profiloArea.data as import("@/types/report").ProfiloAreaData | null} loading={result.profiloArea.status === "loading"} />
+
+              {/* Existing territorial modules */}
               <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} />
               <IstatCard data={result.istatDemographic.data as import("@/types").IstatDemographicData | null} loading={result.istatDemographic.status === "loading"} />
               <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} />
 
-              {/* Tier 1.5 — Pro Sources: POI geo-verified */}
-              <PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} />
-
               {/* Tier 2 — synthetic indices & elaborated insights */}
               <ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} />
               <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} />
+
+              {/* I) Scenario 5/10/20 anni (Phase 1 framework) */}
+              <ScenarioTemporaleCard data={result.scenarioTemporale.data as import("@/types/report").ScenarioTemporaleData | null} loading={result.scenarioTemporale.status === "loading"} />
+
+              {/* Existing time/infra modules */}
               <TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} />
               <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} />
               <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} />
+
+              {/* J) Sintesi Finale (Phase 1 framework) */}
+              <SintesiFinaleCard data={result.sintesiFinale.data as import("@/types/report").SintesiFinaleData | null} loading={result.sintesiFinale.status === "loading"} />
+
+              {/* K) Trasparenza Fonti — built dynamically from available data */}
+              {!scanning && <TrasparenzaFontiCard data={buildTrasparenzaFonti(result)} />}
 
               {/* Discrete quality footer */}
               {!scanning && <ReportFooter excludedCount={excludedCount} totalPublished={publishedCount} />}
