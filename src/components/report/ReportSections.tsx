@@ -395,6 +395,7 @@ export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData |
   return (
     <Section gradient="from-primary/8 to-primary/3 border-primary/15">
       <SectionHeader icon={FileText} title="Sintesi Finale" subtitle="Quadro riepilogativo dell'analisi" />
+      <GeoLevelBanner geo={data.geo} />
 
       {/* Executive summary */}
       {data.giudizioSintetico?.value && (data.giudizioSintetico.availabilityStatus === "available" || data.giudizioSintetico.availabilityStatus === "partial") && (
