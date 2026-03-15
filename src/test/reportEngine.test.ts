@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { resolveGeoContext } from "@/lib/reportMapper";
 import {
   isFieldAvailable, isSectionRenderable, countAvailableFields,
   unavailableField, sourceTypeLabels, availabilityLabels,
