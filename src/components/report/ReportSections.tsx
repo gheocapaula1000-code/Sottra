@@ -241,7 +241,7 @@ export function ProfiloAreaCard({ data, loading }: { data: ProfiloAreaData | nul
       {/* Synthesis block at top if available */}
       {data.sintesiArea?.value && (data.sintesiArea.availabilityStatus === "available" || data.sintesiArea.availabilityStatus === "partial") && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2.5 mb-4">
-          <p className="text-sm text-foreground leading-relaxed">{data.sintesiArea.value}</p>
+          <p className="text-sm text-foreground leading-relaxed">{safeText(data.sintesiArea.value)}</p>
           <div className="flex items-center gap-2 mt-1.5">
             <SourceMicroBadge sourceType={data.sintesiArea.sourceType} />
             {data.sintesiArea.note && (
