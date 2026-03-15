@@ -1086,4 +1086,3 @@ describe("OMI invariance check", () => {
     expect(omi.zonaOmi).toBe("C2");
   });
 });
-});
