@@ -26,8 +26,9 @@ import {
   ProfiloRapidoCard, ImmobileFacciataCard, ContestoVicinatoCard,
   PosizionamentoCommercialeCard, ProfiloAreaCard,
   ScenarioTemporaleCard, SintesiFinaleCard, TrasparenzaFontiCard,
+  PrioritaCriticitaCard,
 } from "@/components/report/ReportSections";
-import type { TrasparenzaFontiData, FonteEntry } from "@/types/report";
+import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/types/report";
 
 /* ── helpers ─────────────────────────────────────────── */
 
