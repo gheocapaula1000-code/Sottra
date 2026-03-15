@@ -406,24 +406,35 @@ export default function AdminOmiKmlIngest() {
           </Card>
         )}
 
-        {/* ─── File Log ─── */}
-        {importState && importState.completedFiles.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                Log file ({importState.completedFiles.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="max-h-80 overflow-y-auto space-y-1">
-                {importState.completedFiles.map((f, i) => (
-                  <FileLogRow key={`${f.fileName}-${i}`} result={f} />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* ─── File Log (virtualized: only last 50 rendered) ─── */}
+        {importState && importState.completedFiles.length > 0 && (() => {
+          const MAX_VISIBLE = 50;
+          const allFiles = importState.completedFiles;
+          const hiddenCount = Math.max(0, allFiles.length - MAX_VISIBLE);
+          const visibleFiles = hiddenCount > 0 ? allFiles.slice(-MAX_VISIBLE) : allFiles;
+          return (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  Log file ({allFiles.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="max-h-80 overflow-y-auto space-y-1">
+                  {hiddenCount > 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-1 border-b border-border/50">
+                      … {hiddenCount} file precedenti nascosti …
+                    </p>
+                  )}
+                  {visibleFiles.map((f, i) => (
+                    <FileLogRow key={`${f.fileName}-${hiddenCount + i}`} result={f} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </main>
     </div>
   );
