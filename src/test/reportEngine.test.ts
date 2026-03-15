@@ -362,7 +362,8 @@ describe("buildPosizionamentoCommerciale", () => {
     });
     const pos = buildPosizionamentoCommerciale(result);
     expect(pos).not.toBeNull();
-    expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("market_data");
+    // OMI official wins over market pricing via resolver
+    expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("official_data");
     expect(pos!.noteCommercialiSintetiche?.value).toContain("OMI");
     expect(pos!.statoCommercialeRilevato?.value).toBe("Mercato attivo");
   });
