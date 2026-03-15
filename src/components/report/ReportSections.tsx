@@ -113,7 +113,7 @@ export function ImmobileFacciataCard({ data, loading }: { data: ImmobileFacciata
       />
       {data.noteVisive?.value && (data.noteVisive.availabilityStatus === "available" || data.noteVisive.availabilityStatus === "partial") && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mt-3">
-          <p className="text-xs text-foreground/80 leading-relaxed">{data.noteVisive.value}</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">{safeText(data.noteVisive.value)}</p>
           <SourceMicroBadge sourceType={data.noteVisive.sourceType} className="mt-1" />
         </div>
       )}
