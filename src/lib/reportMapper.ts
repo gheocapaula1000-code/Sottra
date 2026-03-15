@@ -23,6 +23,11 @@ import type {
   TimeViewData, OpportunityData, ConvergenzaTerritorialeData,
   RischioZonaData, TrendDemograficoData, InfrastrutureData,
 } from "@/types";
+import {
+  resolveBestSource, mapCoverageLevelToGeoLevel, mapTierToLabel,
+  formatResolutionTrace, resolutionSummary,
+  type SourceCandidate, type ResolvedSource, type ResolutionTraceEntry,
+} from "@/lib/sourceResolver";
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
