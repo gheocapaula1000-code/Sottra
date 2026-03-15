@@ -67,7 +67,42 @@ function SectionSkeleton() {
   );
 }
 
-/* ── A) Profilo Rapido ───────────────────────────────────── */
+/* ── Geo-level transparency banner ───────────────────────── */
+
+function GeoLevelBanner({ geo }: { geo?: GeoContext | null }) {
+  if (!geo) return null;
+  if (geo.geoLevel === "comune") {
+    return (
+      <div className="flex items-start gap-2 rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2 mb-4">
+        <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-400" />
+        <div>
+          <p className="text-[11px] font-medium text-amber-400">
+            {geo.geoLabel ? `Dato riferito al ${geo.geoLabel}` : "Dato riferito al livello comunale"}
+          </p>
+          <p className="text-[10px] text-muted-foreground/60 mt-0.5">La zona specifica dell'immobile potrebbe presentare valori diversi</p>
+        </div>
+      </div>
+    );
+  }
+  if (geo.geoLevel === "non_determinato") {
+    return (
+      <div className="flex items-start gap-2 rounded-lg bg-muted/50 border border-border/30 px-3 py-2 mb-4">
+        <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+        <p className="text-[10px] text-muted-foreground">Livello geografico non determinato con precisione</p>
+      </div>
+    );
+  }
+  if (geo.geoLevel === "microzona_omi" || geo.geoLevel === "zona_specifica" || geo.geoLevel === "quartiere") {
+    return (
+      <p className="text-[10px] text-muted-foreground/60 mb-3 flex items-center gap-1">
+        <MapPin className="h-3 w-3" />
+        {geo.geoLabel ?? (geo.geoLevel === "microzona_omi" ? "Microzona OMI identificata" : "Zona specifica")}
+      </p>
+    );
+  }
+  return null;
+}
+
 
 export function ProfiloRapidoCard({ data, loading }: { data: ProfiloRapidoData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
