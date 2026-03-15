@@ -21,6 +21,7 @@ import type {
   PosizionamentoCommercialeData, ProfiloAreaData,
   ScenarioTemporaleData, SintesiFinaleData, TrasparenzaFontiData,
   FonteEntry, ReportField, PrioritaCriticitaData, PrioritaCriticaCategoria,
+  GeoContext,
 } from "@/types/report";
 import { isSectionRenderable, sourceTypeLabels } from "@/types/report";
 
