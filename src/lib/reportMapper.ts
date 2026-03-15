@@ -671,8 +671,9 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
     items.push({
       testo: "Copertura dati parziale — alcune fonti non disponibili per l'area",
       categoria: "copertura_parziale",
-      sourceType: "market_data",
+      sourceType: "territorial_verified",
       availabilityStatus: "partial",
+      nota: "Basato sulla copertura dei moduli di analisi",
     });
   }
 
