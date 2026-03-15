@@ -506,7 +506,10 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
     forza.push("Buona dotazione di servizi nell'area");
   }
   if (forza.length > 0) {
-    data.puntiDiForza = field(forza.slice(0, 4), "Punti di forza", "market_data", "available");
+    data.puntiDiForza = field(
+      forza.slice(0, 4), "Punti di forza", "territorial_verified", "available",
+      "Derivati da convergenza, rischio, servizi e opportunità",
+    );
   }
 
   // puntiDiAttenzione — real cautions
