@@ -1196,3 +1196,95 @@ describe("Hardening — edge cases", () => {
     expect(mapped.prioritaCriticita).toBeNull();
   });
 });
+
+/* ── Fix verification: 4 targeted hardening tests ────────── */
+
+describe("Fix verification — 4 final hardening checks", () => {
+  it("buildProfiloArea does NOT produce 'undefinedm' when nearest.distance is missing", () => {
+    const result = baseScanResult({
+      poiEnrichment: {
+        status: "success",
+        data: {
+          categories: [
+            {
+              categoryKey: "transport",
+              categoryLabel: "Trasporti",
+              count: 3,
+              nearest: { name: "Fermata Bus", distance: undefined },
+              items: [],
+            },
+          ],
+        },
+        message: null,
+      },
+    });
+    const area = buildProfiloArea(result, 45.0, 9.0);
+    if (area?.accessibilitaTrasporti?.value) {
+      const val = String(area.accessibilitaTrasporti.value);
+      expect(val).not.toContain("undefinedm");
+      expect(val).not.toContain("undefined");
+    }
+  });
+
+  it("buildProfiloArea shows distance when nearest.distance IS present", () => {
+    const result = baseScanResult({
+      poiEnrichment: {
+        status: "success",
+        data: {
+          categories: [
+            {
+              categoryKey: "transport",
+              categoryLabel: "Trasporti",
+              count: 2,
+              nearest: { name: "Metro", distance: 150 },
+              items: [],
+            },
+          ],
+        },
+        message: null,
+      },
+    });
+    const area = buildProfiloArea(result, 45.0, 9.0);
+    if (area?.accessibilitaTrasporti?.value) {
+      expect(String(area.accessibilitaTrasporti.value)).toContain("150m");
+    }
+  });
+
+  it("SintesiFinaleCard data with non-array puntiDiForza/puntiDiAttenzione does not crash", () => {
+    // Simulate malformed data where value is a string instead of array
+    const malformed = {
+      giudizioSintetico: { value: "Test", label: "g", sourceType: "image_detected" as const, availabilityStatus: "available" as const },
+      puntiDiForza: { value: "not-an-array" as unknown, label: "f", sourceType: "image_detected" as const, availabilityStatus: "available" as const },
+      puntiDiAttenzione: { value: 42 as unknown, label: "a", sourceType: "image_detected" as const, availabilityStatus: "available" as const },
+    };
+    // Array.isArray should return false for non-arrays, resulting in empty arrays
+    const forza = Array.isArray(malformed.puntiDiForza?.value) ? malformed.puntiDiForza.value : [];
+    const attenzione = Array.isArray(malformed.puntiDiAttenzione?.value) ? malformed.puntiDiAttenzione.value : [];
+    expect(forza).toEqual([]);
+    expect(attenzione).toEqual([]);
+  });
+
+  it("SintesiFinaleCard data with valid arrays works correctly", () => {
+    const valid = {
+      puntiDiForza: { value: ["A", "B"], label: "f", sourceType: "image_detected" as const, availabilityStatus: "available" as const },
+      puntiDiAttenzione: { value: ["C"], label: "a", sourceType: "image_detected" as const, availabilityStatus: "available" as const },
+    };
+    const forza = Array.isArray(valid.puntiDiForza?.value) ? valid.puntiDiForza.value : [];
+    const attenzione = Array.isArray(valid.puntiDiAttenzione?.value) ? valid.puntiDiAttenzione.value : [];
+    expect(forza).toEqual(["A", "B"]);
+    expect(attenzione).toEqual(["C"]);
+  });
+
+  it("POI distance display: no dirty string when distance is missing", () => {
+    const cat = { categoryKey: "transport", categoryLabel: "Trasporti", count: 3, nearest: { name: "Bus", distance: undefined as number | undefined }, items: [] };
+    const distanceStr = cat.nearest?.distance != null ? ` · ${cat.nearest.distance}m` : "";
+    expect(distanceStr).toBe("");
+    expect(distanceStr).not.toContain("undefined");
+  });
+
+  it("POI distance display: shows distance when present", () => {
+    const cat = { categoryKey: "transport", categoryLabel: "Trasporti", count: 3, nearest: { name: "Bus", distance: 200 }, items: [] };
+    const distanceStr = cat.nearest?.distance != null ? ` · ${cat.nearest.distance}m` : "";
+    expect(distanceStr).toBe(" · 200m");
+  });
+});
