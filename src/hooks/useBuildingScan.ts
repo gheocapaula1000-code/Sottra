@@ -3,6 +3,7 @@ import { identifyBuilding, getPricing } from "@/services/scan";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
 import { fetchProSources } from "@/services/proSources";
 import { supabase } from "@/integrations/supabase/client";
+import { mapScanToReportSections } from "@/lib/reportMapper";
 import type { ScanResult, SectionState, IdentifyResult } from "@/types";
 
 const idle: SectionState = { status: "idle", data: null, message: null };
@@ -13,7 +14,7 @@ const MODULES: (keyof ScanResult)[] = [
   "infrastrutture", "rischioZona", "trendDemografico",
   "sviluppoArea", "convergenzaTerritoriale",
   "poiEnrichment", "omiZone", "istatDemographic",
-  // Phase 1 report engine — framework only, no data source yet
+  // Report engine sections — populated by MAP_REPORT action after data modules complete
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
 ];
@@ -30,7 +31,8 @@ type Action =
   | { type: "START_SCAN" }
   | { type: "RESET_IDLE" }
   | { type: "RESTORE"; payload: Partial<ScanResult> }
-  | { type: "SET"; key: keyof ScanResult; value: SectionState };
+  | { type: "SET"; key: keyof ScanResult; value: SectionState }
+  | { type: "MAP_REPORT"; lat: number | null; lng: number | null };
 
 function reducer(state: ScanResult, action: Action): ScanResult {
   switch (action.type) {
@@ -51,6 +53,18 @@ function reducer(state: ScanResult, action: Action): ScanResult {
     }
     case "SET":
       return { ...state, [action.key]: action.value } as ScanResult;
+    case "MAP_REPORT": {
+      const mapped = mapScanToReportSections(state, action.lat, action.lng);
+      const updates: Partial<Record<keyof ScanResult, SectionState>> = {};
+      for (const [key, data] of Object.entries(mapped)) {
+        updates[key as keyof ScanResult] = {
+          status: data ? "success" : "idle",
+          data,
+          message: null,
+        };
+      }
+      return { ...state, ...updates } as ScanResult;
+    }
     default:
       return state;
   }
@@ -134,13 +148,13 @@ export function useBuildingScan() {
       const address = identifyData.address ?? "";
       const confidence = identifyData.confidence ?? undefined;
 
-      // Phase 1 report engine modules — no data source yet, set to idle
-      const phase1Modules: (keyof ScanResult)[] = [
+      // Set report sections to loading during data fetch
+      const reportModules: (keyof ScanResult)[] = [
         "profiloRapido", "immobileFacciata", "contestoVicinato",
         "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
       ];
-      for (const m of phase1Modules) {
-        set(m, { status: "idle", data: null, message: null });
+      for (const m of reportModules) {
+        set(m, { status: "loading", data: null, message: null });
       }
 
       await Promise.allSettled([
@@ -182,6 +196,10 @@ export function useBuildingScan() {
       if (!address) {
         set("pricing", { status: "success", data: null, message: "Indirizzo non disponibile per la valutazione prezzi" });
       }
+
+      // Phase 2: Map real data to report sections using reducer action
+      // The MAP_REPORT action reads current state inside the reducer
+      dispatch({ type: "MAP_REPORT", lat, lng });
     };
 
     await runPipeline();
