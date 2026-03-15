@@ -21,8 +21,12 @@ export type Database = {
           comune_label: string
           created_at: string | null
           id: string
+          import_batch_id: string | null
+          imported_at: string | null
           polygon_coords: Json
           semestre: number
+          source_file: string | null
+          source_hash: string | null
           zona_omi: string
         }
         Insert: {
@@ -31,8 +35,12 @@ export type Database = {
           comune_label?: string
           created_at?: string | null
           id?: string
+          import_batch_id?: string | null
+          imported_at?: string | null
           polygon_coords: Json
           semestre?: number
+          source_file?: string | null
+          source_hash?: string | null
           zona_omi: string
         }
         Update: {
@@ -41,8 +49,12 @@ export type Database = {
           comune_label?: string
           created_at?: string | null
           id?: string
+          import_batch_id?: string | null
+          imported_at?: string | null
           polygon_coords?: Json
           semestre?: number
+          source_file?: string | null
+          source_hash?: string | null
           zona_omi?: string
         }
         Relationships: []
