@@ -15,6 +15,7 @@ import type {
   ProfiloAreaData, ScenarioTemporaleData, ScenarioTemporaleEntry,
   SintesiFinaleData, ReportSourceType, AvailabilityStatus,
   PrioritaCriticitaData, PrioritaCriticaItem, PrioritaCriticaCategoria,
+  GeoContext, ReportGeoLevel,
 } from "@/types/report";
 import type {
   IdentifyResult, PricingData, MarketContextData,
