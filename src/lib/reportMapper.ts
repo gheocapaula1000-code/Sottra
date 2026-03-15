@@ -649,8 +649,9 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
       items.push({
         testo: "Prezzo di mercato significativamente superiore alla media OMI — verificare coerenza",
         categoria: "da_verificare",
-        sourceType: "market_data",
+        sourceType: "official_data",
         availabilityStatus: "available",
+        nota: "Confronto tra prezzo di mercato e quotazioni OMI ufficiali",
       });
     }
   }
