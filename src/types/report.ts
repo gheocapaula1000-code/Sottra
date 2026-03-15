@@ -85,13 +85,13 @@ export interface ImmobileFacciataData extends SourceMetadata {
 export interface ContestoVicinatoData extends SourceMetadata {
   prevalenzaContesto?: ReportField<string>;
   tessutoUrbano?: ReportField<string>;
-  densitaEdiliziaVisiva?: ReportField<string>;
-  qualitaVisivaContesto?: ReportField<string>;
-  presenzaServiziVisibili?: ReportField<boolean>;
-  elencoServiziVisibili?: ReportField<string[]>;
+  densitaEdiliziaPercepita?: ReportField<string>;
+  dotazioneServizi?: ReportField<string>;
+  presenzaServiziRilevati?: ReportField<boolean>;
+  elencoServiziRilevati?: ReportField<string[]>;
   vicinatoPercepito?: ReportField<string>;
   livelloDecorositaUrbana?: ReportField<string>;
-  attrattivitaVisivaMicrocontesto?: ReportField<string>;
+  livelloServiziArea?: ReportField<string>;
 }
 
 /* ── Section F: Posizionamento Commerciale Immobile ────── */

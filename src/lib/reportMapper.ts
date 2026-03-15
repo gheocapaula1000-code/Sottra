@@ -233,12 +233,15 @@ export function buildPosizionamentoCommerciale(result: ScanResult): Posizionamen
 
   const data: PosizionamentoCommercialeData = {};
 
-  // prezzoRichiestoRilevato — from pricing if available
+  // prezzoRichiestoRilevato — distinguish official vs market source
   if (pricing?.prezzoMq != null) {
+    const pricingSource: ReportSourceType =
+      pricing.sourceType === "official" ? "official_data" :
+      pricing.sourceType === "unavailable" ? "unavailable" as ReportSourceType : "market_data";
     data.prezzoRichiestoRilevato = field(
       pricing.prezzoMq,
       "Prezzo stimato €/m²",
-      "market_data",
+      pricingSource,
       pricing.sourceType === "unavailable" ? "unavailable" : "available",
     );
   }

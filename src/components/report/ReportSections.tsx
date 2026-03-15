@@ -120,7 +120,7 @@ export function ContestoVicinatoCard({ data, loading }: { data: ContestoVicinato
   if (loading) return <SectionSkeleton />;
   if (!data || !isSectionRenderable(data as unknown as Record<string, unknown>)) return null;
 
-  const servizi = data.elencoServiziVisibili;
+  const servizi = data.elencoServiziRilevati;
   const hasServiziList = servizi?.value && Array.isArray(servizi.value) && servizi.value.length > 0 && servizi.availabilityStatus === "available";
 
   return (
@@ -130,17 +130,17 @@ export function ContestoVicinatoCard({ data, loading }: { data: ContestoVicinato
         fields={[
           data.prevalenzaContesto,
           data.tessutoUrbano,
-          data.densitaEdiliziaVisiva,
-          data.qualitaVisivaContesto,
+          data.densitaEdiliziaPercepita,
+          data.dotazioneServizi,
           data.vicinatoPercepito,
           data.livelloDecorositaUrbana,
-          data.attrattivitaVisivaMicrocontesto,
+          data.livelloServiziArea,
         ]}
         showSource
       />
       {hasServiziList && (
         <div className="mt-3 space-y-1">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Servizi visibili</p>
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Servizi rilevati</p>
           <div className="flex flex-wrap gap-1.5">
             {(servizi!.value as string[]).map((s, i) => (
               <span key={i} className="inline-flex items-center rounded-md border border-border/40 bg-muted/30 px-2 py-0.5 text-[10px] text-foreground font-medium">
