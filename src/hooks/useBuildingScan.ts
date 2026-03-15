@@ -13,6 +13,9 @@ const MODULES: (keyof ScanResult)[] = [
   "infrastrutture", "rischioZona", "trendDemografico",
   "sviluppoArea", "convergenzaTerritoriale",
   "poiEnrichment", "omiZone", "istatDemographic",
+  // Phase 1 report engine — framework only, no data source yet
+  "profiloRapido", "immobileFacciata", "contestoVicinato",
+  "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
 ];
 
 function buildInitialState(): ScanResult {
