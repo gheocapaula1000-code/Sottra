@@ -153,6 +153,7 @@ export function useBuildingScan() {
       const reportModules: (keyof ScanResult)[] = [
         "profiloRapido", "immobileFacciata", "contestoVicinato",
         "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
+        "prioritaCriticita",
       ];
       for (const m of reportModules) {
         set(m, { status: "loading", data: null, message: null });
