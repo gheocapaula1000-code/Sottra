@@ -362,7 +362,7 @@ export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData |
       {/* Executive summary */}
       {data.giudizioSintetico?.value && (data.giudizioSintetico.availabilityStatus === "available" || data.giudizioSintetico.availabilityStatus === "partial") && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2.5 mb-4">
-          <p className="text-sm text-foreground leading-relaxed">{data.giudizioSintetico.value}</p>
+          <p className="text-sm text-foreground leading-relaxed">{safeText(data.giudizioSintetico.value)}</p>
           {data.giudizioSintetico.availabilityStatus === "partial" && (
             <p className="text-[9px] text-muted-foreground/50 mt-1">Quadro basato su dati parziali</p>
           )}
