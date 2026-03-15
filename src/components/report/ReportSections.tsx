@@ -11,7 +11,7 @@ import {
   Building2, Store, Map, Clock, FileText,
   CheckCircle2, TrendingUp, ShieldCheck, TriangleAlert,
   Camera, Landmark, TreePine, ListChecks, BookOpen,
-  AlertCircle, CircleDot,
+  AlertCircle, CircleDot, MapPin, Info,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
