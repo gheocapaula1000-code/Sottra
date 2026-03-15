@@ -348,13 +348,11 @@ export function ScenarioTemporaleCard({ data, loading }: { data: ScenarioTempora
 export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
   if (!data) return null;
+  const forza = Array.isArray(data.puntiDiForza?.value) ? (data.puntiDiForza!.value as string[]) : [];
+  const attenzione = Array.isArray(data.puntiDiAttenzione?.value) ? (data.puntiDiAttenzione!.value as string[]) : [];
   const hasContent = data.giudizioSintetico?.availabilityStatus === "available" || data.giudizioSintetico?.availabilityStatus === "partial" ||
-    (data.puntiDiForza?.value && (data.puntiDiForza.value as string[]).length > 0) ||
-    (data.puntiDiAttenzione?.value && (data.puntiDiAttenzione.value as string[]).length > 0);
+    forza.length > 0 || attenzione.length > 0;
   if (!hasContent) return null;
-
-  const forza = (data.puntiDiForza?.value as string[] | undefined) ?? [];
-  const attenzione = (data.puntiDiAttenzione?.value as string[] | undefined) ?? [];
 
   return (
     <Section gradient="from-primary/8 to-primary/3 border-primary/15">

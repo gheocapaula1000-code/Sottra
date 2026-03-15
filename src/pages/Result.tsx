@@ -983,7 +983,7 @@ function PoiEnrichmentCard({ data, loading }: { data: PoiEnrichmentData | null; 
               <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-foreground truncate">{cat.categoryLabel}</p>
-                <p className="text-[10px] text-muted-foreground">{cat.count} · {cat.nearest ? `${cat.nearest.distance}m` : ""}</p>
+                <p className="text-[10px] text-muted-foreground">{cat.count}{cat.nearest?.distance != null ? ` · ${cat.nearest.distance}m` : ""}</p>
               </div>
             </div>
           );
@@ -1241,7 +1241,7 @@ const Result = () => {
       {/* Bottom bar */}
       <div className="fixed bottom-0 inset-x-0 bg-background/90 backdrop-blur-xl border-t border-border/50 px-4 sm:px-5 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-3 flex gap-3 z-40">
         <Button className="flex-1 min-h-[48px]" size="lg" onClick={() => navigate("/scan")}>Nuova scansione</Button>
-        <Button variant="outline" size="lg" className="shrink-0 min-h-[48px]" onClick={() => {
+        <Button variant="outline" size="lg" className="shrink-0 min-h-[48px]" disabled={lowConfidence || identifyFailed || scanning} onClick={() => {
           if (!state) return;
           if (!identifyData) {
             toast({ title: "Report non salvabile", description: "L'identificazione dell'edificio non è ancora completa.", variant: "destructive" });

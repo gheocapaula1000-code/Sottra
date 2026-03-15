@@ -1086,3 +1086,113 @@ describe("OMI invariance check", () => {
     expect(omi.zonaOmi).toBe("C2");
   });
 });
+
+/* ── Hardening: edge cases with missing/partial data ─────── */
+
+describe("Hardening — edge cases", () => {
+  it("buildProfiloArea handles transport nearest without distance", () => {
+    const result = baseScanResult({
+      poiEnrichment: {
+        status: "success",
+        data: {
+          totalPois: 5,
+          searchRadius: 500,
+          categories: [
+            { category: "transport", categoryLabel: "Trasporti", count: 3, nearest: { name: "Bus", category: "transport", categoryLabel: "Trasporti", distance: undefined as any, lat: 0, lng: 0, provider: "overpass" } },
+          ],
+          pois: [],
+        },
+        message: null,
+      },
+    });
+    const area = buildProfiloArea(result);
+    // Should not contain "undefinedm"
+    if (area?.accessibilitaTrasporti?.value) {
+      expect(String(area.accessibilitaTrasporti.value)).not.toContain("undefined");
+    }
+  });
+
+  it("buildProfiloRapido returns null when identify has no data", () => {
+    const result = baseScanResult();
+    expect(buildProfiloRapido(result, 45.0, 9.0)).toBeNull();
+  });
+
+  it("buildImmobileFacciata returns null without streetEvidence", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Test 1", buildingId: "T1", confidence: 0.9 }, message: null },
+    });
+    expect(buildImmobileFacciata(result)).toBeNull();
+  });
+
+  it("buildContestoVicinato returns null when totalPois is 0", () => {
+    const result = baseScanResult({
+      poiEnrichment: { status: "success", data: { totalPois: 0, categories: [], pois: [], searchRadius: 500 }, message: null },
+    });
+    expect(buildContestoVicinato(result)).toBeNull();
+  });
+
+  it("buildScenarioTemporale returns null when timeView has no forecasts", () => {
+    const result = baseScanResult({
+      timeView: { status: "success", data: { scenarioBand: "stabile" }, message: null },
+    });
+    expect(buildScenarioTemporale(result)).toBeNull();
+  });
+
+  it("buildSintesiFinale returns null without opportunity or convergenza", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Test 1", buildingId: "T1", confidence: 0.9 }, message: null },
+    });
+    expect(buildSintesiFinale(result)).toBeNull();
+  });
+
+  it("buildPrioritaCriticita returns null without identify", () => {
+    const result = baseScanResult();
+    expect(buildPrioritaCriticita(result)).toBeNull();
+  });
+
+  it("mapScanToReportSections returns all-null with empty state", () => {
+    const result = baseScanResult();
+    const mapped = mapScanToReportSections(result, null, null);
+    expect(mapped.profiloRapido).toBeNull();
+    expect(mapped.immobileFacciata).toBeNull();
+    expect(mapped.contestoVicinato).toBeNull();
+    expect(mapped.posizionamentoCommerciale).toBeNull();
+    expect(mapped.profiloArea).toBeNull();
+    expect(mapped.scenarioTemporale).toBeNull();
+    expect(mapped.sintesiFinale).toBeNull();
+    expect(mapped.prioritaCriticita).toBeNull();
+  });
+
+  it("buildPosizionamentoCommerciale returns null without pricing and market", () => {
+    const result = baseScanResult();
+    expect(buildPosizionamentoCommerciale(result)).toBeNull();
+  });
+
+  it("computeModuleCoverage returns 0 with idle state", () => {
+    const result = baseScanResult();
+    const cov = computeModuleCoverage(result);
+    expect(cov.available).toBe(0);
+    expect(cov.pct).toBe(0);
+  });
+
+  it("all sections handle error state modules gracefully", () => {
+    const result = baseScanResult({
+      identify: error,
+      pricing: error,
+      marketContext: error,
+      timeView: error,
+      opportunity: error,
+      rischioZona: error,
+      convergenzaTerritoriale: error,
+      poiEnrichment: error,
+      omiZone: error,
+      istatDemographic: error,
+    });
+    const mapped = mapScanToReportSections(result, 45.0, 9.0);
+    // All should be null — no crash
+    expect(mapped.profiloRapido).toBeNull();
+    expect(mapped.immobileFacciata).toBeNull();
+    expect(mapped.sintesiFinale).toBeNull();
+    expect(mapped.prioritaCriticita).toBeNull();
+  });
+});
