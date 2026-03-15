@@ -85,7 +85,7 @@ export default function PwaUpdateBanner() {
   if (!showBanner || dismissed) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-[9999] mx-auto max-w-md rounded-xl border border-border bg-card p-4 shadow-2xl sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-sm">
+    <div className="fixed z-[9999] mx-auto max-w-md rounded-xl border border-border bg-card p-4 shadow-2xl sm:left-auto sm:right-6 sm:max-w-sm" style={{ bottom: 'max(env(safe-area-inset-bottom, 16px), 16px)', left: 'max(env(safe-area-inset-left, 16px), 16px)', right: 'max(env(safe-area-inset-right, 16px), 16px)' }}>
       <p className="text-sm font-medium text-foreground">
         È disponibile una nuova versione di Sottra
       </p>
