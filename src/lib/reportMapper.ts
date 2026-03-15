@@ -484,8 +484,9 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
       data.giudizioSintetico = field(
         summaryParts.join(" "),
         "Quadro sintetico",
-        "market_data",
+        "territorial_verified",
         convergenza.coverageLevel === "scarsa" ? "partial" : "available",
+        "Sintesi basata su convergenza territoriale, servizi, rischio e scenario",
       );
     }
   }
