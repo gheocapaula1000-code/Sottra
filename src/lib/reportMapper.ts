@@ -42,6 +42,38 @@ function sectionData<T>(result: ScanResult, key: keyof ScanResult): T | null {
   return s.data as T;
 }
 
+/* ── Geographic resolution helper ─────────────────────── */
+
+/**
+ * Determines the best geographic resolution from available data sources.
+ * Priority: OMI polygon match > POI (local radius) > coordinate-based > comune fallback.
+ */
+export function resolveGeoContext(result: ScanResult): GeoContext {
+  const omi = sectionData<OmiZoneData>(result, "omiZone");
+  const istat = sectionData<IstatDemographicData>(result, "istatDemographic");
+  const trendDemo = sectionData<import("@/types").TrendDemograficoData>(result, "trendDemografico");
+
+  // Best case: OMI polygon match = microzone-level
+  if (omi?.polygonMatch && omi?.zonaOmiLabel) {
+    return { geoLevel: "microzona_omi", geoLabel: `Zona OMI ${omi.zonaOmiLabel}` };
+  }
+
+  // TrendDemografico may carry its own geoLevel from the backend
+  if (trendDemo?.geoLevel && trendDemo.geoLevel !== "comune" && trendDemo.geoLevel !== "stimato") {
+    return { geoLevel: trendDemo.geoLevel as ReportGeoLevel, geoLabel: trendDemo.geoLabel ?? undefined };
+  }
+
+  // Fallback: if we only have ISTAT or OMI without polygon match → comunale
+  if (istat?.comuneLabel) {
+    return { geoLevel: "comune", geoLabel: `Comune di ${istat.comuneLabel}` };
+  }
+  if (omi?.comuneLabel) {
+    return { geoLevel: "comune", geoLabel: `Comune di ${omi.comuneLabel}` };
+  }
+
+  return { geoLevel: "non_determinato" };
+}
+
 /* ── Coverage helper (centralized) ───────────────────────── */
 
 const COVERAGE_MODULES: (keyof ScanResult)[] = [
