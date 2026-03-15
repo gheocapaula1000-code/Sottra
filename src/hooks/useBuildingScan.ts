@@ -31,7 +31,8 @@ type Action =
   | { type: "START_SCAN" }
   | { type: "RESET_IDLE" }
   | { type: "RESTORE"; payload: Partial<ScanResult> }
-  | { type: "SET"; key: keyof ScanResult; value: SectionState };
+  | { type: "SET"; key: keyof ScanResult; value: SectionState }
+  | { type: "MAP_REPORT"; lat: number | null; lng: number | null };
 
 function reducer(state: ScanResult, action: Action): ScanResult {
   switch (action.type) {
