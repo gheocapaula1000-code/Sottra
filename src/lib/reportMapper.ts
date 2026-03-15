@@ -676,10 +676,12 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
     if (summaryParts.length > 0) {
       data.giudizioSintetico = field(
         summaryParts.join(" "),
-        "Quadro sintetico",
+        isMunicipal ? "Quadro indicativo (livello comunale)" : "Quadro sintetico",
         "territorial_verified",
-        convergenza.coverageLevel === "scarsa" ? "partial" : "available",
-        "Sintesi basata su convergenza territoriale, servizi, rischio e scenario",
+        (convergenza.coverageLevel === "scarsa" || isMunicipal) ? "partial" : "available",
+        isMunicipal
+          ? "Sintesi basata su dati prevalentemente comunali — alcuni indicatori non sono specifici della zona"
+          : "Sintesi basata su convergenza territoriale, servizi, rischio e scenario",
       );
     }
   }
