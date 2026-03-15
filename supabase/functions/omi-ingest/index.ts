@@ -254,10 +254,15 @@ function parseZoneRows(
       const zona = idx.zona >= 0 ? (vals[idx.zona] || "") : "";
       if (!zona) { skipped++; continue; }
 
+      // CRITICAL: Comune_amm = real Belfiore catastale code, Comune_cat = OMI internal
+      const comuneAmm = idx.comuneAmm >= 0 ? (vals[idx.comuneAmm] || "") : "";
+      const belfioreCode = comuneAmm || codCat;
+      const comuneDescr = idx.comuneDescr >= 0 ? (vals[idx.comuneDescr] || "") : "";
+
       rows.push({
-        codice_comune_catastale: codCat,
+        codice_comune_catastale: belfioreCode,
         codice_comune_istat: codIstat,
-        comune_label: idx.comuneAmm >= 0 ? (vals[idx.comuneAmm] || "") : "",
+        comune_label: comuneDescr, // Use Comune_descr for human-readable name
         provincia: idx.prov >= 0 ? (vals[idx.prov] || "") : "",
         fascia: idx.fascia >= 0 ? (vals[idx.fascia] || "") : "",
         zona_omi: zona,
