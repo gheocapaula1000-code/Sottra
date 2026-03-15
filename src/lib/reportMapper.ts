@@ -47,36 +47,100 @@ function sectionData<T>(result: ScanResult, key: keyof ScanResult): T | null {
   return s.data as T;
 }
 
-/* ── Geographic resolution helper ─────────────────────── */
+/* ── Geographic resolution via source resolver ───────── */
+
+const isDev = import.meta.env.DEV;
+function devLog(...args: unknown[]) { if (isDev) console.log("[REPORT_MAPPER]", ...args); }
 
 /**
- * Determines the best geographic resolution from available data sources.
- * Priority: OMI polygon match > POI (local radius) > coordinate-based > comune fallback.
+ * Determines the best geographic resolution using the source resolver pipeline.
+ * Builds geo candidates from OMI, ISTAT, trendDemografico and resolves
+ * the best one via `resolveBestSource`.
  */
 export function resolveGeoContext(result: ScanResult): GeoContext {
   const omi = sectionData<OmiZoneData>(result, "omiZone");
   const istat = sectionData<IstatDemographicData>(result, "istatDemographic");
   const trendDemo = sectionData<import("@/types").TrendDemograficoData>(result, "trendDemografico");
 
-  // Best case: OMI polygon match = microzone-level
-  if (omi?.polygonMatch && omi?.zonaOmiLabel) {
-    return { geoLevel: "microzona_omi", geoLabel: `Zona OMI ${omi.zonaOmiLabel}` };
+  // Build candidates for geo resolution
+  const candidates: SourceCandidate<{ label: string }>[] = [];
+
+  // OMI polygon match = microzone-level (official)
+  if (omi?.zonaOmiLabel) {
+    candidates.push({
+      data: { label: `Zona OMI ${omi.zonaOmiLabel}` },
+      tier: "ufficiale",
+      geoLevel: omi.polygonMatch ? "microzona_omi" : "comune",
+      geoLabel: omi.polygonMatch ? `Zona OMI ${omi.zonaOmiLabel}` : (omi.comuneLabel ? `Comune di ${omi.comuneLabel}` : undefined),
+      provider: "omi",
+      isOfficial: true,
+      confidence: omi.polygonMatch ? 0.95 : 0.5,
+    });
   }
 
   // TrendDemografico may carry its own geoLevel from the backend
-  if (trendDemo?.geoLevel && trendDemo.geoLevel !== "comune" && trendDemo.geoLevel !== "stimato") {
-    return { geoLevel: trendDemo.geoLevel as ReportGeoLevel, geoLabel: trendDemo.geoLabel ?? undefined };
+  if (trendDemo?.geoLevel && trendDemo.geoLevel !== "stimato") {
+    const mappedGeo: ReportGeoLevel =
+      trendDemo.geoLevel === "microzona" ? "microzona_omi" :
+      trendDemo.geoLevel === "quartiere" ? "quartiere" :
+      trendDemo.geoLevel === "zona" ? "zona_specifica" :
+      "comune";
+    candidates.push({
+      data: { label: trendDemo.geoLabel ?? "Trend demografico" },
+      tier: "dato_elaborato",
+      geoLevel: mappedGeo,
+      geoLabel: trendDemo.geoLabel ?? undefined,
+      provider: "trend_demografico",
+      isOfficial: false,
+      confidence: 0.6,
+    });
   }
 
-  // Fallback: if we only have ISTAT or OMI without polygon match → comunale
+  // ISTAT = always municipal
   if (istat?.comuneLabel) {
-    return { geoLevel: "comune", geoLabel: `Comune di ${istat.comuneLabel}` };
-  }
-  if (omi?.comuneLabel) {
-    return { geoLevel: "comune", geoLabel: `Comune di ${omi.comuneLabel}` };
+    candidates.push({
+      data: { label: `Comune di ${istat.comuneLabel}` },
+      tier: "ufficiale",
+      geoLevel: "comune",
+      geoLabel: `Comune di ${istat.comuneLabel}`,
+      provider: "istat",
+      isOfficial: true,
+      confidence: 0.9,
+    });
   }
 
-  return { geoLevel: "non_determinato" };
+  // OMI without polygon match, just label as comunale fallback
+  if (omi?.comuneLabel && !omi.polygonMatch && !omi.zonaOmiLabel) {
+    candidates.push({
+      data: { label: `Comune di ${omi.comuneLabel}` },
+      tier: "ufficiale",
+      geoLevel: "comune",
+      geoLabel: `Comune di ${omi.comuneLabel}`,
+      provider: "omi_comune",
+      isOfficial: true,
+      confidence: 0.7,
+    });
+  }
+
+  if (candidates.length === 0) {
+    return { geoLevel: "non_determinato" };
+  }
+
+  const resolved = resolveBestSource(candidates);
+
+  if (isDev && resolved.resolutionTrace.length > 0) {
+    devLog("Geo resolution trace:\n" + formatResolutionTrace(resolved.resolutionTrace));
+    devLog("Geo result:", resolutionSummary(resolved));
+  }
+
+  if (resolved.tier === "unavailable" || !resolved.data) {
+    return { geoLevel: "non_determinato" };
+  }
+
+  return {
+    geoLevel: resolved.geoLevel,
+    geoLabel: resolved.geoLabel ?? resolved.data.label,
+  };
 }
 
 /* ── Coverage helper (centralized) ───────────────────────── */
