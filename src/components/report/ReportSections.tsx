@@ -6,6 +6,7 @@
  */
 
 import { cn } from "@/lib/utils";
+import { safeText } from "@/lib/safeRender";
 import {
   Building2, Store, Map, Clock, FileText,
   CheckCircle2, TrendingUp, ShieldCheck, TriangleAlert,
