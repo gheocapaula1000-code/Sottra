@@ -53,6 +53,18 @@ function reducer(state: ScanResult, action: Action): ScanResult {
     }
     case "SET":
       return { ...state, [action.key]: action.value } as ScanResult;
+    case "MAP_REPORT": {
+      const mapped = mapScanToReportSections(state, action.lat, action.lng);
+      const updates: Partial<Record<keyof ScanResult, SectionState>> = {};
+      for (const [key, data] of Object.entries(mapped)) {
+        updates[key as keyof ScanResult] = {
+          status: data ? "success" : "idle",
+          data,
+          message: null,
+        };
+      }
+      return { ...state, ...updates } as ScanResult;
+    }
     default:
       return state;
   }
