@@ -328,7 +328,7 @@ export function ScenarioTemporaleCard({ data, loading }: { data: ScenarioTempora
                 {risks.map((r, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
-                    <p className="text-xs text-foreground leading-relaxed">{r}</p>
+                    <p className="text-xs text-foreground leading-relaxed">{safeText(r)}</p>
                   </div>
                 ))}
               </div>
