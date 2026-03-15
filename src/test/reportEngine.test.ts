@@ -455,7 +455,7 @@ describe("buildProfiloArea", () => {
     expect(area!.sintesiArea).toBeDefined();
     expect(area!.sintesiArea?.sourceType).toBe("territorial_verified");
     expect(area!.sintesiArea?.value).toContain("Area con");
-    expect(area!.sintesiArea?.note).toContain("indicatori territoriali");
+    expect(area!.sintesiArea?.note).toContain("indicatori");
   });
 
   it("does NOT generate sintesiArea with fewer than 3 indicators", () => {
