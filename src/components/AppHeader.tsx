@@ -34,8 +34,8 @@ function CenterLogo() {
  */
 export default function AppHeader({ rightContent, linkTo = "/app", className }: AppHeaderProps) {
   return (
-    <header className={cn("sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md", className)}>
-      <div className="relative mx-auto grid h-16 sm:h-[72px] max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
+    <header className={cn("sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md", className)} style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <div className="relative mx-auto grid h-16 sm:h-[72px] max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6" style={{ paddingLeft: 'max(env(safe-area-inset-left, 0px), 16px)', paddingRight: 'max(env(safe-area-inset-right, 0px), 16px)' }}>
         {/* Left — text only */}
         <SottraMark size="md" textOnly linkTo={linkTo} className="shrink-0 justify-self-start" />
 
