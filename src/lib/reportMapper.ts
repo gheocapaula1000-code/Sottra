@@ -41,6 +41,22 @@ function sectionData<T>(result: ScanResult, key: keyof ScanResult): T | null {
   return s.data as T;
 }
 
+/* ── Coverage helper (centralized) ───────────────────────── */
+
+const COVERAGE_MODULES: (keyof ScanResult)[] = [
+  "pricing", "omiZone", "poiEnrichment", "rischioZona",
+  "timeView", "convergenzaTerritoriale", "opportunity",
+];
+
+export function computeModuleCoverage(result: ScanResult): { available: number; total: number; pct: number } {
+  const total = COVERAGE_MODULES.length;
+  const available = COVERAGE_MODULES.filter(k => {
+    const s = result[k];
+    return s.status === "success" && s.data != null;
+  }).length;
+  return { available, total, pct: Math.round((available / total) * 100) };
+}
+
 /* ── A) Profilo Rapido ───────────────────────────────────── */
 
 export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: number | null): ProfiloRapidoData | null {

@@ -864,8 +864,8 @@ describe("Phase 2.1 semantic corrections", () => {
       },
     });
     const facade = buildImmobileFacciata(result);
-    expect(facade!.qualitaEsteticaGenerale?.value).toContain("nella media");
-    expect(facade!.qualitaEsteticaGenerale?.availabilityStatus).toBe("partial");
+    expect(facade!.leggibilitaImmagine?.value).toContain("nella media");
+    expect(facade!.leggibilitaImmagine?.availabilityStatus).toBe("partial");
   });
 
   it("facadeConsistencyLevel='none' is excluded from rendering", () => {
