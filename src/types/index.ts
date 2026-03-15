@@ -303,6 +303,12 @@ export interface OmiZoneData extends SourceMetadata {
   tipologia?: string | null;
   statoConservazione?: string | null;
   polygonMatch?: boolean;
+  /** Explicit geo level from Central Core */
+  omiGeoLevel?: "microzona_omi" | "zona_specifica" | "quartiere" | "comune" | "non_determinato";
+  /** Match method (e.g. "polygon", "catastale_fallback", "ai_estimate") */
+  matchMethod?: string;
+  /** Match confidence [0-1] */
+  matchConfidence?: number;
 }
 
 /** ISTAT enhanced demographic data */
