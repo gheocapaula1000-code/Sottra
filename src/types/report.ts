@@ -104,6 +104,16 @@ export interface PosizionamentoCommercialeData extends SourceMetadata {
   noteCommercialiSintetiche?: ReportField<string>;
 }
 
+/* ── Geo-level metadata for territorial sections ───────── */
+
+export type ReportGeoLevel =
+  | "microzona_omi" | "zona_specifica" | "quartiere" | "comune" | "non_determinato";
+
+export interface GeoContext {
+  geoLevel: ReportGeoLevel;
+  geoLabel?: string;
+}
+
 /* ── Section H: Profilo Area ────────────────────────────── */
 
 export interface ProfiloAreaData extends SourceMetadata {
@@ -115,6 +125,8 @@ export interface ProfiloAreaData extends SourceMetadata {
   qualitaAmbientale?: ReportField<string>;
   sintesiArea?: ReportField<string>;
   noteArea?: ReportField<string>;
+  /** Geographic resolution of the data used in this section */
+  geo?: GeoContext;
 }
 
 /* ── Section I: Scenario 5/10/20 anni ───────────────────── */
