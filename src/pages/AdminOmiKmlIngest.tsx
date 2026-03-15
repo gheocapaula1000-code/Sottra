@@ -92,37 +92,40 @@ export default function AdminOmiKmlIngest() {
     async (files: File[], startIndex: number, batchId: string, priorResults: FileResult[]) => {
       abortRef.current = false;
 
-      const state: ImportState = {
-        batchId,
-        totalFiles: priorResults.length + files.length,
-        completedFiles: [...priorResults],
-        currentIndex: startIndex,
-        running: true,
-        paused: false,
-        finished: false,
+      // Use a mutable array for completed files to avoid O(n²) spreads
+      const completed: FileResult[] = [...priorResults];
+      const totalFiles = priorResults.length + files.length;
+
+      const emitState = (overrides: Partial<ImportState> = {}) => {
+        setImportState({
+          batchId,
+          totalFiles,
+          completedFiles: completed,
+          currentIndex: startIndex,
+          running: true,
+          paused: false,
+          finished: false,
+          ...overrides,
+        });
       };
-      setImportState({ ...state });
+
+      emitState();
 
       for (let i = 0; i < files.length; i++) {
         if (abortRef.current) {
-          state.paused = true;
-          state.running = false;
-          setImportState({ ...state });
-          // Save remaining files for resume
+          emitState({ running: false, paused: true });
           const remaining = files.slice(i).map((f) => f.name);
-          saveImportState(state, remaining);
+          saveImportState({ batchId, totalFiles, completedFiles: completed, currentIndex: startIndex + i, running: false, paused: true, finished: false }, remaining);
           return;
         }
 
         const file = files[i];
-        state.currentIndex = startIndex + i;
+        const currentIndex = startIndex + i;
 
-        // Mark uploading
-        const uploading: FileResult = { fileName: file.name, status: "uploading" };
-        setImportState({
-          ...state,
-          completedFiles: [...state.completedFiles, uploading],
-        });
+        // Mark uploading — push in place
+        const uploadingEntry: FileResult = { fileName: file.name, status: "uploading" };
+        completed.push(uploadingEntry);
+        emitState({ currentIndex });
 
         let result: FileResult;
         try {
@@ -158,21 +161,22 @@ export default function AdminOmiKmlIngest() {
           };
         }
 
-        // Replace uploading entry with result
-        state.completedFiles = [
-          ...state.completedFiles.filter((f) => f.fileName !== file.name),
-          result,
-        ];
-        setImportState({ ...state });
+        // Replace uploading entry in place (it's always the last element)
+        const uploadIdx = completed.lastIndexOf(uploadingEntry);
+        if (uploadIdx !== -1) completed[uploadIdx] = result;
+        else completed.push(result);
 
-        // Save checkpoint for resume
-        const remaining = files.slice(i + 1).map((f) => f.name);
-        saveImportState(state, remaining);
+        // Emit new reference so React re-renders
+        emitState({ currentIndex, completedFiles: [...completed] });
+
+        // Save checkpoint every 10 files to reduce sessionStorage writes
+        if (i % 10 === 0 || i === files.length - 1) {
+          const remaining = files.slice(i + 1).map((f) => f.name);
+          saveImportState({ batchId, totalFiles, completedFiles: completed, currentIndex, running: true, paused: false, finished: false }, remaining);
+        }
       }
 
-      state.running = false;
-      state.finished = true;
-      setImportState({ ...state });
+      emitState({ running: false, finished: true, completedFiles: [...completed] });
       clearImportState();
     },
     []
@@ -406,24 +410,35 @@ export default function AdminOmiKmlIngest() {
           </Card>
         )}
 
-        {/* ─── File Log ─── */}
-        {importState && importState.completedFiles.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                Log file ({importState.completedFiles.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="max-h-80 overflow-y-auto space-y-1">
-                {importState.completedFiles.map((f, i) => (
-                  <FileLogRow key={`${f.fileName}-${i}`} result={f} />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* ─── File Log (virtualized: only last 50 rendered) ─── */}
+        {importState && importState.completedFiles.length > 0 && (() => {
+          const MAX_VISIBLE = 50;
+          const allFiles = importState.completedFiles;
+          const hiddenCount = Math.max(0, allFiles.length - MAX_VISIBLE);
+          const visibleFiles = hiddenCount > 0 ? allFiles.slice(-MAX_VISIBLE) : allFiles;
+          return (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  Log file ({allFiles.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="max-h-80 overflow-y-auto space-y-1">
+                  {hiddenCount > 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-1 border-b border-border/50">
+                      … {hiddenCount} file precedenti nascosti …
+                    </p>
+                  )}
+                  {visibleFiles.map((f, i) => (
+                    <FileLogRow key={`${f.fileName}-${hiddenCount + i}`} result={f} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </main>
     </div>
   );
