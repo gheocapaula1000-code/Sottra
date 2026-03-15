@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, Component, type ReactNode, type ErrorInfo } from "react";
 import AppHeader from "@/components/AppHeader";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Bookmark, TrendingUp, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers, Camera, CheckCircle2, BarChart3, Gem } from "lucide-react";
@@ -30,20 +30,31 @@ import {
 } from "@/components/report/ReportSections";
 import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/types/report";
 
+/* ── Section-level ErrorBoundary ──────────────────────── */
+
+class SectionSafe extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    if (import.meta.env.DEV) console.warn("[SectionSafe] caught:", error, info);
+  }
+  render() {
+    if (this.state.hasError) return null; // silently hide broken section
+    return this.props.children;
+  }
+}
+
 /* ── helpers ─────────────────────────────────────────── */
 
+import { safeText } from "@/lib/safeRender";
+
 function toText(v: unknown): string {
-  if (v == null) return "";
-  if (typeof v === "string") return v;
-  if (typeof v === "number") return String(v);
-  if (typeof v === "object") {
-    const obj = v as Record<string, unknown>;
-    for (const k of ["label", "message", "text", "title", "name"]) {
-      if (typeof obj[k] === "string") return obj[k] as string;
-    }
-    return "";
-  }
-  return String(v);
+  return safeText(v, "");
 }
 
 function fmt(n: number | null | undefined): string {
@@ -1180,56 +1191,56 @@ const Result = () => {
 
           {!lowConfidence && !identifyFailed && (
             <>
-              {/* A) Profilo Rapido — from image analysis (Phase 1 framework) */}
-              <ProfiloRapidoCard data={result.profiloRapido.data as import("@/types/report").ProfiloRapidoData | null} loading={result.profiloRapido.status === "loading"} />
+              {/* A) Profilo Rapido */}
+              <SectionSafe><ProfiloRapidoCard data={result.profiloRapido.data as import("@/types/report").ProfiloRapidoData | null} loading={result.profiloRapido.status === "loading"} /></SectionSafe>
 
-              {/* B) Immobile e Facciata — visual analysis (Phase 1 framework) */}
-              <ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} />
+              {/* B) Immobile e Facciata */}
+              <SectionSafe><ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} /></SectionSafe>
 
-              {/* C) Contesto e Vicinato — visual + territorial (Phase 1 framework) */}
-              <ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} />
+              {/* C) Contesto e Vicinato */}
+              <SectionSafe><ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} /></SectionSafe>
 
-              {/* D) Zona OMI e valori ufficiali — FROZEN, do not modify */}
-              <OmiCard data={result.omiZone.data as import("@/types").OmiZoneData | null} loading={result.omiZone.status === "loading"} />
+              {/* D) Zona OMI — FROZEN */}
+              <SectionSafe><OmiCard data={result.omiZone.data as import("@/types").OmiZoneData | null} loading={result.omiZone.status === "loading"} /></SectionSafe>
 
-              {/* E) Servizi e accessibilità */}
-              <PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} />
+              {/* E) Servizi e POI */}
+              <SectionSafe><PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} /></SectionSafe>
 
               {/* F) Mercato live */}
-              <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} />
-              <MarketContextCard data={result.marketContext.data as MarketContextData | null} loading={result.marketContext.status === "loading"} />
+              <SectionSafe><PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} /></SectionSafe>
+              <SectionSafe><MarketContextCard data={result.marketContext.data as MarketContextData | null} loading={result.marketContext.status === "loading"} /></SectionSafe>
 
-              {/* G) Posizionamento commerciale (Phase 1 framework) */}
-              <PosizionamentoCommercialeCard data={result.posizionamentoCommerciale.data as import("@/types/report").PosizionamentoCommercialeData | null} loading={result.posizionamentoCommerciale.status === "loading"} />
+              {/* G) Posizionamento commerciale */}
+              <SectionSafe><PosizionamentoCommercialeCard data={result.posizionamentoCommerciale.data as import("@/types/report").PosizionamentoCommercialeData | null} loading={result.posizionamentoCommerciale.status === "loading"} /></SectionSafe>
 
               {/* H) Profilo Area */}
-              <ProfiloAreaCard data={result.profiloArea.data as import("@/types/report").ProfiloAreaData | null} loading={result.profiloArea.status === "loading"} />
+              <SectionSafe><ProfiloAreaCard data={result.profiloArea.data as import("@/types/report").ProfiloAreaData | null} loading={result.profiloArea.status === "loading"} /></SectionSafe>
 
-              {/* Existing territorial modules */}
-              <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} />
-              <IstatCard data={result.istatDemographic.data as import("@/types").IstatDemographicData | null} loading={result.istatDemographic.status === "loading"} />
-              <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} />
+              {/* Territorial modules */}
+              <SectionSafe><RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} /></SectionSafe>
+              <SectionSafe><IstatCard data={result.istatDemographic.data as import("@/types").IstatDemographicData | null} loading={result.istatDemographic.status === "loading"} /></SectionSafe>
+              <SectionSafe><TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} /></SectionSafe>
 
-              {/* Tier 2 — synthetic indices & elaborated insights */}
-              <ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} />
-              <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} />
+              {/* Tier 2 */}
+              <SectionSafe><ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} /></SectionSafe>
+              <SectionSafe><OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} /></SectionSafe>
 
-              {/* I) Scenario 5/10/20 anni (Phase 1 framework) */}
-              <ScenarioTemporaleCard data={result.scenarioTemporale.data as import("@/types/report").ScenarioTemporaleData | null} loading={result.scenarioTemporale.status === "loading"} />
+              {/* I) Scenario 5/10/20 anni */}
+              <SectionSafe><ScenarioTemporaleCard data={result.scenarioTemporale.data as import("@/types/report").ScenarioTemporaleData | null} loading={result.scenarioTemporale.status === "loading"} /></SectionSafe>
 
-              {/* Existing time/infra modules */}
-              <TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} />
-              <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} />
-              <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} />
+              {/* Time/infra modules */}
+              <SectionSafe><TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} /></SectionSafe>
+              <SectionSafe><InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} /></SectionSafe>
+              <SectionSafe><SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} /></SectionSafe>
 
-              {/* J) Sintesi Finale (Phase 3 — executive summary) */}
-              <SintesiFinaleCard data={result.sintesiFinale.data as import("@/types/report").SintesiFinaleData | null} loading={result.sintesiFinale.status === "loading"} />
+              {/* J) Sintesi Finale */}
+              <SectionSafe><SintesiFinaleCard data={result.sintesiFinale.data as import("@/types/report").SintesiFinaleData | null} loading={result.sintesiFinale.status === "loading"} /></SectionSafe>
 
-              {/* L) Priorità / Criticità (Phase 3 — optional) */}
-              <PrioritaCriticitaCard data={result.prioritaCriticita.data as PrioritaCriticitaData | null} loading={result.prioritaCriticita.status === "loading"} />
+              {/* L) Priorità / Criticità */}
+              <SectionSafe><PrioritaCriticitaCard data={result.prioritaCriticita.data as PrioritaCriticitaData | null} loading={result.prioritaCriticita.status === "loading"} /></SectionSafe>
 
-              {/* K) Trasparenza Fonti — built dynamically from available data */}
-              {!scanning && <TrasparenzaFontiCard data={buildTrasparenzaFonti(result)} />}
+              {/* K) Trasparenza Fonti */}
+              {!scanning && <SectionSafe><TrasparenzaFontiCard data={buildTrasparenzaFonti(result)} /></SectionSafe>}
 
               {/* Discrete quality footer */}
               {!scanning && <ReportFooter excludedCount={excludedCount} totalPublished={publishedCount} />}

@@ -6,6 +6,7 @@
  */
 
 import { cn } from "@/lib/utils";
+import { safeText } from "@/lib/safeRender";
 import {
   Building2, Store, Map, Clock, FileText,
   CheckCircle2, TrendingUp, ShieldCheck, TriangleAlert,
@@ -112,7 +113,7 @@ export function ImmobileFacciataCard({ data, loading }: { data: ImmobileFacciata
       />
       {data.noteVisive?.value && (data.noteVisive.availabilityStatus === "available" || data.noteVisive.availabilityStatus === "partial") && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mt-3">
-          <p className="text-xs text-foreground/80 leading-relaxed">{data.noteVisive.value}</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">{safeText(data.noteVisive.value)}</p>
           <SourceMicroBadge sourceType={data.noteVisive.sourceType} className="mt-1" />
         </div>
       )}
@@ -219,7 +220,7 @@ export function PosizionamentoCommercialeCard({ data, loading }: { data: Posizio
 
       {data.noteCommercialiSintetiche?.value && (data.noteCommercialiSintetiche.availabilityStatus === "available" || data.noteCommercialiSintetiche.availabilityStatus === "partial") && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mt-3">
-          <p className="text-xs text-foreground/80 leading-relaxed">{data.noteCommercialiSintetiche.value}</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">{safeText(data.noteCommercialiSintetiche.value)}</p>
           <SourceMicroBadge sourceType={data.noteCommercialiSintetiche.sourceType} className="mt-1" />
         </div>
       )}
@@ -240,7 +241,7 @@ export function ProfiloAreaCard({ data, loading }: { data: ProfiloAreaData | nul
       {/* Synthesis block at top if available */}
       {data.sintesiArea?.value && (data.sintesiArea.availabilityStatus === "available" || data.sintesiArea.availabilityStatus === "partial") && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2.5 mb-4">
-          <p className="text-sm text-foreground leading-relaxed">{data.sintesiArea.value}</p>
+          <p className="text-sm text-foreground leading-relaxed">{safeText(data.sintesiArea.value)}</p>
           <div className="flex items-center gap-2 mt-1.5">
             <SourceMicroBadge sourceType={data.sintesiArea.sourceType} />
             {data.sintesiArea.note && (
@@ -316,7 +317,7 @@ export function ScenarioTemporaleCard({ data, loading }: { data: ScenarioTempora
                 {drivers.map((d, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" />
-                    <p className="text-xs text-foreground leading-relaxed">{d}</p>
+                    <p className="text-xs text-foreground leading-relaxed">{safeText(d)}</p>
                   </div>
                 ))}
               </div>
@@ -327,7 +328,7 @@ export function ScenarioTemporaleCard({ data, loading }: { data: ScenarioTempora
                 {risks.map((r, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
-                    <p className="text-xs text-foreground leading-relaxed">{r}</p>
+                    <p className="text-xs text-foreground leading-relaxed">{safeText(r)}</p>
                   </div>
                 ))}
               </div>
@@ -361,7 +362,7 @@ export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData |
       {/* Executive summary */}
       {data.giudizioSintetico?.value && (data.giudizioSintetico.availabilityStatus === "available" || data.giudizioSintetico.availabilityStatus === "partial") && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2.5 mb-4">
-          <p className="text-sm text-foreground leading-relaxed">{data.giudizioSintetico.value}</p>
+          <p className="text-sm text-foreground leading-relaxed">{safeText(data.giudizioSintetico.value)}</p>
           {data.giudizioSintetico.availabilityStatus === "partial" && (
             <p className="text-[9px] text-muted-foreground/50 mt-1">Quadro basato su dati parziali</p>
           )}
@@ -375,7 +376,7 @@ export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData |
             {forza.map((f, i) => (
               <div key={i} className="flex items-start gap-2">
                 <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" />
-                <p className="text-xs text-foreground leading-relaxed">{f}</p>
+                <p className="text-xs text-foreground leading-relaxed">{safeText(f)}</p>
               </div>
             ))}
           </div>
@@ -386,7 +387,7 @@ export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData |
             {attenzione.map((a, i) => (
               <div key={i} className="flex items-start gap-2">
                 <TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
-                <p className="text-xs text-foreground leading-relaxed">{a}</p>
+                <p className="text-xs text-foreground leading-relaxed">{safeText(a)}</p>
               </div>
             ))}
           </div>
@@ -397,13 +398,13 @@ export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData |
       {data.raccomandazione?.value && data.raccomandazione.availabilityStatus === "available" && (
         <div className="rounded-lg bg-muted/30 border border-border/30 px-3 py-2 mt-3">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Osservazione conclusiva</p>
-          <p className="text-xs text-foreground/80 leading-relaxed">{data.raccomandazione.value}</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">{safeText(data.raccomandazione.value)}</p>
         </div>
       )}
 
       {/* Coverage analysis */}
       {data.coperturaAnalisi?.value && (
-        <p className="text-[9px] text-muted-foreground/40 mt-3">{data.coperturaAnalisi.value}</p>
+        <p className="text-[9px] text-muted-foreground/40 mt-3">{safeText(data.coperturaAnalisi.value)}</p>
       )}
 
       <p className="text-[9px] text-muted-foreground/30 mt-2">
@@ -438,7 +439,7 @@ export function PrioritaCriticitaCard({ data, loading }: { data: PrioritaCritici
             <div key={i} className="flex items-start gap-2.5 rounded-lg bg-background/40 border border-border/20 px-3 py-2">
               <Icon className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", config.color)} />
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-foreground leading-relaxed">{item.testo}</p>
+                <p className="text-xs text-foreground leading-relaxed">{safeText(item.testo)}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className={cn("text-[9px] font-medium", config.color)}>{config.label}</span>
                   <SourceMicroBadge sourceType={item.sourceType} />

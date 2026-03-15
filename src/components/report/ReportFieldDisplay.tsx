@@ -53,11 +53,14 @@ interface FieldTileProps {
   showSource?: boolean;
 }
 
+import { safeText } from "@/lib/safeRender";
+
 function defaultFormat(value: unknown): string {
   if (value == null) return "—";
   if (typeof value === "boolean") return value ? "Sì" : "No";
   if (typeof value === "number") return value.toLocaleString("it-IT");
-  if (Array.isArray(value)) return value.join(", ");
+  if (Array.isArray(value)) return value.map((v) => safeText(v, "—")).join(", ");
+  if (typeof value === "object") return safeText(value, "—");
   return String(value);
 }
 
