@@ -160,11 +160,11 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
   const hasEducation = categories.some(c => c.category === "education");
   const hasParks = categories.some(c => c.category === "parks");
 
-  // presenzaServiziVisibili — derived from POI count
+  // presenzaServiziRilevati — derived from POI count (territorial, not visual)
   if (poi.totalPois > 0) {
-    data.presenzaServiziVisibili = field(
+    data.presenzaServiziRilevati = field(
       hasManyServices,
-      "Presenza servizi",
+      "Presenza servizi nell'area",
       "territorial_verified",
       "available",
     );
