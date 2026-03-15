@@ -83,7 +83,6 @@ export default function Diagnostics() {
             </Button>
           </Alert>
         )}
-        )}
 
         {data && (
           <>
