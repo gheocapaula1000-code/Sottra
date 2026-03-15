@@ -227,11 +227,54 @@ describe("buildProfiloRapido", () => {
 });
 
 describe("buildImmobileFacciata", () => {
-  it("returns null — no visual analysis data currently available", () => {
+  it("returns null without streetEvidence", () => {
     const result = baseScanResult({
       identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
     });
     expect(buildImmobileFacciata(result)).toBeNull();
+  });
+
+  it("populates partial section from streetEvidence/photoAnalysis", () => {
+    const result = baseScanResult({
+      identify: {
+        status: "success",
+        data: {
+          address: "Via Roma 1", buildingId: "X", confidence: 0.9,
+          streetEvidence: {
+            facadeConsistencyLevel: "media",
+            photoAnalysis: { buildingType: "Condominio", visibleFloors: 5, photoReadability: "media" },
+          },
+        },
+        message: null,
+      },
+    });
+    const facade = buildImmobileFacciata(result);
+    expect(facade).not.toBeNull();
+    expect(facade!.tipologiaFacciata?.value).toBe("Condominio");
+    expect(facade!.tipologiaFacciata?.sourceType).toBe("image_detected");
+    expect(facade!.statoConservazioneFacciata?.sourceType).toBe("visual_estimate");
+    expect(facade!.statoConservazioneFacciata?.availabilityStatus).toBe("partial");
+    expect(facade!.noteVisive?.value).toContain("5 piani");
+    expect(facade!.qualitaEsteticaGenerale?.availabilityStatus).toBe("partial");
+  });
+
+  it("does not invent fields not present in streetEvidence", () => {
+    const result = baseScanResult({
+      identify: {
+        status: "success",
+        data: {
+          address: "Via Roma 1", buildingId: "X", confidence: 0.9,
+          streetEvidence: { facadeConsistencyLevel: "alta" },
+        },
+        message: null,
+      },
+    });
+    const facade = buildImmobileFacciata(result);
+    expect(facade).not.toBeNull();
+    expect(facade!.tipologiaFacciata).toBeUndefined();
+    expect(facade!.materialePrevalente).toBeUndefined();
+    expect(facade!.presenzaBalconi).toBeUndefined();
+    expect(facade!.presenzaAscensore).toBeUndefined();
   });
 });
 
@@ -241,7 +284,7 @@ describe("buildContestoVicinato", () => {
     expect(buildContestoVicinato(result)).toBeNull();
   });
 
-  it("populates from POI categories", () => {
+  it("populates from POI categories with territorial naming", () => {
     const result = baseScanResult({
       poiEnrichment: {
         status: "success",
@@ -261,13 +304,18 @@ describe("buildContestoVicinato", () => {
     });
     const ctx = buildContestoVicinato(result);
     expect(ctx).not.toBeNull();
-    expect(ctx!.presenzaServiziVisibili?.value).toBe(true);
-    expect(ctx!.presenzaServiziVisibili?.sourceType).toBe("territorial_verified");
-    expect(ctx!.elencoServiziVisibili?.value).toHaveLength(4);
-    expect(ctx!.attrattivitaVisivaMicrocontesto?.value).toBe("Area ben servita");
+    expect(ctx!.presenzaServiziRilevati?.value).toBe(true);
+    expect(ctx!.presenzaServiziRilevati?.sourceType).toBe("territorial_verified");
+    expect(ctx!.elencoServiziRilevati?.value).toHaveLength(4);
+    expect(ctx!.livelloServiziArea?.value).toBe("Area ben servita");
+    // No visual-sounding field names
+    expect((ctx as any).presenzaServiziVisibili).toBeUndefined();
+    expect((ctx as any).elencoServiziVisibili).toBeUndefined();
+    expect((ctx as any).attrattivitaVisivaMicrocontesto).toBeUndefined();
+    expect((ctx as any).qualitaVisivaContesto).toBeUndefined();
   });
 
-  it("does not show attrattivita without transport+shopping+primary", () => {
+  it("does not show livelloServiziArea without transport+shopping+primary", () => {
     const result = baseScanResult({
       poiEnrichment: {
         status: "success",
@@ -281,7 +329,7 @@ describe("buildContestoVicinato", () => {
       },
     });
     const ctx = buildContestoVicinato(result);
-    expect(ctx?.attrattivitaVisivaMicrocontesto).toBeUndefined();
+    expect(ctx?.livelloServiziArea).toBeUndefined();
   });
 });
 
