@@ -361,17 +361,18 @@ export function buildPosizionamentoCommerciale(result: ScanResult): Posizionamen
   if (pricing?.prezzoMq != null || omi?.quotazioneMinResidenziale != null) {
     const pricingCandidates: SourceCandidate<{ prezzoMq: number; label: string }>[] = [];
 
-    // OMI quotation as official candidate
+    // OMI quotation as official candidate — use explicit omiGeoLevel
     if (omi?.quotazioneMinResidenziale != null && omi?.quotazioneMaxResidenziale != null) {
       const omiMid = (omi.quotazioneMinResidenziale + omi.quotazioneMaxResidenziale) / 2;
+      const omiGeo = resolveOmiGeoLevel(omi);
       pricingCandidates.push({
         data: { prezzoMq: omiMid, label: "Quotazione OMI" },
         tier: "ufficiale",
-        geoLevel: omi.polygonMatch ? "microzona_omi" : "comune",
+        geoLevel: omiGeo,
         geoLabel: omi.zonaOmiLabel ?? omi.comuneLabel ?? undefined,
         provider: "omi",
         isOfficial: true,
-        confidence: omi.polygonMatch ? 0.9 : 0.6,
+        confidence: resolveOmiConfidence(omi),
       });
     }
 

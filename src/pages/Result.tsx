@@ -866,8 +866,19 @@ function OmiCard({ data, loading }: { data: import("@/types").OmiZoneData | null
   // Show card if we have quotazioni OR at least a zone identification
   if (!hasQuotazioni && !hasZone) return null;
 
-  const isExactZone = data.polygonMatch === true || data.sourceCoverageLevel === "zone_omi";
-  const isComuneLevel = data.sourceCoverageLevel === "comune";
+  // Use explicit omiGeoLevel from Central Core when available, fall back to polygonMatch
+  const effectiveGeoLevel = data.omiGeoLevel ?? (data.polygonMatch ? "microzona_omi" : (data.sourceCoverageLevel === "zone_omi" ? "microzona_omi" : undefined));
+  const isExactZone = effectiveGeoLevel === "microzona_omi" || effectiveGeoLevel === "zona_specifica" || effectiveGeoLevel === "quartiere";
+  const isComuneLevel = effectiveGeoLevel === "comune" || (!isExactZone && data.sourceCoverageLevel === "comune");
+  const isFallback = data.matchMethod === "ai_estimate" || data.matchMethod === "catastale_fallback";
+
+  // Match method labels for transparency
+  const matchMethodLabels: Record<string, string> = {
+    polygon: "Coordinate in poligono OMI",
+    catastale_fallback: "Codice catastale comunale",
+    ai_estimate: "Stima AI",
+  };
+  const matchLabel = data.matchMethod ? matchMethodLabels[data.matchMethod] ?? data.matchMethod : null;
 
   return (
     <Section gradient="from-green-500/10 to-emerald-500/5 border-green-500/15">
@@ -882,14 +893,34 @@ function OmiCard({ data, loading }: { data: import("@/types").OmiZoneData | null
         </p>
       )}
 
-      {/* Polygon match badge */}
-      {isExactZone && (
+      {/* Polygon match badge — only when truly zone-level */}
+      {isExactZone && !isFallback && (
         <div className="flex items-center gap-1.5 mb-3">
           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
             <CheckCircle2 className="h-3 w-3" />Zona identificata da coordinate
           </span>
+          {matchLabel && (
+            <span className="text-[9px] text-muted-foreground/50">{matchLabel}</span>
+          )}
+          {data.matchConfidence != null && data.matchConfidence < 0.8 && (
+            <span className="text-[9px] text-muted-foreground/50">· Confidenza: {Math.round(data.matchConfidence * 100)}%</span>
+          )}
         </div>
       )}
+
+      {/* Fallback/AI match — prudent display */}
+      {isExactZone && isFallback && (
+        <div className="flex items-center gap-1.5 mb-3">
+          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+            <Compass className="h-3 w-3" />Zona stimata (da verificare)
+          </span>
+          {matchLabel && (
+            <span className="text-[9px] text-muted-foreground/50">{matchLabel}</span>
+          )}
+        </div>
+      )}
+
+      {/* Municipal level */}
       {isComuneLevel && (
         <p className="text-[10px] text-amber-400/70 mb-3 flex items-center gap-1">
           <Compass className="h-3 w-3" />Dato riferito alla media comunale — la zona specifica potrebbe variare
