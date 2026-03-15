@@ -153,6 +153,8 @@ export interface SintesiFinaleData extends SourceMetadata {
   puntiDiAttenzione?: ReportField<string[]>;
   raccomandazione?: ReportField<string>;
   coperturaAnalisi?: ReportField<string>;
+  /** Geographic resolution of the data used in this section */
+  geo?: GeoContext;
 }
 
 /* ── Section L: Priorità / Criticità ────────────────────── */
