@@ -541,18 +541,21 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
     );
   }
 
-  // Coverage analysis note
-  const modulesAvailable = [
-    !!pricing, !!omi, !!poi, !!rischio, !!tv, !!convergenza, !!opportunity,
-  ].filter(Boolean).length;
-  const totalModules = 7;
-  if (modulesAvailable < totalModules) {
-    const pct = Math.round((modulesAvailable / totalModules) * 100);
+  // Coverage analysis note — centralized helper
+  const coverage = computeModuleCoverage(result);
+  if (coverage.available < coverage.total) {
     data.coperturaAnalisi = field(
-      `Analisi basata su ${modulesAvailable} di ${totalModules} moduli disponibili (${pct}% di copertura)`,
+      `Analisi basata su ${coverage.available} di ${coverage.total} moduli disponibili (${coverage.pct}% di copertura)`,
       "Copertura analisi",
-      "market_data",
-      modulesAvailable >= 5 ? "available" : "partial",
+      "territorial_verified",
+      coverage.available >= 5 ? "available" : "partial",
+    );
+  } else {
+    data.coperturaAnalisi = field(
+      "Copertura analisi completa",
+      "Copertura analisi",
+      "territorial_verified",
+      "available",
     );
   }
 
