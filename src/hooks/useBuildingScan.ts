@@ -197,12 +197,9 @@ export function useBuildingScan() {
         set("pricing", { status: "success", data: null, message: "Indirizzo non disponibile per la valutazione prezzi" });
       }
 
-      // Phase 2: Map real data to report sections
-      // We need to read the current state — build a snapshot from dispatched values
-      // Since useReducer is sync, we reconstruct from what we know
-      const snapshot = {} as Record<string, SectionState>;
-      // The reducer has already been updated by all the set() calls above
-      // We need to trigger a final mapping pass
+      // Phase 2: Map real data to report sections using reducer action
+      // The MAP_REPORT action reads current state inside the reducer
+      dispatch({ type: "MAP_REPORT", lat, lng });
     };
 
     await runPipeline();
