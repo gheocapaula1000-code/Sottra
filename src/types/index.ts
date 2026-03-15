@@ -15,11 +15,25 @@ export interface SectionState<T = unknown> {
   message: string | null;
 }
 
+/** Photo analysis sub-fields from enriched identify */
+export interface PhotoAnalysis {
+  buildingType?: string;
+  visibleFloors?: number;
+  photoReadability?: "alta" | "media" | "bassa";
+}
+
+/** Street evidence sub-fields from enriched identify */
+export interface StreetEvidence {
+  facadeConsistencyLevel?: "alta" | "media" | "bassa" | "non_valutabile";
+  photoAnalysis?: PhotoAnalysis;
+}
+
 /** Dati identificazione edificio */
 export interface IdentifyResult {
   address: string;
   buildingId: string;
   confidence: number;
+  streetEvidence?: StreetEvidence;
 }
 
 /** Source provider identifiers */

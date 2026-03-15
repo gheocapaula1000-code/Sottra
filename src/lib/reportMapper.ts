@@ -55,7 +55,7 @@ export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: 
   const data: ProfiloRapidoData = {};
 
   if (identify.address) {
-    data.indirizzo = field(identify.address, "Indirizzo", "image_detected");
+    data.indirizzo = field(identify.address, "Indirizzo", "territorial_verified");
   }
 
   if (lat != null && lng != null) {
@@ -80,12 +80,66 @@ export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: 
 /* ── B) Immobile e Facciata ──────────────────────────────── */
 
 export function buildImmobileFacciata(result: ScanResult): ImmobileFacciataData | null {
-  // Currently the identify endpoint does NOT return detailed facade analysis.
-  // This section will become active when core_v3 adds visual analysis fields.
-  // For now: return null → section hidden (no empty boxes).
-  const _identify = sectionData<IdentifyResult>(result, "identify");
-  // No real facade data available from current pipeline
-  return null;
+  const identify = sectionData<IdentifyResult>(result, "identify");
+  if (!identify?.streetEvidence) return null;
+
+  const se = identify.streetEvidence;
+  const pa = se.photoAnalysis;
+  const data: ImmobileFacciataData = {};
+
+  // buildingType from photo analysis → image_detected
+  if (pa?.buildingType) {
+    data.tipologiaFacciata = field(pa.buildingType, "Tipologia edificio", "image_detected");
+  }
+
+  // visibleFloors from photo analysis → image_detected
+  if (pa?.visibleFloors != null) {
+    data.presenzaBalconi = undefined; // not available — don't invent
+    data.noteVisive = field(
+      `${pa.visibleFloors} pian${pa.visibleFloors === 1 ? "o" : "i"} visibil${pa.visibleFloors === 1 ? "e" : "i"}`,
+      "Piani visibili",
+      "image_detected",
+    );
+  }
+
+  // facadeConsistencyLevel → visual_estimate (inferred, not certain)
+  if (se.facadeConsistencyLevel && se.facadeConsistencyLevel !== "non_valutabile") {
+    const consistencyLabels: Record<string, string> = {
+      alta: "Facciata coerente e in buono stato apparente",
+      media: "Facciata con elementi di disomogeneità",
+      bassa: "Facciata con evidenti segni di deterioramento",
+    };
+    const label = consistencyLabels[se.facadeConsistencyLevel];
+    if (label) {
+      data.statoConservazioneFacciata = field(
+        label,
+        "Coerenza facciata",
+        "visual_estimate",
+        "partial",
+        "Valutazione basata sull'immagine esterna",
+      );
+    }
+  }
+
+  // photoReadability as technical note
+  if (pa?.photoReadability && pa.photoReadability !== "alta") {
+    const readabilityNotes: Record<string, string> = {
+      media: "Leggibilità immagine nella media — alcuni dettagli non determinabili",
+      bassa: "Leggibilità immagine limitata — valutazione visiva parziale",
+    };
+    const note = readabilityNotes[pa.photoReadability];
+    if (note) {
+      data.qualitaEsteticaGenerale = field(
+        note,
+        "Nota sulla leggibilità",
+        "image_detected",
+        "partial",
+      );
+    }
+  }
+
+  const hasContent = Object.values(data).some(f => f && typeof f === "object" && "availabilityStatus" in f);
+  return hasContent ? data : null;
 }
 
 /* ── C) Contesto e Vicinato ──────────────────────────────── */
@@ -106,17 +160,17 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
   const hasEducation = categories.some(c => c.category === "education");
   const hasParks = categories.some(c => c.category === "parks");
 
-  // presenzaServiziVisibili — derived from POI count
+  // presenzaServiziRilevati — derived from POI count (territorial, not visual)
   if (poi.totalPois > 0) {
-    data.presenzaServiziVisibili = field(
+    data.presenzaServiziRilevati = field(
       hasManyServices,
-      "Presenza servizi",
+      "Presenza servizi nell'area",
       "territorial_verified",
       "available",
     );
   }
 
-  // elencoServiziVisibili — from POI category labels
+  // elencoServiziRilevati — from POI category labels (territorial source)
   if (categories.length > 0) {
     const serviziLabels = categories
       .filter(c => c.count > 0)
@@ -124,18 +178,18 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
       .map(c => `${c.categoryLabel} (${c.count})`);
 
     if (serviziLabels.length > 0) {
-      data.elencoServiziVisibili = field(
+      data.elencoServiziRilevati = field(
         serviziLabels,
-        "Servizi rilevati",
+        "Servizi rilevati nell'area",
         "territorial_verified",
         "available",
       );
     }
   }
 
-  // qualitaVisivaContesto — qualitative from POI density
+  // dotazioneServizi — qualitative from POI density (territorial, not visual)
   if (poi.totalPois >= 15 && categories.length >= 4) {
-    data.qualitaVisivaContesto = field(
+    data.dotazioneServizi = field(
       "Buona dotazione di servizi",
       "Dotazione servizi",
       "territorial_verified",
@@ -143,7 +197,7 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
       "Derivato dalla densità di servizi nell'area",
     );
   } else if (poi.totalPois >= 5) {
-    data.qualitaVisivaContesto = field(
+    data.dotazioneServizi = field(
       "Dotazione servizi nella media",
       "Dotazione servizi",
       "territorial_verified",
@@ -152,11 +206,11 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
     );
   }
 
-  // attrattivitaVisivaMicrocontesto — only if strong signals
+  // livelloServiziArea — only if strong territorial signals
   if (hasTransport && hasShopping && (hasHealth || hasEducation)) {
-    data.attrattivitaVisivaMicrocontesto = field(
+    data.livelloServiziArea = field(
       "Area ben servita",
-      "Attrattività microcontesto",
+      "Livello servizi area",
       "territorial_verified",
       "partial",
       "Basato su servizi rilevati: trasporti, commercio, servizi primari",
@@ -179,12 +233,15 @@ export function buildPosizionamentoCommerciale(result: ScanResult): Posizionamen
 
   const data: PosizionamentoCommercialeData = {};
 
-  // prezzoRichiestoRilevato — from pricing if available
+  // prezzoRichiestoRilevato — distinguish official vs market source
   if (pricing?.prezzoMq != null) {
+    const pricingSource: ReportSourceType =
+      pricing.sourceType === "official" ? "official_data" :
+      pricing.sourceType === "unavailable" ? "unavailable" as ReportSourceType : "market_data";
     data.prezzoRichiestoRilevato = field(
       pricing.prezzoMq,
       "Prezzo stimato €/m²",
-      "market_data",
+      pricingSource,
       pricing.sourceType === "unavailable" ? "unavailable" : "available",
     );
   }
