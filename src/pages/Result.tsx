@@ -32,18 +32,10 @@ import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/
 
 /* ── helpers ─────────────────────────────────────────── */
 
+import { safeText } from "@/lib/safeRender";
+
 function toText(v: unknown): string {
-  if (v == null) return "";
-  if (typeof v === "string") return v;
-  if (typeof v === "number") return String(v);
-  if (typeof v === "object") {
-    const obj = v as Record<string, unknown>;
-    for (const k of ["label", "message", "text", "title", "name"]) {
-      if (typeof obj[k] === "string") return obj[k] as string;
-    }
-    return "";
-  }
-  return String(v);
+  return safeText(v, "");
 }
 
 function fmt(n: number | null | undefined): string {
