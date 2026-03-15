@@ -1512,3 +1512,95 @@ describe("sourceResolver wiring in reportMapper", () => {
     expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("official_data");
   });
 });
+
+/* ── New OMI payload fields (omiGeoLevel, matchMethod, matchConfidence) ── */
+
+describe("New OMI payload consumption", () => {
+  it("omiGeoLevel=microzona_omi → geo resolves to microzona_omi", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { zonaOmi: "B2", zonaOmiLabel: "Centro Storico", comuneLabel: "Padova", omiGeoLevel: "microzona_omi", polygonMatch: true, matchMethod: "polygon", matchConfidence: 0.95 }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("microzona_omi");
+    expect(geo.geoLabel).toContain("Centro Storico");
+  });
+
+  it("omiGeoLevel=comune without polygonMatch → geo resolves to comune", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { zonaOmi: "B1", zonaOmiLabel: "Padova", comuneLabel: "Padova", omiGeoLevel: "comune", polygonMatch: false, matchMethod: "catastale_fallback", matchConfidence: 0.5 }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("comune");
+  });
+
+  it("omiGeoLevel overrides legacy polygonMatch=true when set to comune", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { zonaOmi: "B1", zonaOmiLabel: "Area B1", comuneLabel: "Roma", omiGeoLevel: "comune", polygonMatch: true, matchMethod: "catastale_fallback" }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    // omiGeoLevel takes precedence over polygonMatch boolean
+    expect(geo.geoLevel).toBe("comune");
+  });
+
+  it("matchMethod=ai_estimate → profilo rapido shows partial status", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Roma 1", buildingId: "x", confidence: 0.8 }, message: null },
+      omiZone: { status: "success", data: { zonaOmi: "C1", zonaOmiLabel: "Periferia Nord", comuneLabel: "Milano", omiGeoLevel: "zona_specifica", polygonMatch: false, matchMethod: "ai_estimate", matchConfidence: 0.4 }, message: null },
+    });
+    const profilo = buildProfiloRapido(result, 45.0, 11.0);
+    expect(profilo?.zonaOmiRiferimento?.availabilityStatus).toBe("partial");
+    expect(profilo?.zonaOmiRiferimento?.note).toContain("stimata");
+  });
+
+  it("matchConfidence used in geo candidate confidence", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { zonaOmi: "A1", zonaOmiLabel: "Centro", comuneLabel: "Firenze", omiGeoLevel: "microzona_omi", polygonMatch: true, matchMethod: "polygon", matchConfidence: 0.99 }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("microzona_omi");
+  });
+
+  it("pricing with omiGeoLevel=microzona_omi → available status in posizionamento", () => {
+    const result = baseScanResult({
+      pricing: { status: "success", data: { prezzoMq: 3500, prezzoMqMin: 3000, prezzoMqMax: 4000, mediaZona: null, trend5Anni: null }, message: null },
+      omiZone: { status: "success", data: { quotazioneMinResidenziale: 3200, quotazioneMaxResidenziale: 3800, zonaOmi: "B1", zonaOmiLabel: "Centro", comuneLabel: "Padova", omiGeoLevel: "microzona_omi", polygonMatch: true, matchMethod: "polygon", matchConfidence: 0.92 }, message: null },
+    });
+    const pos = buildPosizionamentoCommerciale(result);
+    expect(pos?.prezzoRichiestoRilevato?.availabilityStatus).toBe("available");
+    expect(pos?.prezzoRichiestoRilevato?.note).not.toContain("comunale");
+  });
+
+  it("pricing with omiGeoLevel=comune → partial status in posizionamento", () => {
+    const result = baseScanResult({
+      pricing: { status: "success", data: { prezzoMq: 3500, prezzoMqMin: 3000, prezzoMqMax: 4000, mediaZona: null, trend5Anni: null }, message: null },
+      omiZone: { status: "success", data: { quotazioneMinResidenziale: 3200, quotazioneMaxResidenziale: 3800, zonaOmi: "B1", zonaOmiLabel: "Padova", comuneLabel: "Padova", omiGeoLevel: "comune", polygonMatch: false, matchMethod: "catastale_fallback" }, message: null },
+    });
+    const pos = buildPosizionamentoCommerciale(result);
+    expect(pos?.prezzoRichiestoRilevato?.availabilityStatus).toBe("partial");
+    expect(pos?.prezzoRichiestoRilevato?.note).toContain("comunale");
+  });
+
+  it("fallback without omiGeoLevel uses polygonMatch as legacy fallback", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { zonaOmi: "D1", zonaOmiLabel: "Zona D1", comuneLabel: "Bologna", polygonMatch: true }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("microzona_omi");
+  });
+
+  it("no omiGeoLevel and no polygonMatch → comunale", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { zonaOmi: "E1", zonaOmiLabel: "Zona E1", comuneLabel: "Verona", polygonMatch: false }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("comune");
+  });
+
+  it("unavailable OMI → geo non_determinato", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { sourceType: "unavailable" }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("non_determinato");
+  });
+});
