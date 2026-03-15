@@ -103,11 +103,13 @@ export function buildImmobileFacciata(result: ScanResult): ImmobileFacciataData 
   }
 
   // facadeConsistencyLevel → visual_estimate (inferred, not certain)
-  if (se.facadeConsistencyLevel && se.facadeConsistencyLevel !== "non_valutabile") {
+  // Backend values: "strong" | "good" | "partial" | "weak" | "none"
+  if (se.facadeConsistencyLevel && se.facadeConsistencyLevel !== "none") {
     const consistencyLabels: Record<string, string> = {
-      alta: "Facciata coerente e in buono stato apparente",
-      media: "Facciata con elementi di disomogeneità",
-      bassa: "Facciata con evidenti segni di deterioramento",
+      strong: "Facciata coerente e in buono stato apparente",
+      good: "Facciata in buone condizioni generali",
+      partial: "Facciata con elementi di disomogeneità",
+      weak: "Facciata con evidenti segni di deterioramento",
     };
     const label = consistencyLabels[se.facadeConsistencyLevel];
     if (label) {
@@ -122,10 +124,11 @@ export function buildImmobileFacciata(result: ScanResult): ImmobileFacciataData 
   }
 
   // photoReadability as technical note
-  if (pa?.photoReadability && pa.photoReadability !== "alta") {
+  // Backend values: "clear" | "partial" | "poor"
+  if (pa?.photoReadability && pa.photoReadability !== "clear") {
     const readabilityNotes: Record<string, string> = {
-      media: "Leggibilità immagine nella media — alcuni dettagli non determinabili",
-      bassa: "Leggibilità immagine limitata — valutazione visiva parziale",
+      partial: "Leggibilità immagine nella media — alcuni dettagli non determinabili",
+      poor: "Leggibilità immagine limitata — valutazione visiva parziale",
     };
     const note = readabilityNotes[pa.photoReadability];
     if (note) {

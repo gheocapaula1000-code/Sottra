@@ -19,12 +19,12 @@ export interface SectionState<T = unknown> {
 export interface PhotoAnalysis {
   buildingType?: string;
   visibleFloors?: number;
-  photoReadability?: "alta" | "media" | "bassa";
+  photoReadability?: "clear" | "partial" | "poor";
 }
 
 /** Street evidence sub-fields from enriched identify */
 export interface StreetEvidence {
-  facadeConsistencyLevel?: "alta" | "media" | "bassa" | "non_valutabile";
+  facadeConsistencyLevel?: "strong" | "good" | "partial" | "weak" | "none";
   photoAnalysis?: PhotoAnalysis;
 }
 
