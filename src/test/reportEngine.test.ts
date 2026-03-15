@@ -1244,7 +1244,7 @@ describe("Fix verification — 4 final hardening checks", () => {
         message: null,
       },
     });
-    const area = buildProfiloArea(result, 45.0, 9.0);
+    const area = buildProfiloArea(result);
     if (area?.accessibilitaTrasporti?.value) {
       expect(String(area.accessibilitaTrasporti.value)).toContain("150m");
     }
