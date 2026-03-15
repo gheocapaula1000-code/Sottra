@@ -525,7 +525,8 @@ describe("buildSintesiFinale", () => {
     expect(sintesi).not.toBeNull();
     expect(sintesi!.giudizioSintetico?.value).toContain("molto forte");
     expect(sintesi!.giudizioSintetico?.value).toContain("copertura");
-    expect(sintesi!.giudizioSintetico?.sourceType).toBe("market_data");
+    expect(sintesi!.giudizioSintetico?.sourceType).toBe("territorial_verified");
+    expect(sintesi!.giudizioSintetico?.note).toContain("Sintesi basata su");
     expect(sintesi!.puntiDiForza?.value).toContain("Driver1");
     expect(sintesi!.raccomandazione?.value).toBe("Buon potenziale");
     expect(sintesi!.raccomandazione?.label).toBe("Osservazione conclusiva");
