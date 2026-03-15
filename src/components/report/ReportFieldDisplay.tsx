@@ -75,7 +75,7 @@ export function FieldTile({ field, className, formatValue, showSource = false }:
     <div className={cn("rounded-lg bg-muted/40 px-3 py-2", className)}>
       <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{field.label}</span>
       <p className={cn(
-        "font-semibold text-sm mt-0.5",
+        "font-semibold text-sm mt-0.5 break-anywhere",
         isFallback ? "text-foreground/70" : "text-foreground",
       )}>
         {displayValue}
