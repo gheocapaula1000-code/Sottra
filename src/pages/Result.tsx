@@ -30,6 +30,25 @@ import {
 } from "@/components/report/ReportSections";
 import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/types/report";
 
+/* ── Section-level ErrorBoundary ──────────────────────── */
+
+class SectionSafe extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    if (import.meta.env.DEV) console.warn("[SectionSafe] caught:", error, info);
+  }
+  render() {
+    if (this.state.hasError) return null; // silently hide broken section
+    return this.props.children;
+  }
+}
+
 /* ── helpers ─────────────────────────────────────────── */
 
 import { safeText } from "@/lib/safeRender";
