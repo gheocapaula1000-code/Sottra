@@ -187,9 +187,9 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
     }
   }
 
-  // qualitaVisivaContesto — qualitative from POI density
+  // dotazioneServizi — qualitative from POI density (territorial, not visual)
   if (poi.totalPois >= 15 && categories.length >= 4) {
-    data.qualitaVisivaContesto = field(
+    data.dotazioneServizi = field(
       "Buona dotazione di servizi",
       "Dotazione servizi",
       "territorial_verified",
@@ -197,7 +197,7 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
       "Derivato dalla densità di servizi nell'area",
     );
   } else if (poi.totalPois >= 5) {
-    data.qualitaVisivaContesto = field(
+    data.dotazioneServizi = field(
       "Dotazione servizi nella media",
       "Dotazione servizi",
       "territorial_verified",
@@ -206,11 +206,11 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
     );
   }
 
-  // attrattivitaVisivaMicrocontesto — only if strong signals
+  // livelloServiziArea — only if strong territorial signals
   if (hasTransport && hasShopping && (hasHealth || hasEducation)) {
-    data.attrattivitaVisivaMicrocontesto = field(
+    data.livelloServiziArea = field(
       "Area ben servita",
-      "Attrattività microcontesto",
+      "Livello servizi area",
       "territorial_verified",
       "partial",
       "Basato su servizi rilevati: trasporti, commercio, servizi primari",
