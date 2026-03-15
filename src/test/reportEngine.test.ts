@@ -258,6 +258,7 @@ describe("buildImmobileFacciata", () => {
     expect(facade!.statoConservazioneFacciata?.value).toContain("buone condizioni");
     expect(facade!.noteVisive?.value).toContain("5 piani");
     expect(facade!.leggibilitaImmagine?.availabilityStatus).toBe("partial");
+  });
 
   it("does not invent fields not present in streetEvidence", () => {
     const result = baseScanResult({
