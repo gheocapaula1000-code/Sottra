@@ -273,6 +273,7 @@ export function ProfiloAreaCard({ data, loading }: { data: ProfiloAreaData | nul
   return (
     <Section gradient="from-teal-500/8 to-cyan-500/5 border-teal-500/15">
       <SectionHeader icon={Map} title="Profilo Area" />
+      <GeoLevelBanner geo={data.geo} />
 
       {/* Synthesis block at top if available */}
       {data.sintesiArea?.value && (data.sintesiArea.availabilityStatus === "available" || data.sintesiArea.availabilityStatus === "partial") && (
