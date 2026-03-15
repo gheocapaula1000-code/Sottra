@@ -645,16 +645,19 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
   const geo = resolveGeoContext(result);
   const data: SintesiFinaleData = { geo };
 
+  const isMunicipal = geo.geoLevel === "comune" || geo.geoLevel === "non_determinato";
+
   // Executive summary — build from convergence of real signals
   if (convergenza?.band && convergenza.score != null) {
     const summaryParts: string[] = [];
 
-    // Opening statement from convergence
+    // Opening statement from convergence — geo-aware copy
+    const geoQualifier = isMunicipal ? " a livello comunale" : "";
     const bandOpenings: Record<string, string> = {
-      molto_forte: "Il quadro complessivo mostra una convergenza territoriale molto forte tra i segnali analizzati.",
-      forte: "I principali indicatori convergono verso un quadro positivo per l'area esaminata.",
-      interessante: "L'analisi evidenzia elementi di interesse, con alcuni segnali che meritano approfondimento.",
-      debole: "Il quadro presenta elementi eterogenei che richiedono una valutazione attenta.",
+      molto_forte: `Il quadro complessivo${geoQualifier} mostra una convergenza territoriale molto forte tra i segnali analizzati.`,
+      forte: `I principali indicatori convergono verso un quadro positivo${geoQualifier} per l'area esaminata.`,
+      interessante: `L'analisi evidenzia elementi di interesse${geoQualifier}, con alcuni segnali che meritano approfondimento.`,
+      debole: `Il quadro${geoQualifier} presenta elementi eterogenei che richiedono una valutazione attenta.`,
     };
     const opening = bandOpenings[convergenza.band];
     if (opening) summaryParts.push(opening);
