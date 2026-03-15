@@ -19,7 +19,7 @@ import Index from "./pages/Index";
 
 if (import.meta.env.DEV) console.log(`[Sottra] build ${BUILD_VERSION}`);
 
-const Dashboard = lazy(() => import("./pages/Dashboard"));
+// Dashboard is lazy-loaded inside AppDashboardGate
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const Scan = lazy(() => import("./pages/Scan"));
 const Result = lazy(() => import("./pages/Result"));
