@@ -362,7 +362,8 @@ describe("buildPosizionamentoCommerciale", () => {
     });
     const pos = buildPosizionamentoCommerciale(result);
     expect(pos).not.toBeNull();
-    expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("market_data");
+    // OMI official wins over market pricing via resolver
+    expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("official_data");
     expect(pos!.noteCommercialiSintetiche?.value).toContain("OMI");
     expect(pos!.statoCommercialeRilevato?.value).toBe("Mercato attivo");
   });
@@ -1396,5 +1397,118 @@ describe("buildPrioritaCriticita — municipal warning", () => {
     // Should not have a municipal warning
     const municipalItem = pc?.items.find(i => i.testo.includes("comunale") || i.testo.includes("Comune"));
     expect(municipalItem).toBeUndefined();
+  });
+});
+
+/* ── Source Resolver Wiring Tests ────────────────────────── */
+
+describe("sourceResolver wiring in reportMapper", () => {
+  it("resolveGeoContext uses resolveBestSource — OMI polygon wins over ISTAT", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { zonaOmi: "B1", zonaOmiLabel: "Centro", polygonMatch: true, comuneLabel: "Milano" }, message: null },
+      istatDemographic: { status: "success", data: { popolazione: 1400000, comuneLabel: "Milano", densita: 7500 }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("microzona_omi");
+    expect(geo.geoLabel).toContain("Centro");
+  });
+
+  it("resolveGeoContext falls back to comune when OMI has no polygon match", () => {
+    const result = baseScanResult({
+      omiZone: { status: "success", data: { zonaOmi: "B1", zonaOmiLabel: "Centro", polygonMatch: false, comuneLabel: "Padova" }, message: null },
+    });
+    const geo = resolveGeoContext(result);
+    expect(geo.geoLevel).toBe("comune");
+    expect(geo.geoLabel).toContain("Padova");
+  });
+
+  it("buildPosizionamentoCommerciale resolves OMI official over market pricing", () => {
+    const result = baseScanResult({
+      pricing: { status: "success", data: { prezzoMq: 4000, prezzoMqMin: 3500, prezzoMqMax: 4500 }, message: null },
+      omiZone: { status: "success", data: { quotazioneMinResidenziale: 3000, quotazioneMaxResidenziale: 3800, zonaOmi: "B1", polygonMatch: true }, message: null },
+    });
+    const pos = buildPosizionamentoCommerciale(result);
+    expect(pos).not.toBeNull();
+    // Official OMI wins
+    expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("official_data");
+  });
+
+  it("buildPosizionamentoCommerciale falls back to market when no OMI", () => {
+    const result = baseScanResult({
+      pricing: { status: "success", data: { prezzoMq: 3000, prezzoMqMin: 2500, prezzoMqMax: 3500 }, message: null },
+    });
+    const pos = buildPosizionamentoCommerciale(result);
+    expect(pos).not.toBeNull();
+    expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("market_data");
+  });
+
+  it("buildPosizionamentoCommerciale marks pricing as partial when geo is comunale", () => {
+    const result = baseScanResult({
+      pricing: { status: "success", data: { prezzoMq: 2500 }, message: null },
+      omiZone: { status: "success", data: { quotazioneMinResidenziale: 2000, quotazioneMaxResidenziale: 2800, zonaOmi: "B1", comuneLabel: "Padova", polygonMatch: false }, message: null },
+    });
+    const pos = buildPosizionamentoCommerciale(result);
+    expect(pos).not.toBeNull();
+    expect(pos!.prezzoRichiestoRilevato?.availabilityStatus).toBe("partial");
+    expect(pos!.prezzoRichiestoRilevato?.note).toContain("comunale");
+  });
+
+  it("buildProfiloArea resolves rischio with coordinate-based geo level", () => {
+    const result = baseScanResult({
+      rischioZona: { status: "success", data: { scoreRischio: 20 }, message: null },
+      istatDemographic: { status: "success", data: { popolazione: 50000, densita: 4500, comuneLabel: "Milano" }, message: null },
+    });
+    const area = buildProfiloArea(result);
+    expect(area).not.toBeNull();
+    expect(area!.qualitaAmbientale).not.toBeUndefined();
+    expect(area!.qualitaAmbientale?.value).toContain("Basso");
+  });
+
+  it("buildSintesiFinale uses geo-aware copy for municipal level", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
+      istatDemographic: { status: "success", data: { popolazione: 200000, comuneLabel: "Padova" }, message: null },
+      convergenzaTerritoriale: { status: "success", data: { score: 72, band: "forte", convergenceLevel: "alta", coverageLevel: "buona" }, message: null },
+      opportunity: { status: "success", data: { score: 65, band: "forte" }, message: null },
+    });
+    const sintesi = buildSintesiFinale(result);
+    expect(sintesi).not.toBeNull();
+    expect(sintesi!.geo?.geoLevel).toBe("comune");
+    // Municipal label
+    expect(sintesi!.giudizioSintetico?.label).toContain("comunale");
+    expect(sintesi!.giudizioSintetico?.availabilityStatus).toBe("partial");
+  });
+
+  it("buildSintesiFinale uses full copy for zone-level precision", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
+      omiZone: { status: "success", data: { zonaOmi: "B1", zonaOmiLabel: "Centro", polygonMatch: true }, message: null },
+      convergenzaTerritoriale: { status: "success", data: { score: 72, band: "forte", convergenceLevel: "alta", coverageLevel: "buona" }, message: null },
+      opportunity: { status: "success", data: { score: 65, band: "forte" }, message: null },
+    });
+    const sintesi = buildSintesiFinale(result);
+    expect(sintesi).not.toBeNull();
+    expect(sintesi!.geo?.geoLevel).toBe("microzona_omi");
+    expect(sintesi!.giudizioSintetico?.label).not.toContain("comunale");
+    expect(sintesi!.giudizioSintetico?.availabilityStatus).toBe("available");
+  });
+
+  it("OMI comparison notes include geo qualifier when municipal", () => {
+    const result = baseScanResult({
+      pricing: { status: "success", data: { prezzoMq: 5000 }, message: null },
+      omiZone: { status: "success", data: { quotazioneMinResidenziale: 3000, quotazioneMaxResidenziale: 3800, zonaOmi: "B1", comuneLabel: "Padova", polygonMatch: false }, message: null },
+    });
+    const pos = buildPosizionamentoCommerciale(result);
+    expect(pos!.noteCommercialiSintetiche?.value).toContain("comunale");
+  });
+
+  it("no secondary source can override official data", () => {
+    const result = baseScanResult({
+      pricing: { status: "success", data: { prezzoMq: 9999, sourceType: "commercial_verified" }, message: null },
+      omiZone: { status: "success", data: { quotazioneMinResidenziale: 2000, quotazioneMaxResidenziale: 3000, zonaOmi: "B1", polygonMatch: true }, message: null },
+    });
+    const pos = buildPosizionamentoCommerciale(result);
+    // Official OMI should win
+    expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("official_data");
   });
 });

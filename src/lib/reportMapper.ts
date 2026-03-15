@@ -23,6 +23,11 @@ import type {
   TimeViewData, OpportunityData, ConvergenzaTerritorialeData,
   RischioZonaData, TrendDemograficoData, InfrastrutureData,
 } from "@/types";
+import {
+  resolveBestSource, mapCoverageLevelToGeoLevel, mapTierToLabel,
+  formatResolutionTrace, resolutionSummary,
+  type SourceCandidate, type ResolvedSource, type ResolutionTraceEntry,
+} from "@/lib/sourceResolver";
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
@@ -42,36 +47,100 @@ function sectionData<T>(result: ScanResult, key: keyof ScanResult): T | null {
   return s.data as T;
 }
 
-/* ── Geographic resolution helper ─────────────────────── */
+/* ── Geographic resolution via source resolver ───────── */
+
+const isDev = import.meta.env.DEV;
+function devLog(...args: unknown[]) { if (isDev) console.log("[REPORT_MAPPER]", ...args); }
 
 /**
- * Determines the best geographic resolution from available data sources.
- * Priority: OMI polygon match > POI (local radius) > coordinate-based > comune fallback.
+ * Determines the best geographic resolution using the source resolver pipeline.
+ * Builds geo candidates from OMI, ISTAT, trendDemografico and resolves
+ * the best one via `resolveBestSource`.
  */
 export function resolveGeoContext(result: ScanResult): GeoContext {
   const omi = sectionData<OmiZoneData>(result, "omiZone");
   const istat = sectionData<IstatDemographicData>(result, "istatDemographic");
   const trendDemo = sectionData<import("@/types").TrendDemograficoData>(result, "trendDemografico");
 
-  // Best case: OMI polygon match = microzone-level
-  if (omi?.polygonMatch && omi?.zonaOmiLabel) {
-    return { geoLevel: "microzona_omi", geoLabel: `Zona OMI ${omi.zonaOmiLabel}` };
+  // Build candidates for geo resolution
+  const candidates: SourceCandidate<{ label: string }>[] = [];
+
+  // OMI polygon match = microzone-level (official)
+  if (omi?.zonaOmiLabel) {
+    candidates.push({
+      data: { label: `Zona OMI ${omi.zonaOmiLabel}` },
+      tier: "ufficiale",
+      geoLevel: omi.polygonMatch ? "microzona_omi" : "comune",
+      geoLabel: omi.polygonMatch ? `Zona OMI ${omi.zonaOmiLabel}` : (omi.comuneLabel ? `Comune di ${omi.comuneLabel}` : undefined),
+      provider: "omi",
+      isOfficial: true,
+      confidence: omi.polygonMatch ? 0.95 : 0.5,
+    });
   }
 
   // TrendDemografico may carry its own geoLevel from the backend
-  if (trendDemo?.geoLevel && trendDemo.geoLevel !== "comune" && trendDemo.geoLevel !== "stimato") {
-    return { geoLevel: trendDemo.geoLevel as ReportGeoLevel, geoLabel: trendDemo.geoLabel ?? undefined };
+  if (trendDemo?.geoLevel && trendDemo.geoLevel !== "stimato") {
+    const mappedGeo: ReportGeoLevel =
+      trendDemo.geoLevel === "microzona" ? "microzona_omi" :
+      trendDemo.geoLevel === "quartiere" ? "quartiere" :
+      trendDemo.geoLevel === "zona" ? "zona_specifica" :
+      "comune";
+    candidates.push({
+      data: { label: trendDemo.geoLabel ?? "Trend demografico" },
+      tier: "dato_elaborato",
+      geoLevel: mappedGeo,
+      geoLabel: trendDemo.geoLabel ?? undefined,
+      provider: "trend_demografico",
+      isOfficial: false,
+      confidence: 0.6,
+    });
   }
 
-  // Fallback: if we only have ISTAT or OMI without polygon match → comunale
+  // ISTAT = always municipal
   if (istat?.comuneLabel) {
-    return { geoLevel: "comune", geoLabel: `Comune di ${istat.comuneLabel}` };
-  }
-  if (omi?.comuneLabel) {
-    return { geoLevel: "comune", geoLabel: `Comune di ${omi.comuneLabel}` };
+    candidates.push({
+      data: { label: `Comune di ${istat.comuneLabel}` },
+      tier: "ufficiale",
+      geoLevel: "comune",
+      geoLabel: `Comune di ${istat.comuneLabel}`,
+      provider: "istat",
+      isOfficial: true,
+      confidence: 0.9,
+    });
   }
 
-  return { geoLevel: "non_determinato" };
+  // OMI without polygon match, just label as comunale fallback
+  if (omi?.comuneLabel && !omi.polygonMatch && !omi.zonaOmiLabel) {
+    candidates.push({
+      data: { label: `Comune di ${omi.comuneLabel}` },
+      tier: "ufficiale",
+      geoLevel: "comune",
+      geoLabel: `Comune di ${omi.comuneLabel}`,
+      provider: "omi_comune",
+      isOfficial: true,
+      confidence: 0.7,
+    });
+  }
+
+  if (candidates.length === 0) {
+    return { geoLevel: "non_determinato" };
+  }
+
+  const resolved = resolveBestSource(candidates);
+
+  if (isDev && resolved.resolutionTrace.length > 0) {
+    devLog("Geo resolution trace:\n" + formatResolutionTrace(resolved.resolutionTrace));
+    devLog("Geo result:", resolutionSummary(resolved));
+  }
+
+  if (resolved.tier === "unavailable" || !resolved.data) {
+    return { geoLevel: "non_determinato" };
+  }
+
+  return {
+    geoLevel: resolved.geoLevel,
+    geoLabel: resolved.geoLabel ?? resolved.data.label,
+  };
 }
 
 /* ── Coverage helper (centralized) ───────────────────────── */
@@ -265,18 +334,63 @@ export function buildPosizionamentoCommerciale(result: ScanResult): Posizionamen
 
   if (!pricing && !market) return null;
 
+  const geo = resolveGeoContext(result);
   const data: PosizionamentoCommercialeData = {};
 
-  if (pricing?.prezzoMq != null) {
-    const pricingSource: ReportSourceType =
-      pricing.sourceType === "official" ? "official_data" :
-      pricing.sourceType === "unavailable" ? "unavailable" as ReportSourceType : "market_data";
-    data.prezzoRichiestoRilevato = field(
-      pricing.prezzoMq,
-      "Prezzo stimato €/m²",
-      pricingSource,
-      pricing.sourceType === "unavailable" ? "unavailable" : "available",
-    );
+  // Resolve pricing source via resolver — OMI (official) vs market pricing
+  if (pricing?.prezzoMq != null || omi?.quotazioneMinResidenziale != null) {
+    const pricingCandidates: SourceCandidate<{ prezzoMq: number; label: string }>[] = [];
+
+    // OMI quotation as official candidate
+    if (omi?.quotazioneMinResidenziale != null && omi?.quotazioneMaxResidenziale != null) {
+      const omiMid = (omi.quotazioneMinResidenziale + omi.quotazioneMaxResidenziale) / 2;
+      pricingCandidates.push({
+        data: { prezzoMq: omiMid, label: "Quotazione OMI" },
+        tier: "ufficiale",
+        geoLevel: omi.polygonMatch ? "microzona_omi" : "comune",
+        geoLabel: omi.zonaOmiLabel ?? omi.comuneLabel ?? undefined,
+        provider: "omi",
+        isOfficial: true,
+        confidence: omi.polygonMatch ? 0.9 : 0.6,
+      });
+    }
+
+    // Market pricing as secondary candidate
+    if (pricing?.prezzoMq != null) {
+      const marketTier = pricing.sourceType === "official" ? "ufficiale" as const :
+        pricing.sourceType === "unavailable" ? "unavailable" as const : "mercato_verificato" as const;
+      const marketGeo = mapCoverageLevelToGeoLevel(pricing.sourceCoverageLevel);
+      pricingCandidates.push({
+        data: { prezzoMq: pricing.prezzoMq, label: "Prezzo di mercato" },
+        tier: marketTier,
+        geoLevel: marketGeo,
+        geoLabel: pricing.sourceLabel ?? undefined,
+        provider: "pricing_engine",
+        isOfficial: marketTier === "ufficiale",
+        confidence: pricing.sourceConfidence ?? 0.7,
+      });
+    }
+
+    const resolvedPricing = resolveBestSource(pricingCandidates, geo.geoLevel);
+
+    if (resolvedPricing.data) {
+      const reportSourceType: ReportSourceType =
+        resolvedPricing.isOfficial ? "official_data" :
+        resolvedPricing.tier === "mercato_verificato" ? "market_data" : "market_data";
+      data.prezzoRichiestoRilevato = field(
+        resolvedPricing.data.prezzoMq,
+        "Prezzo stimato €/m²",
+        reportSourceType,
+        resolvedPricing.geoLevel === "comune" ? "partial" : "available",
+        resolvedPricing.geoLevel === "comune"
+          ? `${resolvedPricing.data.label} — dato comunale`
+          : resolvedPricing.data.label,
+      );
+
+      if (isDev) {
+        devLog("Pricing resolution:", resolutionSummary(resolvedPricing));
+      }
+    }
   }
 
   const signals: string[] = [];
@@ -284,12 +398,13 @@ export function buildPosizionamentoCommerciale(result: ScanResult): Posizionamen
   if (pricing?.prezzoMq != null && omi?.quotazioneMinResidenziale != null && omi?.quotazioneMaxResidenziale != null) {
     const omiMid = (omi.quotazioneMinResidenziale + omi.quotazioneMaxResidenziale) / 2;
     const ratio = pricing.prezzoMq / omiMid;
+    const geoQualifier = geo.geoLevel === "comune" ? " (dato comunale)" : "";
     if (ratio > 1.2) {
-      signals.push("Prezzo di mercato superiore alla media OMI di zona");
+      signals.push(`Prezzo di mercato superiore alla media OMI${geoQualifier}`);
     } else if (ratio < 0.8) {
-      signals.push("Prezzo di mercato inferiore alla media OMI di zona");
+      signals.push(`Prezzo di mercato inferiore alla media OMI${geoQualifier}`);
     } else {
-      signals.push("Prezzo di mercato in linea con i valori OMI di zona");
+      signals.push(`Prezzo di mercato in linea con i valori OMI${geoQualifier}`);
     }
   }
 
@@ -373,15 +488,38 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     }
   }
 
-  // qualitaAmbientale
+  // qualitaAmbientale — resolve via source resolver to check geo compatibility
+  // Rischio zona is coordinate-based, so if geo level is unknown, default to quartiere
   if (rischio?.scoreRischio != null) {
-    const score = rischio.scoreRischio;
-    let qualita: string;
-    if (score <= 30) qualita = "Basso profilo di rischio ambientale";
-    else if (score <= 60) qualita = "Profilo di rischio ambientale nella media";
-    else qualita = "Profilo di rischio ambientale da monitorare";
+    const rawGeo = mapCoverageLevelToGeoLevel(rischio.sourceCoverageLevel);
+    // Rischio data is always local (coordinate-based query), so "non_determinato" → "quartiere"
+    const rischioGeo: ReportGeoLevel = rawGeo === "non_determinato" ? "quartiere" : rawGeo;
+    const rischioCandidate: SourceCandidate<number> = {
+      data: rischio.scoreRischio,
+      tier: rischio.sourceType === "official" ? "ufficiale" : "dato_elaborato",
+      geoLevel: rischioGeo,
+      provider: "rischio_zona",
+      isOfficial: rischio.sourceType === "official",
+      confidence: rischio.sourceConfidence ?? 0.7,
+    };
+    const resolvedRischio = resolveBestSource([rischioCandidate], geo.geoLevel);
 
-    data.qualitaAmbientale = field(qualita, "Profilo ambientale", "territorial_verified", "available");
+    if (resolvedRischio.data != null) {
+      const score = resolvedRischio.data;
+      let qualita: string;
+      if (score <= 30) qualita = "Basso profilo di rischio ambientale";
+      else if (score <= 60) qualita = "Profilo di rischio ambientale nella media";
+      else qualita = "Profilo di rischio ambientale da monitorare";
+
+      const rischioIsMunicipal = resolvedRischio.geoLevel === "comune" || resolvedRischio.geoLevel === "non_determinato";
+      data.qualitaAmbientale = field(
+        qualita,
+        rischioIsMunicipal ? "Profilo ambientale (dato comunale)" : "Profilo ambientale",
+        "territorial_verified",
+        rischioIsMunicipal ? "partial" : "available",
+        rischioIsMunicipal ? "Dato riferito al livello comunale" : undefined,
+      );
+    }
   }
 
   // livelloUrbanizzazione — ISTAT is municipal
@@ -510,16 +648,19 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
   const geo = resolveGeoContext(result);
   const data: SintesiFinaleData = { geo };
 
+  const isMunicipal = geo.geoLevel === "comune" || geo.geoLevel === "non_determinato";
+
   // Executive summary — build from convergence of real signals
   if (convergenza?.band && convergenza.score != null) {
     const summaryParts: string[] = [];
 
-    // Opening statement from convergence
+    // Opening statement from convergence — geo-aware copy
+    const geoQualifier = isMunicipal ? " a livello comunale" : "";
     const bandOpenings: Record<string, string> = {
-      molto_forte: "Il quadro complessivo mostra una convergenza territoriale molto forte tra i segnali analizzati.",
-      forte: "I principali indicatori convergono verso un quadro positivo per l'area esaminata.",
-      interessante: "L'analisi evidenzia elementi di interesse, con alcuni segnali che meritano approfondimento.",
-      debole: "Il quadro presenta elementi eterogenei che richiedono una valutazione attenta.",
+      molto_forte: `Il quadro complessivo${geoQualifier} mostra una convergenza territoriale molto forte tra i segnali analizzati.`,
+      forte: `I principali indicatori convergono verso un quadro positivo${geoQualifier} per l'area esaminata.`,
+      interessante: `L'analisi evidenzia elementi di interesse${geoQualifier}, con alcuni segnali che meritano approfondimento.`,
+      debole: `Il quadro${geoQualifier} presenta elementi eterogenei che richiedono una valutazione attenta.`,
     };
     const opening = bandOpenings[convergenza.band];
     if (opening) summaryParts.push(opening);
@@ -538,10 +679,12 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
     if (summaryParts.length > 0) {
       data.giudizioSintetico = field(
         summaryParts.join(" "),
-        "Quadro sintetico",
+        isMunicipal ? "Quadro indicativo (livello comunale)" : "Quadro sintetico",
         "territorial_verified",
-        convergenza.coverageLevel === "scarsa" ? "partial" : "available",
-        "Sintesi basata su convergenza territoriale, servizi, rischio e scenario",
+        (convergenza.coverageLevel === "scarsa" || isMunicipal) ? "partial" : "available",
+        isMunicipal
+          ? "Sintesi basata su dati prevalentemente comunali — alcuni indicatori non sono specifici della zona"
+          : "Sintesi basata su convergenza territoriale, servizi, rischio e scenario",
       );
     }
   }
