@@ -632,7 +632,21 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
   const convergenza = sectionData<ConvergenzaTerritorialeData>(result, "convergenzaTerritoriale");
   const market = sectionData<MarketContextData>(result, "marketContext");
 
+  const geo = resolveGeoContext(result);
   const items: PrioritaCriticaItem[] = [];
+
+  // Municipal-only data warning
+  if (geo.geoLevel === "comune") {
+    items.push({
+      testo: geo.geoLabel
+        ? `Alcuni dati sono riferiti al ${geo.geoLabel} e non alla zona specifica dell'immobile`
+        : "Alcuni dati territoriali sono riferiti al livello comunale",
+      categoria: "copertura_parziale",
+      sourceType: "territorial_verified",
+      availabilityStatus: "partial",
+      nota: "Risoluzione geografica limitata al livello comunale",
+    });
+  }
 
   // Image readability issue
   if (identify?.streetEvidence?.photoAnalysis?.photoReadability === "poor") {
