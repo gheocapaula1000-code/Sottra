@@ -1218,7 +1218,7 @@ describe("Fix verification — 4 final hardening checks", () => {
         message: null,
       },
     });
-    const area = buildProfiloArea(result, 45.0, 9.0);
+    const area = buildProfiloArea(result);
     if (area?.accessibilitaTrasporti?.value) {
       const val = String(area.accessibilitaTrasporti.value);
       expect(val).not.toContain("undefinedm");
