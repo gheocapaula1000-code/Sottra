@@ -234,15 +234,15 @@ describe("buildImmobileFacciata", () => {
     expect(buildImmobileFacciata(result)).toBeNull();
   });
 
-  it("populates partial section from streetEvidence/photoAnalysis", () => {
+  it("populates partial section from streetEvidence/photoAnalysis (real core values)", () => {
     const result = baseScanResult({
       identify: {
         status: "success",
         data: {
           address: "Via Roma 1", buildingId: "X", confidence: 0.9,
           streetEvidence: {
-            facadeConsistencyLevel: "media",
-            photoAnalysis: { buildingType: "Condominio", visibleFloors: 5, photoReadability: "media" },
+            facadeConsistencyLevel: "good",
+            photoAnalysis: { buildingType: "Condominio", visibleFloors: 5, photoReadability: "partial" },
           },
         },
         message: null,
@@ -254,6 +254,7 @@ describe("buildImmobileFacciata", () => {
     expect(facade!.tipologiaFacciata?.sourceType).toBe("image_detected");
     expect(facade!.statoConservazioneFacciata?.sourceType).toBe("visual_estimate");
     expect(facade!.statoConservazioneFacciata?.availabilityStatus).toBe("partial");
+    expect(facade!.statoConservazioneFacciata?.value).toContain("buone condizioni");
     expect(facade!.noteVisive?.value).toContain("5 piani");
     expect(facade!.qualitaEsteticaGenerale?.availabilityStatus).toBe("partial");
   });
@@ -264,7 +265,7 @@ describe("buildImmobileFacciata", () => {
         status: "success",
         data: {
           address: "Via Roma 1", buildingId: "X", confidence: 0.9,
-          streetEvidence: { facadeConsistencyLevel: "alta" },
+          streetEvidence: { facadeConsistencyLevel: "strong" },
         },
         message: null,
       },
