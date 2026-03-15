@@ -340,9 +340,10 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
   const rischio = sectionData<RischioZonaData>(result, "rischioZona");
   const istat = sectionData<IstatDemographicData>(result, "istatDemographic");
 
-  const data: ProfiloAreaData = {};
+  const geo = resolveGeoContext(result);
+  const data: ProfiloAreaData = { geo };
 
-  // accessibilitaTrasporti
+  // accessibilitaTrasporti — POI is always local (coordinate-based radius)
   if (poi) {
     const transport = poi.categories?.find(c => c.category === "transport");
     if (transport && transport.count > 0) {
@@ -356,7 +357,7 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     }
   }
 
-  // presenzaServiziPrimari
+  // presenzaServiziPrimari — POI is local
   if (poi && poi.totalPois > 0) {
     const primary = poi.categories?.filter(c =>
       ["health", "education", "shopping"].includes(c.category)
@@ -383,7 +384,7 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     data.qualitaAmbientale = field(qualita, "Profilo ambientale", "territorial_verified", "available");
   }
 
-  // livelloUrbanizzazione
+  // livelloUrbanizzazione — ISTAT is municipal
   if (istat?.densita != null) {
     let level: string;
     if (istat.densita > 3000) level = "Alta densità abitativa";
@@ -391,12 +392,13 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     else if (istat.densita > 300) level = "Bassa densità abitativa";
     else level = "Area a bassa urbanizzazione";
 
+    const isMunicipal = geo.geoLevel === "comune" || geo.geoLevel === "non_determinato";
     data.livelloUrbanizzazione = field(
       level,
-      "Urbanizzazione",
+      isMunicipal ? "Urbanizzazione (dato comunale)" : "Urbanizzazione",
       "official_data",
-      "available",
-      `${istat.densita.toLocaleString("it-IT")} ab/km²`,
+      isMunicipal ? "partial" : "available",
+      `${istat.densita.toLocaleString("it-IT")} ab/km²${isMunicipal ? " — dato riferito al comune" : ""}`,
     );
   }
 
@@ -425,13 +427,16 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     }
 
     if (parts.length >= 2) {
+      const isMunicipal = geo.geoLevel === "comune" || geo.geoLevel === "non_determinato";
       const synthesis = `Area con ${parts.slice(0, 3).join(", ")}.`;
       data.sintesiArea = field(
         synthesis,
-        "Quadro sintetico dell'area",
+        isMunicipal ? "Quadro indicativo (livello comunale)" : "Quadro sintetico dell'area",
         "territorial_verified",
-        signalCount >= 4 ? "available" : "partial",
-        `Basato su ${signalCount} indicatori territoriali verificati`,
+        isMunicipal ? "partial" : (signalCount >= 4 ? "available" : "partial"),
+        isMunicipal
+          ? `Basato su ${signalCount} indicatori — alcuni riferiti al livello comunale`
+          : `Basato su ${signalCount} indicatori territoriali verificati`,
       );
     }
   }
