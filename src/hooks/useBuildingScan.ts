@@ -135,13 +135,13 @@ export function useBuildingScan() {
       const address = identifyData.address ?? "";
       const confidence = identifyData.confidence ?? undefined;
 
-      // Phase 1 report engine modules — no data source yet, set to idle
-      const phase1Modules: (keyof ScanResult)[] = [
+      // Set report sections to loading during data fetch
+      const reportModules: (keyof ScanResult)[] = [
         "profiloRapido", "immobileFacciata", "contestoVicinato",
         "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
       ];
-      for (const m of phase1Modules) {
-        set(m, { status: "idle", data: null, message: null });
+      for (const m of reportModules) {
+        set(m, { status: "loading", data: null, message: null });
       }
 
       await Promise.allSettled([
@@ -183,6 +183,13 @@ export function useBuildingScan() {
       if (!address) {
         set("pricing", { status: "success", data: null, message: "Indirizzo non disponibile per la valutazione prezzi" });
       }
+
+      // Phase 2: Map real data to report sections
+      // We need to read the current state — build a snapshot from dispatched values
+      // Since useReducer is sync, we reconstruct from what we know
+      const snapshot = {} as Record<string, SectionState>;
+      // The reducer has already been updated by all the set() calls above
+      // We need to trigger a final mapping pass
     };
 
     await runPipeline();
