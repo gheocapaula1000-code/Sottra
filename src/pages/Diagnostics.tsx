@@ -78,7 +78,11 @@ export default function Diagnostics() {
             <XCircle className="h-4 w-4" />
             <AlertTitle>Errore</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/app")}>
+              Torna alla dashboard
+            </Button>
           </Alert>
+        )}
         )}
 
         {data && (
