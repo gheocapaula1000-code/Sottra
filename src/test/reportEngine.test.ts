@@ -1444,6 +1444,7 @@ describe("sourceResolver wiring in reportMapper", () => {
 
   it("buildPosizionamentoCommerciale marks pricing as partial when geo is comunale", () => {
     const result = baseScanResult({
+      pricing: { status: "success", data: { prezzoMq: 2500 }, message: null },
       omiZone: { status: "success", data: { quotazioneMinResidenziale: 2000, quotazioneMaxResidenziale: 2800, zonaOmi: "B1", comuneLabel: "Padova", polygonMatch: false }, message: null },
     });
     const pos = buildPosizionamentoCommerciale(result);
