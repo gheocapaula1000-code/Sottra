@@ -404,7 +404,7 @@ export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData |
 
       {/* Coverage analysis */}
       {data.coperturaAnalisi?.value && (
-        <p className="text-[9px] text-muted-foreground/40 mt-3">{data.coperturaAnalisi.value}</p>
+        <p className="text-[9px] text-muted-foreground/40 mt-3">{safeText(data.coperturaAnalisi.value)}</p>
       )}
 
       <p className="text-[9px] text-muted-foreground/30 mt-2">
