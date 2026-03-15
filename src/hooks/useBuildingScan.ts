@@ -17,6 +17,7 @@ const MODULES: (keyof ScanResult)[] = [
   // Report engine sections — populated by MAP_REPORT action after data modules complete
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
+  "prioritaCriticita",
 ];
 
 function buildInitialState(): ScanResult {
