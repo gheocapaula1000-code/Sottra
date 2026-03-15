@@ -22,6 +22,12 @@ import type {
   InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
 } from "@/types";
 import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
+import {
+  ProfiloRapidoCard, ImmobileFacciataCard, ContestoVicinatoCard,
+  PosizionamentoCommercialeCard, ProfiloAreaCard,
+  ScenarioTemporaleCard, SintesiFinaleCard, TrasparenzaFontiCard,
+} from "@/components/report/ReportSections";
+import type { TrasparenzaFontiData, FonteEntry } from "@/types/report";
 
 /* ── helpers ─────────────────────────────────────────── */
 
