@@ -55,7 +55,7 @@ describe("OMI CSV Column Mapping — Anti-Regression", () => {
     const comuneAmmIdx = findIdx(/comune.?amm/i);   // index 12 = Belfiore code
 
     // Simulate a CSV row
-    const csvRow = "20;Abitazioni civili;NORMALE;1300,00;1650,00;L;;;1001272;A1AA;;A001;PD;Veneto;Nord Est;B;B1;B1";
+    const csvRow = "20;Abitazioni civili;NORMALE;1300,00;1650,00;L;;;;1001272;A1AA;;A001;PD;Veneto;Nord Est;B;B1;B1";
     const vals = csvRow.split(";").map(v => v.trim());
 
     const omiInternal = vals[comuneCatIdx];  // A1AA
