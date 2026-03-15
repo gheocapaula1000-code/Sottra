@@ -80,6 +80,14 @@ export interface PricingData extends SourceMetadata {
   prezzoMqMax: number;
   mediaZona: number | null;
   trend5Anni: number | null;
+  /** OMI polygon match passed through from pricing engine */
+  polygonMatch?: boolean;
+  /** OMI geo level from pricing engine */
+  omiGeoLevel?: "microzona_omi" | "zona_specifica" | "quartiere" | "comune" | "non_determinato";
+  /** Match method used (e.g. "polygon", "catastale_fallback", "ai_estimate") */
+  matchMethod?: string;
+  /** Match confidence [0-1] */
+  matchConfidence?: number;
 }
 
 /** Previsione futura */
