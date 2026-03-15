@@ -25,8 +25,8 @@ function json(body: unknown, status = 200) {
 
 interface ValoriIndex {
   comuneIstat: number;
-  comuneCat: number;
-  comuneAmm: number;
+  comuneCat: number;   // OMI internal code (e.g. A1AA) — NOT the standard Belfiore code
+  comuneAmm: number;   // Standard Belfiore catastale code (e.g. A001, L219)
   prov: number;
   zona: number;
   linkZona: number;
