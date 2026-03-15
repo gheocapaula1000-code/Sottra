@@ -1,5 +1,5 @@
 /**
- * Phase 2 Report Mapper — transforms real scan data into ReportField structures.
+ * Phase 3 Report Mapper — transforms real scan data into ReportField structures.
  * 
  * Rules:
  * - No mock data, no invented values
@@ -14,6 +14,7 @@ import type {
   ContestoVicinatoData, PosizionamentoCommercialeData,
   ProfiloAreaData, ScenarioTemporaleData, ScenarioTemporaleEntry,
   SintesiFinaleData, ReportSourceType, AvailabilityStatus,
+  PrioritaCriticitaData, PrioritaCriticaItem, PrioritaCriticaCategoria,
 } from "@/types/report";
 import type {
   IdentifyResult, PricingData, MarketContextData,
@@ -32,10 +33,6 @@ function field<T>(
   note?: string,
 ): ReportField<T> {
   return { value, label, sourceType, availabilityStatus, note };
-}
-
-function ok<T>(section: T | undefined): T | null {
-  return section ?? null;
 }
 
 function sectionData<T>(result: ScanResult, key: keyof ScanResult): T | null {
@@ -72,7 +69,6 @@ export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: 
     );
   }
 
-  // Only return if we have at least one renderable field
   const hasContent = Object.values(data).some(f => f && typeof f === "object" && "availabilityStatus" in f);
   return hasContent ? data : null;
 }
@@ -87,14 +83,11 @@ export function buildImmobileFacciata(result: ScanResult): ImmobileFacciataData 
   const pa = se.photoAnalysis;
   const data: ImmobileFacciataData = {};
 
-  // buildingType from photo analysis → image_detected
   if (pa?.buildingType) {
     data.tipologiaFacciata = field(pa.buildingType, "Tipologia edificio", "image_detected");
   }
 
-  // visibleFloors from photo analysis → image_detected
   if (pa?.visibleFloors != null) {
-    data.presenzaBalconi = undefined; // not available — don't invent
     data.noteVisive = field(
       `${pa.visibleFloors} pian${pa.visibleFloors === 1 ? "o" : "i"} visibil${pa.visibleFloors === 1 ? "e" : "i"}`,
       "Piani visibili",
@@ -102,8 +95,6 @@ export function buildImmobileFacciata(result: ScanResult): ImmobileFacciataData 
     );
   }
 
-  // facadeConsistencyLevel → visual_estimate (inferred, not certain)
-  // Backend values: "strong" | "good" | "partial" | "weak" | "none"
   if (se.facadeConsistencyLevel && se.facadeConsistencyLevel !== "none") {
     const consistencyLabels: Record<string, string> = {
       strong: "Facciata coerente e in buono stato apparente",
@@ -123,8 +114,6 @@ export function buildImmobileFacciata(result: ScanResult): ImmobileFacciataData 
     }
   }
 
-  // photoReadability as technical note
-  // Backend values: "clear" | "partial" | "poor"
   if (pa?.photoReadability && pa.photoReadability !== "clear") {
     const readabilityNotes: Record<string, string> = {
       partial: "Leggibilità immagine nella media — alcuni dettagli non determinabili",
@@ -154,16 +143,13 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
 
   const data: ContestoVicinatoData = {};
 
-  // Derive context from POI categories
   const categories = poi.categories ?? [];
   const hasManyServices = poi.totalPois >= 10;
   const hasTransport = categories.some(c => c.category === "transport");
   const hasShopping = categories.some(c => c.category === "shopping");
   const hasHealth = categories.some(c => c.category === "health");
   const hasEducation = categories.some(c => c.category === "education");
-  const hasParks = categories.some(c => c.category === "parks");
 
-  // presenzaServiziRilevati — derived from POI count (territorial, not visual)
   if (poi.totalPois > 0) {
     data.presenzaServiziRilevati = field(
       hasManyServices,
@@ -173,7 +159,6 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
     );
   }
 
-  // elencoServiziRilevati — from POI category labels (territorial source)
   if (categories.length > 0) {
     const serviziLabels = categories
       .filter(c => c.count > 0)
@@ -190,7 +175,6 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
     }
   }
 
-  // dotazioneServizi — qualitative from POI density (territorial, not visual)
   if (poi.totalPois >= 15 && categories.length >= 4) {
     data.dotazioneServizi = field(
       "Buona dotazione di servizi",
@@ -209,7 +193,6 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
     );
   }
 
-  // livelloServiziArea — only if strong territorial signals
   if (hasTransport && hasShopping && (hasHealth || hasEducation)) {
     data.livelloServiziArea = field(
       "Area ben servita",
@@ -231,12 +214,10 @@ export function buildPosizionamentoCommerciale(result: ScanResult): Posizionamen
   const market = sectionData<MarketContextData>(result, "marketContext");
   const omi = sectionData<OmiZoneData>(result, "omiZone");
 
-  // Need at least pricing or market data to show this section
   if (!pricing && !market) return null;
 
   const data: PosizionamentoCommercialeData = {};
 
-  // prezzoRichiestoRilevato — distinguish official vs market source
   if (pricing?.prezzoMq != null) {
     const pricingSource: ReportSourceType =
       pricing.sourceType === "official" ? "official_data" :
@@ -249,7 +230,6 @@ export function buildPosizionamentoCommerciale(result: ScanResult): Posizionamen
     );
   }
 
-  // noteCommercialiSintetiche — qualitative positioning from combined signals
   const signals: string[] = [];
 
   if (pricing?.prezzoMq != null && omi?.quotazioneMinResidenziale != null && omi?.quotazioneMaxResidenziale != null) {
@@ -282,7 +262,6 @@ export function buildPosizionamentoCommerciale(result: ScanResult): Posizionamen
     );
   }
 
-  // statoCommercialeRilevato — qualitative from market depth
   if (market?.marketCoverageLevel) {
     const coverageMap: Record<string, string> = {
       completa: "Mercato attivo",
@@ -305,18 +284,16 @@ export function buildPosizionamentoCommerciale(result: ScanResult): Posizionamen
   return hasContent ? data : null;
 }
 
-/* ── H) Profilo Area ─────────────────────────────────────── */
+/* ── H) Profilo Area — premium synthesis ─────────────────── */
 
 export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
   const poi = sectionData<PoiEnrichmentData>(result, "poiEnrichment");
   const rischio = sectionData<RischioZonaData>(result, "rischioZona");
   const istat = sectionData<IstatDemographicData>(result, "istatDemographic");
-  const infra = sectionData<InfrastrutureData>(result, "infrastrutture");
-  const trend = sectionData<TrendDemograficoData>(result, "trendDemografico");
 
   const data: ProfiloAreaData = {};
 
-  // accessibilitaTrasporti — from POI transport category
+  // accessibilitaTrasporti
   if (poi) {
     const transport = poi.categories?.find(c => c.category === "transport");
     if (transport && transport.count > 0) {
@@ -330,7 +307,7 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     }
   }
 
-  // presenzaServiziPrimari — from POI
+  // presenzaServiziPrimari
   if (poi && poi.totalPois > 0) {
     const primary = poi.categories?.filter(c =>
       ["health", "education", "shopping"].includes(c.category)
@@ -346,19 +323,18 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     }
   }
 
-  // qualitaAmbientale — from rischio zona if available
+  // qualitaAmbientale
   if (rischio?.scoreRischio != null) {
     const score = rischio.scoreRischio;
     let qualita: string;
-    let status: AvailabilityStatus = "available";
     if (score <= 30) qualita = "Basso profilo di rischio ambientale";
     else if (score <= 60) qualita = "Profilo di rischio ambientale nella media";
     else qualita = "Profilo di rischio ambientale da monitorare";
 
-    data.qualitaAmbientale = field(qualita, "Profilo ambientale", "territorial_verified", status);
+    data.qualitaAmbientale = field(qualita, "Profilo ambientale", "territorial_verified", "available");
   }
 
-  // livelloUrbanizzazione — from demographic density
+  // livelloUrbanizzazione
   if (istat?.densita != null) {
     let level: string;
     if (istat.densita > 3000) level = "Alta densità abitativa";
@@ -373,6 +349,42 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
       "available",
       `${istat.densita.toLocaleString("it-IT")} ab/km²`,
     );
+  }
+
+  // sintesiArea — prudent micro-synthesis only when enough data
+  const signalCount = [
+    data.accessibilitaTrasporti,
+    data.presenzaServiziPrimari,
+    data.qualitaAmbientale,
+    data.livelloUrbanizzazione,
+  ].filter(Boolean).length;
+
+  if (signalCount >= 3) {
+    const parts: string[] = [];
+
+    if (data.livelloUrbanizzazione) {
+      parts.push(data.livelloUrbanizzazione.value.toLowerCase());
+    }
+    if (data.accessibilitaTrasporti) {
+      parts.push("con accesso a trasporti pubblici");
+    }
+    if (data.presenzaServiziPrimari) {
+      parts.push("servizi primari presenti nell'area");
+    }
+    if (data.qualitaAmbientale && rischio?.scoreRischio != null && rischio.scoreRischio <= 40) {
+      parts.push("profilo ambientale contenuto");
+    }
+
+    if (parts.length >= 2) {
+      const synthesis = `Area con ${parts.slice(0, 3).join(", ")}.`;
+      data.sintesiArea = field(
+        synthesis,
+        "Quadro sintetico dell'area",
+        "territorial_verified",
+        signalCount >= 4 ? "available" : "partial",
+        `Basato su ${signalCount} indicatori territoriali verificati`,
+      );
+    }
   }
 
   const hasContent = Object.values(data).some(f => f && typeof f === "object" && "availabilityStatus" in f);
@@ -428,32 +440,57 @@ export function buildScenarioTemporale(result: ScanResult): ScenarioTemporaleDat
   };
 }
 
-/* ── J) Sintesi Finale ───────────────────────────────────── */
+/* ── J) Sintesi Finale — executive summary ───────────────── */
 
 export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null {
   const opportunity = sectionData<OpportunityData>(result, "opportunity");
   const convergenza = sectionData<ConvergenzaTerritorialeData>(result, "convergenzaTerritoriale");
   const pricing = sectionData<PricingData>(result, "pricing");
+  const omi = sectionData<OmiZoneData>(result, "omiZone");
+  const poi = sectionData<PoiEnrichmentData>(result, "poiEnrichment");
+  const rischio = sectionData<RischioZonaData>(result, "rischioZona");
+  const tv = sectionData<TimeViewData>(result, "timeView");
 
   if (!opportunity && !convergenza) return null;
 
   const data: SintesiFinaleData = {};
 
-  // giudizioSintetico — from convergenza band
+  // Executive summary — build from convergence of real signals
   if (convergenza?.band && convergenza.score != null) {
-    const bandTexts: Record<string, string> = {
-      molto_forte: "Convergenza territoriale molto forte. Molteplici segnali favorevoli confermano il potenziale dell'area.",
-      forte: "Convergenza territoriale forte. I principali indicatori confermano un quadro positivo.",
-      interessante: "Convergenza territoriale interessante. Alcuni segnali meritano approfondimento.",
-      debole: "Convergenza territoriale debole. Il quadro presenta elementi da monitorare con attenzione.",
+    const summaryParts: string[] = [];
+
+    // Opening statement from convergence
+    const bandOpenings: Record<string, string> = {
+      molto_forte: "Il quadro complessivo mostra una convergenza territoriale molto forte tra i segnali analizzati.",
+      forte: "I principali indicatori convergono verso un quadro positivo per l'area esaminata.",
+      interessante: "L'analisi evidenzia elementi di interesse, con alcuni segnali che meritano approfondimento.",
+      debole: "Il quadro presenta elementi eterogenei che richiedono una valutazione attenta.",
     };
-    const text = bandTexts[convergenza.band];
-    if (text) {
-      data.giudizioSintetico = field(text, "Giudizio sintetico", "market_data", "available");
+    const opening = bandOpenings[convergenza.band];
+    if (opening) summaryParts.push(opening);
+
+    // Add coverage context
+    const covLabels: Record<string, string> = {
+      completa: "L'analisi dispone di una copertura dati completa.",
+      buona: "La copertura dei dati analizzati è buona.",
+      parziale: "Alcuni indicatori non sono disponibili per questa zona; la lettura è parziale.",
+      scarsa: "La copertura dati per questa area è limitata; le conclusioni sono da considerare con prudenza.",
+    };
+    if (convergenza.coverageLevel && covLabels[convergenza.coverageLevel]) {
+      summaryParts.push(covLabels[convergenza.coverageLevel]);
+    }
+
+    if (summaryParts.length > 0) {
+      data.giudizioSintetico = field(
+        summaryParts.join(" "),
+        "Quadro sintetico",
+        "market_data",
+        convergenza.coverageLevel === "scarsa" ? "partial" : "available",
+      );
     }
   }
 
-  // puntiDiForza — from opportunity drivers and convergenza positive
+  // puntiDiForza — only real, supported items
   const forza: string[] = [];
   if (opportunity?.drivers) {
     forza.push(...(opportunity.drivers as string[]).slice(0, 2));
@@ -461,11 +498,17 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
   if (convergenza?.positiveFamilies) {
     forza.push(...convergenza.positiveFamilies.slice(0, 2).map(f => `Convergenza positiva: ${f}`));
   }
+  if (rischio?.scoreRischio != null && rischio.scoreRischio <= 30) {
+    forza.push("Profilo di rischio ambientale contenuto");
+  }
+  if (poi && poi.totalPois >= 15) {
+    forza.push("Buona dotazione di servizi nell'area");
+  }
   if (forza.length > 0) {
     data.puntiDiForza = field(forza.slice(0, 4), "Punti di forza", "market_data", "available");
   }
 
-  // puntiDiAttenzione — from opportunity risks and convergenza negative
+  // puntiDiAttenzione — real cautions
   const attenzione: string[] = [];
   if (opportunity?.risks) {
     attenzione.push(...(opportunity.risks as string[]).slice(0, 2));
@@ -473,22 +516,172 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
   if (convergenza?.negativeFamilies) {
     attenzione.push(...convergenza.negativeFamilies.slice(0, 2).map(f => `Attenzione: ${f}`));
   }
+  if (rischio?.scoreRischio != null && rischio.scoreRischio > 60) {
+    attenzione.push("Profilo di rischio ambientale da monitorare");
+  }
   if (attenzione.length > 0) {
     data.puntiDiAttenzione = field(attenzione.slice(0, 4), "Punti di attenzione", "market_data", "available");
   }
 
-  // raccomandazione — from opportunity observation
+  // raccomandazione — prudent conclusion
   if (opportunity?.observation) {
     data.raccomandazione = field(
       opportunity.observation,
-      "Osservazione",
+      "Osservazione conclusiva",
       "market_data",
       "available",
     );
   }
 
+  // Coverage analysis note
+  const modulesAvailable = [
+    !!pricing, !!omi, !!poi, !!rischio, !!tv, !!convergenza, !!opportunity,
+  ].filter(Boolean).length;
+  const totalModules = 7;
+  if (modulesAvailable < totalModules) {
+    const pct = Math.round((modulesAvailable / totalModules) * 100);
+    data.coperturaAnalisi = field(
+      `Analisi basata su ${modulesAvailable} di ${totalModules} moduli disponibili (${pct}% di copertura)`,
+      "Copertura analisi",
+      "market_data",
+      modulesAvailable >= 5 ? "available" : "partial",
+    );
+  }
+
   const hasContent = Object.values(data).some(f => f && typeof f === "object" && "availabilityStatus" in f);
   return hasContent ? data : null;
+}
+
+/* ── L) Priorità / Criticità ─────────────────────────────── */
+
+export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaData | null {
+  const identify = sectionData<IdentifyResult>(result, "identify");
+  const pricing = sectionData<PricingData>(result, "pricing");
+  const omi = sectionData<OmiZoneData>(result, "omiZone");
+  const poi = sectionData<PoiEnrichmentData>(result, "poiEnrichment");
+  const rischio = sectionData<RischioZonaData>(result, "rischioZona");
+  const tv = sectionData<TimeViewData>(result, "timeView");
+  const convergenza = sectionData<ConvergenzaTerritorialeData>(result, "convergenzaTerritoriale");
+  const market = sectionData<MarketContextData>(result, "marketContext");
+
+  const items: PrioritaCriticaItem[] = [];
+
+  // Image readability issue
+  if (identify?.streetEvidence?.photoAnalysis?.photoReadability === "poor") {
+    items.push({
+      testo: "Leggibilità immagine limitata — la valutazione visiva dell'edificio è parziale",
+      categoria: "da_verificare",
+      sourceType: "image_detected",
+      availabilityStatus: "partial",
+    });
+  }
+
+  // Low POI coverage
+  if (poi && poi.totalPois < 5 && poi.totalPois > 0) {
+    items.push({
+      testo: "Contesto servizi limitato nell'area analizzata",
+      categoria: "attenzione",
+      sourceType: "territorial_verified",
+      availabilityStatus: "available",
+    });
+  }
+
+  // High risk score
+  if (rischio?.scoreRischio != null && rischio.scoreRischio > 60) {
+    items.push({
+      testo: "Profilo di rischio ambientale da approfondire",
+      categoria: "attenzione",
+      sourceType: "territorial_verified",
+      availabilityStatus: "available",
+    });
+  }
+
+  // Low risk = favorable
+  if (rischio?.scoreRischio != null && rischio.scoreRischio <= 25) {
+    items.push({
+      testo: "Profilo di rischio ambientale contenuto",
+      categoria: "elemento_favorevole",
+      sourceType: "territorial_verified",
+      availabilityStatus: "available",
+    });
+  }
+
+  // Good convergence
+  if (convergenza?.band === "molto_forte" || convergenza?.band === "forte") {
+    items.push({
+      testo: "Convergenza territoriale positiva tra i segnali analizzati",
+      categoria: "elemento_favorevole",
+      sourceType: "market_data",
+      availabilityStatus: "available",
+    });
+  }
+
+  // Weak convergence
+  if (convergenza?.band === "debole") {
+    items.push({
+      testo: "Convergenza territoriale debole — quadro da valutare con cautela",
+      categoria: "attenzione",
+      sourceType: "market_data",
+      availabilityStatus: "available",
+    });
+  }
+
+  // Pricing vs OMI divergence
+  if (pricing?.prezzoMq != null && omi?.quotazioneMinResidenziale != null && omi?.quotazioneMaxResidenziale != null) {
+    const omiMid = (omi.quotazioneMinResidenziale + omi.quotazioneMaxResidenziale) / 2;
+    const ratio = pricing.prezzoMq / omiMid;
+    if (ratio > 1.3) {
+      items.push({
+        testo: "Prezzo di mercato significativamente superiore alla media OMI — verificare coerenza",
+        categoria: "da_verificare",
+        sourceType: "market_data",
+        availabilityStatus: "available",
+      });
+    }
+  }
+
+  // Incomplete scenario
+  if (!tv) {
+    items.push({
+      testo: "Scenario temporale non disponibile per questa area",
+      categoria: "copertura_parziale",
+      sourceType: "forecast_scenario",
+      availabilityStatus: "partial",
+    });
+  }
+
+  // Partial data coverage
+  if (convergenza?.coverageLevel === "scarsa" || convergenza?.coverageLevel === "parziale") {
+    items.push({
+      testo: "Copertura dati parziale — alcune fonti non disponibili per l'area",
+      categoria: "copertura_parziale",
+      sourceType: "market_data",
+      availabilityStatus: "partial",
+    });
+  }
+
+  // Good POI coverage = favorable
+  if (poi && poi.totalPois >= 15) {
+    items.push({
+      testo: "Area discretamente servita — buona densità di servizi rilevati",
+      categoria: "elemento_favorevole",
+      sourceType: "territorial_verified",
+      availabilityStatus: "available",
+    });
+  }
+
+  if (items.length === 0) return null;
+
+  // Max 5 items, prioritized: attenzione > da_verificare > copertura_parziale > elemento_favorevole
+  const priority: Record<PrioritaCriticaCategoria, number> = {
+    attenzione: 0,
+    da_verificare: 1,
+    copertura_parziale: 2,
+    elemento_favorevole: 3,
+  };
+  const sorted = items.sort((a, b) => priority[a.categoria] - priority[b.categoria]).slice(0, 5);
+
+  return { items: sorted };
 }
 
 /* ── Master mapper ───────────────────────────────────────── */
@@ -501,6 +694,7 @@ export interface MappedReportSections {
   profiloArea: ProfiloAreaData | null;
   scenarioTemporale: ScenarioTemporaleData | null;
   sintesiFinale: SintesiFinaleData | null;
+  prioritaCriticita: PrioritaCriticitaData | null;
 }
 
 export function mapScanToReportSections(
@@ -516,5 +710,6 @@ export function mapScanToReportSections(
     profiloArea: buildProfiloArea(result),
     scenarioTemporale: buildScenarioTemporale(result),
     sintesiFinale: buildSintesiFinale(result),
+    prioritaCriticita: buildPrioritaCriticita(result),
   };
 }
