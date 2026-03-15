@@ -57,6 +57,22 @@ function devLog(...args: unknown[]) { if (isDev) console.log("[REPORT_MAPPER]", 
  * Builds geo candidates from OMI, ISTAT, trendDemografico and resolves
  * the best one via `resolveBestSource`.
  */
+/**
+ * Resolves the best OMI geo level using explicit `omiGeoLevel` from Central Core
+ * when available, falling back to `polygonMatch` boolean for backwards compatibility.
+ */
+function resolveOmiGeoLevel(omi: OmiZoneData): ReportGeoLevel {
+  // Prefer explicit omiGeoLevel from the new Central Core payload
+  if (omi.omiGeoLevel) return omi.omiGeoLevel;
+  // Fallback to legacy polygonMatch boolean
+  return omi.polygonMatch ? "microzona_omi" : "comune";
+}
+
+function resolveOmiConfidence(omi: OmiZoneData): number {
+  if (omi.matchConfidence != null) return omi.matchConfidence;
+  return omi.polygonMatch ? 0.95 : 0.5;
+}
+
 export function resolveGeoContext(result: ScanResult): GeoContext {
   const omi = sectionData<OmiZoneData>(result, "omiZone");
   const istat = sectionData<IstatDemographicData>(result, "istatDemographic");
@@ -65,16 +81,20 @@ export function resolveGeoContext(result: ScanResult): GeoContext {
   // Build candidates for geo resolution
   const candidates: SourceCandidate<{ label: string }>[] = [];
 
-  // OMI polygon match = microzone-level (official)
+  // OMI — use explicit omiGeoLevel when available
   if (omi?.zonaOmiLabel) {
+    const omiGeo = resolveOmiGeoLevel(omi);
+    const isZoneLevel = omiGeo === "microzona_omi" || omiGeo === "zona_specifica" || omiGeo === "quartiere";
     candidates.push({
       data: { label: `Zona OMI ${omi.zonaOmiLabel}` },
       tier: "ufficiale",
-      geoLevel: omi.polygonMatch ? "microzona_omi" : "comune",
-      geoLabel: omi.polygonMatch ? `Zona OMI ${omi.zonaOmiLabel}` : (omi.comuneLabel ? `Comune di ${omi.comuneLabel}` : undefined),
+      geoLevel: omiGeo,
+      geoLabel: isZoneLevel
+        ? `Zona OMI ${omi.zonaOmiLabel}`
+        : (omi.comuneLabel ? `Comune di ${omi.comuneLabel}` : undefined),
       provider: "omi",
       isOfficial: true,
-      confidence: omi.polygonMatch ? 0.95 : 0.5,
+      confidence: resolveOmiConfidence(omi),
     });
   }
 
@@ -110,7 +130,7 @@ export function resolveGeoContext(result: ScanResult): GeoContext {
   }
 
   // OMI without polygon match, just label as comunale fallback
-  if (omi?.comuneLabel && !omi.polygonMatch && !omi.zonaOmiLabel) {
+  if (omi?.comuneLabel && !omi.polygonMatch && !omi.zonaOmiLabel && !omi.omiGeoLevel) {
     candidates.push({
       data: { label: `Comune di ${omi.comuneLabel}` },
       tier: "ufficiale",
