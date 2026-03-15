@@ -134,6 +134,15 @@ export function useBuildingScan() {
       const address = identifyData.address ?? "";
       const confidence = identifyData.confidence ?? undefined;
 
+      // Phase 1 report engine modules — no data source yet, set to idle
+      const phase1Modules: (keyof ScanResult)[] = [
+        "profiloRapido", "immobileFacciata", "contestoVicinato",
+        "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
+      ];
+      for (const m of phase1Modules) {
+        set(m, { status: "idle", data: null, message: null });
+      }
+
       await Promise.allSettled([
         // Core V3 modules
         ...(address ? [getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing"))] : []),
