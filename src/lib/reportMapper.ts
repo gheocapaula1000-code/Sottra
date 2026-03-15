@@ -535,8 +535,9 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
     data.raccomandazione = field(
       opportunity.observation,
       "Osservazione conclusiva",
-      "market_data",
+      "forecast_scenario",
       "available",
+      "Basata su indice di opportunità territoriale",
     );
   }
 
