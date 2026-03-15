@@ -439,7 +439,7 @@ export function PrioritaCriticitaCard({ data, loading }: { data: PrioritaCritici
             <div key={i} className="flex items-start gap-2.5 rounded-lg bg-background/40 border border-border/20 px-3 py-2">
               <Icon className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", config.color)} />
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-foreground leading-relaxed">{item.testo}</p>
+                <p className="text-xs text-foreground leading-relaxed">{safeText(item.testo)}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className={cn("text-[9px] font-medium", config.color)}>{config.label}</span>
                   <SourceMicroBadge sourceType={item.sourceType} />
