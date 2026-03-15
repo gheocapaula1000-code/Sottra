@@ -488,15 +488,35 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     }
   }
 
-  // qualitaAmbientale
+  // qualitaAmbientale — resolve via source resolver to check geo compatibility
   if (rischio?.scoreRischio != null) {
-    const score = rischio.scoreRischio;
-    let qualita: string;
-    if (score <= 30) qualita = "Basso profilo di rischio ambientale";
-    else if (score <= 60) qualita = "Profilo di rischio ambientale nella media";
-    else qualita = "Profilo di rischio ambientale da monitorare";
+    const rischioGeo = mapCoverageLevelToGeoLevel(rischio.sourceCoverageLevel);
+    const rischioCandidate: SourceCandidate<number> = {
+      data: rischio.scoreRischio,
+      tier: rischio.sourceType === "official" ? "ufficiale" : "dato_elaborato",
+      geoLevel: rischioGeo,
+      provider: "rischio_zona",
+      isOfficial: rischio.sourceType === "official",
+      confidence: rischio.sourceConfidence ?? 0.7,
+    };
+    const resolvedRischio = resolveBestSource([rischioCandidate], geo.geoLevel);
 
-    data.qualitaAmbientale = field(qualita, "Profilo ambientale", "territorial_verified", "available");
+    if (resolvedRischio.data != null) {
+      const score = resolvedRischio.data;
+      let qualita: string;
+      if (score <= 30) qualita = "Basso profilo di rischio ambientale";
+      else if (score <= 60) qualita = "Profilo di rischio ambientale nella media";
+      else qualita = "Profilo di rischio ambientale da monitorare";
+
+      const rischioIsMunicipal = resolvedRischio.geoLevel === "comune" || resolvedRischio.geoLevel === "non_determinato";
+      data.qualitaAmbientale = field(
+        qualita,
+        rischioIsMunicipal ? "Profilo ambientale (dato comunale)" : "Profilo ambientale",
+        "territorial_verified",
+        rischioIsMunicipal ? "partial" : "available",
+        rischioIsMunicipal ? "Dato riferito al livello comunale" : undefined,
+      );
+    }
   }
 
   // livelloUrbanizzazione — ISTAT is municipal
