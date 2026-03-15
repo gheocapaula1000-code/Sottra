@@ -315,7 +315,7 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
     if (transport && transport.count > 0) {
       const nearest = transport.nearest;
       data.accessibilitaTrasporti = field(
-        nearest ? `${transport.count} fermata/e · più vicina a ${nearest.distance}m` : `${transport.count} fermata/e nel raggio`,
+        nearest?.distance != null ? `${transport.count} fermata/e · più vicina a ${nearest.distance}m` : `${transport.count} fermata/e nel raggio`,
         "Accessibilità trasporti",
         "territorial_verified",
         "available",
