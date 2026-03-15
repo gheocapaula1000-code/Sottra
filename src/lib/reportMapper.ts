@@ -635,8 +635,9 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
     items.push({
       testo: "Convergenza territoriale debole — quadro da valutare con cautela",
       categoria: "attenzione",
-      sourceType: "market_data",
+      sourceType: "territorial_verified",
       availabilityStatus: "available",
+      nota: "Basato su convergenza di più fonti territoriali",
     });
   }
 
