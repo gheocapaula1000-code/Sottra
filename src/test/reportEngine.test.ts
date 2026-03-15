@@ -194,14 +194,14 @@ describe("buildProfiloRapido", () => {
     expect(buildProfiloRapido(result, 45, 9)).toBeNull();
   });
 
-  it("populates address and coordinates from identify", () => {
+  it("populates address as territorial_verified (not image_detected)", () => {
     const result = baseScanResult({
       identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
     });
     const rapido = buildProfiloRapido(result, 45.46, 9.19);
     expect(rapido).not.toBeNull();
     expect(rapido!.indirizzo?.value).toBe("Via Roma 1");
-    expect(rapido!.indirizzo?.sourceType).toBe("image_detected");
+    expect(rapido!.indirizzo?.sourceType).toBe("territorial_verified");
     expect(rapido!.coordinate?.sourceType).toBe("territorial_verified");
   });
 
