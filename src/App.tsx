@@ -12,6 +12,7 @@ import CookieBanner from "@/components/CookieBanner";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
 import TrialProtectedRoute from "@/components/TrialProtectedRoute";
+import AppDashboardGate from "@/components/AppDashboardGate";
 import PwaUpdateBanner from "@/components/PwaUpdateBanner";
 import { BUILD_VERSION } from "@/lib/buildInfo";
 import Index from "./pages/Index";
