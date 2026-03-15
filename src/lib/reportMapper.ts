@@ -334,18 +334,63 @@ export function buildPosizionamentoCommerciale(result: ScanResult): Posizionamen
 
   if (!pricing && !market) return null;
 
+  const geo = resolveGeoContext(result);
   const data: PosizionamentoCommercialeData = {};
 
-  if (pricing?.prezzoMq != null) {
-    const pricingSource: ReportSourceType =
-      pricing.sourceType === "official" ? "official_data" :
-      pricing.sourceType === "unavailable" ? "unavailable" as ReportSourceType : "market_data";
-    data.prezzoRichiestoRilevato = field(
-      pricing.prezzoMq,
-      "Prezzo stimato €/m²",
-      pricingSource,
-      pricing.sourceType === "unavailable" ? "unavailable" : "available",
-    );
+  // Resolve pricing source via resolver — OMI (official) vs market pricing
+  if (pricing?.prezzoMq != null || omi?.quotazioneMinResidenziale != null) {
+    const pricingCandidates: SourceCandidate<{ prezzoMq: number; label: string }>[] = [];
+
+    // OMI quotation as official candidate
+    if (omi?.quotazioneMinResidenziale != null && omi?.quotazioneMaxResidenziale != null) {
+      const omiMid = (omi.quotazioneMinResidenziale + omi.quotazioneMaxResidenziale) / 2;
+      pricingCandidates.push({
+        data: { prezzoMq: omiMid, label: "Quotazione OMI" },
+        tier: "ufficiale",
+        geoLevel: omi.polygonMatch ? "microzona_omi" : "comune",
+        geoLabel: omi.zonaOmiLabel ?? omi.comuneLabel ?? undefined,
+        provider: "omi",
+        isOfficial: true,
+        confidence: omi.polygonMatch ? 0.9 : 0.6,
+      });
+    }
+
+    // Market pricing as secondary candidate
+    if (pricing?.prezzoMq != null) {
+      const marketTier = pricing.sourceType === "official" ? "ufficiale" as const :
+        pricing.sourceType === "unavailable" ? "unavailable" as const : "mercato_verificato" as const;
+      const marketGeo = mapCoverageLevelToGeoLevel(pricing.sourceCoverageLevel);
+      pricingCandidates.push({
+        data: { prezzoMq: pricing.prezzoMq, label: "Prezzo di mercato" },
+        tier: marketTier,
+        geoLevel: marketGeo,
+        geoLabel: pricing.sourceLabel ?? undefined,
+        provider: "pricing_engine",
+        isOfficial: marketTier === "ufficiale",
+        confidence: pricing.sourceConfidence ?? 0.7,
+      });
+    }
+
+    const resolvedPricing = resolveBestSource(pricingCandidates, geo.geoLevel);
+
+    if (resolvedPricing.data) {
+      const reportSourceType: ReportSourceType =
+        resolvedPricing.isOfficial ? "official_data" :
+        resolvedPricing.tier === "mercato_verificato" ? "market_data" : "market_data";
+      data.prezzoRichiestoRilevato = field(
+        resolvedPricing.data.prezzoMq,
+        "Prezzo stimato €/m²",
+        reportSourceType,
+        resolvedPricing.geoLevel === "comune" ? "partial" : "available",
+        resolvedPricing.geoLevel === "comune"
+          ? `${resolvedPricing.data.label} — dato comunale`
+          : resolvedPricing.data.label,
+      );
+
+      if (isDev) {
+        devLog("Pricing resolution:", resolutionSummary(resolvedPricing));
+      }
+    }
   }
 
   const signals: string[] = [];
@@ -353,12 +398,13 @@ export function buildPosizionamentoCommerciale(result: ScanResult): Posizionamen
   if (pricing?.prezzoMq != null && omi?.quotazioneMinResidenziale != null && omi?.quotazioneMaxResidenziale != null) {
     const omiMid = (omi.quotazioneMinResidenziale + omi.quotazioneMaxResidenziale) / 2;
     const ratio = pricing.prezzoMq / omiMid;
+    const geoQualifier = geo.geoLevel === "comune" ? " (dato comunale)" : "";
     if (ratio > 1.2) {
-      signals.push("Prezzo di mercato superiore alla media OMI di zona");
+      signals.push(`Prezzo di mercato superiore alla media OMI${geoQualifier}`);
     } else if (ratio < 0.8) {
-      signals.push("Prezzo di mercato inferiore alla media OMI di zona");
+      signals.push(`Prezzo di mercato inferiore alla media OMI${geoQualifier}`);
     } else {
-      signals.push("Prezzo di mercato in linea con i valori OMI di zona");
+      signals.push(`Prezzo di mercato in linea con i valori OMI${geoQualifier}`);
     }
   }
 
