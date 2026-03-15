@@ -331,6 +331,7 @@ export interface ScanResult {
   profiloArea: SectionState<import("@/types/report").ProfiloAreaData>;
   scenarioTemporale: SectionState<import("@/types/report").ScenarioTemporaleData>;
   sintesiFinale: SectionState<import("@/types/report").SintesiFinaleData>;
+  prioritaCriticita: SectionState<import("@/types/report").PrioritaCriticitaData>;
 }
 
 /** Errore restituito da coreRequest */

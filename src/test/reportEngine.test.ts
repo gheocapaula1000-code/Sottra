@@ -9,7 +9,7 @@ import type {
 import {
   buildProfiloRapido, buildImmobileFacciata, buildContestoVicinato,
   buildPosizionamentoCommerciale, buildProfiloArea,
-  buildScenarioTemporale, buildSintesiFinale,
+  buildScenarioTemporale, buildSintesiFinale, buildPrioritaCriticita,
   mapScanToReportSections,
 } from "@/lib/reportMapper";
 import type { ScanResult, SectionState } from "@/types";
@@ -27,6 +27,7 @@ function baseScanResult(overrides: Partial<Record<keyof ScanResult, SectionState
     "poiEnrichment", "omiZone", "istatDemographic",
     "profiloRapido", "immobileFacciata", "contestoVicinato",
     "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
+    "prioritaCriticita",
   ];
   const result = {} as Record<string, SectionState>;
   for (const k of keys) result[k] = idle;
@@ -420,6 +421,59 @@ describe("buildProfiloArea", () => {
     expect(area!.livelloUrbanizzazione?.sourceType).toBe("official_data");
     expect(area!.livelloUrbanizzazione?.value).toContain("Alta");
   });
+
+  it("generates sintesiArea when 3+ indicators are available", () => {
+    const result = baseScanResult({
+      poiEnrichment: {
+        status: "success",
+        data: {
+          totalPois: 10,
+          categories: [
+            { category: "transport", categoryLabel: "Trasporti", count: 5, nearest: { name: "Bus", category: "transport", categoryLabel: "Trasporti", distance: 100, lat: 45, lng: 9, provider: "overpass" } },
+            { category: "health", categoryLabel: "Sanità", count: 3 },
+            { category: "education", categoryLabel: "Istruzione", count: 2 },
+          ],
+          pois: [],
+          searchRadius: 800,
+        },
+        message: null,
+      },
+      rischioZona: {
+        status: "success",
+        data: { scoreRischio: 20 },
+        message: null,
+      },
+      istatDemographic: {
+        status: "success",
+        data: { popolazione: 80000, densita: 5000, comuneLabel: "Milano" },
+        message: null,
+      },
+    });
+    const area = buildProfiloArea(result);
+    expect(area).not.toBeNull();
+    expect(area!.sintesiArea).toBeDefined();
+    expect(area!.sintesiArea?.sourceType).toBe("territorial_verified");
+    expect(area!.sintesiArea?.value).toContain("Area con");
+    expect(area!.sintesiArea?.note).toContain("indicatori territoriali");
+  });
+
+  it("does NOT generate sintesiArea with fewer than 3 indicators", () => {
+    const result = baseScanResult({
+      poiEnrichment: {
+        status: "success",
+        data: {
+          totalPois: 3,
+          categories: [{ category: "parks", categoryLabel: "Parchi", count: 3 }],
+          pois: [],
+          searchRadius: 800,
+        },
+        message: null,
+      },
+    });
+    const area = buildProfiloArea(result);
+    // May have some fields but no synthesis
+    expect(area?.sintesiArea).toBeUndefined();
+  });
 });
 
 describe("buildScenarioTemporale", () => {
@@ -454,7 +508,7 @@ describe("buildSintesiFinale", () => {
     expect(buildSintesiFinale(result)).toBeNull();
   });
 
-  it("builds from opportunity and convergenza", () => {
+  it("builds executive summary from opportunity and convergenza", () => {
     const result = baseScanResult({
       opportunity: {
         status: "success",
@@ -470,9 +524,201 @@ describe("buildSintesiFinale", () => {
     const sintesi = buildSintesiFinale(result);
     expect(sintesi).not.toBeNull();
     expect(sintesi!.giudizioSintetico?.value).toContain("molto forte");
+    expect(sintesi!.giudizioSintetico?.value).toContain("copertura");
     expect(sintesi!.giudizioSintetico?.sourceType).toBe("market_data");
     expect(sintesi!.puntiDiForza?.value).toContain("Driver1");
     expect(sintesi!.raccomandazione?.value).toBe("Buon potenziale");
+    expect(sintesi!.raccomandazione?.label).toBe("Osservazione conclusiva");
+  });
+
+  it("includes coverage analysis when modules are incomplete", () => {
+    const result = baseScanResult({
+      opportunity: {
+        status: "success",
+        data: { score: 50, band: "interessante", drivers: ["D1"], risks: [], observation: "Ok" },
+        message: null,
+      },
+      convergenzaTerritoriale: {
+        status: "success",
+        data: { score: 55, band: "interessante", convergenceLevel: "media", coverageLevel: "parziale" },
+        message: null,
+      },
+    });
+    const sintesi = buildSintesiFinale(result);
+    expect(sintesi).not.toBeNull();
+    expect(sintesi!.coperturaAnalisi).toBeDefined();
+    expect(sintesi!.coperturaAnalisi?.value).toContain("moduli");
+    expect(sintesi!.giudizioSintetico?.value).toContain("parziale");
+  });
+
+  it("adds rischio/POI signals to strengths and cautions when available", () => {
+    const result = baseScanResult({
+      opportunity: {
+        status: "success",
+        data: { score: 60, band: "forte", drivers: ["D1"], risks: ["R1"], observation: "Test" },
+        message: null,
+      },
+      convergenzaTerritoriale: {
+        status: "success",
+        data: { score: 65, band: "forte" },
+        message: null,
+      },
+      rischioZona: {
+        status: "success",
+        data: { scoreRischio: 15 },
+        message: null,
+      },
+      poiEnrichment: {
+        status: "success",
+        data: { totalPois: 20, categories: [], pois: [], searchRadius: 800 },
+        message: null,
+      },
+    });
+    const sintesi = buildSintesiFinale(result);
+    const forza = sintesi?.puntiDiForza?.value as string[];
+    expect(forza).toBeDefined();
+    expect(forza.some(f => f.includes("rischio"))).toBe(true);
+    expect(forza.some(f => f.includes("servizi"))).toBe(true);
+  });
+
+  it("does NOT produce promotional text", () => {
+    const result = baseScanResult({
+      opportunity: {
+        status: "success",
+        data: { score: 90, band: "molto_forte", drivers: ["D1"], risks: [], observation: "Contesto da valutare" },
+        message: null,
+      },
+      convergenzaTerritoriale: {
+        status: "success",
+        data: { score: 95, band: "molto_forte", convergenceLevel: "alta", coverageLevel: "completa" },
+        message: null,
+      },
+    });
+    const sintesi = buildSintesiFinale(result);
+    const fullText = JSON.stringify(sintesi);
+    expect(fullText).not.toContain("imperdibile");
+    expect(fullText).not.toContain("occasione");
+    expect(fullText).not.toContain("garantito");
+    expect(fullText).not.toContain("affare");
+    expect(fullText).not.toContain("alto potenziale");
+  });
+});
+
+/* ── Phase 3: Priorità / Criticità ───────────────────────── */
+
+describe("buildPrioritaCriticita", () => {
+  it("returns null without identify data", () => {
+    const result = baseScanResult();
+    expect(buildPrioritaCriticita(result)).toBeNull();
+  });
+
+  it("generates copertura_parziale when only identify is present (missing timeView)", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
+    });
+    const prio = buildPrioritaCriticita(result);
+    expect(prio).not.toBeNull();
+    expect(prio!.items.some(i => i.categoria === "copertura_parziale")).toBe(true);
+  });
+
+  it("generates items from real risk/POI/convergence signals", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
+      rischioZona: {
+        status: "success",
+        data: { scoreRischio: 70 },
+        message: null,
+      },
+      poiEnrichment: {
+        status: "success",
+        data: { totalPois: 3, categories: [{ category: "parks", categoryLabel: "Parchi", count: 3 }], pois: [], searchRadius: 800 },
+        message: null,
+      },
+      convergenzaTerritoriale: {
+        status: "success",
+        data: { score: 30, band: "debole" },
+        message: null,
+      },
+    });
+    const prio = buildPrioritaCriticita(result);
+    expect(prio).not.toBeNull();
+    expect(prio!.items.length).toBeGreaterThanOrEqual(2);
+    expect(prio!.items.length).toBeLessThanOrEqual(5);
+    // Has attenzione items
+    expect(prio!.items.some(i => i.categoria === "attenzione")).toBe(true);
+  });
+
+  it("respects max 5 items", () => {
+    const result = baseScanResult({
+      identify: {
+        status: "success",
+        data: {
+          address: "Via Roma 1", buildingId: "X", confidence: 0.9,
+          streetEvidence: { photoAnalysis: { photoReadability: "poor" } },
+        },
+        message: null,
+      },
+      rischioZona: { status: "success", data: { scoreRischio: 75 }, message: null },
+      poiEnrichment: {
+        status: "success",
+        data: { totalPois: 2, categories: [{ category: "parks", categoryLabel: "Parchi", count: 2 }], pois: [], searchRadius: 800 },
+        message: null,
+      },
+      convergenzaTerritoriale: {
+        status: "success",
+        data: { score: 25, band: "debole", coverageLevel: "scarsa" },
+        message: null,
+      },
+      pricing: {
+        status: "success",
+        data: { prezzoMq: 8000, prezzoMqMin: 7000, prezzoMqMax: 9000, mediaZona: null, trend5Anni: null },
+        message: null,
+      },
+      omiZone: {
+        status: "success",
+        data: { quotazioneMinResidenziale: 2000, quotazioneMaxResidenziale: 3000, zonaOmi: "B1" },
+        message: null,
+      },
+    });
+    const prio = buildPrioritaCriticita(result);
+    expect(prio).not.toBeNull();
+    expect(prio!.items.length).toBeLessThanOrEqual(5);
+  });
+
+  it("includes favorevole items when signals are positive", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
+      rischioZona: { status: "success", data: { scoreRischio: 15 }, message: null },
+      convergenzaTerritoriale: {
+        status: "success",
+        data: { score: 85, band: "molto_forte" },
+        message: null,
+      },
+      poiEnrichment: {
+        status: "success",
+        data: { totalPois: 20, categories: [], pois: [], searchRadius: 800 },
+        message: null,
+      },
+    });
+    const prio = buildPrioritaCriticita(result);
+    expect(prio).not.toBeNull();
+    expect(prio!.items.some(i => i.categoria === "elemento_favorevole")).toBe(true);
+  });
+
+  it("never contains promotional language", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Test", buildingId: "X", confidence: 0.9 }, message: null },
+      convergenzaTerritoriale: { status: "success", data: { score: 90, band: "molto_forte" }, message: null },
+      rischioZona: { status: "success", data: { scoreRischio: 10 }, message: null },
+      poiEnrichment: { status: "success", data: { totalPois: 25, categories: [], pois: [], searchRadius: 800 }, message: null },
+    });
+    const prio = buildPrioritaCriticita(result);
+    if (prio) {
+      const fullText = prio.items.map(i => i.testo).join(" ");
+      expect(fullText).not.toContain("imperdibile");
+      expect(fullText).not.toContain("occasione");
+      expect(fullText).not.toContain("investimento");
+    }
   });
 });
 
@@ -487,6 +733,7 @@ describe("mapScanToReportSections", () => {
     expect(mapped.profiloArea).toBeNull();
     expect(mapped.scenarioTemporale).toBeNull();
     expect(mapped.sintesiFinale).toBeNull();
+    expect(mapped.prioritaCriticita).toBeNull();
   });
 
   it("never produces invented/mock data", () => {
@@ -494,12 +741,10 @@ describe("mapScanToReportSections", () => {
       identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
     });
     const mapped = mapScanToReportSections(result, 45, 9);
-    // Only profiloRapido should be non-null (from identify), rest null
     expect(mapped.profiloRapido).not.toBeNull();
     expect(mapped.immobileFacciata).toBeNull();
     expect(mapped.contestoVicinato).toBeNull();
     expect(mapped.posizionamentoCommerciale).toBeNull();
-    // No mock values in profilo rapido
     expect(mapped.profiloRapido!.tipologiaEdificio).toBeUndefined();
     expect(mapped.profiloRapido!.annoCostruzioneStimato).toBeUndefined();
   });
@@ -525,13 +770,9 @@ describe("No invented data policy", () => {
       },
     });
     const ctx = buildContestoVicinato(result);
-    // Should NOT have prevalenzaContesto (requires image analysis)
     expect(ctx?.prevalenzaContesto).toBeUndefined();
-    // Should NOT have tessutoUrbano (requires image analysis)
     expect(ctx?.tessutoUrbano).toBeUndefined();
-    // Should NOT have densitaEdiliziaPercepita (requires image analysis)
     expect(ctx?.densitaEdiliziaPercepita).toBeUndefined();
-    // Renamed fields should not exist under old names
     expect((ctx as any).densitaEdiliziaVisiva).toBeUndefined();
     expect((ctx as any).qualitaVisivaContesto).toBeUndefined();
     expect((ctx as any).attrattivitaVisivaMicrocontesto).toBeUndefined();
@@ -550,7 +791,7 @@ describe("Phase 2.1 semantic corrections", () => {
     expect(rapido!.indirizzo?.sourceType).not.toBe("image_detected");
   });
 
-  it("pricing from official source gets official_data sourceType in commercial section", () => {
+  it("pricing from official source gets official_data sourceType", () => {
     const result = baseScanResult({
       pricing: {
         status: "success",
@@ -574,7 +815,7 @@ describe("Phase 2.1 semantic corrections", () => {
     expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("market_data");
   });
 
-  it("immobileFacciata partial with streetEvidence populates correct sourceTypes (real core enums)", () => {
+  it("immobileFacciata partial with streetEvidence populates correct sourceTypes", () => {
     const result = baseScanResult({
       identify: {
         status: "success",
@@ -592,7 +833,6 @@ describe("Phase 2.1 semantic corrections", () => {
     expect(facade).not.toBeNull();
     expect(facade!.tipologiaFacciata?.sourceType).toBe("image_detected");
     expect(facade!.statoConservazioneFacciata?.sourceType).toBe("visual_estimate");
-    // photoReadability "clear" should NOT produce qualitaEsteticaGenerale note
     expect(facade!.qualitaEsteticaGenerale).toBeUndefined();
   });
 
@@ -657,7 +897,7 @@ describe("Phase 2.1 semantic corrections", () => {
     expect(rapido!.coordinate?.label).toBe("Coordinate GPS");
   });
 
-  it("MAP_REPORT populates profiloRapido, profiloArea, scenarioTemporale, sintesiFinale", () => {
+  it("MAP_REPORT populates profiloRapido, profiloArea, scenarioTemporale, sintesiFinale, prioritaCriticita", () => {
     const result = baseScanResult({
       identify: { status: "success", data: { address: "Via Test", buildingId: "X", confidence: 0.9 }, message: null },
       timeView: { status: "success", data: { previsione5Anni: 8, previsione10Anni: 18, previsione20Anni: 30 }, message: null },
@@ -676,6 +916,7 @@ describe("Phase 2.1 semantic corrections", () => {
     expect(mapped.scenarioTemporale!.scenari).toHaveLength(3);
     expect(mapped.sintesiFinale).not.toBeNull();
     expect(mapped.sintesiFinale!.giudizioSintetico).toBeDefined();
+    expect(mapped.prioritaCriticita).not.toBeNull();
   });
 
   it("no mock data — all sections null with empty scan result", () => {
@@ -687,6 +928,7 @@ describe("Phase 2.1 semantic corrections", () => {
     expect(mapped.posizionamentoCommerciale).toBeNull();
     expect(mapped.scenarioTemporale).toBeNull();
     expect(mapped.sintesiFinale).toBeNull();
+    expect(mapped.prioritaCriticita).toBeNull();
   });
 });
 

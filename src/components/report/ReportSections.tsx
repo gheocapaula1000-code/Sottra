@@ -1,16 +1,16 @@
 /**
  * Modular report section card components.
  * Each card auto-hides when data is insufficient — no empty boxes.
- * These supplement the existing cards in Result.tsx.
  *
  * FROZEN: Do NOT touch OmiCard, OmiZoneData, or OMI pipeline.
  */
 
 import { cn } from "@/lib/utils";
 import {
-  Building2, Eye, Store, Map, Clock, FileText,
+  Building2, Store, Map, Clock, FileText,
   CheckCircle2, TrendingUp, ShieldCheck, TriangleAlert,
   Camera, Landmark, TreePine, ListChecks, BookOpen,
+  AlertCircle, CircleDot,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,11 +19,11 @@ import type {
   ProfiloRapidoData, ImmobileFacciataData, ContestoVicinatoData,
   PosizionamentoCommercialeData, ProfiloAreaData,
   ScenarioTemporaleData, SintesiFinaleData, TrasparenzaFontiData,
-  FonteEntry, ReportField,
+  FonteEntry, ReportField, PrioritaCriticitaData, PrioritaCriticaCategoria,
 } from "@/types/report";
-import { isSectionRenderable, countAvailableFields, sourceTypeLabels } from "@/types/report";
+import { isSectionRenderable, sourceTypeLabels } from "@/types/report";
 
-/* ── Layout primitives (mirrors Result.tsx pattern) ──────── */
+/* ── Layout primitives ──────────────────────────────────── */
 
 function Section({ children, className, gradient }: { children: React.ReactNode; className?: string; gradient?: string }) {
   return (
@@ -37,16 +37,19 @@ function Section({ children, className, gradient }: { children: React.ReactNode;
   );
 }
 
-function SectionHeader({ icon: Icon, title, badge }: { icon: React.ElementType; title: string; badge?: string | null }) {
+function SectionHeader({ icon: Icon, title, badge, subtitle }: { icon: React.ElementType; title: string; badge?: string | null; subtitle?: string | null }) {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-          <Icon className="h-4 w-4 text-primary" />
+    <div className="mb-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            <Icon className="h-4 w-4 text-primary" />
+          </div>
+          <span className="font-semibold text-foreground text-sm tracking-tight">{title}</span>
         </div>
-        <span className="font-semibold text-foreground text-sm tracking-tight">{title}</span>
+        {badge && <Badge variant="secondary" className="text-[10px] font-medium">{badge}</Badge>}
       </div>
-      {badge && <Badge variant="secondary" className="text-[10px] font-medium">{badge}</Badge>}
+      {subtitle && <p className="text-[11px] text-muted-foreground mt-1.5 ml-[42px]">{subtitle}</p>}
     </div>
   );
 }
@@ -107,9 +110,10 @@ export function ImmobileFacciataCard({ data, loading }: { data: ImmobileFacciata
         ]}
         showSource
       />
-      {data.noteVisive?.value && data.noteVisive.availabilityStatus === "available" && (
+      {data.noteVisive?.value && (data.noteVisive.availabilityStatus === "available" || data.noteVisive.availabilityStatus === "partial") && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mt-3">
-          <p className="text-xs text-foreground/80 leading-relaxed italic">"{data.noteVisive.value}"</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">{data.noteVisive.value}</p>
+          <SourceMicroBadge sourceType={data.noteVisive.sourceType} className="mt-1" />
         </div>
       )}
     </Section>
@@ -173,7 +177,6 @@ export function PosizionamentoCommercialeCard({ data, loading }: { data: Posizio
         badge={data.statoCommercialeRilevato?.value ?? null}
       />
 
-      {/* Match annuncio indicator */}
       {matchTrovato && (
         <div className="flex items-center gap-1.5 mb-3">
           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
@@ -199,7 +202,6 @@ export function PosizionamentoCommercialeCard({ data, loading }: { data: Posizio
         showSource
       />
 
-      {/* Exclusivity / multi-agency signals */}
       {(data.multiagenziaRilevata?.value === true || data.esclusivaDichiarataNellAnnuncio?.value === true) && (
         <div className="flex flex-wrap gap-2 mt-3">
           {data.esclusivaDichiarataNellAnnuncio?.value && (
@@ -215,9 +217,10 @@ export function PosizionamentoCommercialeCard({ data, loading }: { data: Posizio
         </div>
       )}
 
-      {data.noteCommercialiSintetiche?.value && data.noteCommercialiSintetiche.availabilityStatus === "available" && (
+      {data.noteCommercialiSintetiche?.value && (data.noteCommercialiSintetiche.availabilityStatus === "available" || data.noteCommercialiSintetiche.availabilityStatus === "partial") && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mt-3">
-          <p className="text-xs text-foreground/80 leading-relaxed italic">"{data.noteCommercialiSintetiche.value}"</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">{data.noteCommercialiSintetiche.value}</p>
+          <SourceMicroBadge sourceType={data.noteCommercialiSintetiche.sourceType} className="mt-1" />
         </div>
       )}
     </Section>
@@ -233,6 +236,20 @@ export function ProfiloAreaCard({ data, loading }: { data: ProfiloAreaData | nul
   return (
     <Section gradient="from-teal-500/8 to-cyan-500/5 border-teal-500/15">
       <SectionHeader icon={Map} title="Profilo Area" />
+
+      {/* Synthesis block at top if available */}
+      {data.sintesiArea?.value && (data.sintesiArea.availabilityStatus === "available" || data.sintesiArea.availabilityStatus === "partial") && (
+        <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2.5 mb-4">
+          <p className="text-sm text-foreground leading-relaxed">{data.sintesiArea.value}</p>
+          <div className="flex items-center gap-2 mt-1.5">
+            <SourceMicroBadge sourceType={data.sintesiArea.sourceType} />
+            {data.sintesiArea.note && (
+              <span className="text-[9px] text-muted-foreground/50">{data.sintesiArea.note}</span>
+            )}
+          </div>
+        </div>
+      )}
+
       <FieldGrid
         fields={[
           data.classificazioneArea,
@@ -246,7 +263,7 @@ export function ProfiloAreaCard({ data, loading }: { data: ProfiloAreaData | nul
       />
       {data.noteArea?.value && data.noteArea.availabilityStatus === "available" && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mt-3">
-          <p className="text-xs text-foreground/80 leading-relaxed italic">"{data.noteArea.value}"</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">{data.noteArea.value}</p>
         </div>
       )}
     </Section>
@@ -259,7 +276,6 @@ export function ScenarioTemporaleCard({ data, loading }: { data: ScenarioTempora
   if (loading) return <SectionSkeleton />;
   if (!data?.scenari || data.scenari.length === 0) return null;
 
-  // Only show scenarios that have at least some real data
   const renderableScenari = data.scenari.filter(s =>
     s.variazioneStimataPct?.availabilityStatus === "available" ||
     s.narrativa?.availabilityStatus === "available"
@@ -288,7 +304,6 @@ export function ScenarioTemporaleCard({ data, loading }: { data: ScenarioTempora
         ))}
       </div>
 
-      {/* Drivers & risks from first scenario with them */}
       {renderableScenari.map((s) => {
         const drivers = s.driverPrincipali?.value;
         const risks = s.rischiPrincipali?.value;
@@ -328,12 +343,12 @@ export function ScenarioTemporaleCard({ data, loading }: { data: ScenarioTempora
   );
 }
 
-/* ── J) Sintesi Finale ───────────────────────────────────── */
+/* ── J) Sintesi Finale — executive summary ───────────────── */
 
 export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
   if (!data) return null;
-  const hasContent = data.giudizioSintetico?.availabilityStatus === "available" ||
+  const hasContent = data.giudizioSintetico?.availabilityStatus === "available" || data.giudizioSintetico?.availabilityStatus === "partial" ||
     (data.puntiDiForza?.value && (data.puntiDiForza.value as string[]).length > 0) ||
     (data.puntiDiAttenzione?.value && (data.puntiDiAttenzione.value as string[]).length > 0);
   if (!hasContent) return null;
@@ -343,11 +358,15 @@ export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData |
 
   return (
     <Section gradient="from-primary/8 to-primary/3 border-primary/15">
-      <SectionHeader icon={FileText} title="Sintesi Finale" />
+      <SectionHeader icon={FileText} title="Sintesi Finale" subtitle="Quadro riepilogativo dell'analisi" />
 
-      {data.giudizioSintetico?.value && data.giudizioSintetico.availabilityStatus === "available" && (
+      {/* Executive summary */}
+      {data.giudizioSintetico?.value && (data.giudizioSintetico.availabilityStatus === "available" || data.giudizioSintetico.availabilityStatus === "partial") && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2.5 mb-4">
-          <p className="text-sm text-foreground leading-relaxed font-medium">{data.giudizioSintetico.value}</p>
+          <p className="text-sm text-foreground leading-relaxed">{data.giudizioSintetico.value}</p>
+          {data.giudizioSintetico.availabilityStatus === "partial" && (
+            <p className="text-[9px] text-muted-foreground/50 mt-1">Quadro basato su dati parziali</p>
+          )}
         </div>
       )}
 
@@ -376,11 +395,61 @@ export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData |
         )}
       </div>
 
+      {/* Conclusive observation */}
       {data.raccomandazione?.value && data.raccomandazione.availabilityStatus === "available" && (
         <div className="rounded-lg bg-muted/30 border border-border/30 px-3 py-2 mt-3">
-          <p className="text-xs text-foreground/80 leading-relaxed italic">"{data.raccomandazione.value}"</p>
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Osservazione conclusiva</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">{data.raccomandazione.value}</p>
         </div>
       )}
+
+      {/* Coverage analysis */}
+      {data.coperturaAnalisi?.value && (
+        <p className="text-[9px] text-muted-foreground/40 mt-3">{data.coperturaAnalisi.value}</p>
+      )}
+
+      <p className="text-[9px] text-muted-foreground/30 mt-2">
+        Le indicazioni non costituiscono consulenza finanziaria o immobiliare
+      </p>
+    </Section>
+  );
+}
+
+/* ── L) Priorità / Criticità ─────────────────────────────── */
+
+const categoriaConfig: Record<PrioritaCriticaCategoria, { icon: React.ElementType; color: string; label: string }> = {
+  attenzione: { icon: TriangleAlert, color: "text-amber-500", label: "Attenzione" },
+  da_verificare: { icon: AlertCircle, color: "text-sky-400", label: "Da verificare" },
+  copertura_parziale: { icon: CircleDot, color: "text-muted-foreground", label: "Copertura parziale" },
+  elemento_favorevole: { icon: CheckCircle2, color: "text-emerald-500", label: "Elemento favorevole" },
+};
+
+export function PrioritaCriticitaCard({ data, loading }: { data: PrioritaCriticitaData | null; loading: boolean }) {
+  if (loading) return <SectionSkeleton />;
+  if (!data?.items || data.items.length === 0) return null;
+
+  return (
+    <Section gradient="from-amber-500/6 to-orange-500/3 border-amber-500/12">
+      <SectionHeader icon={AlertCircle} title="Priorità e Criticità" subtitle="Elementi che meritano attenzione" />
+
+      <div className="space-y-2">
+        {data.items.map((item, i) => {
+          const config = categoriaConfig[item.categoria];
+          const Icon = config.icon;
+          return (
+            <div key={i} className="flex items-start gap-2.5 rounded-lg bg-background/40 border border-border/20 px-3 py-2">
+              <Icon className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", config.color)} />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-foreground leading-relaxed">{item.testo}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={cn("text-[9px] font-medium", config.color)}>{config.label}</span>
+                  <SourceMicroBadge sourceType={item.sourceType} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </Section>
   );
 }
@@ -414,18 +483,15 @@ export function TrasparenzaFontiCard({ data }: { data: TrasparenzaFontiData | nu
                 <p className="text-xs font-medium text-foreground">{fonte.categoriaLabel}</p>
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
                   {fonte.provider && <span className="text-[10px] text-muted-foreground">{fonte.provider}</span>}
-                  {fonte.periodo && <span className="text-[10px] text-muted-foreground">{fonte.periodo}</span>}
-                  {fonte.copertura && <span className="text-[10px] text-primary/60 font-medium">{fonte.copertura}</span>}
+                  {fonte.periodo && <span className="text-[10px] text-muted-foreground/60">{fonte.periodo}</span>}
+                  {fonte.copertura && <span className="text-[10px] text-muted-foreground/40">{fonte.copertura}</span>}
                 </div>
-                {fonte.dettaglio && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{fonte.dettaglio}</p>}
+                {fonte.dettaglio && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{fonte.dettaglio}</p>}
               </div>
             </div>
           );
         })}
       </div>
-      <p className="text-[9px] text-muted-foreground/30 mt-3">
-        Tutte le fonti utilizzate sono elencate per trasparenza. Nessun dato è inventato o generato artificialmente.
-      </p>
     </Section>
   );
 }
