@@ -841,31 +841,65 @@ function MarketSignalsBlock({ signals }: { signals: { key: string; label: string
 
 function OmiCard({ data, loading }: { data: import("@/types").OmiZoneData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
-  if (!data || data.sourceType === "unavailable" || (data.quotazioneMinResidenziale == null && data.quotazioneMaxResidenziale == null)) return null;
+  if (!data || data.sourceType === "unavailable") return null;
+
+  const hasQuotazioni = data.quotazioneMinResidenziale != null || data.quotazioneMaxResidenziale != null;
+  const hasZone = data.zonaOmi != null;
+  // Show card if we have quotazioni OR at least a zone identification
+  if (!hasQuotazioni && !hasZone) return null;
+
+  const isExactZone = data.polygonMatch === true || data.sourceCoverageLevel === "zone_omi";
+  const isComuneLevel = data.sourceCoverageLevel === "comune";
 
   return (
     <Section gradient="from-green-500/10 to-emerald-500/5 border-green-500/15">
       <SectionHeader icon={TrendingUp} title="Quotazioni OMI" badge={data.semestre ?? null} />
+
+      {/* Zone identification with coverage clarity */}
       {data.zonaOmiLabel && (
-        <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
-          <MapPin className="h-3 w-3" />Zona OMI: <span className="font-semibold text-foreground">{data.zonaOmiLabel}</span>
+        <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+          <MapPin className="h-3 w-3" />
+          {isExactZone ? "Zona OMI" : "Riferimento"}: <span className="font-semibold text-foreground">{data.zonaOmiLabel}</span>
           {data.comuneLabel && <span className="text-muted-foreground/60"> · {data.comuneLabel}</span>}
         </p>
       )}
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        {data.quotazioneMinResidenziale != null && (
-          <div className="rounded-lg bg-muted/50 px-3 py-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Min €/m²</span>
-            <p className="font-bold text-foreground text-sm mt-0.5">{fmtEur(data.quotazioneMinResidenziale)}</p>
-          </div>
-        )}
-        {data.quotazioneMaxResidenziale != null && (
-          <div className="rounded-lg bg-muted/50 px-3 py-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Max €/m²</span>
-            <p className="font-bold text-foreground text-sm mt-0.5">{fmtEur(data.quotazioneMaxResidenziale)}</p>
-          </div>
-        )}
-      </div>
+
+      {/* Polygon match badge */}
+      {isExactZone && (
+        <div className="flex items-center gap-1.5 mb-3">
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+            <CheckCircle2 className="h-3 w-3" />Zona identificata da coordinate
+          </span>
+        </div>
+      )}
+      {isComuneLevel && (
+        <p className="text-[10px] text-amber-400/70 mb-3 flex items-center gap-1">
+          <Compass className="h-3 w-3" />Dato riferito alla media comunale — la zona specifica potrebbe variare
+        </p>
+      )}
+
+      {/* Quotazioni */}
+      {hasQuotazioni ? (
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {data.quotazioneMinResidenziale != null && (
+            <div className="rounded-lg bg-muted/50 px-3 py-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Min €/m²</span>
+              <p className="font-bold text-foreground text-sm mt-0.5">{fmtEur(data.quotazioneMinResidenziale)}</p>
+            </div>
+          )}
+          {data.quotazioneMaxResidenziale != null && (
+            <div className="rounded-lg bg-muted/50 px-3 py-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Max €/m²</span>
+              <p className="font-bold text-foreground text-sm mt-0.5">{fmtEur(data.quotazioneMaxResidenziale)}</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-lg bg-muted/30 border border-border/30 px-3 py-2 mb-3">
+          <p className="text-xs text-muted-foreground">Zona identificata — quotazioni economiche non ancora disponibili per questo periodo</p>
+        </div>
+      )}
+
       {data.tipologia && <p className="text-[10px] text-muted-foreground/60">Tipologia: {data.tipologia}</p>}
       <SourceTag meta={data} />
     </Section>

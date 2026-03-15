@@ -280,6 +280,7 @@ export interface OmiZoneData extends SourceMetadata {
   semestre?: string | null;
   tipologia?: string | null;
   statoConservazione?: string | null;
+  polygonMatch?: boolean;
 }
 
 /** ISTAT enhanced demographic data */
