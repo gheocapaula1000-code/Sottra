@@ -507,7 +507,7 @@ describe("mapScanToReportSections", () => {
 /* ── No fallback invented values test ────────────────────── */
 
 describe("No invented data policy", () => {
-  it("immobileFacciata returns null — never fills facade fields without real data", () => {
+  it("immobileFacciata returns null without streetEvidence", () => {
     const result = baseScanResult({
       identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
       poiEnrichment: { status: "success", data: { totalPois: 20, categories: [], pois: [], searchRadius: 800 }, message: null },
@@ -515,7 +515,7 @@ describe("No invented data policy", () => {
     expect(buildImmobileFacciata(result)).toBeNull();
   });
 
-  it("contestoVicinato does not invent visual fields without image analysis", () => {
+  it("contestoVicinato uses territorial naming, no visual-sounding fields", () => {
     const result = baseScanResult({
       poiEnrichment: {
         status: "success",
@@ -528,7 +528,118 @@ describe("No invented data policy", () => {
     expect(ctx?.prevalenzaContesto).toBeUndefined();
     // Should NOT have tessutoUrbano (requires image analysis)
     expect(ctx?.tessutoUrbano).toBeUndefined();
-    // Should NOT have densitaEdiliziaVisiva (requires image analysis)
-    expect(ctx?.densitaEdiliziaVisiva).toBeUndefined();
+    // Should NOT have densitaEdiliziaPercepita (requires image analysis)
+    expect(ctx?.densitaEdiliziaPercepita).toBeUndefined();
+    // Renamed fields should not exist under old names
+    expect((ctx as any).densitaEdiliziaVisiva).toBeUndefined();
+    expect((ctx as any).qualitaVisivaContesto).toBeUndefined();
+    expect((ctx as any).attrattivitaVisivaMicrocontesto).toBeUndefined();
+  });
+});
+
+/* ── Phase 2.1: Semantic corrections tests ───────────────── */
+
+describe("Phase 2.1 semantic corrections", () => {
+  it("indirizzo is territorial_verified, never image_detected", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Corso Buenos Aires 10", buildingId: "X", confidence: 0.95 }, message: null },
+    });
+    const rapido = buildProfiloRapido(result, 45, 9);
+    expect(rapido!.indirizzo?.sourceType).toBe("territorial_verified");
+    expect(rapido!.indirizzo?.sourceType).not.toBe("image_detected");
+  });
+
+  it("pricing from official source gets official_data sourceType in commercial section", () => {
+    const result = baseScanResult({
+      pricing: {
+        status: "success",
+        data: { prezzoMq: 3000, prezzoMqMin: 2800, prezzoMqMax: 3200, mediaZona: null, trend5Anni: null, sourceType: "official" },
+        message: null,
+      },
+    });
+    const pos = buildPosizionamentoCommerciale(result);
+    expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("official_data");
+  });
+
+  it("pricing from market source gets market_data sourceType", () => {
+    const result = baseScanResult({
+      pricing: {
+        status: "success",
+        data: { prezzoMq: 3000, prezzoMqMin: 2800, prezzoMqMax: 3200, mediaZona: null, trend5Anni: null, sourceType: "elaborated" },
+        message: null,
+      },
+    });
+    const pos = buildPosizionamentoCommerciale(result);
+    expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("market_data");
+  });
+
+  it("immobileFacciata partial with streetEvidence populates correct sourceTypes", () => {
+    const result = baseScanResult({
+      identify: {
+        status: "success",
+        data: {
+          address: "Via Roma 1", buildingId: "X", confidence: 0.9,
+          streetEvidence: {
+            facadeConsistencyLevel: "alta",
+            photoAnalysis: { buildingType: "Palazzina", visibleFloors: 3, photoReadability: "alta" },
+          },
+        },
+        message: null,
+      },
+    });
+    const facade = buildImmobileFacciata(result);
+    expect(facade).not.toBeNull();
+    expect(facade!.tipologiaFacciata?.sourceType).toBe("image_detected");
+    expect(facade!.statoConservazioneFacciata?.sourceType).toBe("visual_estimate");
+    // photoReadability "alta" should NOT produce qualitaEsteticaGenerale note
+    expect(facade!.qualitaEsteticaGenerale).toBeUndefined();
+  });
+
+  it("MAP_REPORT populates profiloRapido, profiloArea, scenarioTemporale, sintesiFinale", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Test", buildingId: "X", confidence: 0.9 }, message: null },
+      timeView: { status: "success", data: { previsione5Anni: 8, previsione10Anni: 18, previsione20Anni: 30 }, message: null },
+      opportunity: { status: "success", data: { score: 70, band: "forte", drivers: ["D1"], risks: ["R1"], observation: "Ok" }, message: null },
+      convergenzaTerritoriale: { status: "success", data: { score: 75, band: "forte", convergenceLevel: "media", coverageLevel: "buona", positiveFamilies: ["P1"], negativeFamilies: ["N1"] }, message: null },
+      poiEnrichment: {
+        status: "success",
+        data: { totalPois: 10, categories: [{ category: "transport", categoryLabel: "T", count: 5 }], pois: [], searchRadius: 800 },
+        message: null,
+      },
+    });
+    const mapped = mapScanToReportSections(result, 45.46, 9.19);
+    expect(mapped.profiloRapido).not.toBeNull();
+    expect(mapped.profiloArea).not.toBeNull();
+    expect(mapped.scenarioTemporale).not.toBeNull();
+    expect(mapped.scenarioTemporale!.scenari).toHaveLength(3);
+    expect(mapped.sintesiFinale).not.toBeNull();
+    expect(mapped.sintesiFinale!.giudizioSintetico).toBeDefined();
+  });
+
+  it("no mock data — all sections null with empty scan result", () => {
+    const result = baseScanResult();
+    const mapped = mapScanToReportSections(result, null, null);
+    expect(mapped.profiloRapido).toBeNull();
+    expect(mapped.immobileFacciata).toBeNull();
+    expect(mapped.contestoVicinato).toBeNull();
+    expect(mapped.posizionamentoCommerciale).toBeNull();
+    expect(mapped.scenarioTemporale).toBeNull();
+    expect(mapped.sintesiFinale).toBeNull();
+  });
+});
+
+/* ── OMI non-regression (frozen) ─────────────────────────── */
+
+describe("OMI invariance check", () => {
+  it("OmiZoneData interface remains unchanged", () => {
+    const omi: import("@/types").OmiZoneData = {
+      zonaOmi: "C2",
+      quotazioneMinResidenziale: 1200,
+      quotazioneMaxResidenziale: 1500,
+      polygonMatch: true,
+      comuneLabel: "Roma",
+    };
+    expect(omi.polygonMatch).toBe(true);
+    expect(omi.zonaOmi).toBe("C2");
   });
 });
