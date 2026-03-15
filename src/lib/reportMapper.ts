@@ -170,7 +170,7 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
     );
   }
 
-  // elencoServiziVisibili — from POI category labels
+  // elencoServiziRilevati — from POI category labels (territorial source)
   if (categories.length > 0) {
     const serviziLabels = categories
       .filter(c => c.count > 0)
@@ -178,9 +178,9 @@ export function buildContestoVicinato(result: ScanResult): ContestoVicinatoData 
       .map(c => `${c.categoryLabel} (${c.count})`);
 
     if (serviziLabels.length > 0) {
-      data.elencoServiziVisibili = field(
+      data.elencoServiziRilevati = field(
         serviziLabels,
-        "Servizi rilevati",
+        "Servizi rilevati nell'area",
         "territorial_verified",
         "available",
       );
