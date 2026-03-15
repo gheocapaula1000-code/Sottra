@@ -10,7 +10,7 @@ import {
   buildProfiloRapido, buildImmobileFacciata, buildContestoVicinato,
   buildPosizionamentoCommerciale, buildProfiloArea,
   buildScenarioTemporale, buildSintesiFinale, buildPrioritaCriticita,
-  mapScanToReportSections,
+  mapScanToReportSections, computeModuleCoverage,
 } from "@/lib/reportMapper";
 import type { ScanResult, SectionState } from "@/types";
 
