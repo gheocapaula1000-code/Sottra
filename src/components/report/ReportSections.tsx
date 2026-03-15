@@ -376,7 +376,7 @@ export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData |
             {forza.map((f, i) => (
               <div key={i} className="flex items-start gap-2">
                 <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" />
-                <p className="text-xs text-foreground leading-relaxed">{f}</p>
+                <p className="text-xs text-foreground leading-relaxed">{safeText(f)}</p>
               </div>
             ))}
           </div>
