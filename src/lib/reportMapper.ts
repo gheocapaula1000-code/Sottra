@@ -507,7 +507,8 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
 
   if (!opportunity && !convergenza) return null;
 
-  const data: SintesiFinaleData = {};
+  const geo = resolveGeoContext(result);
+  const data: SintesiFinaleData = { geo };
 
   // Executive summary — build from convergence of real signals
   if (convergenza?.band && convergenza.score != null) {
