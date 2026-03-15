@@ -1222,8 +1222,11 @@ const Result = () => {
               <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} />
               <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} />
 
-              {/* J) Sintesi Finale (Phase 1 framework) */}
+              {/* J) Sintesi Finale (Phase 3 — executive summary) */}
               <SintesiFinaleCard data={result.sintesiFinale.data as import("@/types/report").SintesiFinaleData | null} loading={result.sintesiFinale.status === "loading"} />
+
+              {/* L) Priorità / Criticità (Phase 3 — optional) */}
+              <PrioritaCriticitaCard data={result.prioritaCriticita.data as PrioritaCriticitaData | null} loading={result.prioritaCriticita.status === "loading"} />
 
               {/* K) Trasparenza Fonti — built dynamically from available data */}
               {!scanning && <TrasparenzaFontiCard data={buildTrasparenzaFonti(result)} />}
