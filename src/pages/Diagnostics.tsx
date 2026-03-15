@@ -35,7 +35,12 @@ export default function Diagnostics() {
       if (e) throw e;
       setData(d as DiagResult);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Errore di comunicazione");
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("403") || msg.toLowerCase().includes("forbidden")) {
+        setError("Accesso riservato agli amministratori.");
+      } else {
+        setError(msg || "Errore di comunicazione");
+      }
     } finally {
       setLoading(false);
     }

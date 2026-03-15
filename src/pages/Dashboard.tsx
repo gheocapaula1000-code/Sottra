@@ -235,9 +235,8 @@ const Dashboard = () => {
               <CardContent className="pt-0 space-y-1">
                 <QuickAction icon={<ScanLine className="h-4 w-4" />} label="Nuova scansione" onClick={() => navigate("/scan")} />
                 <QuickAction icon={<History className="h-4 w-4" />} label="Cronologia scansioni" onClick={() => navigate("/history")} />
-                <QuickAction icon={<Activity className="h-4 w-4" />} label="Diagnostica Core" onClick={() => navigate("/app/diagnostics")} />
                 {(isAdmin || isOwner) && (
-                  <QuickAction icon={<Shield className="h-4 w-4" />} label="Diagnostica admin" onClick={() => navigate("/admin/diagnostics")} />
+                  <QuickAction icon={<Activity className="h-4 w-4" />} label="Diagnostica Core" onClick={() => navigate("/admin/diagnostics")} />
                 )}
                 {displaySubscribed && (
                   <QuickAction icon={<CreditCard className="h-4 w-4" />} label="Gestisci abbonamento" onClick={handleManageSubscription} />
