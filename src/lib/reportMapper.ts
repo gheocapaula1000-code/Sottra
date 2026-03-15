@@ -556,6 +556,8 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
 
 export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaData | null {
   const identify = sectionData<IdentifyResult>(result, "identify");
+  if (!identify) return null; // No scan data = no priorities
+
   const pricing = sectionData<PricingData>(result, "pricing");
   const omi = sectionData<OmiZoneData>(result, "omiZone");
   const poi = sectionData<PoiEnrichmentData>(result, "poiEnrichment");
