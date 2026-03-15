@@ -73,6 +73,8 @@ export function ProfiloRapidoCard({ data, loading }: { data: ProfiloRapidoData |
       <SectionHeader icon={ListChecks} title="Profilo Rapido" />
       <FieldGrid
         fields={[
+          data.indirizzo,
+          data.coordinate,
           data.tipologiaEdificio,
           data.annoCostruzioneStimato,
           data.pianiStimati,

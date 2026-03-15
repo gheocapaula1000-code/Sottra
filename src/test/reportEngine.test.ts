@@ -574,15 +574,15 @@ describe("Phase 2.1 semantic corrections", () => {
     expect(pos!.prezzoRichiestoRilevato?.sourceType).toBe("market_data");
   });
 
-  it("immobileFacciata partial with streetEvidence populates correct sourceTypes", () => {
+  it("immobileFacciata partial with streetEvidence populates correct sourceTypes (real core enums)", () => {
     const result = baseScanResult({
       identify: {
         status: "success",
         data: {
           address: "Via Roma 1", buildingId: "X", confidence: 0.9,
           streetEvidence: {
-            facadeConsistencyLevel: "alta",
-            photoAnalysis: { buildingType: "Palazzina", visibleFloors: 3, photoReadability: "alta" },
+            facadeConsistencyLevel: "strong",
+            photoAnalysis: { buildingType: "Palazzina", visibleFloors: 3, photoReadability: "clear" },
           },
         },
         message: null,
@@ -592,8 +592,69 @@ describe("Phase 2.1 semantic corrections", () => {
     expect(facade).not.toBeNull();
     expect(facade!.tipologiaFacciata?.sourceType).toBe("image_detected");
     expect(facade!.statoConservazioneFacciata?.sourceType).toBe("visual_estimate");
-    // photoReadability "alta" should NOT produce qualitaEsteticaGenerale note
+    // photoReadability "clear" should NOT produce qualitaEsteticaGenerale note
     expect(facade!.qualitaEsteticaGenerale).toBeUndefined();
+  });
+
+  it("facadeConsistencyLevel='good' maps to Italian label correctly", () => {
+    const result = baseScanResult({
+      identify: {
+        status: "success",
+        data: {
+          address: "Via Roma 1", buildingId: "X", confidence: 0.9,
+          streetEvidence: { facadeConsistencyLevel: "good" },
+        },
+        message: null,
+      },
+    });
+    const facade = buildImmobileFacciata(result);
+    expect(facade!.statoConservazioneFacciata?.value).toContain("buone condizioni");
+  });
+
+  it("photoReadability='partial' maps to readability note", () => {
+    const result = baseScanResult({
+      identify: {
+        status: "success",
+        data: {
+          address: "Via Roma 1", buildingId: "X", confidence: 0.9,
+          streetEvidence: {
+            facadeConsistencyLevel: "strong",
+            photoAnalysis: { photoReadability: "partial" },
+          },
+        },
+        message: null,
+      },
+    });
+    const facade = buildImmobileFacciata(result);
+    expect(facade!.qualitaEsteticaGenerale?.value).toContain("nella media");
+    expect(facade!.qualitaEsteticaGenerale?.availabilityStatus).toBe("partial");
+  });
+
+  it("facadeConsistencyLevel='none' is excluded from rendering", () => {
+    const result = baseScanResult({
+      identify: {
+        status: "success",
+        data: {
+          address: "Via Roma 1", buildingId: "X", confidence: 0.9,
+          streetEvidence: { facadeConsistencyLevel: "none" },
+        },
+        message: null,
+      },
+    });
+    const facade = buildImmobileFacciata(result);
+    expect(facade).toBeNull();
+  });
+
+  it("ProfiloRapidoCard renders indirizzo and coordinate fields", () => {
+    const result = baseScanResult({
+      identify: { status: "success", data: { address: "Via Test 5", buildingId: "X", confidence: 0.9 }, message: null },
+    });
+    const rapido = buildProfiloRapido(result, 45.123, 9.456);
+    expect(rapido).not.toBeNull();
+    expect(rapido!.indirizzo?.value).toBe("Via Test 5");
+    expect(rapido!.indirizzo?.label).toBe("Indirizzo");
+    expect(rapido!.coordinate?.value).toContain("45.12300");
+    expect(rapido!.coordinate?.label).toBe("Coordinate GPS");
   });
 
   it("MAP_REPORT populates profiloRapido, profiloArea, scenarioTemporale, sintesiFinale", () => {
