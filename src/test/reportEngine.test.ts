@@ -607,11 +607,18 @@ describe("buildSintesiFinale", () => {
 /* ── Phase 3: Priorità / Criticità ───────────────────────── */
 
 describe("buildPrioritaCriticita", () => {
-  it("returns null with no significant signals", () => {
+  it("returns null without identify data", () => {
+    const result = baseScanResult();
+    expect(buildPrioritaCriticita(result)).toBeNull();
+  });
+
+  it("generates copertura_parziale when only identify is present (missing timeView)", () => {
     const result = baseScanResult({
       identify: { status: "success", data: { address: "Via Roma 1", buildingId: "X", confidence: 0.9 }, message: null },
     });
-    expect(buildPrioritaCriticita(result)).toBeNull();
+    const prio = buildPrioritaCriticita(result);
+    expect(prio).not.toBeNull();
+    expect(prio!.items.some(i => i.categoria === "copertura_parziale")).toBe(true);
   });
 
   it("generates items from real risk/POI/convergence signals", () => {
