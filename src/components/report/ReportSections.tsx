@@ -220,7 +220,7 @@ export function PosizionamentoCommercialeCard({ data, loading }: { data: Posizio
 
       {data.noteCommercialiSintetiche?.value && (data.noteCommercialiSintetiche.availabilityStatus === "available" || data.noteCommercialiSintetiche.availabilityStatus === "partial") && (
         <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mt-3">
-          <p className="text-xs text-foreground/80 leading-relaxed">{data.noteCommercialiSintetiche.value}</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">{safeText(data.noteCommercialiSintetiche.value)}</p>
           <SourceMicroBadge sourceType={data.noteCommercialiSintetiche.sourceType} className="mt-1" />
         </div>
       )}
