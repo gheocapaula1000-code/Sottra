@@ -624,8 +624,9 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
     items.push({
       testo: "Convergenza territoriale positiva tra i segnali analizzati",
       categoria: "elemento_favorevole",
-      sourceType: "market_data",
+      sourceType: "territorial_verified",
       availabilityStatus: "available",
+      nota: "Basato su convergenza di più fonti territoriali",
     });
   }
 
