@@ -121,9 +121,9 @@ export function buildImmobileFacciata(result: ScanResult): ImmobileFacciataData 
     };
     const note = readabilityNotes[pa.photoReadability];
     if (note) {
-      data.qualitaEsteticaGenerale = field(
+      data.leggibilitaImmagine = field(
         note,
-        "Nota sulla leggibilità",
+        "Leggibilità immagine",
         "image_detected",
         "partial",
       );
