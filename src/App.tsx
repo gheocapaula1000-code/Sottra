@@ -12,13 +12,14 @@ import CookieBanner from "@/components/CookieBanner";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
 import TrialProtectedRoute from "@/components/TrialProtectedRoute";
+import AppDashboardGate from "@/components/AppDashboardGate";
 import PwaUpdateBanner from "@/components/PwaUpdateBanner";
 import { BUILD_VERSION } from "@/lib/buildInfo";
 import Index from "./pages/Index";
 
 if (import.meta.env.DEV) console.log(`[Sottra] build ${BUILD_VERSION}`);
 
-const Dashboard = lazy(() => import("./pages/Dashboard"));
+// Dashboard is lazy-loaded inside AppDashboardGate
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const Scan = lazy(() => import("./pages/Scan"));
 const Result = lazy(() => import("./pages/Result"));
@@ -55,8 +56,8 @@ const App = () => (
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/app" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                    <Route path="/app/diagnostics" element={<ProtectedRoute><Diagnostics /></ProtectedRoute>} />
+                    <Route path="/app" element={<AppDashboardGate />} />
+                    <Route path="/app/diagnostics" element={<ProtectedAdminRoute><Diagnostics /></ProtectedAdminRoute>} />
                     <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
                     <Route path="/admin/diagnostics" element={<ProtectedAdminRoute><Diagnostics /></ProtectedAdminRoute>} />
                     <Route path="/admin/omi-ingest" element={<ProtectedAdminRoute><AdminOmiIngest /></ProtectedAdminRoute>} />
