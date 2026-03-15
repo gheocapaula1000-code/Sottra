@@ -25,8 +25,8 @@ function json(body: unknown, status = 200) {
 
 interface ValoriIndex {
   comuneIstat: number;
-  comuneCat: number;
-  comuneAmm: number;
+  comuneCat: number;   // OMI internal code (e.g. A1AA) — NOT the standard Belfiore code
+  comuneAmm: number;   // Standard Belfiore catastale code (e.g. A001, L219)
   prov: number;
   zona: number;
   linkZona: number;
@@ -143,16 +143,19 @@ function parseValoriRows(
       if (isNaN(comprMax)) { skip("invalid_price_max"); continue; }
       if (comprMin <= 0 || comprMax <= 0) { skip("non_positive_price"); continue; }
 
+      // CRITICAL: In OMI CSVs, Comune_amm = standard Belfiore catastale code (A001, L219)
+      // Comune_cat = OMI internal code (A1AA, S1AF) — NOT the join key
       const comuneAmm = idx.comuneAmm >= 0 ? (vals[idx.comuneAmm] || "") : "";
+      const belfioreCode = comuneAmm || codCat; // prefer Comune_amm (real Belfiore code)
       const prov = idx.prov >= 0 ? (vals[idx.prov] || "") : "";
       const linkZona = idx.linkZona >= 0 ? (vals[idx.linkZona] || zona) : zona;
       const stato = idx.stato >= 0 ? (vals[idx.stato] || "NORMALE") : "NORMALE";
       const supNl = idx.supNl >= 0 ? (vals[idx.supNl] || "L") : "L";
 
       rows.push({
-        codice_comune_catastale: codCat,
+        codice_comune_catastale: belfioreCode,
         codice_comune_istat: codIstat,
-        comune_label: comuneAmm,
+        comune_label: "", // will be enriched from omi_polygons or left empty
         provincia: prov,
         zona_omi: zona,
         zona_omi_label: linkZona,
@@ -251,10 +254,15 @@ function parseZoneRows(
       const zona = idx.zona >= 0 ? (vals[idx.zona] || "") : "";
       if (!zona) { skipped++; continue; }
 
+      // CRITICAL: Comune_amm = real Belfiore catastale code, Comune_cat = OMI internal
+      const comuneAmm = idx.comuneAmm >= 0 ? (vals[idx.comuneAmm] || "") : "";
+      const belfioreCode = comuneAmm || codCat;
+      const comuneDescr = idx.comuneDescr >= 0 ? (vals[idx.comuneDescr] || "") : "";
+
       rows.push({
-        codice_comune_catastale: codCat,
+        codice_comune_catastale: belfioreCode,
         codice_comune_istat: codIstat,
-        comune_label: idx.comuneAmm >= 0 ? (vals[idx.comuneAmm] || "") : "",
+        comune_label: comuneDescr, // Use Comune_descr for human-readable name
         provincia: idx.prov >= 0 ? (vals[idx.prov] || "") : "",
         fascia: idx.fascia >= 0 ? (vals[idx.fascia] || "") : "",
         zona_omi: zona,
