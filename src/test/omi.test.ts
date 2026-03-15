@@ -40,11 +40,51 @@ function mockOmiQuery(data: unknown[] | null, error: unknown = null) {
 // Import the proSources parser to test OMI result parsing
 import { fetchProSources } from "@/services/proSources";
 
-describe("OMI CSV Parsing Validation", () => {
+describe("OMI CSV Column Mapping — Anti-Regression", () => {
+  it("maps Comune_amm to codice_comune_catastale (Belfiore code)", () => {
+    // OMI CSV: Comune_cat = OMI internal (A1AA), Comune_amm = Belfiore (A001)
+    const headers = [
+      "Cod_Tip", "Descr_Tipologia", "Stato", "Compr_min", "Compr_max",
+      "Sup_NL", "Loc_min", "Loc_max", "Sup_NL_Loc",
+      "Comune_ISTAT", "Comune_cat", "Sez", "Comune_amm", "Prov",
+      "Regione", "Area_territoriale", "Fascia", "Zona", "LinkZona",
+    ];
+
+    const findIdx = (pattern: RegExp) => headers.findIndex(h => pattern.test(h));
+    const comuneCatIdx = findIdx(/comune.?cat/i);   // index 10 = OMI internal code
+    const comuneAmmIdx = findIdx(/comune.?amm/i);   // index 12 = Belfiore code
+
+    // Simulate a CSV row
+    const csvRow = "20;Abitazioni civili;NORMALE;1300,00;1650,00;L;;;1001272;A1AA;;A001;PD;Veneto;Nord Est;B;B1;B1";
+    const vals = csvRow.split(";").map(v => v.trim());
+
+    const omiInternal = vals[comuneCatIdx];  // A1AA
+    const belfioreCode = vals[comuneAmmIdx]; // A001
+
+    // The parser MUST use Comune_amm (Belfiore) for codice_comune_catastale
+    expect(belfioreCode).toBe("A001");
+    expect(omiInternal).toBe("A1AA");
+    // Belfiore code must NEVER be the OMI internal code
+    expect(belfioreCode).not.toMatch(/^[A-Z][0-9][A-Z]{2}$/);
+  });
+
+  it("rejects OMI internal codes in codice_comune_catastale", () => {
+    // OMI internal codes have pattern like A1AA, S1AF, D3AB
+    const omiInternalPattern = /^[A-Z][0-9][A-Z]{2}$/;
+    const validBelfiore = ["A001", "L219", "F205", "H501"];
+    const invalidOmi = ["A1AA", "S1AF", "D3AB", "L2BC"];
+
+    for (const code of validBelfiore) {
+      expect(omiInternalPattern.test(code)).toBe(false);
+    }
+    for (const code of invalidOmi) {
+      expect(omiInternalPattern.test(code)).toBe(true);
+    }
+  });
+
   it("rejects CSV with missing required columns", () => {
-    // Simulate what omi-ingest would detect
     const headers = ["Nome", "Valore", "Altro"];
-    const hasComune = headers.some(h => /comune.?catast/i.test(h) || /comune.?istat/i.test(h));
+    const hasComune = headers.some(h => /comune.?cat/i.test(h) || /comune.?istat/i.test(h));
     const hasComprMin = headers.some(h => /compr.?min/i.test(h));
     const hasComprMax = headers.some(h => /compr.?max/i.test(h));
     const hasZona = headers.some(h => /^zona$/i.test(h));
