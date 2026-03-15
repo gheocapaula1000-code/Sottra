@@ -834,6 +834,7 @@ describe("Phase 2.1 semantic corrections", () => {
     expect(facade!.tipologiaFacciata?.sourceType).toBe("image_detected");
     expect(facade!.statoConservazioneFacciata?.sourceType).toBe("visual_estimate");
     expect(facade!.leggibilitaImmagine).toBeUndefined();
+  });
 
   it("facadeConsistencyLevel='good' maps to Italian label correctly", () => {
     const result = baseScanResult({
