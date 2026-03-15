@@ -1239,8 +1239,8 @@ const Result = () => {
       </div>
 
       {/* Bottom bar */}
-      <div className="fixed bottom-0 inset-x-0 bg-background/90 backdrop-blur-xl border-t border-border/50 px-4 sm:px-5 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-3 flex gap-3 z-40">
-        <Button className="flex-1 min-h-[48px]" size="lg" onClick={() => navigate("/scan")}>Nuova scansione</Button>
+      <div className="fixed bottom-0 inset-x-0 bg-background/90 backdrop-blur-xl border-t border-border/50 px-4 sm:px-5 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-3 flex gap-3 z-40" style={{ paddingLeft: 'max(env(safe-area-inset-left, 0px), 16px)', paddingRight: 'max(env(safe-area-inset-right, 0px), 16px)' }}>
+        <Button className="flex-1 min-h-[48px] active:scale-[0.97] transition-transform" size="lg" onClick={() => navigate("/scan")}>Nuova scansione</Button>
         <Button variant="outline" size="lg" className="shrink-0 min-h-[48px]" disabled={lowConfidence || identifyFailed || scanning} onClick={() => {
           if (!state) return;
           if (!identifyData) {
