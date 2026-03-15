@@ -524,7 +524,10 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
     attenzione.push("Profilo di rischio ambientale da monitorare");
   }
   if (attenzione.length > 0) {
-    data.puntiDiAttenzione = field(attenzione.slice(0, 4), "Punti di attenzione", "market_data", "available");
+    data.puntiDiAttenzione = field(
+      attenzione.slice(0, 4), "Punti di attenzione", "territorial_verified", "available",
+      "Derivati da convergenza, rischio, servizi e opportunità",
+    );
   }
 
   // raccomandazione — prudent conclusion
