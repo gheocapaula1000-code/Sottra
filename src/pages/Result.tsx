@@ -182,10 +182,10 @@ function HeaderCard({ photo, identify, loading, lat, lng, lowConfidence }: { pho
       {identify && (
         <div className="px-5 pb-5 -mt-10 relative z-10">
           {!lowConfidence && identify.address && (
-            <h2 className="text-lg font-bold text-foreground leading-snug">{identify.address}</h2>
+            <h2 className="text-lg font-bold text-foreground leading-snug break-anywhere">{identify.address}</h2>
           )}
           {lowConfidence && identify.address && (
-            <h2 className="text-lg font-bold text-foreground/60 leading-snug">{identify.address}</h2>
+            <h2 className="text-lg font-bold text-foreground/60 leading-snug break-anywhere">{identify.address}</h2>
           )}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {!lowConfidence && (
