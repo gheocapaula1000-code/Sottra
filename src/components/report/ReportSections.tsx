@@ -387,7 +387,7 @@ export function SintesiFinaleCard({ data, loading }: { data: SintesiFinaleData |
             {attenzione.map((a, i) => (
               <div key={i} className="flex items-start gap-2">
                 <TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
-                <p className="text-xs text-foreground leading-relaxed">{a}</p>
+                <p className="text-xs text-foreground leading-relaxed">{safeText(a)}</p>
               </div>
             ))}
           </div>
