@@ -80,12 +80,66 @@ export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: 
 /* ── B) Immobile e Facciata ──────────────────────────────── */
 
 export function buildImmobileFacciata(result: ScanResult): ImmobileFacciataData | null {
-  // Currently the identify endpoint does NOT return detailed facade analysis.
-  // This section will become active when core_v3 adds visual analysis fields.
-  // For now: return null → section hidden (no empty boxes).
-  const _identify = sectionData<IdentifyResult>(result, "identify");
-  // No real facade data available from current pipeline
-  return null;
+  const identify = sectionData<IdentifyResult>(result, "identify");
+  if (!identify?.streetEvidence) return null;
+
+  const se = identify.streetEvidence;
+  const pa = se.photoAnalysis;
+  const data: ImmobileFacciataData = {};
+
+  // buildingType from photo analysis → image_detected
+  if (pa?.buildingType) {
+    data.tipologiaFacciata = field(pa.buildingType, "Tipologia edificio", "image_detected");
+  }
+
+  // visibleFloors from photo analysis → image_detected
+  if (pa?.visibleFloors != null) {
+    data.presenzaBalconi = undefined; // not available — don't invent
+    data.noteVisive = field(
+      `${pa.visibleFloors} pian${pa.visibleFloors === 1 ? "o" : "i"} visibil${pa.visibleFloors === 1 ? "e" : "i"}`,
+      "Piani visibili",
+      "image_detected",
+    );
+  }
+
+  // facadeConsistencyLevel → visual_estimate (inferred, not certain)
+  if (se.facadeConsistencyLevel && se.facadeConsistencyLevel !== "non_valutabile") {
+    const consistencyLabels: Record<string, string> = {
+      alta: "Facciata coerente e in buono stato apparente",
+      media: "Facciata con elementi di disomogeneità",
+      bassa: "Facciata con evidenti segni di deterioramento",
+    };
+    const label = consistencyLabels[se.facadeConsistencyLevel];
+    if (label) {
+      data.statoConservazioneFacciata = field(
+        label,
+        "Coerenza facciata",
+        "visual_estimate",
+        "partial",
+        "Valutazione basata sull'immagine esterna",
+      );
+    }
+  }
+
+  // photoReadability as technical note
+  if (pa?.photoReadability && pa.photoReadability !== "alta") {
+    const readabilityNotes: Record<string, string> = {
+      media: "Leggibilità immagine nella media — alcuni dettagli non determinabili",
+      bassa: "Leggibilità immagine limitata — valutazione visiva parziale",
+    };
+    const note = readabilityNotes[pa.photoReadability];
+    if (note) {
+      data.qualitaEsteticaGenerale = field(
+        note,
+        "Nota sulla leggibilità",
+        "image_detected",
+        "partial",
+      );
+    }
+  }
+
+  const hasContent = Object.values(data).some(f => f && typeof f === "object" && "availabilityStatus" in f);
+  return hasContent ? data : null;
 }
 
 /* ── C) Contesto e Vicinato ──────────────────────────────── */
