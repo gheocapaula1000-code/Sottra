@@ -309,6 +309,14 @@ export interface ScanResult {
   poiEnrichment: SectionState<PoiEnrichmentData>;
   omiZone: SectionState<OmiZoneData>;
   istatDemographic: SectionState<IstatDemographicData>;
+  /* ── New report engine sections (Phase 1 — framework only) ── */
+  profiloRapido: SectionState<import("@/types/report").ProfiloRapidoData>;
+  immobileFacciata: SectionState<import("@/types/report").ImmobileFacciataData>;
+  contestoVicinato: SectionState<import("@/types/report").ContestoVicinatoData>;
+  posizionamentoCommerciale: SectionState<import("@/types/report").PosizionamentoCommercialeData>;
+  profiloArea: SectionState<import("@/types/report").ProfiloAreaData>;
+  scenarioTemporale: SectionState<import("@/types/report").ScenarioTemporaleData>;
+  sintesiFinale: SectionState<import("@/types/report").SintesiFinaleData>;
 }
 
 /** Errore restituito da coreRequest */
