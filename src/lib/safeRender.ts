@@ -43,6 +43,9 @@ export function safeText(v: unknown, fallback = ""): string {
       if (typeof val === "string" && val.length > 0) return val;
       if (typeof val === "number") return String(val);
     }
+    // Check if object has any own keys worth showing
+    const keys = Object.keys(obj);
+    if (keys.length === 0) return fallback;
     // Last resort: try JSON but cap length
     try {
       const json = JSON.stringify(v);
