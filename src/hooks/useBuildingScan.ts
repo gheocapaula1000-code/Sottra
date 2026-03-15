@@ -3,6 +3,7 @@ import { identifyBuilding, getPricing } from "@/services/scan";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
 import { fetchProSources } from "@/services/proSources";
 import { supabase } from "@/integrations/supabase/client";
+import { mapScanToReportSections } from "@/lib/reportMapper";
 import type { ScanResult, SectionState, IdentifyResult } from "@/types";
 
 const idle: SectionState = { status: "idle", data: null, message: null };
