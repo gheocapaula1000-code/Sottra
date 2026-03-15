@@ -41,6 +41,22 @@ function sectionData<T>(result: ScanResult, key: keyof ScanResult): T | null {
   return s.data as T;
 }
 
+/* ── Coverage helper (centralized) ───────────────────────── */
+
+const COVERAGE_MODULES: (keyof ScanResult)[] = [
+  "pricing", "omiZone", "poiEnrichment", "rischioZona",
+  "timeView", "convergenzaTerritoriale", "opportunity",
+];
+
+export function computeModuleCoverage(result: ScanResult): { available: number; total: number; pct: number } {
+  const total = COVERAGE_MODULES.length;
+  const available = COVERAGE_MODULES.filter(k => {
+    const s = result[k];
+    return s.status === "success" && s.data != null;
+  }).length;
+  return { available, total, pct: Math.round((available / total) * 100) };
+}
+
 /* ── A) Profilo Rapido ───────────────────────────────────── */
 
 export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: number | null): ProfiloRapidoData | null {
@@ -121,9 +137,9 @@ export function buildImmobileFacciata(result: ScanResult): ImmobileFacciataData 
     };
     const note = readabilityNotes[pa.photoReadability];
     if (note) {
-      data.qualitaEsteticaGenerale = field(
+      data.leggibilitaImmagine = field(
         note,
-        "Nota sulla leggibilità",
+        "Leggibilità immagine",
         "image_detected",
         "partial",
       );
@@ -484,8 +500,9 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
       data.giudizioSintetico = field(
         summaryParts.join(" "),
         "Quadro sintetico",
-        "market_data",
+        "territorial_verified",
         convergenza.coverageLevel === "scarsa" ? "partial" : "available",
+        "Sintesi basata su convergenza territoriale, servizi, rischio e scenario",
       );
     }
   }
@@ -505,7 +522,10 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
     forza.push("Buona dotazione di servizi nell'area");
   }
   if (forza.length > 0) {
-    data.puntiDiForza = field(forza.slice(0, 4), "Punti di forza", "market_data", "available");
+    data.puntiDiForza = field(
+      forza.slice(0, 4), "Punti di forza", "territorial_verified", "available",
+      "Derivati da convergenza, rischio, servizi e opportunità",
+    );
   }
 
   // puntiDiAttenzione — real cautions
@@ -520,7 +540,10 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
     attenzione.push("Profilo di rischio ambientale da monitorare");
   }
   if (attenzione.length > 0) {
-    data.puntiDiAttenzione = field(attenzione.slice(0, 4), "Punti di attenzione", "market_data", "available");
+    data.puntiDiAttenzione = field(
+      attenzione.slice(0, 4), "Punti di attenzione", "territorial_verified", "available",
+      "Derivati da convergenza, rischio, servizi e opportunità",
+    );
   }
 
   // raccomandazione — prudent conclusion
@@ -528,23 +551,27 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
     data.raccomandazione = field(
       opportunity.observation,
       "Osservazione conclusiva",
-      "market_data",
+      "forecast_scenario",
       "available",
+      "Basata su indice di opportunità territoriale",
     );
   }
 
-  // Coverage analysis note
-  const modulesAvailable = [
-    !!pricing, !!omi, !!poi, !!rischio, !!tv, !!convergenza, !!opportunity,
-  ].filter(Boolean).length;
-  const totalModules = 7;
-  if (modulesAvailable < totalModules) {
-    const pct = Math.round((modulesAvailable / totalModules) * 100);
+  // Coverage analysis note — centralized helper
+  const coverage = computeModuleCoverage(result);
+  if (coverage.available < coverage.total) {
     data.coperturaAnalisi = field(
-      `Analisi basata su ${modulesAvailable} di ${totalModules} moduli disponibili (${pct}% di copertura)`,
+      `Analisi basata su ${coverage.available} di ${coverage.total} moduli disponibili (${coverage.pct}% di copertura)`,
       "Copertura analisi",
-      "market_data",
-      modulesAvailable >= 5 ? "available" : "partial",
+      "territorial_verified",
+      coverage.available >= 5 ? "available" : "partial",
+    );
+  } else {
+    data.coperturaAnalisi = field(
+      "Copertura analisi completa",
+      "Copertura analisi",
+      "territorial_verified",
+      "available",
     );
   }
 
@@ -613,8 +640,9 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
     items.push({
       testo: "Convergenza territoriale positiva tra i segnali analizzati",
       categoria: "elemento_favorevole",
-      sourceType: "market_data",
+      sourceType: "territorial_verified",
       availabilityStatus: "available",
+      nota: "Basato su convergenza di più fonti territoriali",
     });
   }
 
@@ -623,8 +651,9 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
     items.push({
       testo: "Convergenza territoriale debole — quadro da valutare con cautela",
       categoria: "attenzione",
-      sourceType: "market_data",
+      sourceType: "territorial_verified",
       availabilityStatus: "available",
+      nota: "Basato su convergenza di più fonti territoriali",
     });
   }
 
@@ -636,8 +665,9 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
       items.push({
         testo: "Prezzo di mercato significativamente superiore alla media OMI — verificare coerenza",
         categoria: "da_verificare",
-        sourceType: "market_data",
+        sourceType: "official_data",
         availabilityStatus: "available",
+        nota: "Confronto tra prezzo di mercato e quotazioni OMI ufficiali",
       });
     }
   }
@@ -657,8 +687,9 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
     items.push({
       testo: "Copertura dati parziale — alcune fonti non disponibili per l'area",
       categoria: "copertura_parziale",
-      sourceType: "market_data",
+      sourceType: "territorial_verified",
       availabilityStatus: "partial",
+      nota: "Basato sulla copertura dei moduli di analisi",
     });
   }
 

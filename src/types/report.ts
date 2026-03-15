@@ -66,7 +66,7 @@ export interface ImmobileFacciataData extends SourceMetadata {
   statoConservazioneFacciata?: ReportField<string>;
   presenzaBalconi?: ReportField<boolean>;
   presenzaAscensore?: ReportField<string>;
-  qualitaEsteticaGenerale?: ReportField<string>;
+  leggibilitaImmagine?: ReportField<string>;
   noteVisive?: ReportField<string>;
 }
 

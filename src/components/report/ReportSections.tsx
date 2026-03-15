@@ -106,7 +106,7 @@ export function ImmobileFacciataCard({ data, loading }: { data: ImmobileFacciata
           data.statoConservazioneFacciata,
           data.presenzaBalconi,
           data.presenzaAscensore,
-          data.qualitaEsteticaGenerale,
+          data.leggibilitaImmagine,
         ]}
         showSource
       />
