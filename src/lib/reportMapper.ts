@@ -55,7 +55,7 @@ export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: 
   const data: ProfiloRapidoData = {};
 
   if (identify.address) {
-    data.indirizzo = field(identify.address, "Indirizzo", "image_detected");
+    data.indirizzo = field(identify.address, "Indirizzo", "territorial_verified");
   }
 
   if (lat != null && lng != null) {
