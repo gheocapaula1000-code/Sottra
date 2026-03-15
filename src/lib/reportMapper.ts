@@ -489,8 +489,11 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
   }
 
   // qualitaAmbientale — resolve via source resolver to check geo compatibility
+  // Rischio zona is coordinate-based, so if geo level is unknown, default to quartiere
   if (rischio?.scoreRischio != null) {
-    const rischioGeo = mapCoverageLevelToGeoLevel(rischio.sourceCoverageLevel);
+    const rawGeo = mapCoverageLevelToGeoLevel(rischio.sourceCoverageLevel);
+    // Rischio data is always local (coordinate-based query), so "non_determinato" → "quartiere"
+    const rischioGeo: ReportGeoLevel = rawGeo === "non_determinato" ? "quartiere" : rawGeo;
     const rischioCandidate: SourceCandidate<number> = {
       data: rischio.scoreRischio,
       tier: rischio.sourceType === "official" ? "ufficiale" : "dato_elaborato",
