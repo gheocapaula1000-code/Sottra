@@ -1017,6 +1017,43 @@ function LowConfidenceCard({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+/* ── Trasparenza Fonti builder ────────────────────────── */
+
+function buildTrasparenzaFonti(result: ScanResult): TrasparenzaFontiData | null {
+  const fonti: FonteEntry[] = [];
+
+  if (result.identify.status === "success" && result.identify.data) {
+    fonti.push({ categoria: "immagine", categoriaLabel: "Analisi immagine", provider: "Intelligenza artificiale", dettaglio: "Identificazione edificio da foto e coordinate GPS" });
+  }
+  if (result.omiZone.status === "success" && result.omiZone.data) {
+    const omi = result.omiZone.data as import("@/types").OmiZoneData;
+    fonti.push({ categoria: "dato_ufficiale", categoriaLabel: "Quotazioni OMI", provider: "Agenzia delle Entrate", periodo: omi.semestre ?? undefined, copertura: omi.polygonMatch ? "Zona identificata da coordinate" : "Media comunale" });
+  }
+  if (result.istatDemographic.status === "success" && result.istatDemographic.data) {
+    fonti.push({ categoria: "dato_ufficiale", categoriaLabel: "Dati demografici ISTAT", provider: "ISTAT", copertura: "Livello comunale" });
+  }
+  if (result.pricing.status === "success" && result.pricing.data) {
+    fonti.push({ categoria: "dato_mercato", categoriaLabel: "Prezzi di mercato", provider: "Fonti di mercato verificate", dettaglio: "Elaborazione da comparabili e dati di mercato" });
+  }
+  if (result.marketContext.status === "success" && result.marketContext.data) {
+    fonti.push({ categoria: "dato_mercato", categoriaLabel: "Contesto di mercato", provider: "Fonti commerciali", dettaglio: "Analisi comparabili e segnali di mercato" });
+  }
+  if (result.poiEnrichment.status === "success" && result.poiEnrichment.data) {
+    fonti.push({ categoria: "dato_territoriale", categoriaLabel: "Servizi e POI", provider: "Fonti geospaziali verificate", dettaglio: "Punti di interesse nelle vicinanze" });
+  }
+  if (result.rischioZona.status === "success" && result.rischioZona.data) {
+    fonti.push({ categoria: "dato_territoriale", categoriaLabel: "Rischio zona", provider: "Fonti istituzionali", dettaglio: "Rischio idrogeologico, sismico e ambientale" });
+  }
+  if (result.timeView.status === "success" && result.timeView.data) {
+    fonti.push({ categoria: "scenario", categoriaLabel: "Scenario evolutivo", provider: "Elaborazione Sottra", dettaglio: "Proiezione indicativa basata su trend e segnali" });
+  }
+  if (result.convergenzaTerritoriale.status === "success" && result.convergenzaTerritoriale.data) {
+    fonti.push({ categoria: "elaborazione", categoriaLabel: "Convergenza territoriale", provider: "Indice elaborato Sottra", dettaglio: "Sintesi da fonti multiple" });
+  }
+
+  return fonti.length > 0 ? { fonti } : null;
+}
+
 /* ── Report quality footer ───────────────────────────── */
 
 function ReportFooter({ excludedCount, totalPublished }: { excludedCount: number; totalPublished: number }) {
