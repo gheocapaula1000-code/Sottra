@@ -5,6 +5,8 @@ import { fetchProSources } from "@/services/proSources";
 import { supabase } from "@/integrations/supabase/client";
 import { mapScanToReportSections } from "@/lib/reportMapper";
 import type { ScanResult, SectionState, IdentifyResult } from "@/types";
+import type { ManualAddressInput } from "@/components/AddressOverrideForm";
+import { formatManualAddress } from "@/components/AddressOverrideForm";
 
 const idle: SectionState = { status: "idle", data: null, message: null };
 
