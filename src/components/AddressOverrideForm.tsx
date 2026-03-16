@@ -63,46 +63,61 @@ export default function AddressOverrideForm({ onSubmit, loading, className }: Pr
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2.5 px-5 py-3.5 text-left transition-colors hover:bg-muted/30"
+        className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/30"
       >
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-          <MapPin className="h-3.5 w-3.5 text-primary" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+          <MapPin className="h-4 w-4 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground leading-tight">Indirizzo immobile</p>
-          <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">Opzionale · per migliorare la precisione territoriale</p>
+          <p className="text-sm font-semibold text-foreground leading-tight">Indirizzo immobile</p>
+          <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+            Inserisci l'indirizzo per migliorare la precisione dei dati territoriali
+          </p>
         </div>
         {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
       </button>
 
       {/* Collapsible form */}
       {open && (
-        <form onSubmit={handleSubmit} className="px-5 pb-5 pt-1 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="grid grid-cols-[1fr_auto] gap-2">
+        <form onSubmit={handleSubmit} className="px-5 pb-5 pt-2 space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* Via + Civico */}
+          <div className="grid grid-cols-[1fr_5rem] gap-2">
             <div className="space-y-1">
-              <Label htmlFor="addr-via" className="text-[11px] text-muted-foreground">Via / Piazza</Label>
+              <Label htmlFor="addr-via" className="text-[11px] text-muted-foreground">Via / Piazza *</Label>
               <Input
                 id="addr-via"
                 placeholder="es. Via Roma"
                 value={form.via}
                 onChange={(e) => set("via", e.target.value)}
-                className="h-9 text-sm"
+                className="h-10 text-[16px] sm:text-sm"
                 autoComplete="address-line1"
               />
             </div>
-            <div className="space-y-1 w-20">
-              <Label htmlFor="addr-civico" className="text-[11px] text-muted-foreground">N. civico</Label>
+            <div className="space-y-1">
+              <Label htmlFor="addr-civico" className="text-[11px] text-muted-foreground">Civico</Label>
               <Input
                 id="addr-civico"
                 placeholder="12"
                 value={form.civico}
                 onChange={(e) => set("civico", e.target.value)}
-                className="h-9 text-sm"
+                className="h-10 text-[16px] sm:text-sm"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-[5rem_1fr_4rem] gap-2">
+          {/* Comune + CAP + Provincia */}
+          <div className="grid grid-cols-[1fr_5rem_3.5rem] gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="addr-comune" className="text-[11px] text-muted-foreground">Comune *</Label>
+              <Input
+                id="addr-comune"
+                placeholder="es. Padova"
+                value={form.comune}
+                onChange={(e) => set("comune", e.target.value)}
+                className="h-10 text-[16px] sm:text-sm"
+                autoComplete="address-level2"
+              />
+            </div>
             <div className="space-y-1">
               <Label htmlFor="addr-cap" className="text-[11px] text-muted-foreground">CAP</Label>
               <Input
@@ -111,19 +126,8 @@ export default function AddressOverrideForm({ onSubmit, loading, className }: Pr
                 value={form.cap}
                 onChange={(e) => set("cap", e.target.value.replace(/\D/g, "").slice(0, 5))}
                 inputMode="numeric"
-                className="h-9 text-sm"
+                className="h-10 text-[16px] sm:text-sm"
                 autoComplete="postal-code"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="addr-comune" className="text-[11px] text-muted-foreground">Comune</Label>
-              <Input
-                id="addr-comune"
-                placeholder="es. Padova"
-                value={form.comune}
-                onChange={(e) => set("comune", e.target.value)}
-                className="h-9 text-sm"
-                autoComplete="address-level2"
               />
             </div>
             <div className="space-y-1">
@@ -133,7 +137,7 @@ export default function AddressOverrideForm({ onSubmit, loading, className }: Pr
                 placeholder="PD"
                 value={form.provincia}
                 onChange={(e) => set("provincia", e.target.value.replace(/[^a-zA-Z]/g, "").slice(0, 2))}
-                className="h-9 text-sm uppercase"
+                className="h-10 text-[16px] sm:text-sm uppercase"
               />
             </div>
           </div>
@@ -141,8 +145,8 @@ export default function AddressOverrideForm({ onSubmit, loading, className }: Pr
           <Button
             type="submit"
             disabled={!valid || loading}
-            className="w-full min-h-[44px] mt-1"
-            size="default"
+            className="w-full min-h-[48px] mt-1"
+            size="lg"
           >
             {loading ? (
               <>
@@ -152,13 +156,13 @@ export default function AddressOverrideForm({ onSubmit, loading, className }: Pr
             ) : (
               <>
                 <MapPin className="h-4 w-4 mr-2" />
-                Affina localizzazione
+                Aggiorna dati territoriali
               </>
             )}
           </Button>
 
-          <p className="text-[10px] text-muted-foreground/50 text-center leading-tight">
-            L'indirizzo inserito verrà usato per migliorare la precisione dell'analisi territoriale dell'immobile.
+          <p className="text-[10px] text-muted-foreground/50 text-center leading-relaxed">
+            I dati verranno ricalcolati in base all'indirizzo inserito, senza consumare un nuovo credito.
           </p>
         </form>
       )}
