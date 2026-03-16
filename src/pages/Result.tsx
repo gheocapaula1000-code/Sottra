@@ -352,19 +352,47 @@ function RischioZonaCard({ data, loading }: { data: RischioZonaData | null; load
 
 function GeoLevelTag({ geoLevel, geoLabel }: { geoLevel?: string | null; geoLabel?: string | null }) {
   if (!geoLevel) return null;
-  const labels: Record<string, string> = {
-    microzona: "Dato di microzona",
-    quartiere: "Dato di quartiere",
-    zona: "Zona stimata dell'immobile",
-    comune: "Dato riferito al comune",
-    area_vasta: "Dato di area vasta",
-    stimato: "Zona stimata",
-  };
-  const text = labels[geoLevel] ?? "Dato territoriale";
+
+  // Microzona / quartiere — positive confirmed level
+  if (geoLevel === "microzona" || geoLevel === "quartiere") {
+    return (
+      <div className="flex items-center gap-1.5 mb-3">
+        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+          <MapPin className="h-3 w-3" />{geoLevel === "microzona" ? "Microzona" : "Quartiere"}
+        </span>
+        {geoLabel && <span className="text-[10px] text-muted-foreground/60">{geoLabel}</span>}
+      </div>
+    );
+  }
+
+  // Zona stimata
+  if (geoLevel === "zona" || geoLevel === "stimato") {
+    return (
+      <div className="flex items-center gap-1.5 mb-3">
+        <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+          <Compass className="h-3 w-3" />Zona stimata
+        </span>
+        {geoLabel && <span className="text-[10px] text-muted-foreground/60">{geoLabel}</span>}
+      </div>
+    );
+  }
+
+  // Comunale
+  if (geoLevel === "comune") {
+    return (
+      <div className="flex items-start gap-2 rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2 mb-3">
+        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-400" />
+        <p className="text-[10px] text-amber-400">
+          Dato riferito al livello comunale{geoLabel ? ` · ${geoLabel}` : ""} — la zona specifica potrebbe variare
+        </p>
+      </div>
+    );
+  }
+
+  // Fallback
   return (
     <p className="text-[10px] text-muted-foreground/60 mb-3 flex items-center gap-1">
-      <MapPin className="h-3 w-3" />
-      {text}{geoLabel ? ` · ${geoLabel}` : ""}
+      <MapPin className="h-3 w-3" />Dato territoriale{geoLabel ? ` · ${geoLabel}` : ""}
     </p>
   );
 }
