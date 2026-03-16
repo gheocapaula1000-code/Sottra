@@ -1125,7 +1125,7 @@ const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as ResultState | null;
-  const { result, scanning, scan, restoreResult } = useBuildingScan();
+  const { result, scanning, refining, manualAddress, scan, refineAddress, restoreResult } = useBuildingScan();
   const { saveScan } = useScanHistory();
   const { toast } = useToast();
   const started = useRef(false);
