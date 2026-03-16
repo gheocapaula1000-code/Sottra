@@ -29,6 +29,8 @@ import {
   PrioritaCriticitaCard,
 } from "@/components/report/ReportSections";
 import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/types/report";
+import AddressOverrideForm from "@/components/AddressOverrideForm";
+import type { ManualAddressInput } from "@/components/AddressOverrideForm";
 
 /* ── Section-level ErrorBoundary ──────────────────────── */
 
