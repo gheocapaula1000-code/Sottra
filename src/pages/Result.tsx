@@ -1248,11 +1248,16 @@ const Result = () => {
             />
           )}
 
-          {/* Manual refinement indicator */}
+          {/* Post-override confirmation banner */}
           {manualAddress && !refining && (
-            <div className="flex items-center gap-2 px-1">
-              <MapPin className="h-3 w-3 text-primary shrink-0" />
-              <p className="text-[11px] text-muted-foreground">Localizzazione affinata manualmente</p>
+            <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+              <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-foreground leading-tight">Localizzazione aggiornata</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                  I dati territoriali sono stati ricalcolati in base all'indirizzo dell'immobile inserito. Nessun credito aggiuntivo consumato.
+                </p>
+              </div>
             </div>
           )}
 
