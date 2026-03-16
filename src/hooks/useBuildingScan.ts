@@ -77,6 +77,8 @@ export function useBuildingScan() {
   const [result, dispatch] = useReducer(reducer, initialState);
   const [scanning, setScanning] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
+  const [refining, setRefining] = useState(false);
+  const [manualAddress, setManualAddress] = useState<ManualAddressInput | null>(null);
   const scanIdRef = useRef<string | null>(null);
 
   const scan = useCallback(async (photo: string, lat: number, lng: number) => {
@@ -210,6 +212,87 @@ export function useBuildingScan() {
     setScanning(false);
   }, []);
 
+  /**
+   * Refine territorial data using a manually provided address.
+   * Does NOT re-consume a scan credit — only re-runs pricing + territorial modules.
+   * Priority: manual address > scanned address.
+   */
+  const refineAddress = useCallback(async (
+    addressInput: ManualAddressInput,
+    lat: number,
+    lng: number,
+    photo?: string,
+  ) => {
+    setRefining(true);
+    setManualAddress(addressInput);
+
+    const manualAddr = formatManualAddress(addressInput);
+    if (import.meta.env.DEV) console.log("[SCAN] refineAddress:", manualAddr);
+
+    const set = (key: keyof ScanResult, value: SectionState) =>
+      dispatch({ type: "SET", key, value });
+
+    const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
+      set(key, { status: r.error ? "error" : "success", data: r.data, message: r.message });
+    };
+
+    const reject = (key: keyof ScanResult) => (err: unknown) => {
+      console.error(`[REFINE] ${key} rejected:`, err);
+      set(key, { status: "error", data: null, message: err instanceof Error ? err.message : "Errore imprevisto" });
+    };
+
+    // Set affected sections to loading
+    const affectedModules: (keyof ScanResult)[] = [
+      "pricing", "marketContext", "timeView", "opportunity",
+      "infrastrutture", "rischioZona", "trendDemografico",
+      "sviluppoArea", "convergenzaTerritoriale",
+      "poiEnrichment", "omiZone", "istatDemographic",
+      "profiloRapido", "immobileFacciata", "contestoVicinato",
+      "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
+      "prioritaCriticita",
+    ];
+    for (const m of affectedModules) {
+      set(m, { status: "loading", data: null, message: null });
+    }
+
+    // Update identify data with the manual address (keep existing data, override address)
+    const currentIdentify = result.identify.data as IdentifyResult | null;
+    if (currentIdentify) {
+      set("identify", {
+        status: "success",
+        data: { ...currentIdentify, address: manualAddr },
+        message: null,
+      });
+    }
+
+    const confidence = currentIdentify?.confidence ?? undefined;
+
+    await Promise.allSettled([
+      getPricing(manualAddr, photo).then(resolve("pricing")).catch(reject("pricing")),
+      getMarketContext(lat, lng, manualAddr).then(resolve("marketContext")).catch(reject("marketContext")),
+      getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
+      getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
+      getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
+      getRischioZona(lat, lng).then(resolve("rischioZona")).catch(reject("rischioZona")),
+      getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
+      getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
+      getConvergenzaTerritoriale(lat, lng, confidence, manualAddr).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
+      fetchProSources(lat, lng).then((proData) => {
+        set("poiEnrichment", { status: proData.poi ? "success" : "error", data: proData.poi, message: proData.poi ? null : "Dati POI non disponibili" });
+        set("omiZone", { status: proData.omi ? "success" : "error", data: proData.omi, message: proData.omi ? null : "Dati OMI non disponibili" });
+        set("istatDemographic", { status: proData.istat ? "success" : "error", data: proData.istat, message: proData.istat ? null : "Dati ISTAT non disponibili" });
+      }).catch((e) => {
+        console.error("[REFINE] pro-sources failed:", e);
+        set("poiEnrichment", { status: "error", data: null, message: "Servizio non disponibile" });
+        set("omiZone", { status: "error", data: null, message: "Servizio non disponibile" });
+        set("istatDemographic", { status: "error", data: null, message: "Servizio non disponibile" });
+      }),
+    ]);
+
+    dispatch({ type: "MAP_REPORT", lat, lng });
+    setRefining(false);
+  }, [result.identify.data]);
+
   const restoreResult = useCallback((saved: Partial<ScanResult>) => {
     dispatch({ type: "RESTORE", payload: saved });
   }, []);
@@ -217,10 +300,13 @@ export function useBuildingScan() {
   return {
     result,
     scanning,
+    refining,
     limitReached,
+    manualAddress,
     scan,
+    refineAddress,
     scanId: scanIdRef.current,
     restoreResult,
-    reset: () => { dispatch({ type: "RESET_IDLE" }); setScanning(false); setLimitReached(false); },
+    reset: () => { dispatch({ type: "RESET_IDLE" }); setScanning(false); setLimitReached(false); setRefining(false); setManualAddress(null); },
   };
 }
