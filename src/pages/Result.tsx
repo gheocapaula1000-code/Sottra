@@ -29,6 +29,8 @@ import {
   PrioritaCriticitaCard,
 } from "@/components/report/ReportSections";
 import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/types/report";
+import AddressOverrideForm from "@/components/AddressOverrideForm";
+import type { ManualAddressInput } from "@/components/AddressOverrideForm";
 
 /* ── Section-level ErrorBoundary ──────────────────────── */
 
@@ -1125,7 +1127,7 @@ const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as ResultState | null;
-  const { result, scanning, scan, restoreResult } = useBuildingScan();
+  const { result, scanning, refining, manualAddress, scan, refineAddress, restoreResult } = useBuildingScan();
   const { saveScan } = useScanHistory();
   const { toast } = useToast();
   const started = useRef(false);
@@ -1217,6 +1219,24 @@ const Result = () => {
           )}
 
           <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} lowConfidence={lowConfidence} />
+
+          {/* Manual address override — shown after identify success, not during initial scan */}
+          {identifyDone && !lowConfidence && !identifyFailed && (
+            <AddressOverrideForm
+              loading={refining}
+              onSubmit={(addr: ManualAddressInput) => {
+                refineAddress(addr, state!.lat!, state!.lng!, state!.photo);
+              }}
+            />
+          )}
+
+          {/* Manual refinement indicator */}
+          {manualAddress && !refining && (
+            <div className="flex items-center gap-2 px-1">
+              <MapPin className="h-3 w-3 text-primary shrink-0" />
+              <p className="text-[11px] text-muted-foreground">Localizzazione affinata manualmente</p>
+            </div>
+          )}
 
           {lowConfidence && <LowConfidenceCard onRetry={() => navigate("/scan")} />}
 
