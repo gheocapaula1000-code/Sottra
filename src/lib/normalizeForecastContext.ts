@@ -11,7 +11,7 @@ import type { ConnectivityContext, SchoolContext, InfrastrutureData, SviluppoAre
  */
 export function normalizeInfrastrutture(raw: unknown): InfrastrutureData | null {
   if (!raw || typeof raw !== "object") return null;
-  const data = { ...(raw as Record<string, unknown>) } as InfrastrutureData;
+  const data = { ...(raw as Record<string, unknown>) } as unknown as InfrastrutureData;
 
   // If connectivityContext is already present as object, use it
   if (data.connectivityContext && typeof data.connectivityContext === "object") {
