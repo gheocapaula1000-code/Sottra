@@ -39,7 +39,7 @@ export function normalizeInfrastrutture(raw: unknown): InfrastrutureData | null 
  */
 export function normalizeSviluppoArea(raw: unknown): SviluppoAreaData | null {
   if (!raw || typeof raw !== "object") return null;
-  const data = { ...(raw as Record<string, unknown>) } as SviluppoAreaData;
+  const data = { ...(raw as Record<string, unknown>) } as unknown as SviluppoAreaData;
 
   data.schoolContext = normalizeSchoolContext(data.schoolContext);
 
