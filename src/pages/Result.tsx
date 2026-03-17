@@ -15,7 +15,7 @@ import Watermark from "@/components/Watermark";
 import type {
   IdentifyResult, PricingData,
   TimeViewData, OpportunityData,
-  InfrastrutureData,
+  InfrastrutureData, ConnectivityContext, SchoolContext,
   RischioZonaData, TrendDemograficoData, SviluppoAreaData,
   ConvergenzaTerritorialeData, MarketContextData, ComparablesSummary,
   ScanResult, SourceMetadata, PoiEnrichmentData,
