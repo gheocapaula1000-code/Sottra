@@ -1,4 +1,5 @@
 import { coreRequest, isError } from "./api";
+import { normalizeMarketContext } from "@/lib/normalizeMarketContext";
 
 export async function getTimeView(lat: number, lng: number, horizon: number) {
   const res = await coreRequest("/forecast/timeview", "POST", { lat, lng, horizon }, 25000);
@@ -48,7 +49,7 @@ export async function getConvergenzaTerritoriale(lat: number, lng: number, ident
 export async function getMarketContext(lat: number, lng: number, address?: string) {
   const payload: Record<string, unknown> = { lat, lng };
   if (address) payload.address = address;
-  const res = await coreRequest("/scan/market-context", "POST", payload, 25000);
+  const res = await coreRequest("/scan/market", "POST", payload, 25000);
   if (isError(res)) return { error: true, message: res.message, data: null };
-  return { error: false, message: null, data: res };
+  return { error: false, message: null, data: normalizeMarketContext(res) };
 }

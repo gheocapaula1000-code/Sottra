@@ -693,6 +693,38 @@ function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; 
           <p className="text-xs text-foreground/80 leading-relaxed italic">"{data.narrativeObservation}"</p>
         </div>
       )}
+
+      {/* Future-proof fields from Core — render only when present */}
+      {(data.connectivityPrecision || data.connectivityLabel || data.schoolContext || data.energyContext) && (
+        <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3 space-y-1.5">
+          {data.connectivityLabel && (
+            <div className="flex items-start gap-2 text-xs text-foreground">
+              <Construction className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+              <div>
+                <span>{data.connectivityLabel}</span>
+                {data.connectivityPrecision && (
+                  <span className="text-[10px] text-muted-foreground/50 ml-1">
+                    · {data.connectivityPrecision === "civico" ? "Dato puntuale" : data.connectivityPrecision === "strada" ? "Dato stradale" : "Dato comunale"}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+          {data.schoolContext && (
+            <div className="flex items-start gap-2 text-xs text-foreground">
+              <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+              <span>{data.schoolContext}</span>
+            </div>
+          )}
+          {data.energyContext && (
+            <div className="flex items-start gap-2 text-xs text-foreground">
+              <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+              <span>{data.energyContext}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mb-1">{data.confidenceReason}</p>}
       <SourceTag meta={data} />
     </Section>
@@ -766,6 +798,25 @@ function SviluppoAreaCard({ data, loading }: { data: SviluppoAreaData | null; lo
           <p className="text-xs text-foreground/80 leading-relaxed italic">"{data.narrativeObservation}"</p>
         </div>
       )}
+
+      {/* Future-proof fields from Core — render only when present */}
+      {(data.schoolContext || data.energyContext) && (
+        <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3 space-y-1.5">
+          {data.schoolContext && (
+            <div className="flex items-start gap-2 text-xs text-foreground">
+              <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+              <span>{data.schoolContext}</span>
+            </div>
+          )}
+          {data.energyContext && (
+            <div className="flex items-start gap-2 text-xs text-foreground">
+              <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+              <span>{data.energyContext}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mb-1">{data.confidenceReason}</p>}
       <SourceTag meta={data} />
     </Section>
@@ -789,7 +840,7 @@ function MarketContextCard({ data, loading }: { data: MarketContextData | null; 
   if (!data || !isMarketPublishable(data)) return null;
 
   const coverageLabels: Record<string, string> = { completa: "Completa", buona: "Buona", parziale: "Parziale", scarsa: "Scarsa" };
-  const isPartial = data.sourceType === "commercial_partial";
+  const isPartial = data.sourceType === "commercial_partial" || data.marketCoverageLevel === "parziale" || data.marketCoverageLevel === "scarsa";
 
   return (
     <Section gradient="from-indigo-500/10 to-violet-500/5 border-indigo-500/15">
@@ -811,7 +862,13 @@ function MarketContextCard({ data, loading }: { data: MarketContextData | null; 
 
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mt-2">{data.confidenceReason}</p>}
       <SourceTag meta={data} />
-      {isPartial && <p className="text-[9px] text-muted-foreground/30 mt-1">Analisi basata su copertura parziale — dati indicativi</p>}
+      {isPartial && (
+        <p className="text-[9px] text-muted-foreground/30 mt-1">
+          {data.marketCoverageLevel === "scarsa"
+            ? "Dati di mercato limitati per questa zona — valori puramente indicativi"
+            : "Analisi basata su copertura parziale — dati indicativi"}
+        </p>
+      )}
     </Section>
   );
 }
