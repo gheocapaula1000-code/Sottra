@@ -150,6 +150,14 @@ export interface InfrastrutureData extends SourceMetadata {
   topDrivers?: (InfrastructureDriverRisk | string)[] | null;
   topRisks?: (InfrastructureDriverRisk | string)[] | null;
   narrativeObservation?: string | null;
+  /** Future-proof: connectivity precision from Core */
+  connectivityPrecision?: "civico" | "strada" | "comune" | null;
+  /** Future-proof: connectivity label from Core */
+  connectivityLabel?: string | null;
+  /** Future-proof: school context from Core */
+  schoolContext?: string | null;
+  /** Future-proof: energy context from Core */
+  energyContext?: string | null;
 }
 
 /** Rischio zona */
