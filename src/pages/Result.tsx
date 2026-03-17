@@ -694,34 +694,30 @@ function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; 
         </div>
       )}
 
-      {/* Future-proof fields from Core — render only when present */}
-      {(data.connectivityPrecision || data.connectivityLabel || data.schoolContext || data.energyContext) && (
+      {/* Connectivity context — structured */}
+      {data.connectivityContext?.connectivityAvailable && data.connectivityContext.connectivityLabel && (
         <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3 space-y-1.5">
-          {data.connectivityLabel && (
-            <div className="flex items-start gap-2 text-xs text-foreground">
-              <Construction className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-              <div>
-                <span>{data.connectivityLabel}</span>
-                {data.connectivityPrecision && (
-                  <span className="text-[10px] text-muted-foreground/50 ml-1">
-                    · {data.connectivityPrecision === "civico" ? "Dato puntuale" : data.connectivityPrecision === "strada" ? "Dato stradale" : "Dato comunale"}
-                  </span>
-                )}
-              </div>
+          <div className="flex items-start gap-2 text-xs text-foreground">
+            <Construction className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+            <div>
+              <span>{data.connectivityContext.connectivityLabel}</span>
+              {data.connectivityContext.connectivityPrecision && (
+                <span className="text-[10px] text-muted-foreground/50 ml-1">
+                  · {data.connectivityContext.connectivityPrecision === "civico" ? "Dato puntuale" : data.connectivityContext.connectivityPrecision === "strada" ? "Dato stradale" : "Dato comunale"}
+                </span>
+              )}
             </div>
-          )}
-          {data.schoolContext && (
-            <div className="flex items-start gap-2 text-xs text-foreground">
-              <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-              <span>{data.schoolContext}</span>
-            </div>
-          )}
-          {data.energyContext && (
-            <div className="flex items-start gap-2 text-xs text-foreground">
-              <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-              <span>{data.energyContext}</span>
-            </div>
-          )}
+          </div>
+        </div>
+      )}
+
+      {/* Energy context — string */}
+      {data.energyContext && typeof data.energyContext === "string" && (
+        <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3">
+          <div className="flex items-start gap-2 text-xs text-foreground">
+            <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+            <span>{data.energyContext}</span>
+          </div>
         </div>
       )}
 
