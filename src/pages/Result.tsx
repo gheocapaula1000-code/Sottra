@@ -59,6 +59,37 @@ function toText(v: unknown): string {
   return safeText(v, "");
 }
 
+/** Renders structured SchoolContext — only if available */
+function SchoolContextBlock({ schoolContext }: { schoolContext?: SchoolContext | string | null }) {
+  if (!schoolContext || typeof schoolContext === "string") return null;
+  if (!schoolContext.available || schoolContext.totalSchools === 0) return null;
+
+  const precisionLabel = schoolContext.precision === "comune" ? "Dato comunale" : schoolContext.precision === "strada" ? "Dato stradale" : schoolContext.precision === "civico" ? "Dato puntuale" : null;
+
+  return (
+    <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3 space-y-1.5">
+      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Contesto scuole</p>
+      <div className="flex items-baseline gap-2 text-xs text-foreground">
+        <span>Scuole nel comune: <span className="font-semibold">{schoolContext.totalSchools}</span></span>
+        {precisionLabel && <span className="text-[10px] text-muted-foreground/50">· {precisionLabel}</span>}
+      </div>
+      {schoolContext.gradiPresenti.length > 0 && (
+        <p className="text-xs text-muted-foreground">Ordini presenti: {schoolContext.gradiPresenti.join(", ")}</p>
+      )}
+      {schoolContext.nearestSchools.length > 0 && (
+        <div className="space-y-1 mt-1">
+          {schoolContext.nearestSchools.slice(0, 3).map((s, i) => (
+            <div key={i} className="flex items-start gap-2 text-xs text-foreground">
+              <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+              <span>{s.denominazione ?? "Scuola"}{s.grado ? ` (${s.grado})` : ""}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function fmt(n: number | null | undefined): string {
   if (n == null) return "—";
   return n.toLocaleString("it-IT", { maximumFractionDigits: 1 });
