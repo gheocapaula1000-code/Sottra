@@ -203,6 +203,10 @@ export interface SviluppoAreaData extends SourceMetadata {
   areaDevelopmentScore: number | null;
   areaDevelopmentBand: "elevata" | "significativa" | "moderata" | "contenuta" | "limitata" | null;
   narrativeObservation: string | null;
+  /** Future-proof: school context from Core */
+  schoolContext?: string | null;
+  /** Future-proof: energy context from Core */
+  energyContext?: string | null;
 }
 
 /** Segnale convergenza territoriale */
