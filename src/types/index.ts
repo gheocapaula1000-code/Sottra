@@ -139,6 +139,34 @@ export interface InfrastructureDriverRisk {
   source?: string;
 }
 
+/** Structured connectivity context from Core */
+export interface ConnectivityContext {
+  connectivityAvailable?: boolean;
+  connectivityLabel?: string | null;
+  connectivityPrecision?: "civico" | "strada" | "comune" | null;
+  connectivitySource?: string | null;
+  limitations?: string[] | null;
+}
+
+/** Nearest school entry */
+export interface NearestSchool {
+  denominazione?: string | null;
+  grado?: string | null;
+  indirizzo?: string | null;
+}
+
+/** Structured school context from Core */
+export interface SchoolContext {
+  available: boolean;
+  totalSchools: number;
+  byGrado: Record<string, number>;
+  gradiPresenti: string[];
+  nearestSchools: NearestSchool[];
+  precision?: "civico" | "strada" | "comune" | null;
+  source?: string | null;
+  limitations?: string[] | null;
+}
+
 /** Infrastrutture e reti */
 export interface InfrastrutureData extends SourceMetadata {
   infrastructureScore: number | null;
@@ -150,12 +178,14 @@ export interface InfrastrutureData extends SourceMetadata {
   topDrivers?: (InfrastructureDriverRisk | string)[] | null;
   topRisks?: (InfrastructureDriverRisk | string)[] | null;
   narrativeObservation?: string | null;
-  /** Future-proof: connectivity precision from Core */
+  /** Structured connectivity context from Core */
+  connectivityContext?: ConnectivityContext | null;
+  /** Legacy flat alias — kept for backward compat */
   connectivityPrecision?: "civico" | "strada" | "comune" | null;
-  /** Future-proof: connectivity label from Core */
+  /** Legacy flat alias */
   connectivityLabel?: string | null;
-  /** Future-proof: school context from Core */
-  schoolContext?: string | null;
+  /** Structured school context from Core */
+  schoolContext?: SchoolContext | string | null;
   /** Future-proof: energy context from Core */
   energyContext?: string | null;
 }
