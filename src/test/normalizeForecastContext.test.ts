@@ -115,7 +115,7 @@ describe("normalizeSviluppoArea", () => {
     // UI should NOT render this — verified in render tests
   });
 
-  it("does not produce [object Object] for object schoolContext", () => {
+  it("keeps object schoolContext as object (not coerced to string)", () => {
     const raw = {
       areaDevelopmentScore: 50,
       schoolContext: {
@@ -128,8 +128,10 @@ describe("normalizeSviluppoArea", () => {
     };
     const result = normalizeSviluppoArea(raw)!;
     const sc = result.schoolContext;
-    // Must never be rendered as string directly
-    expect(String(sc)).not.toBe("[object Object]");
+    // Must be object, never a plain string
     expect(typeof sc).toBe("object");
+    expect(sc).not.toBeNull();
+    expect((sc as any).available).toBe(true);
+    expect((sc as any).totalSchools).toBe(5);
   });
 });
