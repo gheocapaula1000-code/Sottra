@@ -840,7 +840,7 @@ function MarketContextCard({ data, loading }: { data: MarketContextData | null; 
   if (!data || !isMarketPublishable(data)) return null;
 
   const coverageLabels: Record<string, string> = { completa: "Completa", buona: "Buona", parziale: "Parziale", scarsa: "Scarsa" };
-  const isPartial = data.sourceType === "commercial_partial";
+  const isPartial = data.sourceType === "commercial_partial" || data.marketCoverageLevel === "parziale" || data.marketCoverageLevel === "scarsa";
 
   return (
     <Section gradient="from-indigo-500/10 to-violet-500/5 border-indigo-500/15">
