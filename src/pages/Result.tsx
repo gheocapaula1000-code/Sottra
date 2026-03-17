@@ -15,7 +15,7 @@ import Watermark from "@/components/Watermark";
 import type {
   IdentifyResult, PricingData,
   TimeViewData, OpportunityData,
-  InfrastrutureData,
+  InfrastrutureData, ConnectivityContext, SchoolContext,
   RischioZonaData, TrendDemograficoData, SviluppoAreaData,
   ConvergenzaTerritorialeData, MarketContextData, ComparablesSummary,
   ScanResult, SourceMetadata, PoiEnrichmentData,
@@ -57,6 +57,37 @@ import { safeText } from "@/lib/safeRender";
 
 function toText(v: unknown): string {
   return safeText(v, "");
+}
+
+/** Renders structured SchoolContext — only if available */
+function SchoolContextBlock({ schoolContext }: { schoolContext?: SchoolContext | string | null }) {
+  if (!schoolContext || typeof schoolContext === "string") return null;
+  if (!schoolContext.available || schoolContext.totalSchools === 0) return null;
+
+  const precisionLabel = schoolContext.precision === "comune" ? "Dato comunale" : schoolContext.precision === "strada" ? "Dato stradale" : schoolContext.precision === "civico" ? "Dato puntuale" : null;
+
+  return (
+    <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3 space-y-1.5">
+      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Contesto scuole</p>
+      <div className="flex items-baseline gap-2 text-xs text-foreground">
+        <span>Scuole nel comune: <span className="font-semibold">{schoolContext.totalSchools}</span></span>
+        {precisionLabel && <span className="text-[10px] text-muted-foreground/50">· {precisionLabel}</span>}
+      </div>
+      {schoolContext.gradiPresenti.length > 0 && (
+        <p className="text-xs text-muted-foreground">Ordini presenti: {schoolContext.gradiPresenti.join(", ")}</p>
+      )}
+      {schoolContext.nearestSchools.length > 0 && (
+        <div className="space-y-1 mt-1">
+          {schoolContext.nearestSchools.slice(0, 3).map((s, i) => (
+            <div key={i} className="flex items-start gap-2 text-xs text-foreground">
+              <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+              <span>{s.denominazione ?? "Scuola"}{s.grado ? ` (${s.grado})` : ""}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function fmt(n: number | null | undefined): string {
@@ -694,34 +725,30 @@ function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; 
         </div>
       )}
 
-      {/* Future-proof fields from Core — render only when present */}
-      {(data.connectivityPrecision || data.connectivityLabel || data.schoolContext || data.energyContext) && (
+      {/* Connectivity context — structured */}
+      {data.connectivityContext?.connectivityAvailable && data.connectivityContext.connectivityLabel && (
         <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3 space-y-1.5">
-          {data.connectivityLabel && (
-            <div className="flex items-start gap-2 text-xs text-foreground">
-              <Construction className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-              <div>
-                <span>{data.connectivityLabel}</span>
-                {data.connectivityPrecision && (
-                  <span className="text-[10px] text-muted-foreground/50 ml-1">
-                    · {data.connectivityPrecision === "civico" ? "Dato puntuale" : data.connectivityPrecision === "strada" ? "Dato stradale" : "Dato comunale"}
-                  </span>
-                )}
-              </div>
+          <div className="flex items-start gap-2 text-xs text-foreground">
+            <Construction className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+            <div>
+              <span>{data.connectivityContext.connectivityLabel}</span>
+              {data.connectivityContext.connectivityPrecision && (
+                <span className="text-[10px] text-muted-foreground/50 ml-1">
+                  · {data.connectivityContext.connectivityPrecision === "civico" ? "Dato puntuale" : data.connectivityContext.connectivityPrecision === "strada" ? "Dato stradale" : "Dato comunale"}
+                </span>
+              )}
             </div>
-          )}
-          {data.schoolContext && (
-            <div className="flex items-start gap-2 text-xs text-foreground">
-              <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-              <span>{data.schoolContext}</span>
-            </div>
-          )}
-          {data.energyContext && (
-            <div className="flex items-start gap-2 text-xs text-foreground">
-              <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-              <span>{data.energyContext}</span>
-            </div>
-          )}
+          </div>
+        </div>
+      )}
+
+      {/* Energy context — string */}
+      {data.energyContext && typeof data.energyContext === "string" && (
+        <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3">
+          <div className="flex items-start gap-2 text-xs text-foreground">
+            <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+            <span>{data.energyContext}</span>
+          </div>
         </div>
       )}
 
@@ -799,21 +826,16 @@ function SviluppoAreaCard({ data, loading }: { data: SviluppoAreaData | null; lo
         </div>
       )}
 
-      {/* Future-proof fields from Core — render only when present */}
-      {(data.schoolContext || data.energyContext) && (
-        <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3 space-y-1.5">
-          {data.schoolContext && (
-            <div className="flex items-start gap-2 text-xs text-foreground">
-              <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-              <span>{data.schoolContext}</span>
-            </div>
-          )}
-          {data.energyContext && (
-            <div className="flex items-start gap-2 text-xs text-foreground">
-              <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-              <span>{data.energyContext}</span>
-            </div>
-          )}
+      {/* School context — structured */}
+      <SchoolContextBlock schoolContext={data.schoolContext} />
+
+      {/* Energy context — string */}
+      {data.energyContext && typeof data.energyContext === "string" && (
+        <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3">
+          <div className="flex items-start gap-2 text-xs text-foreground">
+            <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+            <span>{data.energyContext}</span>
+          </div>
         </div>
       )}
 
