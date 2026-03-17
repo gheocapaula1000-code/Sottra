@@ -1,4 +1,5 @@
 import { coreRequest, isError } from "./api";
+import { normalizeMarketContext } from "@/lib/normalizeMarketContext";
 
 export async function getTimeView(lat: number, lng: number, horizon: number) {
   const res = await coreRequest("/forecast/timeview", "POST", { lat, lng, horizon }, 25000);
