@@ -795,21 +795,16 @@ function SviluppoAreaCard({ data, loading }: { data: SviluppoAreaData | null; lo
         </div>
       )}
 
-      {/* Future-proof fields from Core — render only when present */}
-      {(data.schoolContext || data.energyContext) && (
-        <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3 space-y-1.5">
-          {data.schoolContext && (
-            <div className="flex items-start gap-2 text-xs text-foreground">
-              <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-              <span>{data.schoolContext}</span>
-            </div>
-          )}
-          {data.energyContext && (
-            <div className="flex items-start gap-2 text-xs text-foreground">
-              <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-              <span>{data.energyContext}</span>
-            </div>
-          )}
+      {/* School context — structured */}
+      <SchoolContextBlock schoolContext={data.schoolContext} />
+
+      {/* Energy context — string */}
+      {data.energyContext && typeof data.energyContext === "string" && (
+        <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3">
+          <div className="flex items-start gap-2 text-xs text-foreground">
+            <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
+            <span>{data.energyContext}</span>
+          </div>
         </div>
       )}
 
