@@ -68,8 +68,7 @@
     font-family: 'Inter', system-ui, sans-serif;
     /* Prevent pull-to-refresh in PWA standalone */
     overscroll-behavior-y: contain;
-    /* Safe area padding for notch devices */
-    padding-top: env(safe-area-inset-top, 0px);
+    /* Safe area left/right for landscape — top is handled per-component to avoid doubling */
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
   }
