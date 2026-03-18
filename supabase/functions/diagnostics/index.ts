@@ -46,8 +46,8 @@ serve(async (req) => {
     _user_id: userId,
     _role: "admin",
   });
-  const isOwner =
-    userData.user.email?.toLowerCase() === "gheocapaula@gmail.com";
+  const OWNER_EMAILS = ["gheocapaula@gmail.com", "gheocapaula1000@gmail.com"];
+  const isOwner = OWNER_EMAILS.includes(userData.user.email?.toLowerCase() ?? "");
 
   if (!isAdmin && !isOwner)
     return new Response(JSON.stringify({ error: "Forbidden" }), {
