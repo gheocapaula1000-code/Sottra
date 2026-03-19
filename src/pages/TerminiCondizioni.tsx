@@ -15,7 +15,7 @@ const TerminiCondizioni = () => {
         <div className="space-y-6 text-sm text-foreground/90 leading-relaxed">
           <section>
             <h2 className="font-semibold text-foreground mb-2">Titolare del servizio</h2>
-            <p>{val(e.companyName)}</p>
+            <p>{val(e.companyNameLegal)}</p>
           </section>
 
           <section>

@@ -13,7 +13,7 @@ export default function Footer() {
           <a href="/note-legali" className="hover:text-foreground transition-colors">Note Legali</a>
         </nav>
         <p className="text-[10px] text-muted-foreground sm:text-xs">
-          © 2026 {APP_BRAND.name} by {LEGAL_ENTITY.companyName}. Tutti i diritti riservati.
+          © 2026 {LEGAL_ENTITY.companyName}. Tutti i diritti riservati.
         </p>
         <p className="text-[10px] text-muted-foreground">
           <a href={`mailto:${APP_BRAND.infoEmail}`} className="hover:text-foreground transition-colors">{APP_BRAND.infoEmail}</a>

@@ -5,6 +5,7 @@
 /* ── Dati societari comuni ── */
 export const LEGAL_ENTITY = {
   companyName: "Pi.Gi Service",
+  companyNameLegal: "Pi.Gi Service di Gheoca Paula",
   address: "Via Guidi Reni, 8",
   city: "Padova",
   province: "PD",

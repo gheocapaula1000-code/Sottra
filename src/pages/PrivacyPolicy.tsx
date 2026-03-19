@@ -15,7 +15,7 @@ const PrivacyPolicy = () => {
         <div className="space-y-6 text-sm text-foreground/90 leading-relaxed">
           <section>
             <h2 className="font-semibold text-foreground mb-2">Titolare del trattamento</h2>
-            <p>{val(e.companyName)}<br/>{val(e.address)}, {val(e.cap)} {val(e.city)} ({val(e.province)})<br/>PEC: {val(e.pec)} | Email: <a href={`mailto:${APP_BRAND.infoEmail}`} className="text-primary underline">{APP_BRAND.infoEmail}</a></p>
+            <p>{val(e.companyNameLegal)}<br/>{val(e.address)}, {val(e.cap)} {val(e.city)} ({val(e.province)})<br/>PEC: {val(e.pec)} | Email: <a href={`mailto:${APP_BRAND.infoEmail}`} className="text-primary underline">{APP_BRAND.infoEmail}</a></p>
           </section>
 
           <section>

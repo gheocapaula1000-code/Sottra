@@ -13,7 +13,7 @@ const NoteLegali = () => {
         <h1 className="text-2xl font-bold text-foreground mb-6">Note Legali</h1>
 
         <div className="space-y-4 text-sm text-foreground/90 leading-relaxed">
-          <p><strong>Titolare:</strong> {val(e.companyName)}</p>
+          <p><strong>Titolare:</strong> {val(e.companyNameLegal)}</p>
           <p><strong>Sede legale:</strong> {val(e.address)}, {val(e.cap)} {val(e.city)} ({val(e.province)})</p>
           <p><strong>P.IVA:</strong> {val(e.vatNumber)}</p>
           
