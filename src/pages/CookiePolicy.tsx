@@ -38,7 +38,7 @@ const CookiePolicy = () => {
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Titolare</h2>
-            <p>{val(LEGAL_ENTITY.companyName)}</p>
+            <p>{val(LEGAL_ENTITY.companyNameLegal)}</p>
             <p className="mt-1">Per informazioni: <a href={`mailto:${APP_BRAND.infoEmail}`} className="text-primary underline">{APP_BRAND.infoEmail}</a></p>
           </section>
 
