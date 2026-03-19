@@ -1,10 +1,10 @@
 /**
- * Dati legali centralizzati — Pi.Gi Service di Gheoca Paula
+ * Dati legali centralizzati — Pi.Gi Service
  */
 
 /* ── Dati societari comuni ── */
 export const LEGAL_ENTITY = {
-  companyName: "Pi.Gi Service di Gheoca Paula",
+  companyName: "Pi.Gi Service",
   address: "Via Guidi Reni, 8",
   city: "Padova",
   province: "PD",
