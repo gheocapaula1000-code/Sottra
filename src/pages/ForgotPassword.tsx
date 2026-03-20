@@ -58,7 +58,7 @@ const ForgotPassword = () => {
                 placeholder="tu@esempio.it"
               />
             </div>
-            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+            <Button type="submit" className="w-full min-h-[48px]" size="lg" disabled={loading}>
               {loading ? "Invio in corso…" : "Invia link di recupero"}
             </Button>
           </form>
