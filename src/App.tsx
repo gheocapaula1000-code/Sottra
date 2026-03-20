@@ -14,6 +14,7 @@ import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
 import TrialProtectedRoute from "@/components/TrialProtectedRoute";
 import AppDashboardGate from "@/components/AppDashboardGate";
 import PwaUpdateBanner from "@/components/PwaUpdateBanner";
+import OfflineBanner from "@/components/OfflineBanner";
 import { BUILD_VERSION } from "@/lib/buildInfo";
 import Index from "./pages/Index";
 
