@@ -54,6 +54,7 @@ export default defineConfig(({ mode }) => ({
         background_color: "#0A0A0F",
         display: "standalone",
         start_url: "/",
+        scope: "/",
         orientation: "portrait",
         categories: ["business", "utilities"],
         icons: [

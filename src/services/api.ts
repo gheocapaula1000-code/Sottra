@@ -55,19 +55,25 @@ export async function coreRequest<T = unknown>(
   body?: unknown,
   timeout = 10000,
 ): Promise<T | CoreError> {
-  if (isCircuitOpen()) {
-    return { error: true, message: "Servizio temporaneamente non raggiungibile — riprova tra qualche istante" };
+  if (!navigator.onLine) {
+    return { error: true, message: "Sei offline — verifica la connessione e riprova." };
   }
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  if (isCircuitOpen()) {
+    return { error: true, message: "Servizio temporaneamente non raggiungibile — riprova tra qualche istante." };
+  }
+
+  const MAX_ATTEMPTS = 3;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
       const { data, error } = await supabase.functions.invoke("core-proxy", {
         body: { endpoint, method, payload: body, timeout },
       });
 
       if (error) {
-        if (attempt === 0) {
-          await new Promise((r) => setTimeout(r, 1000));
+        if (attempt < MAX_ATTEMPTS - 1) {
+          await backoff(attempt);
           continue;
         }
         recordFailure();
@@ -77,6 +83,11 @@ export async function coreRequest<T = unknown>(
       // Edge function returned an error object
       if (data && typeof data === "object" && "error" in data && data.error?.message) {
         const status = data.status ?? data.error?.status;
+        // Retry on transient server errors
+        if (attempt < MAX_ATTEMPTS - 1 && isTransient(status)) {
+          await backoff(attempt);
+          continue;
+        }
         recordFailure();
         return { error: true, message: friendlyMessage(data.error.message, status) };
       }
@@ -84,8 +95,13 @@ export async function coreRequest<T = unknown>(
       // Central Core V3 wrapper: { ok, data, warnings, debug_id }
       if (data && typeof data === "object" && "ok" in data) {
         if (!data.ok) {
+          const status = data.status;
+          if (attempt < MAX_ATTEMPTS - 1 && isTransient(status)) {
+            await backoff(attempt);
+            continue;
+          }
           recordFailure();
-          return { error: true, message: friendlyMessage(data.error?.message ?? "", data.status) };
+          return { error: true, message: friendlyMessage(data.error?.message ?? "", status) };
         }
         recordSuccess();
         return data.data as T;
@@ -94,8 +110,8 @@ export async function coreRequest<T = unknown>(
       recordSuccess();
       return data as T;
     } catch (err: unknown) {
-      if (attempt === 0) {
-        await new Promise((r) => setTimeout(r, 1000));
+      if (attempt < MAX_ATTEMPTS - 1) {
+        await backoff(attempt);
         continue;
       }
       recordFailure();
@@ -110,7 +126,19 @@ export async function coreRequest<T = unknown>(
   }
 
   recordFailure();
-  return { error: true, message: "Servizio temporaneamente non disponibile" };
+  return { error: true, message: "Servizio temporaneamente non disponibile." };
+}
+
+/** Exponential backoff: ~1s, ~2s, ~4s with jitter */
+function backoff(attempt: number): Promise<void> {
+  const base = Math.min(1000 * 2 ** attempt, 8000);
+  const jitter = Math.random() * 500;
+  return new Promise((r) => setTimeout(r, base + jitter));
+}
+
+/** Status codes worth retrying */
+function isTransient(status?: number): boolean {
+  return status === 429 || status === 502 || status === 503 || status === 504;
 }
 
 export function isError(res: unknown): res is CoreError {

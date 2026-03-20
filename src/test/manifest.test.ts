@@ -12,6 +12,10 @@ describe("PWA manifest validation", () => {
     expect(configSource).toContain('"/"');
   });
 
+  it("has scope defined", () => {
+    expect(configSource).toContain('scope: "/"');
+  });
+
   it("has required icon sizes (192 and 512)", () => {
     expect(configSource).toContain("192x192");
     expect(configSource).toContain("512x512");
