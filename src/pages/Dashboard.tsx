@@ -94,7 +94,7 @@ const Dashboard = () => {
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">Dashboard</h1>
-            <p className="text-sm text-muted-foreground mt-1">Panoramica del tuo account e accesso rapido alle funzionalità.</p>
+            <p className="text-sm text-muted-foreground mt-1">Il tuo riepilogo operativo.</p>
           </div>
           <Button size="lg" className="min-h-[48px] sm:min-h-0 sm:h-10 gap-2 shrink-0" onClick={() => navigate("/scan")}>
             <ScanLine className="h-4 w-4" />
@@ -149,12 +149,12 @@ const Dashboard = () => {
                       <History className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-medium text-foreground">Nessuna scansione ancora</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">La tua prima analisi comparirà qui.</p>
+                      <p className="text-sm font-medium text-foreground">Nessuna scansione effettuata</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Scatta una foto a un edificio per iniziare.</p>
                     </div>
-                    <Button variant="outline" size="sm" className="mt-1 gap-1.5" onClick={() => navigate("/scan")}>
+                    <Button variant="outline" size="sm" className="mt-1 gap-1.5 min-h-[40px]" onClick={() => navigate("/scan")}>
                       <ScanLine className="h-3.5 w-3.5" />
-                      Scansiona un edificio
+                      Avvia la prima scansione
                     </Button>
                   </div>
                 ) : (

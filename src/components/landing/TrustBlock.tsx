@@ -4,21 +4,21 @@ import { Badge } from "@/components/ui/badge";
 const items = [
   {
     icon: Database,
-    title: "Fonti ufficiali dove disponibili",
-    desc: "OMI, ISTAT, ISPRA, INGV. Quando il dato proviene da una fonte istituzionale, lo indichiamo.",
+    title: "Fonti istituzionali verificate",
+    desc: "OMI, ISTAT, ISPRA, INGV. Ogni dato da fonte pubblica è etichettato e tracciabile.",
     badge: "Dato ufficiale",
   },
   {
     icon: ShieldCheck,
-    title: "Elaborazione da fonti pubbliche",
-    desc: "Dove il dato ufficiale non basta, l'analisi integra fonti pubbliche con metodologia strutturata.",
+    title: "Elaborazioni strutturate",
+    desc: "Quando il dato ufficiale non copre la zona, l'analisi integra fonti pubbliche con metodologia dichiarata.",
     badge: "Dato elaborato",
   },
   {
     icon: FileCheck,
-    title: "Classificazione trasparente",
-    desc: "Ogni sezione del report indica la natura del dato: ufficiale, elaborato o non disponibile. Nessuna ambiguità.",
-    badge: "Trasparenza",
+    title: "Ogni dato è classificato",
+    desc: "Ufficiale, verificato, elaborato, parziale o non disponibile. Sempre visibile, mai ambiguo.",
+    badge: "Trasparenza totale",
   },
 ];
 
@@ -27,10 +27,10 @@ export default function TrustBlock() {
     <section className="px-5 py-20 sm:px-10 lg:px-20">
       <div className="mx-auto max-w-4xl">
         <h2 className="text-center text-2xl font-black text-foreground sm:text-3xl lg:text-4xl">
-          Dati che puoi leggere con fiducia
+          Sai sempre cosa stai leggendo
         </h2>
         <p className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground sm:text-base">
-          Non tutto è dato ufficiale — e lo rendiamo chiaro fin dall'inizio.
+          Non tutto è dato ufficiale — e te lo diciamo chiaramente, su ogni singola voce.
         </p>
 
         <div className="mt-12 grid gap-5 sm:grid-cols-3">

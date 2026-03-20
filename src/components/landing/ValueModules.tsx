@@ -51,10 +51,10 @@ export default function ValueModules() {
     <section id="value" className="px-5 py-20 sm:px-10 lg:px-20">
       <div className="mx-auto max-w-5xl">
         <h2 className="text-center text-2xl font-black text-foreground sm:text-3xl lg:text-4xl">
-          Ogni modulo aggiunge un livello di lettura
+          Sette moduli, un unico quadro operativo
         </h2>
         <p className="mx-auto mt-3 max-w-lg text-center text-sm text-muted-foreground sm:text-base">
-          Non un solo numero: un quadro strutturato, costruito su fonti pubbliche e dati verificabili.
+          Non un numero isolato: un quadro strutturato con fonti distinte, costruito per essere letto e usato.
         </p>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -43,8 +43,11 @@ const History = () => {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
                 <Search className="h-7 w-7 text-muted-foreground" />
               </div>
-              <p className="text-muted-foreground">Nessuna scansione ancora</p>
-              <Button onClick={() => navigate("/scan")}>Scansiona un edificio</Button>
+              <div>
+                <p className="text-sm font-medium text-foreground">Nessuna scansione effettuata</p>
+                <p className="text-xs text-muted-foreground mt-1">Le tue analisi appariranno qui dopo la prima scansione.</p>
+              </div>
+              <Button onClick={() => navigate("/scan")} className="min-h-[48px]">Avvia la prima scansione</Button>
             </div>
           ) : (
             scans.map((scan) => (

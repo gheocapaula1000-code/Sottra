@@ -55,9 +55,14 @@ const Login = () => {
           </Link>
           <p>
             Non hai un account?{" "}
-            <Link to="/signup" className="text-primary hover:underline">Registrati</Link>
+            <Link to="/signup" className="text-primary hover:underline">Registrati gratis</Link>
           </p>
-          <Link to="/" className="block text-xs hover:text-foreground transition-colors">
+          <p className="text-[10px] pt-1">
+            <Link to="/privacy-policy" className="hover:text-foreground transition-colors">Privacy</Link>
+            {" · "}
+            <Link to="/termini-condizioni" className="hover:text-foreground transition-colors">Termini</Link>
+          </p>
+          <Link to="/" className="block text-xs hover:text-foreground transition-colors pt-1">
             ← Torna alla home
           </Link>
         </div>

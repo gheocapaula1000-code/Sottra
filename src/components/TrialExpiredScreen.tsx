@@ -72,16 +72,16 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
   return (
     <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6 py-12">
       <div className="mx-auto max-w-4xl text-center">
-        <AlertTriangle className="mx-auto h-12 w-12 text-primary" />
-        <h1 className="mt-6 text-3xl font-black text-foreground sm:text-4xl">
-          Il tuo trial è terminato
+        <AlertTriangle className="mx-auto h-10 w-10 text-primary/80" />
+        <h1 className="mt-5 text-2xl font-black text-foreground sm:text-3xl">
+          Periodo di prova concluso
         </h1>
-        <p className="mt-3 text-lg text-muted-foreground">
-          Hai effettuato <strong className="text-foreground">{scansUsed} scansioni</strong> in 3 giorni.
-          <br />Scegli il piano più adatto a te per continuare.
+        <p className="mt-3 text-base text-muted-foreground sm:text-lg">
+          Hai utilizzato <strong className="text-foreground">{scansUsed} scansioni</strong> durante i 3 giorni di prova.
+          <br />Per continuare a utilizzare Sottra, scegli il piano più adatto.
         </p>
-        <p className="mt-2 text-sm font-semibold text-primary">
-          Nessun dato bancario è stato richiesto durante il trial · Il pagamento avviene solo ora, se decidi di proseguire
+        <p className="mt-2 text-xs text-muted-foreground">
+          Nessun dato bancario è stato richiesto durante la prova · Il pagamento avviene solo se decidi di proseguire
         </p>
 
         <div className="mt-12 grid gap-6 lg:grid-cols-3">

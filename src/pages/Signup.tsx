@@ -37,8 +37,8 @@ const Signup = () => {
       <div className="w-full max-w-sm space-y-8">
         <div className="flex flex-col items-center gap-2">
           <SottraMark size="lg" textOnly />
-          <p className="text-sm text-muted-foreground">Crea il tuo account</p>
-          <p className="text-xs text-primary font-medium">3 giorni gratis · 5 scansioni · Nessuna carta richiesta</p>
+          <p className="text-sm text-muted-foreground">Crea il tuo account in 30 secondi</p>
+          <p className="text-xs text-primary font-medium">3 giorni di prova · 5 scansioni incluse · Nessuna carta richiesta</p>
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4">
@@ -50,8 +50,8 @@ const Signup = () => {
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} placeholder="Minimo 6 caratteri" />
           </div>
-          <Button type="submit" className="w-full" size="lg" disabled={loading}>
-            {loading ? "Registrazione…" : "Registrati"}
+          <Button type="submit" className="w-full min-h-[48px]" size="lg" disabled={loading}>
+            {loading ? "Registrazione in corso…" : "Inizia la prova gratuita"}
           </Button>
         </form>
 
@@ -60,7 +60,13 @@ const Signup = () => {
             Hai già un account?{" "}
             <Link to="/login" className="text-primary hover:underline">Accedi</Link>
           </p>
-          <Link to="/" className="block text-xs hover:text-foreground transition-colors">
+          <p className="text-[10px] pt-1">
+            Registrandoti accetti{" "}
+            <Link to="/termini-condizioni" className="text-primary hover:underline">Termini</Link>
+            {" e "}
+            <Link to="/privacy-policy" className="text-primary hover:underline">Privacy Policy</Link>
+          </p>
+          <Link to="/" className="block text-xs hover:text-foreground transition-colors pt-1">
             ← Torna alla home
           </Link>
         </div>
