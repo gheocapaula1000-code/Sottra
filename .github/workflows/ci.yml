@@ -21,7 +21,7 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npx eslint src/ --max-warnings 0 || true
+        run: npx eslint src/ --max-warnings 0
 
       - name: Test
         run: npx vitest run
@@ -32,3 +32,10 @@ jobs:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: placeholder
           VITE_SUPABASE_PROJECT_ID: placeholder
+
+      - name: Verify build artifacts
+        run: |
+          test -d dist || (echo "❌ dist/ missing" && exit 1)
+          test -f dist/index.html || (echo "❌ index.html missing" && exit 1)
+          test -f dist/manifest.webmanifest || test -f dist/manifest.json || (echo "❌ PWA manifest missing" && exit 1)
+          echo "✅ Build artifacts verified"
