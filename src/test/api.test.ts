@@ -80,9 +80,12 @@ describe("api.ts", () => {
         error: { message: "fail" },
       });
 
+      // Each coreRequest now does 3 attempts with exponential backoff
+      // We need 5 full requests to trip the circuit breaker (CB_THRESHOLD=5)
       for (let i = 0; i < 5; i++) {
         const p = coreRequest("/test", "GET");
-        await vi.advanceTimersByTimeAsync(2000);
+        // Advance enough time for all backoff delays within a single request
+        await vi.advanceTimersByTimeAsync(20_000);
         await p;
       }
       const result = await coreRequest("/test", "GET");
