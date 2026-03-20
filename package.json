@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "verify:secrets": "bash scripts/verify-secrets.sh",
+    "verify:package": "npm run build && bash scripts/verify-package.sh",
+    "audit:release": "npm run lint && npm run test && npm run verify:secrets && npm run verify:package"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
