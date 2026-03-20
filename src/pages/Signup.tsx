@@ -50,8 +50,8 @@ const Signup = () => {
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} placeholder="Minimo 6 caratteri" />
           </div>
-          <Button type="submit" className="w-full" size="lg" disabled={loading}>
-            {loading ? "Registrazione…" : "Registrati"}
+          <Button type="submit" className="w-full min-h-[48px]" size="lg" disabled={loading}>
+            {loading ? "Registrazione in corso…" : "Inizia la prova gratuita"}
           </Button>
         </form>
 
