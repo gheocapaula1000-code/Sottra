@@ -60,7 +60,13 @@ const Signup = () => {
             Hai già un account?{" "}
             <Link to="/login" className="text-primary hover:underline">Accedi</Link>
           </p>
-          <Link to="/" className="block text-xs hover:text-foreground transition-colors">
+          <p className="text-[10px] pt-1">
+            Registrandoti accetti{" "}
+            <Link to="/termini-condizioni" className="text-primary hover:underline">Termini</Link>
+            {" e "}
+            <Link to="/privacy-policy" className="text-primary hover:underline">Privacy Policy</Link>
+          </p>
+          <Link to="/" className="block text-xs hover:text-foreground transition-colors pt-1">
             ← Torna alla home
           </Link>
         </div>

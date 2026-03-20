@@ -149,12 +149,12 @@ const Dashboard = () => {
                       <History className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-medium text-foreground">Nessuna scansione ancora</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">La tua prima analisi comparirà qui.</p>
+                      <p className="text-sm font-medium text-foreground">Nessuna scansione effettuata</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Scatta una foto a un edificio per iniziare.</p>
                     </div>
-                    <Button variant="outline" size="sm" className="mt-1 gap-1.5" onClick={() => navigate("/scan")}>
+                    <Button variant="outline" size="sm" className="mt-1 gap-1.5 min-h-[40px]" onClick={() => navigate("/scan")}>
                       <ScanLine className="h-3.5 w-3.5" />
-                      Scansiona un edificio
+                      Avvia la prima scansione
                     </Button>
                   </div>
                 ) : (
