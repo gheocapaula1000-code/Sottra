@@ -4,21 +4,21 @@ import { Badge } from "@/components/ui/badge";
 const items = [
   {
     icon: Database,
-    title: "Fonti ufficiali dove disponibili",
-    desc: "OMI, ISTAT, ISPRA, INGV. Quando il dato proviene da una fonte istituzionale, lo indichiamo.",
+    title: "Fonti istituzionali verificate",
+    desc: "OMI, ISTAT, ISPRA, INGV. Ogni dato da fonte pubblica è etichettato e tracciabile.",
     badge: "Dato ufficiale",
   },
   {
     icon: ShieldCheck,
-    title: "Elaborazione da fonti pubbliche",
-    desc: "Dove il dato ufficiale non basta, l'analisi integra fonti pubbliche con metodologia strutturata.",
+    title: "Elaborazioni strutturate",
+    desc: "Quando il dato ufficiale non copre la zona, l'analisi integra fonti pubbliche con metodologia dichiarata.",
     badge: "Dato elaborato",
   },
   {
     icon: FileCheck,
-    title: "Classificazione trasparente",
-    desc: "Ogni sezione del report indica la natura del dato: ufficiale, elaborato o non disponibile. Nessuna ambiguità.",
-    badge: "Trasparenza",
+    title: "Ogni dato è classificato",
+    desc: "Ufficiale, verificato, elaborato, parziale o non disponibile. Sempre visibile, mai ambiguo.",
+    badge: "Trasparenza totale",
   },
 ];
 
