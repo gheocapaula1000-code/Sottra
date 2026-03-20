@@ -120,8 +120,8 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
 
                 <ul className="flex-1 space-y-2">
                   {features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-foreground/80">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <li key={f} className={`flex items-start gap-2 text-sm ${f.includes("(in attivazione)") ? "text-muted-foreground/60 italic" : "text-foreground/80"}`}>
+                      <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${f.includes("(in attivazione)") ? "text-muted-foreground/50" : "text-primary"}`} />
                       {f}
                     </li>
                   ))}
