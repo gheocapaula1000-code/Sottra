@@ -37,7 +37,15 @@ const History = () => {
       } />
 
       <ScrollArea className="flex-1">
-        <div className="px-5 pb-10 pt-2 space-y-3">
+        <div className="px-5 pb-10 pt-4 space-y-4">
+          <div>
+            <h1 className="text-xl font-bold text-foreground tracking-tight">Cronologia</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {scans.length === 0
+                ? "Le tue scansioni appariranno qui."
+                : `${scans.length} ${scans.length === 1 ? "scansione" : "scansioni"} effettuate`}
+            </p>
+          </div>
           {scans.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
