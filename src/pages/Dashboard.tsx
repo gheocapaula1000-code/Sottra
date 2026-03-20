@@ -94,7 +94,7 @@ const Dashboard = () => {
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">Dashboard</h1>
-            <p className="text-sm text-muted-foreground mt-1">Panoramica del tuo account e accesso rapido alle funzionalità.</p>
+            <p className="text-sm text-muted-foreground mt-1">Il tuo riepilogo operativo.</p>
           </div>
           <Button size="lg" className="min-h-[48px] sm:min-h-0 sm:h-10 gap-2 shrink-0" onClick={() => navigate("/scan")}>
             <ScanLine className="h-4 w-4" />
