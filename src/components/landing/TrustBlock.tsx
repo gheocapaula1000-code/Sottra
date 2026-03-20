@@ -27,10 +27,10 @@ export default function TrustBlock() {
     <section className="px-5 py-20 sm:px-10 lg:px-20">
       <div className="mx-auto max-w-4xl">
         <h2 className="text-center text-2xl font-black text-foreground sm:text-3xl lg:text-4xl">
-          Dati che puoi leggere con fiducia
+          Sai sempre cosa stai leggendo
         </h2>
         <p className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground sm:text-base">
-          Non tutto è dato ufficiale — e lo rendiamo chiaro fin dall'inizio.
+          Non tutto è dato ufficiale — e te lo diciamo chiaramente, su ogni singola voce.
         </p>
 
         <div className="mt-12 grid gap-5 sm:grid-cols-3">

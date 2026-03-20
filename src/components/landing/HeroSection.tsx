@@ -46,18 +46,18 @@ export default function HeroSection() {
       {/* Hero content */}
       <div className="relative mx-auto flex flex-1 max-w-3xl flex-col items-center justify-center text-center pb-24">
         <span className="mb-5 inline-block rounded-full border border-border bg-secondary/60 px-4 py-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Piattaforma per professionisti immobiliari
+          Strumento operativo per il settore immobiliare
         </span>
 
         <h1 className="text-[2.5rem] leading-[1.05] font-black tracking-tight text-foreground sm:text-6xl lg:text-7xl">
           Una foto.
           <br />
-          <span className="text-primary">Molto di più.</span>
+          <span className="text-primary">Un quadro completo.</span>
         </h1>
 
         <p className="mx-auto mt-5 max-w-[18rem] text-base leading-relaxed text-muted-foreground sm:mt-6 sm:max-w-md sm:text-lg" style={{ textWrap: "balance" as any }}>
-          Da un solo scatto,{" "}
-          <strong className="text-foreground">il contesto che conta.</strong>
+          Da un singolo scatto,{" "}
+          <strong className="text-foreground">dati, contesto e posizionamento dell'immobile.</strong>
         </p>
 
         <div className="mt-8 flex w-full flex-col items-center gap-3 sm:mt-10 sm:flex-row sm:justify-center sm:gap-4">
