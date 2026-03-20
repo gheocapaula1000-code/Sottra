@@ -1,50 +1,55 @@
 import { describe, it, expect } from "vitest";
-import viteConfig from "../../vite.config";
+import { readFileSync } from "fs";
 
 describe("PWA manifest validation", () => {
-  // Extract manifest from vite config
-  const config = typeof viteConfig === "function"
-    ? (viteConfig as any)({ mode: "production", command: "build" })
-    : viteConfig;
+  const configSource = readFileSync("vite.config.ts", "utf-8");
 
-  const pwaPlugin = config.plugins
-    ?.flat()
-    ?.find((p: any) => p && typeof p === "object" && "name" in p && /pwa/i.test(p.name));
-
-  // Read manifest directly from the config source
-  const manifest = (() => {
-    // Re-import the raw config to read the manifest object
-    // Since vite-plugin-pwa embeds it, we parse from the config file
-    const fs = require("fs");
-    const configSource = fs.readFileSync("vite.config.ts", "utf-8");
-    const manifestMatch = configSource.match(/manifest:\s*(\{[\s\S]*?\n\s{6}\})/);
-    if (!manifestMatch) return null;
-    // Use a simpler approach: just validate known values exist in the source
-    return configSource;
-  })();
-
-  it("has required manifest fields in vite.config.ts", () => {
-    expect(manifest).toContain('"Sottra"');
-    expect(manifest).toContain("short_name");
-    expect(manifest).toContain('"standalone"');
-    expect(manifest).toContain('start_url');
-    expect(manifest).toContain('"/"');
+  it("has required manifest fields", () => {
+    expect(configSource).toContain('"Sottra"');
+    expect(configSource).toContain("short_name");
+    expect(configSource).toContain('"standalone"');
+    expect(configSource).toContain('start_url');
+    expect(configSource).toContain('"/"');
   });
 
-  it("has required icon sizes", () => {
-    expect(manifest).toContain("192x192");
-    expect(manifest).toContain("512x512");
+  it("has required icon sizes (192 and 512)", () => {
+    expect(configSource).toContain("192x192");
+    expect(configSource).toContain("512x512");
   });
 
   it("has maskable icons", () => {
-    expect(manifest).toContain('"maskable"');
+    expect(configSource).toContain('"maskable"');
   });
 
-  it("has orientation set to portrait", () => {
-    expect(manifest).toContain('"portrait"');
+  it("has portrait orientation", () => {
+    expect(configSource).toContain('"portrait"');
   });
 
-  it("workbox excludes oauth route", () => {
-    expect(manifest).toContain("~oauth");
+  it("workbox excludes oauth route from caching", () => {
+    expect(configSource).toContain("~oauth");
+  });
+
+  it("uses autoUpdate register type", () => {
+    expect(configSource).toContain('"autoUpdate"');
+  });
+});
+
+describe("index.html PWA meta tags", () => {
+  const html = readFileSync("index.html", "utf-8");
+
+  it("has apple-mobile-web-app-capable", () => {
+    expect(html).toContain('apple-mobile-web-app-capable');
+  });
+
+  it("has theme-color", () => {
+    expect(html).toContain('name="theme-color"');
+  });
+
+  it("has viewport-fit=cover", () => {
+    expect(html).toContain("viewport-fit=cover");
+  });
+
+  it("has CSP meta tag", () => {
+    expect(html).toContain("Content-Security-Policy");
   });
 });
