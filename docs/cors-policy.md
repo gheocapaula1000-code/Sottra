@@ -34,8 +34,8 @@ Tutte le edge function Supabase utilizzano `Access-Control-Allow-Origin: *` (wil
 
 ```typescript
 const ALLOWED_ORIGINS = [
-  "https://sottra.lovable.app",
   "https://sottra.it",
+  "https://sottra.lovable.app",
 ];
 
 const origin = req.headers.get("Origin") ?? "";

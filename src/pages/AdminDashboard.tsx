@@ -160,7 +160,7 @@ const AdminDashboard = () => {
             <Card className="border-dashed">
               <CardContent className="py-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Moderazione, monitoraggio e gestione utenti — prossimamente
+                  Moderazione, monitoraggio e gestione utenti
                 </p>
               </CardContent>
             </Card>

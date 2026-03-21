@@ -42,7 +42,7 @@ const Login = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} placeholder="Minimo 6 caratteri" />
           </div>
           <Button type="submit" className="w-full" size="lg" disabled={loading}>
             {loading ? "Accesso in corso…" : "Accedi"}
