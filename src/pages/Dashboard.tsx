@@ -32,6 +32,7 @@ const Dashboard = () => {
   const { subscribed, trial, isAdmin, isOwner } = useSubscription();
   const { toast } = useToast();
   const { scans } = useScanHistory();
+  const { count: importCount } = useImportCount();
 
   const handleManageSubscription = async () => {
     try {
