@@ -23,6 +23,7 @@ import {
   Clock,
   CreditCard,
   HelpCircle,
+  FileText,
 } from "lucide-react";
 
 const Dashboard = () => {
