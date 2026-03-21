@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      keydraft_imports: {
+        Row: {
+          bridge_payload: Json
+          created_at: string
+          id: string
+          listing_id: string
+          origin_map: Json
+          run_id: string | null
+          sottra_completions: Json
+          source_app: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          bridge_payload?: Json
+          created_at?: string
+          id?: string
+          listing_id: string
+          origin_map?: Json
+          run_id?: string | null
+          sottra_completions?: Json
+          source_app?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          bridge_payload?: Json
+          created_at?: string
+          id?: string
+          listing_id?: string
+          origin_map?: Json
+          run_id?: string | null
+          sottra_completions?: Json
+          source_app?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       omi_polygons: {
         Row: {
           anno: number
