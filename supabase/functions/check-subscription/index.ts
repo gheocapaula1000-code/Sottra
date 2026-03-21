@@ -17,6 +17,7 @@ const BASE_RESPONSE = {
   product_id: null as string | null,
   subscription_end: null as string | null,
   is_admin: false,
+  is_owner: false,
   trial: null as Record<string, unknown> | null,
   error: null as string | null,
   code: "unknown" as string,
