@@ -17,6 +17,7 @@ const BASE_RESPONSE = {
   product_id: null as string | null,
   subscription_end: null as string | null,
   is_admin: false,
+  is_owner: false,
   trial: null as Record<string, unknown> | null,
   error: null as string | null,
   code: "unknown" as string,
@@ -96,7 +97,7 @@ serve(async (req) => {
     // ── 2. Owner bypass ──────────────────────────────────────
     if (isOwnerEmail(email)) {
       log("owner bypass");
-      return json({ ok: true, subscribed: true, is_admin: true, code: "owner" });
+      return json({ ok: true, subscribed: true, is_admin: true, is_owner: true, code: "owner" });
     }
 
     // ── 3. Admin check (non-blocking) ───────────────────────

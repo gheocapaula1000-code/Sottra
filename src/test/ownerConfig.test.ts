@@ -1,33 +1,46 @@
 import { describe, it, expect } from "vitest";
-import { isOwnerEmail, OWNER_EMAILS, OWNER_EMAIL } from "@/lib/ownerConfig";
+import * as fs from "fs";
+import * as path from "path";
 
-describe("ownerConfig", () => {
-  it("OWNER_EMAILS is a non-empty readonly array", () => {
-    expect(Array.isArray(OWNER_EMAILS)).toBe(true);
-    expect(OWNER_EMAILS.length).toBeGreaterThanOrEqual(1);
+describe("ownerConfig — hardening", () => {
+  it("ownerConfig.ts does not exist in the frontend source", () => {
+    expect(fs.existsSync("src/lib/ownerConfig.ts")).toBe(false);
   });
 
-  it("recognizes configured owner emails", () => {
-    for (const email of OWNER_EMAILS) {
-      expect(isOwnerEmail(email)).toBe(true);
+  it("SubscriptionContext does not import ownerConfig or use isOwnerEmail", () => {
+    const content = fs.readFileSync("src/contexts/SubscriptionContext.tsx", "utf-8");
+    expect(content).not.toContain("ownerConfig");
+    expect(content).not.toContain("isOwnerEmail");
+    expect(content).not.toContain("OWNER_EMAIL");
+  });
+
+  it("isOwner is derived from server response (is_owner field)", () => {
+    const content = fs.readFileSync("src/contexts/SubscriptionContext.tsx", "utf-8");
+    expect(content).toContain("is_owner");
+    expect(content).not.toContain("isOwnerEmail");
+  });
+
+  it("no frontend source files contain hardcoded owner emails", () => {
+    const dirs = ["src/lib", "src/contexts", "src/components", "src/pages"];
+
+    const checkDir = (dir: string) => {
+      let files: string[] = [];
+      try { files = fs.readdirSync(dir); } catch { return; }
+      for (const file of files) {
+        const full = path.join(dir, file);
+        const stat = fs.statSync(full);
+        if (stat.isDirectory()) {
+          checkDir(full);
+        } else if (file.endsWith(".ts") || file.endsWith(".tsx")) {
+          const content = fs.readFileSync(full, "utf-8");
+          expect(content).not.toContain("gheocapaula1000@gmail.com");
+          expect(content).not.toContain("massimilianogalli75@gmail.com");
+        }
+      }
+    };
+
+    for (const dir of dirs) {
+      checkDir(dir);
     }
-  });
-
-  it("is case-insensitive", () => {
-    for (const email of OWNER_EMAILS) {
-      expect(isOwnerEmail(email.toUpperCase())).toBe(true);
-    }
-  });
-
-  it("rejects non-owner emails", () => {
-    expect(isOwnerEmail("random@test.com")).toBe(false);
-    expect(isOwnerEmail("")).toBe(false);
-    expect(isOwnerEmail(null)).toBe(false);
-    expect(isOwnerEmail(undefined)).toBe(false);
-  });
-
-  it("legacy OWNER_EMAIL still exported", () => {
-    expect(typeof OWNER_EMAIL).toBe("string");
-    expect(OWNER_EMAIL).toBe(OWNER_EMAILS[0]);
   });
 });

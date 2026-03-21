@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPlanByProductId, PlanKey } from "@/lib/plans";
-import { isOwnerEmail } from "@/lib/ownerConfig";
 
 interface TrialInfo {
   active: boolean;
@@ -50,6 +49,7 @@ const SAFE_DEFAULTS = {
   subscriptionEnd: null as string | null,
   trial: null as TrialInfo | null,
   isAdmin: false,
+  isOwner: false,
 };
 
 
@@ -60,6 +60,7 @@ function parsePayload(data: unknown): {
   subscriptionEnd: string | null;
   trial: TrialInfo | null;
   isAdmin: boolean;
+  isOwner: boolean;
 } {
   if (!data || typeof data !== "object") {
     console.warn("[Subscription] malformed payload — not an object");
@@ -70,6 +71,7 @@ function parsePayload(data: unknown): {
 
   const subscribed = d.subscribed === true;
   const isAdmin = d.is_admin === true;
+  const isOwner = d.is_owner === true;
   const subscriptionEnd = typeof d.subscription_end === "string" ? d.subscription_end : null;
   const planKey = typeof d.product_id === "string" ? getPlanByProductId(d.product_id) : null;
 
@@ -84,7 +86,7 @@ function parsePayload(data: unknown): {
     };
   }
 
-  return { subscribed, planKey, subscriptionEnd, trial, isAdmin };
+  return { subscribed, planKey, subscriptionEnd, trial, isAdmin, isOwner };
 }
 
 export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
@@ -96,6 +98,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [trial, setTrial] = useState<TrialInfo | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [checked, setChecked] = useState(false);
   const accessResolvedRef = useRef(false);
 
@@ -110,6 +113,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setSubscriptionEnd(null);
     setTrial(null);
     setIsAdmin(false);
+    setIsOwner(false);
     setResolved(resolved);
     if (!authLoading) setLoading(false);
   }, [authLoading, setResolved]);
@@ -150,17 +154,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setResolved(false);
     }
 
-    
-
     try {
       let responseData: unknown = null;
 
       try {
-        // SDK returns { data, error } — with HTTP 200 from the function, error should be null.
         const result = await supabase.functions.invoke("check-subscription");
         responseData = result.data;
 
-        // If SDK still reports an error (network failure, etc.), treat as auth issue
         if (result.error) {
           const msg = typeof result.error === "object" && "message" in result.error
             ? (result.error as { message: string }).message
@@ -170,17 +170,14 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
       } catch (invokeError) {
-        // Network error or unexpected throw — never crash
         console.warn("[Subscription] invoke exception (non-fatal):", invokeError);
         applyDefaults(true);
         return;
       }
 
-      // Check if the function reported an error condition in the body
       const body = responseData as Record<string, unknown> | null;
       if (body && typeof body.error === "string" && body.error) {
         console.warn("[Subscription] function error (non-fatal):", body.error);
-        // ALWAYS resolve with safe defaults — never hang on loading
         applyDefaults(true);
         return;
       }
@@ -191,11 +188,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setSubscriptionEnd(parsed.subscriptionEnd);
       setTrial(parsed.trial);
       setIsAdmin(parsed.isAdmin);
+      setIsOwner(parsed.isOwner);
       setChecked(true);
       setResolved(true);
       setLoading(false);
     } catch (e) {
-      // Absolute safety net — never let /app blank-screen
       console.error("[Subscription] unexpected error (non-fatal):", e);
       applyDefaults(true);
     }
@@ -218,7 +215,6 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [session, refresh]);
 
-  const isOwner = isOwnerEmail(session?.user?.email);
   const canScan = isOwner || isAdmin || subscribed || (trial?.active ?? false);
 
   return (
