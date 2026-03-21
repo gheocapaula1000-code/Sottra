@@ -8,6 +8,7 @@ import { APP_BRAND } from "@/lib/legalEntity";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
+import { useImportCount } from "@/hooks/useImportCount";
 import AppHeader from "@/components/AppHeader";
 
 import {
@@ -22,6 +23,7 @@ import {
   Clock,
   CreditCard,
   HelpCircle,
+  FileText,
 } from "lucide-react";
 
 const Dashboard = () => {
@@ -30,6 +32,7 @@ const Dashboard = () => {
   const { subscribed, trial, isAdmin, isOwner } = useSubscription();
   const { toast } = useToast();
   const { scans } = useScanHistory();
+  const { count: importCount } = useImportCount();
 
   const handleManageSubscription = async () => {
     try {
@@ -235,6 +238,9 @@ const Dashboard = () => {
               <CardContent className="pt-0 space-y-1">
                 <QuickAction icon={<ScanLine className="h-4 w-4" />} label="Nuova scansione" onClick={() => navigate("/scan")} />
                 <QuickAction icon={<History className="h-4 w-4" />} label="Cronologia scansioni" onClick={() => navigate("/history")} />
+                {importCount > 0 && (
+                  <QuickAction icon={<FileText className="h-4 w-4" />} label="Bozze importate" onClick={() => navigate("/app/imports")} />
+                )}
                 {(isAdmin || isOwner) && (
                   <QuickAction icon={<Activity className="h-4 w-4" />} label="Diagnostica Core" onClick={() => navigate("/admin/diagnostics")} />
                 )}
