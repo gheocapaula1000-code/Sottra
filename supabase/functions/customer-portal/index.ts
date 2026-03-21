@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const OWNER_EMAILS = ["gheocapaula@gmail.com", "gheocapaula1000@gmail.com"];
+const OWNER_EMAILS = ["gheocapaula1000@gmail.com", "massimilianogalli75@gmail.com"];
 const isOwnerEmail = (email: string) => OWNER_EMAILS.includes(email.toLowerCase());
 
 serve(async (req) => {

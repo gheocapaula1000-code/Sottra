@@ -46,7 +46,7 @@ serve(async (req) => {
     _user_id: userId,
     _role: "admin",
   });
-  const OWNER_EMAILS = ["gheocapaula@gmail.com", "gheocapaula1000@gmail.com"];
+  const OWNER_EMAILS = ["gheocapaula1000@gmail.com", "massimilianogalli75@gmail.com"];
   const isOwner = OWNER_EMAILS.includes(userData.user.email?.toLowerCase() ?? "");
 
   if (!isAdmin && !isOwner)
