@@ -8,6 +8,7 @@ import { APP_BRAND } from "@/lib/legalEntity";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
+import { useImportCount } from "@/hooks/useImportCount";
 import AppHeader from "@/components/AppHeader";
 
 import {
