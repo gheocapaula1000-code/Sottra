@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://sottra.lovable.app/</loc>
+    <loc>https://sottra.it/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://sottra.lovable.app/login</loc>
+    <loc>https://sottra.it/login</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://sottra.lovable.app/signup</loc>
+    <loc>https://sottra.it/signup</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://sottra.lovable.app/privacy</loc>
+    <loc>https://sottra.it/privacy-policy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://sottra.lovable.app/termini</loc>
+    <loc>https://sottra.it/termini-condizioni</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://sottra.lovable.app/cookie-policy</loc>
+    <loc>https://sottra.it/cookie-policy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
-    <loc>https://sottra.lovable.app/note-legali</loc>
+    <loc>https://sottra.it/note-legali</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
