@@ -37,6 +37,8 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Diagnostics = lazy(() => import("./pages/Diagnostics"));
 const AdminOmiIngest = lazy(() => import("./pages/AdminOmiIngest"));
 const AdminOmiKmlIngest = lazy(() => import("./pages/AdminOmiKmlIngest"));
+const ImportedDrafts = lazy(() => import("./pages/ImportedDrafts"));
+const ImportedDraftDetail = lazy(() => import("./pages/ImportedDraftDetail"));
 
 const queryClient = new QueryClient();
 
@@ -66,6 +68,8 @@ const App = () => (
                     <Route path="/scan" element={<TrialProtectedRoute><Scan /></TrialProtectedRoute>} />
                     <Route path="/result" element={<TrialProtectedRoute><Result /></TrialProtectedRoute>} />
                     <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+                    <Route path="/app/imports" element={<ProtectedRoute><ImportedDrafts /></ProtectedRoute>} />
+                    <Route path="/app/imports/:id" element={<ProtectedRoute><ImportedDraftDetail /></ProtectedRoute>} />
                     <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                     <Route path="/cookie-policy" element={<CookiePolicy />} />
                     <Route path="/termini-condizioni" element={<TerminiCondizioni />} />
