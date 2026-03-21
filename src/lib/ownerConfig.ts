@@ -4,8 +4,8 @@
  * the same UI as a normal user (except a discrete admin link).
  */
 export const OWNER_EMAILS: readonly string[] = [
-  "gheocapaula@gmail.com",
   "gheocapaula1000@gmail.com",
+  "massimilianogalli75@gmail.com",
 ];
 
 /** Keep legacy single export for any external consumer */
