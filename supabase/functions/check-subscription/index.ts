@@ -1,13 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { isOwnerEmail } from "../_shared/ownerUtils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-const OWNER_EMAILS = ["gheocapaula1000@gmail.com", "massimilianogalli75@gmail.com"];
-const isOwnerEmail = (email: string) => OWNER_EMAILS.includes(email.toLowerCase());
 
 const log = (step: string, detail?: string) =>
   console.log(`[check-subscription] ${step}${detail ? ` — ${detail}` : ""}`);

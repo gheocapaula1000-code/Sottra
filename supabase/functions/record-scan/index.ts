@@ -1,13 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { isOwnerEmail } from "../_shared/ownerUtils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-const OWNER_EMAILS = ["gheocapaula1000@gmail.com", "massimilianogalli75@gmail.com"];
-const isOwnerEmail = (email: string) => OWNER_EMAILS.includes(email.toLowerCase());
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -29,7 +27,14 @@ serve(async (req) => {
       });
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "").trim();
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Token vuoto" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !userData.user) {
       return new Response(JSON.stringify({ error: "Sessione non valida" }), {
@@ -41,7 +46,7 @@ serve(async (req) => {
     const user = userData.user;
 
     // Owner/admin bypass — don't consume scans
-    if (isOwnerEmail(user.email ?? "")) {
+    if (isOwnerEmail(user.email)) {
       return new Response(JSON.stringify({ recorded: false, bypassed: true, scans_used: 0, max_scans: 999 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -63,7 +68,17 @@ serve(async (req) => {
       });
     }
 
-    const { scan_id } = await req.json();
+    let body: Record<string, unknown> = {};
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Payload non valido" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
+    const scan_id = body.scan_id;
     if (!scan_id || typeof scan_id !== "string") {
       return new Response(JSON.stringify({ error: "scan_id richiesto" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -78,7 +93,7 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .single();
 
-    // Auto-create trial row if missing (trigger may not be attached)
+    // Auto-create trial row if missing
     if (!trial) {
       const { data: newTrial } = await supabaseClient
         .from("user_trials")

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { isOwnerEmail } from "../_shared/ownerUtils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,7 +34,7 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_ANON_KEY")!,
     { global: { headers: { Authorization: authHeader } } },
   );
-  const token = authHeader.replace("Bearer ", "");
+  const token = authHeader.replace("Bearer ", "").trim();
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   if (userErr || !userData?.user)
     return new Response(JSON.stringify({ error: "Auth failed" }), {
@@ -46,8 +47,7 @@ serve(async (req) => {
     _user_id: userId,
     _role: "admin",
   });
-  const OWNER_EMAILS = ["gheocapaula1000@gmail.com", "massimilianogalli75@gmail.com"];
-  const isOwner = OWNER_EMAILS.includes(userData.user.email?.toLowerCase() ?? "");
+  const isOwner = isOwnerEmail(userData.user.email);
 
   if (!isAdmin && !isOwner)
     return new Response(JSON.stringify({ error: "Forbidden" }), {
