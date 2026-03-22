@@ -61,25 +61,14 @@ const History = () => {
             scans.map((scan) => (
               <button
                 key={scan.id}
-                onClick={() =>
-                  navigate("/result", {
-                    state: {
-                      photo: scan.photo,
-                      lat: scan.lat,
-                      lng: scan.lng,
-                      savedResult: scan.scanResult,
-                    },
-                  })
-                }
+                onClick={() => navigate("/scan")}
                 className="flex w-full items-center gap-3 rounded-xl bg-card border border-border p-3 text-left active:bg-secondary transition-colors"
               >
-                <img
-                  src={scan.photo}
-                  alt={scan.address}
-                  className="h-16 w-16 rounded-lg object-cover shrink-0"
-                />
+                <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <Camera className="h-6 w-6 text-muted-foreground" />
+                </div>
                 <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm font-semibold text-foreground truncate">{scan.address}</p>
+                  <p className="text-sm font-semibold text-foreground truncate">{scan.locality || "Posizione non disponibile"}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(scan.date)}</p>
                 </div>
                 {scan.moodScore != null && (

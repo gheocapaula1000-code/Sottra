@@ -169,20 +169,12 @@ const Dashboard = () => {
                         onClick={() => navigate("/history")}
                         className="w-full flex items-center gap-3 py-3 first:pt-0 last:pb-0 text-left hover:bg-secondary/30 -mx-1 px-1 rounded transition-colors"
                       >
-                        {scan.photo ? (
-                          <img
-                            src={scan.photo}
-                            alt=""
-                            className="h-9 w-9 rounded object-cover shrink-0 bg-muted"
-                          />
-                        ) : (
-                          <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
-                            <Camera className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        )}
+                        <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
+                          <Camera className="h-4 w-4 text-muted-foreground" />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">
-                            {scan.address || "Indirizzo non disponibile"}
+                            {scan.locality || "Posizione non disponibile"}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {new Date(scan.date).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" })}
