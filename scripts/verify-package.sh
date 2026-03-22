@@ -120,6 +120,31 @@ for icon in icons/icon-192.png icons/icon-512.png; do
   fi
 done
 
+# ── Headers artifact
+log "── Checking security headers artifact..."
+if [ -f dist/_headers ]; then
+  log "✅ _headers present in dist/"
+  for hdr in "X-Frame-Options" "X-Content-Type-Options" "Referrer-Policy" "Permissions-Policy"; do
+    if grep -q "$hdr" dist/_headers; then
+      log "  ✅ $hdr declared"
+    else
+      log "  ❌ $hdr MISSING in _headers"
+      EXIT=1
+    fi
+  done
+else
+  log "⚠️  WARNING: _headers not found in dist/ (security headers not enforced)"
+fi
+
+# ── index.html sanity
+log "── Checking index.html sanity..."
+if grep -q 'modulepreload.*\/src\/assets' dist/index.html 2>/dev/null; then
+  log "❌ Broken modulepreload referencing /src/assets in dist/index.html"
+  EXIT=1
+else
+  log "✅ No broken modulepreload in index.html"
+fi
+
 # ── Summary
 echo ""
 if [ $EXIT -eq 0 ]; then
