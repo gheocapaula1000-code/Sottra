@@ -77,7 +77,7 @@ export default function PricingSection() {
           <h2 className="text-2xl font-black text-foreground sm:text-3xl lg:text-4xl">
             Piani chiari, senza sorprese
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" as React.CSSProperties }}>
+          <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" } as React.CSSProperties}>
             3 giorni di prova con 5 scansioni incluse.
             Nessuna carta di credito, nessun dato bancario, nessuna disdetta.
           </p>

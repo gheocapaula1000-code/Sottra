@@ -29,7 +29,7 @@ export default function HowItWorks() {
         <h2 className="text-2xl font-black text-foreground sm:text-3xl lg:text-4xl">
           Prova senza impegno
         </h2>
-        <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" as React.CSSProperties }}>
+        <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" } as React.CSSProperties}>
           Tre passaggi, zero rischi. Nessun pagamento anticipato.
         </p>
 
