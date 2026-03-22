@@ -77,7 +77,7 @@ const Dashboard = () => {
               <span className="hidden sm:inline">Pannello admin</span>
             </Button>
           )}
-          {displaySubscribed && !isAdmin && (
+          {BILLING_ENABLED && displaySubscribed && !isAdmin && (
             <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={handleManageSubscription}>
               <CreditCard className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Abbonamento</span>
