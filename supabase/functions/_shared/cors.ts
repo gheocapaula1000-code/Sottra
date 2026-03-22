@@ -2,47 +2,52 @@
  * Shared CORS helper for Sottra Edge Functions.
  *
  * Uses an allowlist when ALLOWED_ORIGINS env var is set (comma-separated).
- * Falls back to wildcard "*" for Lovable preview compatibility.
+ * When ALLOWED_ORIGINS is NOT set, **denies by default** — no wildcard "*".
+ * This ensures production never accidentally opens to all origins.
  */
 
 const STANDARD_HEADERS =
   "authorization, x-client-info, apikey, content-type, x-internal-secret, x-source-app, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version";
 
 let _allowedOrigins: string[] | null = null;
+let _resolved = false;
 
-function getAllowedOrigins(): string[] | null {
-  if (_allowedOrigins !== null) return _allowedOrigins.length > 0 ? _allowedOrigins : null;
+function getAllowedOrigins(): string[] {
+  if (_resolved) return _allowedOrigins ?? [];
   const raw = Deno.env.get("ALLOWED_ORIGINS") ?? "";
-  _allowedOrigins = raw
+  const parsed = raw
     .split(",")
     .map((o) => o.trim().toLowerCase())
     .filter(Boolean);
-  return _allowedOrigins.length > 0 ? _allowedOrigins : null;
+  _allowedOrigins = parsed.length > 0 ? parsed : null;
+  _resolved = true;
+  return _allowedOrigins ?? [];
 }
 
 export function corsHeaders(req?: Request): Record<string, string> {
   const origins = getAllowedOrigins();
 
-  let origin = "*";
-  if (origins && req) {
-    const reqOrigin = (req.headers.get("Origin") ?? "").toLowerCase();
-    if (origins.includes(reqOrigin)) {
-      origin = reqOrigin;
-    } else {
-      origin = origins[0]; // default to primary domain
-    }
+  // Deny-by-default: if no allowlist is configured, block cross-origin.
+  if (origins.length === 0) {
+    return {
+      "Access-Control-Allow-Origin": "null",
+      "Access-Control-Allow-Headers": STANDARD_HEADERS,
+      "Vary": "Origin",
+    };
   }
 
-  const headers: Record<string, string> = {
+  // Allowlist mode: reflect origin if it matches, else use primary domain.
+  const reqOrigin = req
+    ? (req.headers.get("Origin") ?? "").toLowerCase()
+    : "";
+
+  const origin = origins.includes(reqOrigin) ? reqOrigin : origins[0];
+
+  return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Headers": STANDARD_HEADERS,
+    "Vary": "Origin",
   };
-
-  if (origins) {
-    headers["Vary"] = "Origin";
-  }
-
-  return headers;
 }
 
 /** Standard OPTIONS preflight response */

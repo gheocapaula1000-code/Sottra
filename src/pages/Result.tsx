@@ -1413,18 +1413,14 @@ const Result = () => {
           }
           const convergenza = result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null;
           saveScan({
-            photo: state.photo,
-            address: identifyData.address ?? "Indirizzo sconosciuto",
-            lat: state.lat ?? null,
-            lng: state.lng ?? null,
+            locality: identifyData.address
+              ? identifyData.address.split(",").slice(-2, -1)[0]?.trim() || "Posizione sconosciuta"
+              : "Posizione sconosciuta",
             moodScore: null,
             convergenzaTerritoriale: convergenza ? {
               score: convergenza.score,
               band: convergenza.band,
-              convergenceLevel: convergenza.convergenceLevel,
-              coverageLevel: convergenza.coverageLevel,
             } : null,
-            scanResult: result,
           });
           toast({ title: "Report salvato", description: "Trovi questo report nella cronologia." });
         }}><Bookmark className="h-4 w-4" /></Button>

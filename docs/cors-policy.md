@@ -2,59 +2,32 @@
 
 ## Stato attuale
 
-Tutte le edge function Supabase utilizzano `Access-Control-Allow-Origin: *` (wildcard).
+Tutte le edge function utilizzano l'helper condiviso `supabase/functions/_shared/cors.ts` con logica **deny-by-default**.
 
-### Funzioni con CORS aperto
+### Comportamento
 
-| Funzione | Motivo |
+| Condizione | `Access-Control-Allow-Origin` |
 |---|---|
-| `core-proxy` | Chiamata dal frontend (preview + produzione) |
-| `diagnostics` | Pannello admin, stessi origin |
-| `check-subscription` | Chiamata all'avvio app |
-| `create-checkout` | Redirect Stripe |
-| `customer-portal` | Redirect Stripe |
-| `record-scan` | Chiamata post-scan |
-| `pro-sources` | Dati fonti professionali |
-| `omi-ingest` | Admin ingest |
-| `omi-kml-ingest` | Admin ingest |
-| `admin-stats` | Pannello admin |
+| `ALLOWED_ORIGINS` impostato, origin nella lista | Origin riflesso |
+| `ALLOWED_ORIGINS` impostato, origin non nella lista | Primo dominio della lista |
+| `ALLOWED_ORIGINS` **non** impostato | `"null"` (deny) |
 
-## Quando è accettabile CORS wildcard
+La wildcard `*` non è mai utilizzata.
 
-- Deploy su Lovable/Supabase con origin variabili (preview, staging, produzione)
-- Tutte le funzioni richiedono `Authorization: Bearer <jwt>` — l'autenticazione è la barriera reale, non il CORS
-- CORS protegge il browser, non il server
+### Header standard
 
-## Quando restringere
+Ogni risposta include `Vary: Origin` per garantire correttezza nelle cache condivise.
 
-- Se l'app ha un singolo dominio stabile di produzione e nessun preview/staging
-- Per compliance aziendale che richiede allowlist esplicita
+## Configurazione
 
-## Esempio di allowlist (quando applicabile)
+Impostare il secret `ALLOWED_ORIGINS` come lista comma-separated di origini autorizzate:
 
-```typescript
-const ALLOWED_ORIGINS = [
-  "https://sottra.it",
-  "https://sottra.lovable.app",
-];
-
-const origin = req.headers.get("Origin") ?? "";
-const corsOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": corsOrigin,
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Vary": "Origin",
-};
+```
+https://sottra.it,https://sottra.lovable.app,https://id-preview--xxxxx.lovable.app
 ```
 
-## Rischi e limiti pratici
+## Rischi e mitigazioni
 
-1. **Lovable preview**: ogni build genera un URL diverso — un'allowlist rigida bloccherebbe le preview
-2. **Supabase hosting**: non offre configurazione CORS a livello di gateway; va gestito nel codice della funzione
-3. **Rottura silenziosa**: un'allowlist errata causa errori CORS invisibili nel browser senza log server-side
-4. **JWT è la vera protezione**: tutte le funzioni verificano il token in codice — CORS wildcard non espone dati
-
-## Decisione corrente
-
-**Mantenere CORS wildcard** — l'ambiente di deploy è variabile e l'autenticazione JWT in-code è la protezione primaria. Restringere quando l'app avrà un singolo dominio stabile.
+1. **Preview Lovable**: ogni build genera un URL diverso. Aggiungere il pattern preview alla lista quando necessario.
+2. **JWT è la protezione primaria**: tutte le funzioni verificano il token in-code.
+3. **Deny-by-default**: se `ALLOWED_ORIGINS` non è configurato, le richieste cross-origin vengono rifiutate.
