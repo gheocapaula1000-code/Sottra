@@ -17,7 +17,7 @@ Browser → Sottra PWA (React + Vite)
 
 ## Tech Stack
 
-- **Frontend**: React 18, TypeScript, Tailwind CSS, shadcn/ui, Vite
+- **Frontend**: React 18, TypeScript (strict), Tailwind CSS, shadcn/ui, Vite
 - **Backend**: Central Core V3 (Edge Function server-side)
 - **Geocoding**: OpenStreetMap Nominatim (fallback Google Maps)
 - **PWA**: Service Worker, manifest, installabile
@@ -25,10 +25,10 @@ Browser → Sottra PWA (React + Vite)
 ## Struttura
 ```
 src/
-  pages/        → Index, Scan, Result, History, NotFound
-  services/     → scan.ts, forecast.ts, api.ts, mockData.ts
+  pages/        → Index, Scan, Result, History, Dashboard, Admin…
+  services/     → scan.ts, forecast.ts, api.ts, keydraftImport.ts
   hooks/        → useBuildingScan (orchestratore dual-engine)
-  contexts/     → ScanHistoryContext (cronologia scansioni)
+  contexts/     → AuthContext, SubscriptionContext, ScanHistoryContext
   types/        → Interfacce TypeScript per tutti i dati
   components/   → UI condivisa + shadcn/ui
 ```
@@ -38,17 +38,28 @@ src/
 VITE_USE_MOCK=false              # true per dati dimostrativi in sviluppo
 ```
 
-> Le chiavi `CORE_API_URL` e `CORE_API_KEY` sono configurate server-side
-> nella Edge Function e non devono essere esposte al client.
+> Le chiavi `CORE_API_URL`, `CORE_API_KEY`, `OWNER_EMAILS` e `STRIPE_SECRET_KEY`
+> sono configurate server-side nelle Edge Function e non devono essere esposte al client.
 
-## Sviluppo
+## Scripts
 ```bash
-npm install
-npm run dev      # http://localhost:8080
-npm run build    # Build produzione
-npx vitest run   # Test
-npx eslint src/  # Lint
+npm run dev              # Dev server (localhost:8080)
+npm run build            # Build produzione
+npm run lint             # ESLint
+npm run typecheck        # TypeScript strict check
+npm run test             # Vitest
+npm run test:coverage    # Vitest con coverage
+npm run verify:secrets   # Verifica assenza secret nel codice
+npm run verify:package   # Build + verifica artifact
+npm run audit:release    # Pipeline completa: lint + typecheck + test + secrets + package
 ```
+
+## CI/CD
+
+GitHub Actions pipeline (`.github/workflows/ci.yml`):
+lint → typecheck → test → verify:secrets → build → verify artifacts
+
+Dependabot configurato per aggiornamenti automatici npm e GitHub Actions.
 
 ## Moduli operativi (9)
 
@@ -71,3 +82,15 @@ Ogni sezione del report indica il tipo di dato:
 - **Dato ufficiale** — fonte istituzionale verificata (OMI, ISTAT, ISPRA, INGV)
 - **Dato elaborato** — elaborazione strutturata da fonti pubbliche
 - **Non disponibile** — copertura assente per l'area analizzata
+
+## Sicurezza
+
+- Nessuna email owner/admin nel bundle frontend
+- Owner/admin centralizzati server-side via `OWNER_EMAILS` env
+- CSP meta tag restrittivo
+- RLS abilitato su tutte le tabelle
+- Stripe opzionale: degrada in modo esplicito se `STRIPE_SECRET_KEY` non è configurato
+
+## Licenza
+
+Proprietaria. Vedere `LICENSE`.
