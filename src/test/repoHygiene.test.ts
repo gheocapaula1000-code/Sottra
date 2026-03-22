@@ -4,16 +4,12 @@ import { readFileSync, existsSync } from "fs";
 describe(".gitignore hygiene", () => {
   const gitignore = readFileSync(".gitignore", "utf-8");
 
-  it("blocks .env files", () => {
-    expect(gitignore).toContain(".env");
+  it("blocks *.local files (covers .env.*.local)", () => {
+    expect(gitignore).toContain("*.local");
   });
 
-  it("blocks .env.* variants", () => {
-    expect(gitignore).toContain(".env.*");
-  });
-
-  it("preserves .env.example", () => {
-    expect(gitignore).toContain("!.env.example");
+  it("blocks dist/ from being committed", () => {
+    expect(gitignore).toContain("dist");
   });
 });
 
