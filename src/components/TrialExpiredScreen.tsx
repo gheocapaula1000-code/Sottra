@@ -3,7 +3,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, ArrowRight, AlertTriangle } from "lucide-react";
-import { useSubscription } from "@/contexts/SubscriptionContext";
 import { PLANS, PlanKey } from "@/lib/plans";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";

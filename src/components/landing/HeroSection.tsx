@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ChevronDown, ShieldCheck, CreditCard, CalendarOff, ScanLine, Clock } from "lucide-react";
+import { ArrowRight, ChevronDown, CreditCard, CalendarOff, ScanLine, Clock } from "lucide-react";
 import SottraMark from "@/components/SottraMark";
 import logoS from "@/assets/logo-s-icon.png";
 

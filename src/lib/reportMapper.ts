@@ -667,8 +667,8 @@ export function buildScenarioTemporale(result: ScanResult): ScenarioTemporaleDat
 export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null {
   const opportunity = sectionData<OpportunityData>(result, "opportunity");
   const convergenza = sectionData<ConvergenzaTerritorialeData>(result, "convergenzaTerritoriale");
-  const pricing = sectionData<PricingData>(result, "pricing");
-  const omi = sectionData<OmiZoneData>(result, "omiZone");
+  const _pricing = sectionData<PricingData>(result, "pricing");
+  const _omi = sectionData<OmiZoneData>(result, "omiZone");
   const poi = sectionData<PoiEnrichmentData>(result, "poiEnrichment");
   const rischio = sectionData<RischioZonaData>(result, "rischioZona");
   const tv = sectionData<TimeViewData>(result, "timeView");

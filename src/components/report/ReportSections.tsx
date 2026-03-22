@@ -20,10 +20,10 @@ import type {
   ProfiloRapidoData, ImmobileFacciataData, ContestoVicinatoData,
   PosizionamentoCommercialeData, ProfiloAreaData,
   ScenarioTemporaleData, SintesiFinaleData, TrasparenzaFontiData,
-  FonteEntry, ReportField, PrioritaCriticitaData, PrioritaCriticaCategoria,
+  PrioritaCriticitaData, PrioritaCriticaCategoria,
   GeoContext,
 } from "@/types/report";
-import { isSectionRenderable, sourceTypeLabels } from "@/types/report";
+import { isSectionRenderable } from "@/types/report";
 
 /* ── Layout primitives ──────────────────────────────────── */
 
