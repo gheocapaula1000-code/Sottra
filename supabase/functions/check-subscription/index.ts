@@ -91,7 +91,7 @@ serve(async (req) => {
     // ── 2. Owner bypass ──────────────────────────────────────
     if (isOwnerEmail(email)) {
       log("owner bypass");
-      return json({ ok: true, subscribed: true, is_admin: true, is_owner: true, code: "owner" }, req);
+      return json({ ok: true, subscribed: true, is_admin: false, is_owner: true, owner: true, code: "owner" }, req);
     }
 
     // ── 3. Admin check (non-blocking) ───────────────────────

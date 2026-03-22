@@ -1,21 +1,20 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
-import type { ScanResult } from "@/types";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+
+/**
+ * Scan history — stores ONLY non-sensitive metadata.
+ * No photos, no full addresses, no precise coordinates.
+ */
 
 export interface SavedScan {
   id: string;
-  photo: string;
-  address: string;
-  lat: number | null;
-  lng: number | null;
+  /** Short locality label (city/zone), NOT full address */
+  locality: string;
   date: string;
   moodScore: number | null;
   convergenzaTerritoriale: {
     score: number | null;
     band: string | null;
-    convergenceLevel: string | null;
-    coverageLevel: string | null;
   } | null;
-  scanResult: Partial<ScanResult>;
 }
 
 interface ScanHistoryContextType {
@@ -27,33 +26,51 @@ interface ScanHistoryContextType {
 }
 
 const STORAGE_KEY = "sottra_scan_history";
+const LEGACY_KEY = "sottra_scan_history"; // same key, legacy format cleaned on load
 const MAX_SCANS = 10;
-const THUMB_MAX = 200; // px – longest side for thumbnail
 
-/** Downscale a base64 image to a small thumbnail to save localStorage space */
-function makeThumbnail(base64: string): Promise<string> {
-  return new Promise((resolve) => {
-    // If it's not a data-url image, just return as-is (can't resize)
-    if (!base64.startsWith("data:image")) {
-      resolve(base64);
-      return;
-    }
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(THUMB_MAX / img.width, THUMB_MAX / img.height, 1);
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) { resolve(base64); return; }
-      ctx.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL("image/jpeg", 0.6));
-    };
-    img.onerror = () => resolve(base64);
-    img.src = base64;
-  });
+/* ── Legacy migration: strip PII from old entries ─────── */
+
+interface LegacyEntry {
+  id?: string;
+  photo?: string;
+  address?: string;
+  lat?: number | null;
+  lng?: number | null;
+  locality?: string;
+  date?: string;
+  moodScore?: number | null;
+  convergenzaTerritoriale?: Record<string, unknown> | null;
+  scanResult?: unknown;
+}
+
+function migrateLegacy(raw: unknown[]): SavedScan[] {
+  return raw
+    .filter((e): e is LegacyEntry => !!e && typeof e === "object")
+    .map((entry) => {
+      // Derive locality from old address if present (take city-level only)
+      let locality = entry.locality ?? "";
+      if (!locality && entry.address) {
+        // Attempt to extract city from comma-separated address
+        const parts = entry.address.split(",").map((p: string) => p.trim());
+        locality = parts.length >= 2 ? parts[parts.length - 2] : parts[0] ?? "";
+      }
+
+      const ct = entry.convergenzaTerritoriale;
+      return {
+        id: entry.id ?? crypto.randomUUID(),
+        locality,
+        date: entry.date ?? new Date().toISOString(),
+        moodScore: typeof entry.moodScore === "number" ? entry.moodScore : null,
+        convergenzaTerritoriale: ct
+          ? {
+              score: typeof ct.score === "number" ? ct.score : null,
+              band: typeof ct.band === "string" ? ct.band : null,
+            }
+          : null,
+      };
+    })
+    .slice(0, MAX_SCANS);
 }
 
 function loadFromStorage(): SavedScan[] {
@@ -61,8 +78,22 @@ function loadFromStorage(): SavedScan[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-    return [];
+    if (!Array.isArray(parsed)) return [];
+
+    // Detect legacy format (has photo/address/lat/lng fields)
+    const isLegacy = parsed.some(
+      (e: Record<string, unknown>) => e && ("photo" in e || "lat" in e || "scanResult" in e),
+    );
+
+    if (isLegacy) {
+      const migrated = migrateLegacy(parsed);
+      // Overwrite with clean data immediately
+      saveToStorage(migrated);
+      console.info("[ScanHistory] Migrated legacy entries — PII removed");
+      return migrated;
+    }
+
+    return parsed as SavedScan[];
   } catch {
     return [];
   }
@@ -72,7 +103,7 @@ function saveToStorage(scans: SavedScan[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(scans));
   } catch {
-    // localStorage full – drop oldest and retry
+    // localStorage full — drop oldest and retry
     if (scans.length > 1) {
       saveToStorage(scans.slice(0, -1));
     }
@@ -84,11 +115,26 @@ const ScanHistoryContext = createContext<ScanHistoryContextType | null>(null);
 export function ScanHistoryProvider({ children }: { children: ReactNode }) {
   const [scans, setScans] = useState<SavedScan[]>(loadFromStorage);
 
-  const saveScan = useCallback(async (scan: Omit<SavedScan, "id" | "date">) => {
-    const thumb = await makeThumbnail(scan.photo);
+  // One-time cleanup on mount: purge any leftover legacy keys
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LEGACY_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.some((e: Record<string, unknown>) => "photo" in e || "lat" in e)) {
+          const migrated = migrateLegacy(parsed);
+          saveToStorage(migrated);
+          setScans(migrated);
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  const saveScan = useCallback((scan: Omit<SavedScan, "id" | "date">) => {
     const newScan: SavedScan = {
       ...scan,
-      photo: thumb,
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
     };
