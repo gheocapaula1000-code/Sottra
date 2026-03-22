@@ -138,8 +138,8 @@ export default function PricingSection() {
                     key={f}
                     className="flex items-start gap-2 text-xs text-foreground/80 sm:text-sm"
                   >
-                    <CheckCircle2 className={`mt-0.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4 ${f.includes("(in attivazione)") ? "text-muted-foreground/50" : "text-primary"}`} />
-                    <span className={`break-words ${f.includes("(in attivazione)") ? "text-muted-foreground/60 italic" : ""}`}>{f}</span>
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4 text-primary" />
+                    <span className="break-words">{f}</span>
                   </li>
                 ))}
               </ul>
