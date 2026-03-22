@@ -36,6 +36,14 @@ describe("PWA manifest validation", () => {
   it("uses autoUpdate register type", () => {
     expect(configSource).toContain('"autoUpdate"');
   });
+
+  it("has cleanupOutdatedCaches enabled", () => {
+    expect(configSource).toContain("cleanupOutdatedCaches: true");
+  });
+
+  it("has skipWaiting enabled", () => {
+    expect(configSource).toContain("skipWaiting: true");
+  });
 });
 
 describe("index.html PWA meta tags", () => {
@@ -55,5 +63,19 @@ describe("index.html PWA meta tags", () => {
 
   it("has CSP meta tag", () => {
     expect(html).toContain("Content-Security-Policy");
+  });
+
+  it("has canonical URL pointing to production domain", () => {
+    expect(html).toContain('rel="canonical"');
+    expect(html).toContain("sottra.it");
+  });
+
+  it("has no localhost references", () => {
+    expect(html).not.toContain("localhost:");
+    expect(html).not.toContain("127.0.0.1:");
+  });
+
+  it("has apple-touch-icon", () => {
+    expect(html).toContain('rel="apple-touch-icon"');
   });
 });
