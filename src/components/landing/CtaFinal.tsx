@@ -8,10 +8,10 @@ export default function CtaFinal() {
   return (
     <section className="px-5 py-20 sm:px-10 lg:px-20">
       <div className="mx-auto max-w-3xl rounded-2xl border border-primary/20 bg-primary/5 p-7 text-center sm:p-12">
-        <h2 className="text-2xl font-black text-foreground sm:text-3xl lg:text-4xl" style={{ textWrap: "balance" as any }}>
+        <h2 className="text-2xl font-black text-foreground sm:text-3xl lg:text-4xl" style={{ textWrap: "balance" as React.CSSProperties }}>
           Valuta il prodotto con calma
         </h2>
-        <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" as any }}>
+        <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" as React.CSSProperties }}>
           3 giorni di prova, 5 scansioni incluse. Nessuna carta di credito
           e nessun dato bancario. Se non fa per te, non succede nulla.
         </p>
