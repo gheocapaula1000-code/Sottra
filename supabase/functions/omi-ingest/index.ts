@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 /**
  * OMI Ingest Edge Function — handles both VALORI and ZONE CSV imports.
@@ -8,16 +9,10 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
  * Body: { csvData: "...", anno: 2025, semestre: 1, mode: "valori"|"zone" }
  */
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, req?: Request) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 }
 

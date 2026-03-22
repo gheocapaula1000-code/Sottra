@@ -568,9 +568,9 @@ async function queryGooglePlaces(lat: number, lng: number, radius: number, apiKe
    ══════════════════════════════════════════════════════ */
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  _currentReq = req;
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     // Auth check
