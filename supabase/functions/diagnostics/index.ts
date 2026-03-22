@@ -1,12 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isOwnerEmail } from "../_shared/ownerUtils.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 function sanitizeUrl(raw: string): string {
   try {
@@ -18,17 +13,18 @@ function sanitizeUrl(raw: string): string {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS")
-    return new Response(null, { headers: corsHeaders });
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
+
+  const cors = corsHeaders(req);
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer "))
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
 
-  // Verify caller is admin/owner
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -39,7 +35,7 @@ serve(async (req) => {
   if (userErr || !userData?.user)
     return new Response(JSON.stringify({ error: "Auth failed" }), {
       status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
 
   const userId = userData.user.id;
@@ -52,10 +48,9 @@ serve(async (req) => {
   if (!isAdmin && !isOwner)
     return new Response(JSON.stringify({ error: "Forbidden" }), {
       status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
 
-  // Gather config info
   const CORE_API_URL = (Deno.env.get("CORE_API_URL") || "").replace(/\/+$/, "");
   const hasApiKey = !!(Deno.env.get("AI_CORE_SECRET") || Deno.env.get("CORE_API_KEY"));
   const keySource = Deno.env.get("AI_CORE_SECRET")
@@ -66,14 +61,12 @@ serve(async (req) => {
 
   const sanitized = CORE_API_URL ? sanitizeUrl(CORE_API_URL) : "(not configured)";
 
-  // Official core detection
   const OFFICIAL_HOST = "jpunnzgixcghuydstdlt.supabase.co";
   let isOfficial = false;
   try {
     isOfficial = new URL(CORE_API_URL).host === OFFICIAL_HOST;
   } catch {}
 
-  // Health check
   let healthStatus = "SKIP";
   let healthLatency = 0;
   if (CORE_API_URL && hasApiKey) {
@@ -112,6 +105,6 @@ serve(async (req) => {
   };
 
   return new Response(JSON.stringify(payload), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...cors, "Content-Type": "application/json" },
   });
 });

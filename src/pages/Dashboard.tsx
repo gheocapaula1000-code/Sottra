@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { APP_BRAND } from "@/lib/legalEntity";
+import { BILLING_ENABLED } from "@/lib/billing";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
@@ -76,7 +77,7 @@ const Dashboard = () => {
               <span className="hidden sm:inline">Pannello admin</span>
             </Button>
           )}
-          {displaySubscribed && !isAdmin && (
+          {BILLING_ENABLED && displaySubscribed && !isAdmin && (
             <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={handleManageSubscription}>
               <CreditCard className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Abbonamento</span>
@@ -244,7 +245,7 @@ const Dashboard = () => {
                 {(isAdmin || isOwner) && (
                   <QuickAction icon={<Activity className="h-4 w-4" />} label="Diagnostica Core" onClick={() => navigate("/admin/diagnostics")} />
                 )}
-                {displaySubscribed && (
+                {BILLING_ENABLED && displaySubscribed && (
                   <QuickAction icon={<CreditCard className="h-4 w-4" />} label="Gestisci abbonamento" onClick={handleManageSubscription} />
                 )}
               </CardContent>

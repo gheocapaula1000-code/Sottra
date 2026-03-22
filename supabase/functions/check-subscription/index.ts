@@ -1,11 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isOwnerEmail } from "../_shared/ownerUtils.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { isBillingActive } from "../_shared/billing.ts";
 
 const log = (step: string, detail?: string) =>
   console.log(`[check-subscription] ${step}${detail ? ` — ${detail}` : ""}`);
@@ -25,33 +22,30 @@ const BASE_RESPONSE = {
 
 type ResponseShape = typeof BASE_RESPONSE;
 
-/** Always returns HTTP 200 with a stable JSON envelope */
-const json = (body: Partial<ResponseShape>) =>
+const json = (body: Partial<ResponseShape>, req: Request) =>
   new Response(JSON.stringify({ ...BASE_RESPONSE, ...body }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     status: 200,
   });
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     // ── 1. Auth ──────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       log("auth missing");
-      return json({ error: "Missing authorization", code: "auth_missing" });
+      return json({ error: "Missing authorization", code: "auth_missing" }, req);
     }
 
     const token = authHeader.replace("Bearer ", "").trim();
     if (!token) {
       log("auth empty token");
-      return json({ error: "Empty token", code: "auth_empty" });
+      return json({ error: "Empty token", code: "auth_empty" }, req);
     }
 
-    // Use anon-key client with user's Authorization header for getClaims
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -68,28 +62,27 @@ serve(async (req) => {
       });
     } catch (e) {
       log("supabase client init failed", String(e));
-      return json({ error: "Internal configuration error", code: "init_error" });
+      return json({ error: "Internal configuration error", code: "init_error" }, req);
     }
 
-    // Use getClaims to validate the JWT (works with signing-keys)
     let userId: string;
     let email: string | undefined;
     try {
       const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
       if (claimsError || !claimsData?.claims) {
         log("auth invalid via getClaims", claimsError?.message ?? "no claims");
-        return json({ error: `Auth error: ${claimsError?.message ?? "invalid token"}`, code: "auth_invalid" });
+        return json({ error: `Auth error: ${claimsError?.message ?? "invalid token"}`, code: "auth_invalid" }, req);
       }
       userId = claimsData.claims.sub as string;
       email = claimsData.claims.email as string | undefined;
     } catch (e) {
       log("auth exception", String(e));
-      return json({ error: "Auth verification failed", code: "auth_exception" });
+      return json({ error: "Auth verification failed", code: "auth_exception" }, req);
     }
 
     if (!email) {
       log("auth no email");
-      return json({ error: "Auth error: no email", code: "auth_no_email" });
+      return json({ error: "Auth error: no email", code: "auth_no_email" }, req);
     }
 
     log("authenticated", userId);
@@ -97,7 +90,7 @@ serve(async (req) => {
     // ── 2. Owner bypass ──────────────────────────────────────
     if (isOwnerEmail(email)) {
       log("owner bypass");
-      return json({ ok: true, subscribed: true, is_admin: true, is_owner: true, code: "owner" });
+      return json({ ok: true, subscribed: true, is_admin: true, is_owner: true, code: "owner" }, req);
     }
 
     // ── 3. Admin check (non-blocking) ───────────────────────
@@ -120,7 +113,7 @@ serve(async (req) => {
 
     if (isAdmin) {
       log("admin bypass");
-      return json({ ok: true, subscribed: true, is_admin: true, code: "admin" });
+      return json({ ok: true, subscribed: true, is_admin: true, code: "admin" }, req);
     }
 
     // ── 4. Trial (non-blocking) ─────────────────────────────
@@ -136,7 +129,6 @@ serve(async (req) => {
         log("trial lookup failed", trialErr.message);
       }
 
-      // Auto-create if missing
       if (!trial) {
         try {
           const { data: newTrial, error: insertErr } = await serviceClient
@@ -172,13 +164,13 @@ serve(async (req) => {
       log("trial exception", String(e));
     }
 
-    // ── 5. Stripe (completely non-blocking) ─────────────────
+    // ── 5. Stripe (completely non-blocking, only if billing is active) ──
     let subscribed = false;
     let productId: string | null = null;
     let subscriptionEnd: string | null = null;
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (stripeKey && email) {
+    if (isBillingActive() && email) {
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
       try {
         const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
         const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
@@ -225,9 +217,9 @@ serve(async (req) => {
       is_admin: false,
       trial: trialPayload,
       code: "resolved",
-    });
+    }, req);
   } catch (topLevelErr) {
     log("FATAL top-level catch", String(topLevelErr));
-    return json({ error: "Internal error", code: "fatal" });
+    return json({ error: "Internal error", code: "fatal" }, req);
   }
 });

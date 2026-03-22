@@ -1,28 +1,22 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-function jsonResponse(body: Record<string, unknown>, status: number) {
+function jsonResponse(body: Record<string, unknown>, status: number, req: Request) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   // ── 1. Authenticate caller ──────────────────────────────
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
-    return jsonResponse({ error: { message: "Accesso non autorizzato" } }, 401);
+    return jsonResponse({ error: { message: "Accesso non autorizzato" } }, 401, req);
   }
 
   try {
@@ -37,16 +31,14 @@ serve(async (req) => {
 
     if (userError || !userData?.user) {
       console.error("Auth verification failed:", userError?.message);
-      return jsonResponse({ error: { message: "Sessione non valida o scaduta" } }, 401);
+      return jsonResponse({ error: { message: "Sessione non valida o scaduta" } }, 401, req);
     }
-
-    const userId = userData.user.id;
 
     // ── 2. Parse request body ─────────────────────────────
     const { endpoint, method = "POST", payload, timeout = 10000 } = await req.json();
 
     if (!endpoint || typeof endpoint !== "string") {
-      return jsonResponse({ error: { message: "Parametri della richiesta non validi" } }, 400);
+      return jsonResponse({ error: { message: "Parametri della richiesta non validi" } }, 400, req);
     }
 
     // ── 3. Check backend configuration ────────────────────
@@ -58,6 +50,7 @@ serve(async (req) => {
       return jsonResponse(
         { error: { message: "Servizio non ancora disponibile. Configurazione in corso." } },
         503,
+        req,
       );
     }
 
@@ -84,7 +77,7 @@ serve(async (req) => {
 
       const data = await response.json();
 
-      return jsonResponse(data, response.ok ? 200 : response.status);
+      return jsonResponse(data, response.ok ? 200 : response.status, req);
     } catch (fetchError) {
       clearTimeout(timeoutId);
 
@@ -93,6 +86,7 @@ serve(async (req) => {
         return jsonResponse(
           { error: { message: "Il servizio non ha risposto in tempo. Riprova tra qualche istante." } },
           504,
+          req,
         );
       }
 
@@ -100,6 +94,7 @@ serve(async (req) => {
       return jsonResponse(
         { error: { message: "Errore di comunicazione con il servizio. Riprova più tardi." } },
         502,
+        req,
       );
     }
   } catch (error) {
@@ -107,6 +102,7 @@ serve(async (req) => {
     return jsonResponse(
       { error: { message: "Errore temporaneo del servizio" } },
       500,
+      req,
     );
   }
 });
