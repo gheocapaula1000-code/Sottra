@@ -3,7 +3,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, ArrowRight, AlertTriangle } from "lucide-react";
-import { useSubscription } from "@/contexts/SubscriptionContext";
 import { PLANS, PlanKey } from "@/lib/plans";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -78,7 +77,7 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
         <h1 className="mt-5 text-2xl font-black text-foreground sm:text-3xl">
           Periodo di prova concluso
         </h1>
-        <p className="mt-3 text-base text-muted-foreground sm:text-lg" style={{ textWrap: "balance" as any }}>
+        <p className="mt-3 text-base text-muted-foreground sm:text-lg" style={{ textWrap: "balance" } as React.CSSProperties}>
           Hai utilizzato <strong className="text-foreground">{scansUsed} scansioni</strong> durante i 3 giorni di prova.
           Per continuare a utilizzare Sottra, scegli il piano più adatto.
         </p>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ChevronDown, ShieldCheck, CreditCard, CalendarOff, ScanLine, Clock } from "lucide-react";
+import { ArrowRight, ChevronDown, CreditCard, CalendarOff, ScanLine, Clock } from "lucide-react";
 import SottraMark from "@/components/SottraMark";
 import logoS from "@/assets/logo-s-icon.png";
 
@@ -55,7 +55,7 @@ export default function HeroSection() {
           <span className="text-primary">Un quadro completo.</span>
         </h1>
 
-        <p className="mx-auto mt-5 max-w-[18rem] text-base leading-relaxed text-muted-foreground sm:mt-6 sm:max-w-md sm:text-lg" style={{ textWrap: "balance" as any }}>
+        <p className="mx-auto mt-5 max-w-[18rem] text-base leading-relaxed text-muted-foreground sm:mt-6 sm:max-w-md sm:text-lg" style={{ textWrap: "balance" } as React.CSSProperties}>
           Da un singolo scatto,{" "}
           <strong className="text-foreground">dati, contesto e posizionamento dell'immobile.</strong>
         </p>

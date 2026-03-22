@@ -21,10 +21,16 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npx eslint src/ --max-warnings 0
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
 
       - name: Test
         run: npx vitest run
+
+      - name: Verify secrets
+        run: npm run verify:secrets
 
       - name: Build
         run: npm run build

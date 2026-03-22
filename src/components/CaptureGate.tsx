@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MapPin, Crosshair, Hash, ChevronRight, Loader2 } from "lucide-react";
+import { MapPin, Crosshair, Hash, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +39,7 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
     }
   }, []);
 
-  const geoOk = geoStatus === "granted" || geoStatus === "checking";
+  const _geoOk = geoStatus === "granted" || geoStatus === "checking";
   const geoDenied = geoStatus === "denied" || geoStatus === "unavailable";
 
   const checks: { icon: React.ReactNode; label: string; sublabel: string; status: "ok" | "warn" | "neutral" }[] = [
