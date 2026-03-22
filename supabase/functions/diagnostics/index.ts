@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
-import { isOwnerEmail } from "../_shared/ownerUtils.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 function sanitizeUrl(raw: string): string {
@@ -38,47 +37,45 @@ serve(async (req) => {
       headers: { ...cors, "Content-Type": "application/json" },
     });
 
+  // Access: admin RBAC only — no email-based bypass
   const userId = userData.user.id;
   const { data: isAdmin } = await supabase.rpc("has_role", {
     _user_id: userId,
     _role: "admin",
   });
-  const isOwner = isOwnerEmail(userData.user.email);
 
-  if (!isAdmin && !isOwner)
+  if (!isAdmin)
     return new Response(JSON.stringify({ error: "Forbidden" }), {
       status: 403,
       headers: { ...cors, "Content-Type": "application/json" },
     });
 
   const CORE_API_URL = (Deno.env.get("CORE_API_URL") || "").replace(/\/+$/, "");
-  const hasApiKey = !!(Deno.env.get("AI_CORE_SECRET") || Deno.env.get("CORE_API_KEY"));
-  const keySource = Deno.env.get("AI_CORE_SECRET")
-    ? "AI_CORE_SECRET"
-    : Deno.env.get("CORE_API_KEY")
-      ? "CORE_API_KEY"
-      : "none";
+  const coreSecret = Deno.env.get("AI_CORE_SECRET_SOTTRA")
+    || Deno.env.get("AI_CORE_SECRET")
+    || Deno.env.get("CORE_API_KEY");
+  const hasApiKey = !!coreSecret;
+  const keySource = Deno.env.get("AI_CORE_SECRET_SOTTRA")
+    ? "AI_CORE_SECRET_SOTTRA"
+    : Deno.env.get("AI_CORE_SECRET")
+      ? "AI_CORE_SECRET"
+      : Deno.env.get("CORE_API_KEY")
+        ? "CORE_API_KEY"
+        : "none";
 
   const sanitized = CORE_API_URL ? sanitizeUrl(CORE_API_URL) : "(not configured)";
-
-  const OFFICIAL_HOST = "jpunnzgixcghuydstdlt.supabase.co";
-  let isOfficial = false;
-  try {
-    isOfficial = new URL(CORE_API_URL).host === OFFICIAL_HOST;
-  } catch {}
 
   let healthStatus = "SKIP";
   let healthLatency = 0;
   if (CORE_API_URL && hasApiKey) {
-    const apiKey = Deno.env.get("AI_CORE_SECRET") || Deno.env.get("CORE_API_KEY") || "";
     try {
       const t0 = Date.now();
       const ctrl = new AbortController();
       const tid = setTimeout(() => ctrl.abort(), 5000);
       const res = await fetch(`${CORE_API_URL}/health`, {
         headers: {
-          "x-internal-secret": apiKey,
-          "Authorization": `Bearer ${apiKey}`,
+          "x-internal-secret": coreSecret!,
+          "Authorization": `Bearer ${coreSecret!}`,
           "x-source-app": "sottra",
         },
         signal: ctrl.signal,
@@ -91,14 +88,13 @@ serve(async (req) => {
     }
   }
 
+  // Redacted output — no raw secrets, no internal hostnames beyond sanitized
   const payload = {
     proxy_local: sanitizeUrl(Deno.env.get("SUPABASE_URL") || "") + "/functions/v1/core-proxy",
     upstream_sanitized: sanitized,
     upstream_origin: "env",
     key_configured: hasApiKey,
     key_source: keySource,
-    is_official: isOfficial,
-    official_host: OFFICIAL_HOST,
     health: healthStatus,
     health_latency_ms: healthLatency,
     routing: "frontend → core-proxy → Central Core",

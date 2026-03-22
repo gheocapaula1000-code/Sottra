@@ -1,23 +1,39 @@
 /**
- * Shared owner/admin email resolution for Edge Functions.
- * Reads from the OWNER_EMAILS env var (comma-separated).
- * NEVER hardcodes email addresses.
+ * Shared owner resolution for Edge Functions.
+ * Uses the `owner_access` table via the `is_owner()` SQL function.
+ * No longer relies on OWNER_EMAILS env var.
  */
 
-let _cached: string[] | null = null;
+import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
-export function getOwnerEmails(): string[] {
-  if (_cached) return _cached;
-  const raw = Deno.env.get("OWNER_EMAILS") ?? "";
-  _cached = raw
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  return _cached;
+/**
+ * Check if a user_id is a registered owner via server-side table lookup.
+ * Uses SECURITY DEFINER function `public.is_owner(_user_id)`.
+ */
+export async function isOwnerById(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const client = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } },
+    );
+    const { data, error } = await client.rpc("is_owner", { _user_id: userId });
+    if (error) {
+      console.warn("[ownerUtils] is_owner RPC failed:", error.message);
+      return false;
+    }
+    return data === true;
+  } catch (e) {
+    console.warn("[ownerUtils] is_owner exception:", e);
+    return false;
+  }
 }
 
-export function isOwnerEmail(email: string | undefined | null): boolean {
-  if (!email) return false;
-  const normalized = email.trim().toLowerCase();
-  return getOwnerEmails().includes(normalized);
+/**
+ * @deprecated — kept temporarily for migration. Will be removed.
+ * Always returns false now; owner check must use isOwnerById(userId).
+ */
+export function isOwnerEmail(_email: string | undefined | null): boolean {
+  return false;
 }

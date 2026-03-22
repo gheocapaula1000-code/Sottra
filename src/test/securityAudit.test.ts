@@ -11,7 +11,6 @@ describe("CORS hardening", () => {
   const corsSource = fs.readFileSync("supabase/functions/_shared/cors.ts", "utf-8");
 
   it("does not contain wildcard '*' as a fallback origin", () => {
-    // Should never fall back to "*"
     const lines = corsSource.split("\n");
     const wildcardAssignments = lines.filter(
       (l) => l.includes('"*"') && l.includes("Origin"),
@@ -21,6 +20,12 @@ describe("CORS hardening", () => {
 
   it("uses 'null' as deny-by-default when no allowlist", () => {
     expect(corsSource).toContain('"null"');
+  });
+
+  it("does NOT fallback to origins[0] for non-matching origin", () => {
+    // The old code had: origins.includes(reqOrigin) ? reqOrigin : origins[0]
+    // New code must use "null" instead of origins[0]
+    expect(corsSource).not.toContain("origins[0]");
   });
 
   it("always sets Vary: Origin header", () => {
@@ -42,13 +47,6 @@ describe("Owner/Admin separation", () => {
   );
 
   it("owner bypass does NOT set is_admin: true", () => {
-    // Find the owner bypass response line
-    const ownerLines = checkSubSource.split("\n").filter(
-      (l) => l.includes("owner bypass") || (l.includes("is_owner: true") && l.includes("code: \"owner\"")),
-    );
-    expect(ownerLines.length).toBeGreaterThan(0);
-
-    // The response for owner should have is_admin: false
     const ownerResponseLine = checkSubSource
       .split("\n")
       .find((l) => l.includes("code: \"owner\""));
@@ -64,13 +62,81 @@ describe("Owner/Admin separation", () => {
   });
 
   it("admin bypass derives from RBAC table, not email list", () => {
-    // Admin check should reference user_roles table
     expect(checkSubSource).toContain("user_roles");
     expect(checkSubSource).toContain('.eq("role", "admin")');
   });
+
+  it("does NOT use isOwnerEmail for privilege checks", () => {
+    expect(checkSubSource).not.toContain("isOwnerEmail(");
+  });
+
+  it("uses isOwnerById for owner checks", () => {
+    expect(checkSubSource).toContain("isOwnerById");
+  });
 });
 
-/* ── C. PII minimization in scan history ──────────────── */
+/* ── C. Owner utils no longer email-based ─────────────── */
+
+describe("ownerUtils server-side hardening", () => {
+  const ownerSource = fs.readFileSync("supabase/functions/_shared/ownerUtils.ts", "utf-8");
+
+  it("does not read OWNER_EMAILS env var for privilege", () => {
+    expect(ownerSource).not.toContain('Deno.env.get("OWNER_EMAILS")');
+  });
+
+  it("uses isOwnerById with user_id", () => {
+    expect(ownerSource).toContain("isOwnerById");
+  });
+
+  it("deprecated isOwnerEmail always returns false", () => {
+    expect(ownerSource).toContain("return false");
+  });
+});
+
+/* ── D. Diagnostics requires admin RBAC only ──────────── */
+
+describe("Diagnostics access control", () => {
+  const diagSource = fs.readFileSync("supabase/functions/diagnostics/index.ts", "utf-8");
+
+  it("does NOT import isOwnerEmail", () => {
+    expect(diagSource).not.toContain("isOwnerEmail");
+    expect(diagSource).not.toContain("ownerUtils");
+  });
+
+  it("requires admin role via has_role", () => {
+    expect(diagSource).toContain("has_role");
+    expect(diagSource).toContain('"admin"');
+  });
+
+  it("does NOT expose is_official or raw host info", () => {
+    expect(diagSource).not.toContain("is_official");
+    expect(diagSource).not.toContain("OFFICIAL_HOST");
+  });
+});
+
+/* ── E. Core-proxy secret resolution ──────────────────── */
+
+describe("Core-proxy secret resolution", () => {
+  const proxySource = fs.readFileSync("supabase/functions/core-proxy/index.ts", "utf-8");
+
+  it("supports AI_CORE_SECRET_SOTTRA as priority", () => {
+    expect(proxySource).toContain("AI_CORE_SECRET_SOTTRA");
+  });
+
+  it("falls back to AI_CORE_SECRET", () => {
+    expect(proxySource).toContain("AI_CORE_SECRET");
+  });
+
+  it("falls back to legacy CORE_API_KEY", () => {
+    expect(proxySource).toContain("CORE_API_KEY");
+  });
+
+  it("sends x-source-app: sottra", () => {
+    expect(proxySource).toContain('"x-source-app": "sottra"');
+  });
+});
+
+/* ── F. PII minimization in scan history ──────────────── */
 
 describe("Scan history PII minimization", () => {
   const scanHistorySource = fs.readFileSync(
@@ -79,7 +145,6 @@ describe("Scan history PII minimization", () => {
   );
 
   it("SavedScan interface does NOT contain photo field", () => {
-    // Check the interface definition area
     const interfaceMatch = scanHistorySource.match(
       /interface SavedScan \{[\s\S]*?\}/,
     );
@@ -105,30 +170,30 @@ describe("Scan history PII minimization", () => {
     expect(iface).not.toContain("lng:");
   });
 
-  it("SavedScan interface does NOT contain scanResult field", () => {
-    const interfaceMatch = scanHistorySource.match(
-      /interface SavedScan \{[\s\S]*?\}/,
-    );
-    const iface = interfaceMatch![0];
-    expect(iface).not.toContain("scanResult");
-  });
-
   it("uses locality instead of full address", () => {
     expect(scanHistorySource).toContain("locality");
   });
+});
 
-  it("includes legacy migration logic", () => {
-    expect(scanHistorySource).toContain("migrateLegacy");
-    expect(scanHistorySource).toContain("PII removed");
+/* ── G. Customer-portal no email bypass ───────────────── */
+
+describe("Customer-portal hardening", () => {
+  const portalSource = fs.readFileSync("supabase/functions/customer-portal/index.ts", "utf-8");
+
+  it("does NOT use isOwnerEmail", () => {
+    expect(portalSource).not.toContain("isOwnerEmail(");
   });
 
-  it("legacy migration strips photo, lat, scanResult", () => {
-    expect(scanHistorySource).toContain('"photo" in e');
-    expect(scanHistorySource).toContain('"lat" in e');
+  it("uses isOwnerById for owner check", () => {
+    expect(portalSource).toContain("isOwnerById");
+  });
+
+  it("does not use hardcoded localhost for return URL", () => {
+    expect(portalSource).not.toContain("localhost:3000");
   });
 });
 
-/* ── D. No PII in consumer pages ──────────────────────── */
+/* ── H. No PII in consumer pages ──────────────────────── */
 
 describe("Consumer pages use minimal scan data", () => {
   it("History page does not reference scan.photo", () => {

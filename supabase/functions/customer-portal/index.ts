@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
-import { isOwnerEmail } from "../_shared/ownerUtils.ts";
+import { isOwnerById } from "../_shared/ownerUtils.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { isBillingActive } from "../_shared/billing.ts";
 
@@ -26,9 +26,11 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError) throw new Error(`Auth error: ${userError.message}`);
     const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated");
+    if (!user) throw new Error("User not authenticated");
 
-    if (isOwnerEmail(user.email)) {
+    // Owner check via server-side table
+    const isOwner = await isOwnerById(user.id);
+    if (isOwner) {
       return new Response(JSON.stringify({ owner: true, message: "Account owner — nessun abbonamento da gestire." }), {
         headers: { ...cors, "Content-Type": "application/json" },
         status: 200,
@@ -48,6 +50,8 @@ serve(async (req) => {
     const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
+    if (!user.email) throw new Error("User email not available");
+
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     if (customers.data.length === 0) {
       return new Response(JSON.stringify({
@@ -58,10 +62,17 @@ serve(async (req) => {
       });
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map(o => o.trim().toLowerCase()).filter(Boolean);
+    const reqOrigin = (req.headers.get("Origin") ?? "").toLowerCase();
+    const returnOrigin = allowedOrigins.includes(reqOrigin) ? reqOrigin : allowedOrigins[0] || "";
+
+    if (!returnOrigin) {
+      throw new Error("No allowed origin configured for portal return URL");
+    }
+
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customers.data[0].id,
-      return_url: `${origin}/app`,
+      return_url: `${returnOrigin}/app`,
     });
 
     return new Response(JSON.stringify({ url: portalSession.url }), {

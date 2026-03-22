@@ -43,4 +43,16 @@ describe("ownerConfig — hardening", () => {
       checkDir(dir);
     }
   });
+
+  it("check-subscription uses isOwnerById, not isOwnerEmail", () => {
+    const content = fs.readFileSync("supabase/functions/check-subscription/index.ts", "utf-8");
+    expect(content).toContain("isOwnerById");
+    expect(content).not.toContain("isOwnerEmail(");
+  });
+
+  it("diagnostics does not use owner email bypass", () => {
+    const content = fs.readFileSync("supabase/functions/diagnostics/index.ts", "utf-8");
+    expect(content).not.toContain("isOwnerEmail");
+    expect(content).not.toContain("isOwner");
+  });
 });

@@ -3,7 +3,7 @@
  *
  * Uses an allowlist when ALLOWED_ORIGINS env var is set (comma-separated).
  * When ALLOWED_ORIGINS is NOT set, **denies by default** — no wildcard "*".
- * This ensures production never accidentally opens to all origins.
+ * When the request origin is NOT in the allowlist, returns "null" — no fallback.
  */
 
 const STANDARD_HEADERS =
@@ -36,12 +36,12 @@ export function corsHeaders(req?: Request): Record<string, string> {
     };
   }
 
-  // Allowlist mode: reflect origin if it matches, else use primary domain.
+  // Allowlist mode: reflect origin ONLY if it matches, otherwise deny.
   const reqOrigin = req
     ? (req.headers.get("Origin") ?? "").toLowerCase()
     : "";
 
-  const origin = origins.includes(reqOrigin) ? reqOrigin : origins[0];
+  const origin = origins.includes(reqOrigin) ? reqOrigin : "null";
 
   return {
     "Access-Control-Allow-Origin": origin,

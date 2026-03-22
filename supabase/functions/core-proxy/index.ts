@@ -9,6 +9,13 @@ function jsonResponse(body: Record<string, unknown>, status: number, req: Reques
   });
 }
 
+/** Resolve core API secret with per-app priority and legacy fallback */
+function resolveCoreSecret(): string | undefined {
+  return Deno.env.get("AI_CORE_SECRET_SOTTRA")
+    || Deno.env.get("AI_CORE_SECRET")
+    || Deno.env.get("CORE_API_KEY");
+}
+
 serve(async (req) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
@@ -43,10 +50,10 @@ serve(async (req) => {
 
     // ── 3. Check backend configuration ────────────────────
     const CORE_API_URL = (Deno.env.get("CORE_API_URL") || "").replace(/\/+$/, "");
-    const CORE_API_KEY = Deno.env.get("AI_CORE_SECRET") || Deno.env.get("CORE_API_KEY");
+    const CORE_API_KEY = resolveCoreSecret();
 
     if (!CORE_API_URL || !CORE_API_KEY) {
-      console.error("Core backend not configured: missing CORE_API_URL or AI_CORE_SECRET/CORE_API_KEY");
+      console.error("Core backend not configured: missing CORE_API_URL or secret");
       return jsonResponse(
         { error: { message: "Servizio non ancora disponibile. Configurazione in corso." } },
         503,

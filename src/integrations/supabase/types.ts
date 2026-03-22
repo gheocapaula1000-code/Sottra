@@ -206,6 +206,27 @@ export type Database = {
         }
         Relationships: []
       }
+      owner_access: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       scan_events: {
         Row: {
           created_at: string
@@ -290,6 +311,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_owner: { Args: { _user_id: string }; Returns: boolean }
       record_scan: {
         Args: { _scan_id: string; _user_id: string }
         Returns: Json

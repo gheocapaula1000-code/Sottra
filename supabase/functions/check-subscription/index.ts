@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
-import { isOwnerEmail } from "../_shared/ownerUtils.ts";
+import { isOwnerById } from "../_shared/ownerUtils.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { isBillingActive } from "../_shared/billing.ts";
 
@@ -67,7 +67,6 @@ serve(async (req) => {
     }
 
     let userId: string;
-    let email: string | undefined;
     try {
       const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
       if (claimsError || !claimsData?.claims) {
@@ -75,26 +74,27 @@ serve(async (req) => {
         return json({ error: `Auth error: ${claimsError?.message ?? "invalid token"}`, code: "auth_invalid" }, req);
       }
       userId = claimsData.claims.sub as string;
-      email = claimsData.claims.email as string | undefined;
     } catch (e) {
       log("auth exception", String(e));
       return json({ error: "Auth verification failed", code: "auth_exception" }, req);
     }
 
-    if (!email) {
-      log("auth no email");
-      return json({ error: "Auth error: no email", code: "auth_no_email" }, req);
-    }
-
     log("authenticated", userId);
 
-    // ── 2. Owner bypass ──────────────────────────────────────
-    if (isOwnerEmail(email)) {
-      log("owner bypass");
+    // ── 2. Owner check (server-side table, NOT email) ────────
+    let isOwner = false;
+    try {
+      isOwner = await isOwnerById(userId);
+    } catch (e) {
+      log("owner check exception", String(e));
+    }
+
+    if (isOwner) {
+      log("owner bypass (table-based)");
       return json({ ok: true, subscribed: true, is_admin: false, is_owner: true, owner: true, code: "owner" }, req);
     }
 
-    // ── 3. Admin check (non-blocking) ───────────────────────
+    // ── 3. Admin check (RBAC table) ─────────────────────────
     let isAdmin = false;
     try {
       const { data: roleData, error: roleErr } = await serviceClient
@@ -165,47 +165,56 @@ serve(async (req) => {
       log("trial exception", String(e));
     }
 
-    // ── 5. Stripe (completely non-blocking, only if billing is active) ──
+    // ── 5. Stripe (only if billing is active) ───────────────
     let subscribed = false;
     let productId: string | null = null;
     let subscriptionEnd: string | null = null;
 
-    if (isBillingActive() && email) {
+    if (isBillingActive()) {
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
+      // Need email for Stripe customer lookup
+      let email: string | undefined;
       try {
-        const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
-        const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+        const { data: userData } = await serviceClient.auth.admin.getUserById(userId);
+        email = userData?.user?.email;
+      } catch { /* non-blocking */ }
 
-        const customers = await stripe.customers.list({ email, limit: 1 });
-        const customer = customers?.data?.[0];
+      if (email) {
+        try {
+          const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
+          const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-        if (customer?.id) {
-          const subscriptions = await stripe.subscriptions.list({
-            customer: customer.id,
-            status: "active",
-            limit: 1,
-          });
+          const customers = await stripe.customers.list({ email, limit: 1 });
+          const customer = customers?.data?.[0];
 
-          const sub = subscriptions?.data?.[0];
-          if (sub) {
-            subscribed = true;
+          if (customer?.id) {
+            const subscriptions = await stripe.subscriptions.list({
+              customer: customer.id,
+              status: "active",
+              limit: 1,
+            });
 
-            if (typeof sub.current_period_end === "number" && sub.current_period_end > 0) {
-              subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
-            }
+            const sub = subscriptions?.data?.[0];
+            if (sub) {
+              subscribed = true;
 
-            const firstItem = sub.items?.data?.[0];
-            const price = firstItem?.price;
-            const product = price?.product;
-            if (typeof product === "string") {
-              productId = product;
-            } else if (product && typeof product === "object" && "id" in product) {
-              productId = (product as { id: string }).id;
+              if (typeof sub.current_period_end === "number" && sub.current_period_end > 0) {
+                subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
+              }
+
+              const firstItem = sub.items?.data?.[0];
+              const price = firstItem?.price;
+              const product = price?.product;
+              if (typeof product === "string") {
+                productId = product;
+              } else if (product && typeof product === "object" && "id" in product) {
+                productId = (product as { id: string }).id;
+              }
             }
           }
+        } catch (stripeErr) {
+          log("stripe lookup failed", String(stripeErr));
         }
-      } catch (stripeErr) {
-        log("stripe lookup failed", String(stripeErr));
       }
     }
 
