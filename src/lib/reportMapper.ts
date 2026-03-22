@@ -21,12 +21,12 @@ import type {
   IdentifyResult, PricingData, MarketContextData,
   OmiZoneData, PoiEnrichmentData, IstatDemographicData,
   TimeViewData, OpportunityData, ConvergenzaTerritorialeData,
-  RischioZonaData, TrendDemograficoData, InfrastrutureData,
+  RischioZonaData,
 } from "@/types";
 import {
-  resolveBestSource, mapCoverageLevelToGeoLevel, mapTierToLabel,
+  resolveBestSource, mapCoverageLevelToGeoLevel,
   formatResolutionTrace, resolutionSummary,
-  type SourceCandidate, type ResolvedSource, type ResolutionTraceEntry,
+  type SourceCandidate,
 } from "@/lib/sourceResolver";
 
 /* ── Helpers ─────────────────────────────────────────────── */
