@@ -39,7 +39,7 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
     }
   }, []);
 
-  const geoOk = geoStatus === "granted" || geoStatus === "checking";
+  const _geoOk = geoStatus === "granted" || geoStatus === "checking";
   const geoDenied = geoStatus === "denied" || geoStatus === "unavailable";
 
   const checks: { icon: React.ReactNode; label: string; sublabel: string; status: "ok" | "warn" | "neutral" }[] = [
