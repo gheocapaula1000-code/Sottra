@@ -2,11 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, ArrowRight, AlertTriangle } from "lucide-react";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { PLANS, PlanKey } from "@/lib/plans";
+import { BILLING_ENABLED } from "@/lib/billing";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { APP_BRAND } from "@/lib/legalEntity";
 
 const planFeatures: Record<PlanKey, string[]> = {
   agente: [
@@ -21,8 +23,8 @@ const planFeatures: Record<PlanKey, string[]> = {
   agenzia: [
     "Tutto del piano Agente",
     "Dashboard agenzia multi-agente",
-    "Export PDF con logo agenzia (in attivazione)",
-    "Annunci attivi nella zona (in attivazione)",
+    "Export PDF con logo agenzia",
+    "Annunci attivi nella zona",
     "Storico scansioni illimitato",
     "Supporto prioritario via email",
     "Dispositivo vincolato per durata abbonamento",
@@ -30,8 +32,8 @@ const planFeatures: Record<PlanKey, string[]> = {
   enterprise: [
     "Tutto del piano Agenzia",
     "Dashboard agenzia multi-agente",
-    "Export PDF con logo agenzia (in attivazione)",
-    "Annunci attivi nella zona (in attivazione)",
+    "Export PDF con logo agenzia",
+    "Annunci attivi nella zona",
     "Storico scansioni illimitato",
     "Supporto prioritario",
   ],
@@ -52,6 +54,10 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
   const { toast } = useToast();
 
   const handleCheckout = async (key: PlanKey) => {
+    if (!BILLING_ENABLED) {
+      toast({ title: "Non disponibile", description: "Il sistema di pagamento sarà attivo a breve. Contattaci per informazioni.", variant: "default" });
+      return;
+    }
     setLoadingPlan(key);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
@@ -79,70 +85,72 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
         </h1>
         <p className="mt-3 text-base text-muted-foreground sm:text-lg" style={{ textWrap: "balance" } as React.CSSProperties}>
           Hai utilizzato <strong className="text-foreground">{scansUsed} scansioni</strong> durante i 3 giorni di prova.
-          Per continuare a utilizzare Sottra, scegli il piano più adatto.
+          {BILLING_ENABLED
+            ? " Per continuare a utilizzare Sottra, scegli il piano più adatto."
+            : ` Per attivare un piano, contattaci a ${APP_BRAND.supportEmail}.`}
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
           Nessun dato bancario è stato richiesto durante la prova · Paghi solo se decidi di proseguire
         </p>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
-          {(Object.keys(PLANS) as PlanKey[]).map((key) => {
-            const plan = PLANS[key];
-            const meta = planMeta[key];
-            const features = planFeatures[key];
+        {BILLING_ENABLED && (
+          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            {(Object.keys(PLANS) as PlanKey[]).map((key) => {
+              const plan = PLANS[key];
+              const meta = planMeta[key];
+              const features = planFeatures[key];
 
-            return (
-              <Card
-                key={key}
-                className={`relative flex flex-col rounded-2xl border p-6 text-left ${
-                  meta.popular
-                    ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                    : "border-border bg-card"
-                }`}
-              >
-                {meta.popular && (
-                  <Badge className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs">
-                    Più popolare
-                  </Badge>
-                )}
-                <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
-
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-foreground">€{plan.price}</span>
-                  <span className="text-muted-foreground">/mese</span>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge variant="secondary" className="text-xs">{meta.scans}</Badge>
-                  <Badge variant="secondary" className="text-xs">{meta.users}</Badge>
-                </div>
-
-                <Separator className="my-5" />
-
-                <ul className="flex-1 space-y-2">
-                  {features.map((f) => (
-                    <li key={f} className={`flex items-start gap-2 text-sm ${f.includes("(in attivazione)") ? "text-muted-foreground/60 italic" : "text-foreground/80"}`}>
-                      <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${f.includes("(in attivazione)") ? "text-muted-foreground/50" : "text-primary"}`} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                <Button
-                  className="mt-6 w-full gap-2"
-                  variant={meta.popular ? "default" : "outline"}
-                  size="lg"
-                  disabled={loadingPlan !== null}
-                  onClick={() => handleCheckout(key)}
+              return (
+                <Card
+                  key={key}
+                  className={`relative flex flex-col rounded-2xl border p-6 text-left ${
+                    meta.popular
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                      : "border-border bg-card"
+                  }`}
                 >
-                  {loadingPlan === key ? "Caricamento…" : (
-                    <>Scegli {plan.name} <ArrowRight className="h-4 w-4" /></>
+                  {meta.popular && (
+                    <Badge className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs">
+                      Più popolare
+                    </Badge>
                   )}
-                </Button>
-              </Card>
-            );
-          })}
-        </div>
+                  <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
+
+                  <div className="mt-4 flex items-baseline gap-1">
+                    <span className="text-4xl font-black text-foreground">€{plan.price}</span>
+                    <span className="text-muted-foreground">/mese</span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="text-xs">{meta.scans}</Badge>
+                    <Badge variant="secondary" className="text-xs">{meta.users}</Badge>
+                  </div>
+
+                  <Separator className="my-5" />
+
+                  <ul className="flex-1 space-y-2">
+                    {features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm text-foreground/80">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Button
+                    className="mt-6 w-full gap-2"
+                    variant={meta.popular ? "default" : "outline"}
+                    size="lg"
+                    disabled={loadingPlan !== null}
+                    onClick={() => handleCheckout(key)}
+                  >
+                    {loadingPlan === key ? "Caricamento…" : `Scegli ${plan.name}`}
+                  </Button>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
