@@ -1,17 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
 
-describe("PWA update banner", () => {
-  it("PwaUpdateBanner module exports default component", async () => {
-    // Mock virtual:pwa-register/react before importing
-    vi.mock("virtual:pwa-register/react", () => ({
-      useRegisterSW: () => ({
-        needRefresh: [false],
-        updateServiceWorker: vi.fn(),
-      }),
-    }));
-    const mod = await import("@/components/PwaUpdateBanner");
-    expect(mod.default).toBeDefined();
-    expect(typeof mod.default).toBe("function");
+describe("PWA update banner source", () => {
+  const source = readFileSync("src/components/PwaUpdateBanner.tsx", "utf-8");
+
+  it("uses useRegisterSW from vite-plugin-pwa", () => {
+    expect(source).toContain("useRegisterSW");
+    expect(source).toContain("virtual:pwa-register/react");
+  });
+
+  it("polls for updates", () => {
+    expect(source).toContain("registration.update");
+  });
+
+  it("auto-reloads on update", () => {
+    expect(source).toContain("window.location.reload");
   });
 });
 
