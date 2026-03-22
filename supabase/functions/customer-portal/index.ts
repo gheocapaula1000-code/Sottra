@@ -1,16 +1,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isOwnerEmail } from "../_shared/ownerUtils.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { isBillingActive } from "../_shared/billing.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
+
+  const cors = corsHeaders(req);
 
   try {
     const supabaseClient = createClient(
@@ -32,21 +30,21 @@ serve(async (req) => {
 
     if (isOwnerEmail(user.email)) {
       return new Response(JSON.stringify({ owner: true, message: "Account owner — nessun abbonamento da gestire." }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) {
+    if (!isBillingActive()) {
       return new Response(JSON.stringify({
-        error: "Il portale abbonamenti non è ancora attivo. Il trial gratuito resta disponibile."
+        error: "Il portale abbonamenti non è ancora attivo."
       }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 503,
       });
     }
 
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
     const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
@@ -55,7 +53,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         error: "Nessun abbonamento attivo. Puoi continuare a usare il trial gratuito."
       }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 404,
       });
     }
@@ -67,12 +65,12 @@ serve(async (req) => {
     });
 
     return new Response(JSON.stringify({ url: portalSession.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
       status: 500,
     });
   }

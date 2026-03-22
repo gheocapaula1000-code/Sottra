@@ -1,16 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isOwnerEmail } from "../_shared/ownerUtils.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
+
+  const cors = corsHeaders(req);
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -30,10 +27,8 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    // Owner bypass via env-based config
     const isOwner = isOwnerEmail(user.email);
 
-    // DB role check for non-owner admins
     let isDbAdmin = false;
     if (!isOwner) {
       const { data: roleData } = await supabaseClient
@@ -47,12 +42,11 @@ serve(async (req) => {
 
     if (!isOwner && !isDbAdmin) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 403,
       });
     }
 
-    // Fetch stats in parallel
     const [usersResult, trialsResult, adminsResult] = await Promise.all([
       supabaseClient.auth.admin.listUsers({ perPage: 1000 }),
       supabaseClient.from("user_trials").select("*"),
@@ -95,13 +89,13 @@ serve(async (req) => {
         admin_count: admins.length,
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 200,
       }
     );
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
       status: 500,
     });
   }

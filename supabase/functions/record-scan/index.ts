@@ -1,16 +1,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isOwnerEmail } from "../_shared/ownerUtils.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { isBillingActive } from "../_shared/billing.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
+
+  const cors = corsHeaders(req);
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -22,7 +20,7 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Non autorizzato" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 401,
       });
     }
@@ -30,7 +28,7 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "").trim();
     if (!token) {
       return new Response(JSON.stringify({ error: "Token vuoto" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 401,
       });
     }
@@ -38,7 +36,7 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !userData.user) {
       return new Response(JSON.stringify({ error: "Sessione non valida" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 401,
       });
     }
@@ -48,7 +46,7 @@ serve(async (req) => {
     // Owner/admin bypass — don't consume scans
     if (isOwnerEmail(user.email)) {
       return new Response(JSON.stringify({ recorded: false, bypassed: true, scans_used: 0, max_scans: 999 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 200,
       });
     }
@@ -63,7 +61,7 @@ serve(async (req) => {
 
     if (roleData) {
       return new Response(JSON.stringify({ recorded: false, bypassed: true, scans_used: 0, max_scans: 999 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 200,
       });
     }
@@ -73,7 +71,7 @@ serve(async (req) => {
       body = await req.json();
     } catch {
       return new Response(JSON.stringify({ error: "Payload non valido" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 400,
       });
     }
@@ -81,7 +79,7 @@ serve(async (req) => {
     const scan_id = body.scan_id;
     if (!scan_id || typeof scan_id !== "string") {
       return new Response(JSON.stringify({ error: "scan_id richiesto" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 400,
       });
     }
@@ -108,11 +106,11 @@ serve(async (req) => {
       ? now < new Date(trial.trial_end) && trial.scans_used < trial.max_scans
       : false;
 
-    // Check Stripe subscription (optional, non-blocking)
+    // Check Stripe subscription (optional, non-blocking, only if billing active)
     let hasSubscription = false;
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (stripeKey && user.email) {
+    if (isBillingActive() && user.email) {
       try {
+        const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
         const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
         const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
         const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -132,7 +130,7 @@ serve(async (req) => {
         scans_used: trial?.scans_used ?? 0,
         max_scans: trial?.max_scans ?? 5,
       }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 403,
       });
     }
@@ -146,19 +144,19 @@ serve(async (req) => {
     if (error) {
       console.error("record_scan error:", error);
       return new Response(JSON.stringify({ error: "Errore nella registrazione della scansione" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 500,
       });
     }
 
     return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     console.error("record-scan unhandled:", error);
     return new Response(JSON.stringify({ error: "Errore temporaneo" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
       status: 500,
     });
   }
