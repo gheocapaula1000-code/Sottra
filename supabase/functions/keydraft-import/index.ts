@@ -30,9 +30,8 @@ function validatePayload(p: unknown): string | null {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   if (req.method !== "POST") {
     return json({ ok: false, error: "Metodo non supportato" }, 405);

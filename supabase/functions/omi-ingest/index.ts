@@ -290,9 +290,8 @@ function stripTitleLine(rawLines: string[]): string[] {
 /* ── Main Handler ─────────────────────────────────────── */
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     const authHeader = req.headers.get("Authorization");
