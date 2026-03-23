@@ -7,7 +7,6 @@ import { fetchImports } from "@/services/keydraftImport";
 import type { KeyDraftImportRecord } from "@/types/keydraft";
 
 export default function ImportedDrafts() {
-  const navigate = useNavigate();
   const [records, setRecords] = useState<KeyDraftImportRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

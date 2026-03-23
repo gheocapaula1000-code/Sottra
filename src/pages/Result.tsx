@@ -894,7 +894,7 @@ function MarketContextCard({ data, loading }: { data: MarketContextData | null; 
   );
 }
 
-function ComparablesBlock({ comp, isPartial }: { comp: ComparablesSummary; isPartial: boolean }) {
+function ComparablesBlock({ comp, isPartial: _isPartial }: { comp: ComparablesSummary; isPartial: boolean }) {
   const depthLabels: Record<string, string> = { profondo: "Profondo", sufficiente: "Sufficiente", limitato: "Limitato" };
   const freshnessLabels: Record<string, string> = { recente: "Recente", moderata: "Moderata", datata: "Datata" };
 

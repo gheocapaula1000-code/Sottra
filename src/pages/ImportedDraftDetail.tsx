@@ -126,9 +126,9 @@ export default function ImportedDraftDetail() {
   const payload = record.bridge_payload;
   const property = payload.property;
   const agent = payload.agent_supplied;
-  const photoDerived = payload.photo_derived;
+  const _photoDerived = payload.photo_derived;
   const generatedText = payload.generated_text;
-  const originMap = record.origin_map ?? {};
+  const _originMap = record.origin_map ?? {};
 
   return (
     <div className="min-h-svh bg-background">
