@@ -50,9 +50,9 @@ describe("ownerConfig — hardening", () => {
     expect(content).not.toContain("isOwnerEmail(");
   });
 
-  it("diagnostics does not use owner email bypass", () => {
+  it("diagnostics uses server-side owner check, not email bypass", () => {
     const content = fs.readFileSync("supabase/functions/diagnostics/index.ts", "utf-8");
     expect(content).not.toContain("isOwnerEmail");
-    expect(content).not.toContain("isOwner");
+    expect(content).toContain("isOwnerById");
   });
 });
