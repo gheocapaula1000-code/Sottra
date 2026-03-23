@@ -7,8 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { ImportOriginBadge } from "@/components/keydraft/ImportOriginBadge";
 import { ImportStatusBadge } from "@/components/keydraft/ImportStatusBadge";
-import { fetchImportById, updateDraftStatus, updateCompletions } from "@/services/keydraftImport";
-import type { KeyDraftImportRecord, ImportDraftStatus, SottraCompletionFields } from "@/types/keydraft";
+import { fetchImportById, updateDraftStatus } from "@/services/keydraftImport";
+import type { KeyDraftImportRecord, ImportDraftStatus } from "@/types/keydraft";
 
 function Section({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
