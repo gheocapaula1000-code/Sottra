@@ -671,7 +671,7 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
   const _omi = sectionData<OmiZoneData>(result, "omiZone");
   const poi = sectionData<PoiEnrichmentData>(result, "poiEnrichment");
   const rischio = sectionData<RischioZonaData>(result, "rischioZona");
-  const tv = sectionData<TimeViewData>(result, "timeView");
+  const _tv = sectionData<TimeViewData>(result, "timeView");
 
   if (!opportunity && !convergenza) return null;
 
