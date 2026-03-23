@@ -28,7 +28,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 // Helper: build a chain mock for omi_quotazioni SELECT
-function mockOmiQuery(data: unknown[] | null, error: unknown = null) {
+function _mockOmiQuery(data: unknown[] | null, error: unknown = null) {
   const chain = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),

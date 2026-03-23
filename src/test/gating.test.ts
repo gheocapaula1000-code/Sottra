@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 
 // These tests validate the gating logic without rendering React components,
 // by testing the decision rules that TrialProtectedRoute / AppDashboardGate use.

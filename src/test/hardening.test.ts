@@ -22,7 +22,7 @@ describe("No fake/mock data at runtime", () => {
   });
 
   it("DataBadge does not include demo tier", async () => {
-    const { DataBadge } = await import("@/components/DataBadge");
+    const _mod = await import("@/components/DataBadge");
     // The component should not accept "demo" as a tier
     const validTiers = [
       "ufficiale", "geo_verificato", "premium",

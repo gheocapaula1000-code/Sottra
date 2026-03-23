@@ -105,7 +105,7 @@ describe("Admin Bootstrap invariants", () => {
 
     it("trial works without Stripe", () => {
       const trialActive = true;
-      const billingActive = false;
+      const _billingActive = false;
       const canScan = trialActive; // no Stripe dependency
       expect(canScan).toBe(true);
     });
