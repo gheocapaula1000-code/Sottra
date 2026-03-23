@@ -116,7 +116,8 @@ describe("normalizeSviluppoArea", () => {
       },
     };
     const result = normalizeSviluppoArea(raw)!;
-    expect((result.schoolContext as Record<string, unknown>).available).toBe(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((result.schoolContext as any).available).toBe(false);
     // UI should NOT render this — verified in render tests
   });
 
