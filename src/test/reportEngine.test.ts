@@ -1100,7 +1100,7 @@ describe("Hardening — edge cases", () => {
           totalPois: 5,
           searchRadius: 500,
           categories: [
-            { category: "transport", categoryLabel: "Trasporti", count: 3, nearest: { name: "Bus", category: "transport", categoryLabel: "Trasporti", distance: undefined as any, lat: 0, lng: 0, provider: "overpass" } },
+            { category: "transport", categoryLabel: "Trasporti", count: 3, nearest: { name: "Bus", category: "transport", categoryLabel: "Trasporti", distance: undefined as unknown as number, lat: 0, lng: 0, provider: "overpass" } },
           ],
           pois: [],
         },

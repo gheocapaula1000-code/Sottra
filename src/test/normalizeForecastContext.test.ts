@@ -131,7 +131,7 @@ describe("normalizeSviluppoArea", () => {
     // Must be object, never a plain string
     expect(typeof sc).toBe("object");
     expect(sc).not.toBeNull();
-    expect((sc as any).available).toBe(true);
-    expect((sc as any).totalSchools).toBe(5);
+    expect((sc as Record<string, unknown>).available).toBe(true);
+    expect((sc as Record<string, unknown>).totalSchools).toBe(5);
   });
 });
