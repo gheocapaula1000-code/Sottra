@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isOwnerById } from "../_shared/ownerUtils.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { isBillingActive } from "../_shared/billing.ts";
+import { ensureBootstrap } from "../_shared/adminBootstrap.ts";
 
 const log = (step: string, detail?: string) =>
   console.log(`[check-subscription] ${step}${detail ? ` — ${detail}` : ""}`);
@@ -81,7 +82,31 @@ serve(async (req) => {
 
     log("authenticated", userId);
 
-    // ── 2. Owner check (server-side table, NOT email) ────────
+    // ── 1b. Bootstrap: auto-provision owner+admin if in allowlist ──
+    let userEmail: string | undefined;
+    try {
+      const { data: userData } = await serviceClient.auth.admin.getUserById(userId);
+      userEmail = userData?.user?.email;
+    } catch { /* non-blocking */ }
+
+    try {
+      const bootstrap = await ensureBootstrap(userId, userEmail);
+      if (bootstrap.bootstrapped) {
+        log("bootstrap applied", userEmail ?? userId);
+        return json({
+          ok: true,
+          subscribed: true,
+          is_admin: true,
+          is_owner: true,
+          owner: true,
+          code: "bootstrap",
+        }, req);
+      }
+    } catch (e) {
+      log("bootstrap check failed (non-fatal)", String(e));
+    }
+
+    // ── 2. Owner check (server-side table) ──────────────────
     let isOwner = false;
     try {
       isOwner = await isOwnerById(userId);
@@ -172,12 +197,7 @@ serve(async (req) => {
 
     if (isBillingActive()) {
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
-      // Need email for Stripe customer lookup
-      let email: string | undefined;
-      try {
-        const { data: userData } = await serviceClient.auth.admin.getUserById(userId);
-        email = userData?.user?.email;
-      } catch { /* non-blocking */ }
+      const email = userEmail;
 
       if (email) {
         try {
