@@ -2,7 +2,7 @@
 
 ## Pre-Deploy
 
-- [x] All tests pass (`npm test`) — 332 tests
+- [x] All tests pass (`npm test`)
 - [x] Lint passes (`npm run lint`)
 - [x] Type-check passes (`npm run typecheck`)
 - [x] Build succeeds (`npm run build`)
@@ -14,18 +14,28 @@
 
 ## Secrets & Configuration
 
-- [x] `CORE_API_URL` set in edge function secrets (NOT in client code)
+- [x] `CORE_API_URL` set in edge function secrets
 - [x] `CORE_API_KEY` set in edge function secrets
-- [x] `OWNER_EMAILS` set in edge function secrets (comma-separated)
-- [ ] `STRIPE_SECRET_KEY` set (or billing degrades gracefully with 503)
+- [x] `ADMIN_BOOTSTRAP_EMAILS` set (comma-separated owner emails, server-side only)
+- [ ] `STRIPE_SECRET_KEY` set (optional — billing degrades gracefully without it)
 - [x] `SUPABASE_SERVICE_ROLE_KEY` set for admin operations
-- [x] No secrets exposed in frontend bundle (check `dist/assets/*.js`)
+- [x] No secrets exposed in frontend bundle
+
+## Admin & Owner Access
+
+- [x] Owner/admin bootstrap via `ADMIN_BOOTSTRAP_EMAILS` env (server-side only)
+- [x] Bootstrap auto-upserts `owner_access` + `user_roles` records (idempotent)
+- [x] Owner entitlements: `subscribed: true`, `is_owner: true`, full service bypass
+- [x] Admin privileges: `is_admin: true`, derived from `user_roles` RBAC table
+- [x] No email-based bypass in client code
+- [x] No OWNER_EMAILS env dependency for privilege escalation
+- [x] `.env` managed by Lovable — NOT a release blocker
 
 ## Edge Functions
 
 - [x] `core-proxy` deployed and responding
 - [x] `check-subscription` deployed, returns HTTP 200 envelope
-- [x] `diagnostics` deployed, restricted to admin/owner
+- [x] `diagnostics` deployed, restricted to admin OR owner (server-side)
 - [x] `record-scan` deployed, idempotent scan recording works
 - [x] `pro-sources` deployed for OMI/POI lookups
 - [x] `create-checkout` deployed, degrades gracefully without Stripe
@@ -41,11 +51,18 @@
 - [x] Service worker registers and caches assets
 - [ ] Lighthouse PWA audit ≥ 90
 
+## Boot Resilience
+
+- [x] `main.tsx` catches missing root element with user-friendly fallback
+- [x] `main.tsx` catches render exceptions with retry button
+- [x] `ErrorBoundary` wraps App with Italian-language error + reload
+- [x] `SubscriptionContext` never hangs — resolves even on API failure
+
 ## Data Integrity
 
 - [x] No mock data imported at runtime
 - [x] Report sections omit themselves when data is unavailable
-- [x] Source taxonomy badges match: ufficiale, geo_verificato, elaborato, mercato_verificato, mercato_parziale, stima, non_disponibile
+- [x] Source taxonomy badges match expected values
 - [x] OMI data labeled as `official_data` only when polygon-matched
 
 ## Mobile
@@ -61,15 +78,9 @@
 - [x] Dependabot configured for npm and GitHub Actions
 - [x] `audit:release` script validates full pipeline locally
 
-## Monitoring
-
-- [x] Edge function logs accessible via Lovable Cloud
-- [x] Diagnostics page accessible to admin/owner at `/admin/diagnostics`
-- [x] Circuit breaker in `api.ts` protects against cascade failures
-
 ## Post-Deploy
 
 - [ ] Smoke test: login → scan → report → save flow
-- [ ] Verify offline banner appears when disconnected
+- [ ] Verify the two bootstrap accounts have full access
 - [ ] Verify PWA installs on Android and iOS
-- [ ] Check billing CTA behavior with and without Stripe configured
+- [ ] Verify Stripe absence causes no errors or blocked flows
