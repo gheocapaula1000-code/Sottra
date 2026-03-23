@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 /**
  * OMI Integration Tests
@@ -7,13 +7,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 
 // Mock supabase client
-const mockSelect = vi.fn();
-const mockEq = vi.fn();
-const mockIlike = vi.fn();
-const mockOrder = vi.fn();
-const mockLimit = vi.fn();
-const mockUpsert = vi.fn();
 const mockFrom = vi.fn();
+
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    from: (...args: unknown[]) => mockFrom(...args),
+    functions: {
+      invoke: vi.fn(),
+    },
+  },
+}));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
