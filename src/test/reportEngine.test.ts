@@ -776,8 +776,11 @@ describe("No invented data policy", () => {
     expect(ctx?.prevalenzaContesto).toBeUndefined();
     expect(ctx?.tessutoUrbano).toBeUndefined();
     expect(ctx?.densitaEdiliziaPercepita).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((ctx as any).densitaEdiliziaVisiva).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((ctx as any).qualitaVisivaContesto).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((ctx as any).attrattivitaVisivaMicrocontesto).toBeUndefined();
   });
 });
