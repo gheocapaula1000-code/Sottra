@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useState, useCallback } from "react";
 import { MapPin, ChevronDown, ChevronUp, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
