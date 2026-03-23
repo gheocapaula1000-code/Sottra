@@ -51,9 +51,13 @@ else
 fi
 
 # 4. Verify no owner/admin emails are hardcoded in frontend source
+#    Whitelist: legalEntity.ts contains legitimate business contact emails (PEC, info@, supporto@)
 echo "── Checking for hardcoded owner/admin emails in src/..."
 if grep -rE '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' --include='*.ts' --include='*.tsx' \
-   src/lib/ src/contexts/ src/components/ src/pages/ 2>/dev/null | grep -ivE 'example\.com|test\.com|@types|email.*placeholder|\.test\.' | grep -q '@'; then
+   src/lib/ src/contexts/ src/components/ src/pages/ 2>/dev/null \
+   | grep -ivE 'example\.com|test\.com|@types|email.*placeholder|\.test\.|esempio\.it' \
+   | grep -v 'legalEntity\.ts' \
+   | grep -q '@'; then
   echo "⚠️  WARNING: Potential email address found in frontend source (review manually)"
 else
   echo "✅ No hardcoded emails in frontend source"
