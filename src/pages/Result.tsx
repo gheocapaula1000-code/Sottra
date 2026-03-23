@@ -292,7 +292,7 @@ function ConvergenzaTerritorialeCard({ data, loading }: { data: ConvergenzaTerri
   if (loading) return <SectionSkeleton />;
   if (!data || data.sourceType === "unavailable" || data.score == null) return null;
 
-  const tier = sourceTypeToTier(data.sourceType);
+  const _tier = sourceTypeToTier(data.sourceType);
   const bandColors: Record<string, string> = {
     molto_forte: "from-emerald-500/15 to-green-500/5 border-emerald-500/20",
     forte: "from-sky-500/15 to-blue-500/5 border-sky-500/20",
