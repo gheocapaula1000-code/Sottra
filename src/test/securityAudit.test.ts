@@ -93,19 +93,22 @@ describe("ownerUtils server-side hardening", () => {
   });
 });
 
-/* ── D. Diagnostics requires admin RBAC only ──────────── */
+/* ── D. Diagnostics requires admin RBAC or owner ──────── */
 
 describe("Diagnostics access control", () => {
   const diagSource = fs.readFileSync("supabase/functions/diagnostics/index.ts", "utf-8");
 
   it("does NOT import isOwnerEmail", () => {
     expect(diagSource).not.toContain("isOwnerEmail");
-    expect(diagSource).not.toContain("ownerUtils");
   });
 
-  it("requires admin role via has_role", () => {
+  it("requires admin role via has_role or owner via isOwnerById", () => {
     expect(diagSource).toContain("has_role");
     expect(diagSource).toContain('"admin"');
+  });
+
+  it("allows owner access via isOwnerById", () => {
+    expect(diagSource).toContain("isOwnerById");
   });
 
   it("does NOT expose is_official or raw host info", () => {

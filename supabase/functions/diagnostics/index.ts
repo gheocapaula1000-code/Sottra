@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { isOwnerById } from "../_shared/ownerUtils.ts";
 
 function sanitizeUrl(raw: string): string {
   try {
@@ -37,14 +38,20 @@ serve(async (req) => {
       headers: { ...cors, "Content-Type": "application/json" },
     });
 
-  // Access: admin RBAC only — no email-based bypass
   const userId = userData.user.id;
+
+  // Access: admin RBAC OR owner (server-side table)
   const { data: isAdmin } = await supabase.rpc("has_role", {
     _user_id: userId,
     _role: "admin",
   });
 
-  if (!isAdmin)
+  let isOwner = false;
+  try {
+    isOwner = await isOwnerById(userId);
+  } catch { /* non-blocking */ }
+
+  if (!isAdmin && !isOwner)
     return new Response(JSON.stringify({ error: "Forbidden" }), {
       status: 403,
       headers: { ...cors, "Content-Type": "application/json" },
@@ -88,7 +95,7 @@ serve(async (req) => {
     }
   }
 
-  // Redacted output — no raw secrets, no internal hostnames beyond sanitized
+  // Redacted output — no raw secrets
   const payload = {
     proxy_local: sanitizeUrl(Deno.env.get("SUPABASE_URL") || "") + "/functions/v1/core-proxy",
     upstream_sanitized: sanitized,
