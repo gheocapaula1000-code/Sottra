@@ -11,11 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
 import { cn } from "@/lib/utils";
 import { DataBadge, type DataTier } from "@/components/DataBadge";
-import Watermark from "@/components/Watermark";
 import type {
   IdentifyResult, PricingData,
   TimeViewData, OpportunityData,
-  InfrastrutureData, ConnectivityContext, SchoolContext,
+  InfrastrutureData, SchoolContext,
   RischioZonaData, TrendDemograficoData, SviluppoAreaData,
   ConvergenzaTerritorialeData, MarketContextData, ComparablesSummary,
   ScanResult, SourceMetadata, PoiEnrichmentData,
