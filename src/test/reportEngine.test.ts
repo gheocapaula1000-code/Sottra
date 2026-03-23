@@ -312,9 +312,13 @@ describe("buildContestoVicinato", () => {
     expect(ctx!.elencoServiziRilevati?.value).toHaveLength(4);
     expect(ctx!.livelloServiziArea?.value).toBe("Area ben servita");
     // No visual-sounding field names
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((ctx as any).presenzaServiziVisibili).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((ctx as any).elencoServiziVisibili).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((ctx as any).attrattivitaVisivaMicrocontesto).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((ctx as any).qualitaVisivaContesto).toBeUndefined();
   });
 
@@ -776,8 +780,11 @@ describe("No invented data policy", () => {
     expect(ctx?.prevalenzaContesto).toBeUndefined();
     expect(ctx?.tessutoUrbano).toBeUndefined();
     expect(ctx?.densitaEdiliziaPercepita).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((ctx as any).densitaEdiliziaVisiva).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((ctx as any).qualitaVisivaContesto).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((ctx as any).attrattivitaVisivaMicrocontesto).toBeUndefined();
   });
 });
@@ -1055,6 +1062,7 @@ describe("sourceType transparency in syntheses", () => {
     const facade = buildImmobileFacciata(result);
     expect(facade!.leggibilitaImmagine).toBeDefined();
     expect(facade!.leggibilitaImmagine?.label).toBe("Leggibilità immagine");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((facade as any).qualitaEsteticaGenerale).toBeUndefined();
   });
 
@@ -1100,7 +1108,7 @@ describe("Hardening — edge cases", () => {
           totalPois: 5,
           searchRadius: 500,
           categories: [
-            { category: "transport", categoryLabel: "Trasporti", count: 3, nearest: { name: "Bus", category: "transport", categoryLabel: "Trasporti", distance: undefined as any, lat: 0, lng: 0, provider: "overpass" } },
+            { category: "transport", categoryLabel: "Trasporti", count: 3, nearest: { name: "Bus", category: "transport", categoryLabel: "Trasporti", distance: undefined as unknown as number, lat: 0, lng: 0, provider: "overpass" } },
           ],
           pois: [],
         },

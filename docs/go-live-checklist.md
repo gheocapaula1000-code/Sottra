@@ -16,7 +16,8 @@
 
 - [x] `CORE_API_URL` set in edge function secrets
 - [x] `CORE_API_KEY` set in edge function secrets
-- [x] `ADMIN_BOOTSTRAP_EMAILS` set (comma-separated owner emails, server-side only)
+- [x] `ADMIN_BOOTSTRAP_EMAILS` set (gheocapaula1000@gmail.com — sole owner/admin)
+- [x] `COMMERCIAL_BYPASS_EMAILS` set (matteo.ippolito@gmail.com — full user access, no admin)
 - [ ] `STRIPE_SECRET_KEY` set (optional — billing degrades gracefully without it)
 - [x] `SUPABASE_SERVICE_ROLE_KEY` set for admin operations
 - [x] No secrets exposed in frontend bundle
@@ -27,9 +28,18 @@
 - [x] Bootstrap auto-upserts `owner_access` + `user_roles` records (idempotent)
 - [x] Owner entitlements: `subscribed: true`, `is_owner: true`, full service bypass
 - [x] Admin privileges: `is_admin: true`, derived from `user_roles` RBAC table
+- [x] Commercial bypass via `COMMERCIAL_BYPASS_EMAILS`: `subscribed: true`, no admin/owner
 - [x] No email-based bypass in client code
 - [x] No OWNER_EMAILS env dependency for privilege escalation
 - [x] `.env` managed by Lovable — NOT a release blocker
+
+## Access Matrix
+
+| Account | Owner | Admin | Subscribed | Trial Bypass | Admin Panel |
+|---------|-------|-------|------------|--------------|-------------|
+| gheocapaula1000@gmail.com | ✅ | ✅ | ✅ | ✅ | ✅ |
+| matteo.ippolito@gmail.com | ❌ | ❌ | ✅ | ✅ | ❌ |
+| massimilianogalli75@gmail.com | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ## Edge Functions
 

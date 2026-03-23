@@ -671,7 +671,7 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
   const _omi = sectionData<OmiZoneData>(result, "omiZone");
   const poi = sectionData<PoiEnrichmentData>(result, "poiEnrichment");
   const rischio = sectionData<RischioZonaData>(result, "rischioZona");
-  const tv = sectionData<TimeViewData>(result, "timeView");
+  const _tv = sectionData<TimeViewData>(result, "timeView");
 
   if (!opportunity && !convergenza) return null;
 
@@ -803,7 +803,7 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
   const rischio = sectionData<RischioZonaData>(result, "rischioZona");
   const tv = sectionData<TimeViewData>(result, "timeView");
   const convergenza = sectionData<ConvergenzaTerritorialeData>(result, "convergenzaTerritoriale");
-  const market = sectionData<MarketContextData>(result, "marketContext");
+  const _market = sectionData<MarketContextData>(result, "marketContext");
 
   const geo = resolveGeoContext(result);
   const items: PrioritaCriticaItem[] = [];

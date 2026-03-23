@@ -35,6 +35,7 @@ describe("ownerConfig — hardening", () => {
           const content = fs.readFileSync(full, "utf-8");
           expect(content).not.toContain("gheocapaula1000@gmail.com");
           expect(content).not.toContain("massimilianogalli75@gmail.com");
+          expect(content).not.toContain("matteo.ippolito@gmail.com");
         }
       }
     };
@@ -48,6 +49,12 @@ describe("ownerConfig — hardening", () => {
     const content = fs.readFileSync("supabase/functions/check-subscription/index.ts", "utf-8");
     expect(content).toContain("isOwnerById");
     expect(content).not.toContain("isOwnerEmail(");
+  });
+
+  it("check-subscription supports commercial bypass", () => {
+    const content = fs.readFileSync("supabase/functions/check-subscription/index.ts", "utf-8");
+    expect(content).toContain("isCommercialBypass");
+    expect(content).toContain("commercial_bypass");
   });
 
   it("diagnostics uses server-side owner check, not email bypass", () => {

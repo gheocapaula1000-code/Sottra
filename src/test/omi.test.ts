@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 /**
  * OMI Integration Tests
@@ -7,12 +7,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 
 // Mock supabase client
-const mockSelect = vi.fn();
-const mockEq = vi.fn();
-const mockIlike = vi.fn();
-const mockOrder = vi.fn();
-const mockLimit = vi.fn();
-const mockUpsert = vi.fn();
 const mockFrom = vi.fn();
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -24,8 +18,17 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    from: (...args: unknown[]) => mockFrom(...args),
+    functions: {
+      invoke: vi.fn(),
+    },
+  },
+}));
+
 // Helper: build a chain mock for omi_quotazioni SELECT
-function mockOmiQuery(data: unknown[] | null, error: unknown = null) {
+function _mockOmiQuery(data: unknown[] | null, error: unknown = null) {
   const chain = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),

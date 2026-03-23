@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isOwnerById } from "../_shared/ownerUtils.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { isBillingActive } from "../_shared/billing.ts";
-import { ensureBootstrap } from "../_shared/adminBootstrap.ts";
+import { ensureBootstrap, isCommercialBypass } from "../_shared/adminBootstrap.ts";
 
 const log = (step: string, detail?: string) =>
   console.log(`[check-subscription] ${step}${detail ? ` — ${detail}` : ""}`);
@@ -104,6 +104,19 @@ serve(async (req) => {
       }
     } catch (e) {
       log("bootstrap check failed (non-fatal)", String(e));
+    }
+
+    // ── 1c. Commercial bypass: full user access, no admin ──
+    if (isCommercialBypass(userEmail)) {
+      log("commercial bypass", userEmail ?? userId);
+      return json({
+        ok: true,
+        subscribed: true,
+        is_admin: false,
+        is_owner: false,
+        owner: false,
+        code: "commercial_bypass",
+      }, req);
     }
 
     // ── 2. Owner check (server-side table) ──────────────────

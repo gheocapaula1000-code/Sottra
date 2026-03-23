@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Camera, User, FileText, MessageSquare, Copy, Check } from "lucide-react";
+import { ArrowLeft, Camera, User, FileText, Copy, Check } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { ImportOriginBadge } from "@/components/keydraft/ImportOriginBadge";
 import { ImportStatusBadge } from "@/components/keydraft/ImportStatusBadge";
-import { fetchImportById, updateDraftStatus, updateCompletions } from "@/services/keydraftImport";
-import type { KeyDraftImportRecord, ImportDraftStatus, SottraCompletionFields } from "@/types/keydraft";
+import { fetchImportById, updateDraftStatus } from "@/services/keydraftImport";
+import type { KeyDraftImportRecord, ImportDraftStatus } from "@/types/keydraft";
 
 function Section({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
@@ -126,9 +126,9 @@ export default function ImportedDraftDetail() {
   const payload = record.bridge_payload;
   const property = payload.property;
   const agent = payload.agent_supplied;
-  const photoDerived = payload.photo_derived;
+  const _photoDerived = payload.photo_derived;
   const generatedText = payload.generated_text;
-  const originMap = record.origin_map ?? {};
+  const _originMap = record.origin_map ?? {};
 
   return (
     <div className="min-h-svh bg-background">

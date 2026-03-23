@@ -11,11 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
 import { cn } from "@/lib/utils";
 import { DataBadge, type DataTier } from "@/components/DataBadge";
-import Watermark from "@/components/Watermark";
 import type {
   IdentifyResult, PricingData,
   TimeViewData, OpportunityData,
-  InfrastrutureData, ConnectivityContext, SchoolContext,
+  InfrastrutureData, SchoolContext,
   RischioZonaData, TrendDemograficoData, SviluppoAreaData,
   ConvergenzaTerritorialeData, MarketContextData, ComparablesSummary,
   ScanResult, SourceMetadata, PoiEnrichmentData,
@@ -293,7 +292,7 @@ function ConvergenzaTerritorialeCard({ data, loading }: { data: ConvergenzaTerri
   if (loading) return <SectionSkeleton />;
   if (!data || data.sourceType === "unavailable" || data.score == null) return null;
 
-  const tier = sourceTypeToTier(data.sourceType);
+  const _tier = sourceTypeToTier(data.sourceType);
   const bandColors: Record<string, string> = {
     molto_forte: "from-emerald-500/15 to-green-500/5 border-emerald-500/20",
     forte: "from-sky-500/15 to-blue-500/5 border-sky-500/20",
@@ -895,7 +894,7 @@ function MarketContextCard({ data, loading }: { data: MarketContextData | null; 
   );
 }
 
-function ComparablesBlock({ comp, isPartial }: { comp: ComparablesSummary; isPartial: boolean }) {
+function ComparablesBlock({ comp, isPartial: _isPartial }: { comp: ComparablesSummary; isPartial: boolean }) {
   const depthLabels: Record<string, string> = { profondo: "Profondo", sufficiente: "Sufficiente", limitato: "Limitato" };
   const freshnessLabels: Record<string, string> = { recente: "Recente", moderata: "Moderata", datata: "Datata" };
 

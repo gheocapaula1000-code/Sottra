@@ -10,7 +10,7 @@
  * - marketSignals as keyed object → array
  */
 
-import type { MarketContextData, MarketSignal, ComparablesSummary, MarketProviderBreakdown } from "@/types";
+import type { MarketContextData, MarketSignal, ComparablesSummary } from "@/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

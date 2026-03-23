@@ -1,15 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { FileText, Inbox } from "lucide-react";
+import { Inbox } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImportDraftCard } from "@/components/keydraft/ImportDraftCard";
 import { fetchImports } from "@/services/keydraftImport";
 import type { KeyDraftImportRecord } from "@/types/keydraft";
 
 export default function ImportedDrafts() {
-  const navigate = useNavigate();
   const [records, setRecords] = useState<KeyDraftImportRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

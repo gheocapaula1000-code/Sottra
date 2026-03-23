@@ -56,7 +56,9 @@ describe("normalizeInfrastrutture", () => {
     const result = normalizeInfrastrutture(raw)!;
     expect(result.schoolContext).not.toBeNull();
     expect(typeof result.schoolContext).toBe("object");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((result.schoolContext as any).available).toBe(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((result.schoolContext as any).totalSchools).toBe(12);
   });
 
@@ -68,7 +70,9 @@ describe("normalizeInfrastrutture", () => {
     const result = normalizeInfrastrutture(raw)!;
     expect(result.schoolContext).not.toBeNull();
     expect(typeof result.schoolContext).toBe("object");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((result.schoolContext as any).available).toBe(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((result.schoolContext as any).source).toBe("legacy");
   });
 
@@ -96,6 +100,7 @@ describe("normalizeSviluppoArea", () => {
       },
     };
     const result = normalizeSviluppoArea(raw)!;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((result.schoolContext as any).available).toBe(true);
   });
 
@@ -111,6 +116,7 @@ describe("normalizeSviluppoArea", () => {
       },
     };
     const result = normalizeSviluppoArea(raw)!;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((result.schoolContext as any).available).toBe(false);
     // UI should NOT render this — verified in render tests
   });
@@ -131,7 +137,9 @@ describe("normalizeSviluppoArea", () => {
     // Must be object, never a plain string
     expect(typeof sc).toBe("object");
     expect(sc).not.toBeNull();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((sc as any).available).toBe(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((sc as any).totalSchools).toBe(5);
   });
 });
