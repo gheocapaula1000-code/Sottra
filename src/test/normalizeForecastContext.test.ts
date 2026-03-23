@@ -68,8 +68,8 @@ describe("normalizeInfrastrutture", () => {
     const result = normalizeInfrastrutture(raw)!;
     expect(result.schoolContext).not.toBeNull();
     expect(typeof result.schoolContext).toBe("object");
-    expect((result.schoolContext as any).available).toBe(true);
-    expect((result.schoolContext as any).source).toBe("legacy");
+    expect((result.schoolContext as Record<string, unknown>).available).toBe(true);
+    expect((result.schoolContext as Record<string, unknown>).source).toBe("legacy");
   });
 
   it("returns null schoolContext for null/empty", () => {
