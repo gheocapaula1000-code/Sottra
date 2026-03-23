@@ -312,10 +312,14 @@ describe("buildContestoVicinato", () => {
     expect(ctx!.elencoServiziRilevati?.value).toHaveLength(4);
     expect(ctx!.livelloServiziArea?.value).toBe("Area ben servita");
     // No visual-sounding field names
-    expect((ctx as Record<string, unknown>).presenzaServiziVisibili).toBeUndefined();
-    expect((ctx as Record<string, unknown>).elencoServiziVisibili).toBeUndefined();
-    expect((ctx as Record<string, unknown>).attrattivitaVisivaMicrocontesto).toBeUndefined();
-    expect((ctx as Record<string, unknown>).qualitaVisivaContesto).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((ctx as any).presenzaServiziVisibili).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((ctx as any).elencoServiziVisibili).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((ctx as any).attrattivitaVisivaMicrocontesto).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((ctx as any).qualitaVisivaContesto).toBeUndefined();
   });
 
   it("does not show livelloServiziArea without transport+shopping+primary", () => {
