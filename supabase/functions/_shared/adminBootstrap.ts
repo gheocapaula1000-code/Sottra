@@ -23,10 +23,19 @@ function getBootstrapEmails(): Set<string> {
   );
 }
 
+/** Parse commercial bypass emails — full user-facing access, no admin. */
+function getCommercialBypassEmails(): Set<string> {
+  const raw = Deno.env.get("COMMERCIAL_BYPASS_EMAILS") ?? "";
+  if (!raw.trim()) return new Set();
+  return new Set(
+    raw.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean),
+  );
+}
+
 /**
  * If the given email is in the bootstrap allowlist,
  * upsert owner_access + user_roles for the user_id.
- * Returns { bootstrapped: boolean, isOwner: boolean, isAdmin: boolean }.
+ * Returns { bootstrapped, isOwner, isAdmin }.
  */
 export async function ensureBootstrap(
   userId: string,
@@ -69,4 +78,14 @@ export async function ensureBootstrap(
 
   log(`bootstrap complete for ${userId}`);
   return { bootstrapped: true, isOwner: true, isAdmin: true };
+}
+
+/**
+ * Check if email is in the commercial bypass list.
+ * These users get full user-facing access (subscribed=true, trial bypass)
+ * but NO admin/owner privileges.
+ */
+export function isCommercialBypass(email: string | undefined | null): boolean {
+  if (!email) return false;
+  return getCommercialBypassEmails().has(email.trim().toLowerCase());
 }
