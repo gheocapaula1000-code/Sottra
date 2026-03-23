@@ -1062,7 +1062,8 @@ describe("sourceType transparency in syntheses", () => {
     const facade = buildImmobileFacciata(result);
     expect(facade!.leggibilitaImmagine).toBeDefined();
     expect(facade!.leggibilitaImmagine?.label).toBe("Leggibilità immagine");
-    expect((facade as Record<string, unknown>).qualitaEsteticaGenerale).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((facade as any).qualitaEsteticaGenerale).toBeUndefined();
   });
 
   it("full coverage shows 'Copertura analisi completa'", () => {
