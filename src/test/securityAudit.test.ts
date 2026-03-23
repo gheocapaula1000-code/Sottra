@@ -23,8 +23,6 @@ describe("CORS hardening", () => {
   });
 
   it("does NOT fallback to origins[0] for non-matching origin", () => {
-    // The old code had: origins.includes(reqOrigin) ? reqOrigin : origins[0]
-    // New code must use "null" instead of origins[0]
     expect(corsSource).not.toContain("origins[0]");
   });
 
@@ -72,6 +70,14 @@ describe("Owner/Admin separation", () => {
 
   it("uses isOwnerById for owner checks", () => {
     expect(checkSubSource).toContain("isOwnerById");
+  });
+
+  it("supports commercial bypass (subscribed but not admin)", () => {
+    expect(checkSubSource).toContain("isCommercialBypass");
+    expect(checkSubSource).toContain("commercial_bypass");
+    // commercial bypass must NOT grant admin
+    const bypassBlock = checkSubSource.split("commercial bypass")[1]?.split("return json")[0] ?? "";
+    expect(bypassBlock).not.toContain("is_admin: true");
   });
 });
 
@@ -217,5 +223,26 @@ describe("Consumer pages use minimal scan data", () => {
     const resultSource = fs.readFileSync("src/pages/Result.tsx", "utf-8");
     expect(resultSource).toContain("locality:");
     expect(resultSource).not.toMatch(/saveScan\(\{[^}]*photo:/);
+  });
+});
+
+/* ── I. Commercial bypass in adminBootstrap ───────────── */
+
+describe("Commercial bypass module", () => {
+  const bootstrapSource = fs.readFileSync("supabase/functions/_shared/adminBootstrap.ts", "utf-8");
+
+  it("exports isCommercialBypass function", () => {
+    expect(bootstrapSource).toContain("export function isCommercialBypass");
+  });
+
+  it("reads COMMERCIAL_BYPASS_EMAILS env var", () => {
+    expect(bootstrapSource).toContain("COMMERCIAL_BYPASS_EMAILS");
+  });
+
+  it("commercial bypass does NOT upsert owner_access or user_roles", () => {
+    // isCommercialBypass is a pure check, no DB writes
+    const fnBody = bootstrapSource.split("export function isCommercialBypass")[1] ?? "";
+    expect(fnBody).not.toContain("owner_access");
+    expect(fnBody).not.toContain("user_roles");
   });
 });

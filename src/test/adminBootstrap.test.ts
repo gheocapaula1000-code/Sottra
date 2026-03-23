@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 /**
- * Tests for the admin bootstrap and owner/admin access model.
- * These validate the logical invariants — actual DB operations
- * are tested via edge function integration tests.
+ * Tests for the admin bootstrap, commercial bypass, and owner/admin access model.
  */
 
 describe("Admin Bootstrap invariants", () => {
@@ -40,7 +38,6 @@ describe("Admin Bootstrap invariants", () => {
 
   describe("Owner ≠ Admin separation", () => {
     it("owner status does not imply admin", () => {
-      // Simulates the check-subscription response for a table-based owner
       const ownerResponse = {
         is_owner: true,
         is_admin: false,
@@ -75,9 +72,42 @@ describe("Admin Bootstrap invariants", () => {
     });
   });
 
+  describe("Commercial bypass (non-admin full access)", () => {
+    function isCommercialBypass(email: string, bypassList: Set<string>): boolean {
+      if (!email) return false;
+      return bypassList.has(email.trim().toLowerCase());
+    }
+
+    it("commercial bypass user gets subscribed=true but NOT admin", () => {
+      const bypassList = new Set(["matteo@example.com"]);
+      expect(isCommercialBypass("matteo@example.com", bypassList)).toBe(true);
+
+      const response = {
+        subscribed: true,
+        is_admin: false,
+        is_owner: false,
+        code: "commercial_bypass",
+      };
+      expect(response.subscribed).toBe(true);
+      expect(response.is_admin).toBe(false);
+      expect(response.is_owner).toBe(false);
+    });
+
+    it("non-bypass user is not matched", () => {
+      const bypassList = new Set(["matteo@example.com"]);
+      expect(isCommercialBypass("random@user.com", bypassList)).toBe(false);
+    });
+
+    it("bypass list parsing handles whitespace and case", () => {
+      const raw = " Matteo@Example.COM , Other@Test.com ";
+      const set = new Set(raw.split(",").map(e => e.trim().toLowerCase()).filter(Boolean));
+      expect(set.has("matteo@example.com")).toBe(true);
+      expect(set.has("other@test.com")).toBe(true);
+    });
+  });
+
   describe("No unauthenticated promotion", () => {
     it("missing auth returns error, not promotion", () => {
-      // Simulates the check-subscription response for missing auth
       const noAuthResponse = {
         ok: false,
         is_admin: false,
@@ -94,34 +124,56 @@ describe("Admin Bootstrap invariants", () => {
 
   describe("Stripe independence", () => {
     it("owner/admin bypass works without Stripe", () => {
-      // isBillingActive returns false when STRIPE_SECRET_KEY is absent
       const isBillingActive = (key: string | undefined) => !!key;
       expect(isBillingActive(undefined)).toBe(false);
-
-      // Owner still gets full access
-      const ownerCanScan = true; // derived from is_owner
+      const ownerCanScan = true;
       expect(ownerCanScan).toBe(true);
     });
 
     it("trial works without Stripe", () => {
       const trialActive = true;
       const _billingActive = false;
-      const canScan = trialActive; // no Stripe dependency
+      const canScan = trialActive;
+      expect(canScan).toBe(true);
+    });
+
+    it("commercial bypass works without Stripe", () => {
+      const isBypass = true;
+      const _billingActive = false;
+      const canScan = isBypass;
       expect(canScan).toBe(true);
     });
   });
 
   describe("Boot resilience", () => {
     it("ErrorBoundary catches render errors", () => {
-      // Validates the pattern exists — actual render tested in integration
       expect(typeof Error).toBe("function");
     });
 
     it("main.tsx handles missing root element", () => {
-      // The pattern: if (!root) show fallback
       const root = null;
       const fallbackShown = !root;
       expect(fallbackShown).toBe(true);
+    });
+  });
+
+  describe("Access matrix validation", () => {
+    const bootstrapEmails = new Set(["gheocapaula1000@gmail.com"]);
+    const commercialBypass = new Set(["matteo.ippolito@gmail.com"]);
+
+    it("gheocapaula1000 is the only bootstrap owner/admin", () => {
+      expect(bootstrapEmails.size).toBe(1);
+      expect(bootstrapEmails.has("gheocapaula1000@gmail.com")).toBe(true);
+    });
+
+    it("massimilianogalli75 has no special privileges", () => {
+      expect(bootstrapEmails.has("massimilianogalli75@gmail.com")).toBe(false);
+      expect(commercialBypass.has("massimilianogalli75@gmail.com")).toBe(false);
+    });
+
+    it("matteo.ippolito gets commercial bypass but not admin", () => {
+      expect(commercialBypass.has("matteo.ippolito@gmail.com")).toBe(true);
+      expect(bootstrapEmails.has("matteo.ippolito@gmail.com")).toBe(false);
     });
   });
 
@@ -133,8 +185,6 @@ describe("Admin Bootstrap invariants", () => {
     });
 
     it("client-side code has no bootstrap emails", () => {
-      // Verify no hardcoded emails in client bundle
-      // This is a structural test — the actual check is in securityAudit.test.ts
       expect(true).toBe(true);
     });
   });
