@@ -56,8 +56,10 @@ describe("normalizeInfrastrutture", () => {
     const result = normalizeInfrastrutture(raw)!;
     expect(result.schoolContext).not.toBeNull();
     expect(typeof result.schoolContext).toBe("object");
-    expect((result.schoolContext as Record<string, unknown>).available).toBe(true);
-    expect((result.schoolContext as Record<string, unknown>).totalSchools).toBe(12);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((result.schoolContext as any).available).toBe(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((result.schoolContext as any).totalSchools).toBe(12);
   });
 
   it("converts legacy string schoolContext to structured form", () => {
