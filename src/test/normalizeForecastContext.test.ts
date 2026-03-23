@@ -96,7 +96,7 @@ describe("normalizeSviluppoArea", () => {
       },
     };
     const result = normalizeSviluppoArea(raw)!;
-    expect((result.schoolContext as any).available).toBe(true);
+    expect((result.schoolContext as Record<string, unknown>).available).toBe(true);
   });
 
   it("handles schoolContext.available=false correctly", () => {
