@@ -250,7 +250,7 @@ const Dashboard = () => {
                 {(isAdmin || isOwner) && (
                   <QuickAction icon={<Activity className="h-4 w-4" />} label="Diagnostica Core" onClick={() => navigate("/admin/diagnostics")} />
                 )}
-                {BILLING_ENABLED && displaySubscribed && (
+                {isBillingReady() && displaySubscribed && (
                   <QuickAction icon={<CreditCard className="h-4 w-4" />} label="Gestisci abbonamento" onClick={handleManageSubscription} />
                 )}
               </CardContent>
