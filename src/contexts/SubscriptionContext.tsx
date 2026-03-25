@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { getPlanByProductId, PlanKey } from "@/lib/plans";
+import { getPlanByProductId, getPlanByPriceId, PlanKey } from "@/lib/plans";
 
 interface TrialInfo {
   active: boolean;
@@ -14,12 +14,13 @@ interface TrialInfo {
 interface SubscriptionState {
   loading: boolean;
   accessResolved: boolean;
-  /** True only after at least one successful check-subscription response was parsed.
-   *  Use this to guard TrialExpiredScreen — never show paywall from default/error state. */
+  /** True only after at least one successful check-subscription response was parsed. */
   checked: boolean;
   subscribed: boolean;
   planKey: PlanKey | null;
   subscriptionEnd: string | null;
+  subscriptionStatus: string | null;
+  cancelAtPeriodEnd: boolean;
   trial: TrialInfo | null;
   canScan: boolean;
   isAdmin: boolean;
@@ -34,6 +35,8 @@ const SubscriptionContext = createContext<SubscriptionState>({
   subscribed: false,
   planKey: null,
   subscriptionEnd: null,
+  subscriptionStatus: null,
+  cancelAtPeriodEnd: false,
   trial: null,
   canScan: false,
   isAdmin: false,
@@ -48,21 +51,15 @@ const SAFE_DEFAULTS = {
   subscribed: false,
   planKey: null as PlanKey | null,
   subscriptionEnd: null as string | null,
+  subscriptionStatus: null as string | null,
+  cancelAtPeriodEnd: false,
   trial: null as TrialInfo | null,
   isAdmin: false,
   isOwner: false,
 };
 
-
 /** Validate that payload is a non-null object with expected shape */
-function parsePayload(data: unknown): {
-  subscribed: boolean;
-  planKey: PlanKey | null;
-  subscriptionEnd: string | null;
-  trial: TrialInfo | null;
-  isAdmin: boolean;
-  isOwner: boolean;
-} {
+function parsePayload(data: unknown): typeof SAFE_DEFAULTS {
   if (!data || typeof data !== "object") {
     console.warn("[Subscription] malformed payload — not an object");
     return { ...SAFE_DEFAULTS };
@@ -74,7 +71,13 @@ function parsePayload(data: unknown): {
   const isAdmin = d.is_admin === true;
   const isOwner = d.is_owner === true;
   const subscriptionEnd = typeof d.subscription_end === "string" ? d.subscription_end : null;
-  const planKey = typeof d.product_id === "string" ? getPlanByProductId(d.product_id) : null;
+  const subscriptionStatus = typeof d.subscription_status === "string" ? d.subscription_status : null;
+  const cancelAtPeriodEnd = d.cancel_at_period_end === true;
+
+  // Resolve plan from product_id or price_id
+  let planKey: PlanKey | null = null;
+  if (typeof d.product_id === "string") planKey = getPlanByProductId(d.product_id);
+  if (!planKey && typeof d.price_id === "string") planKey = getPlanByPriceId(d.price_id);
 
   let trial: TrialInfo | null = null;
   if (d.trial && typeof d.trial === "object") {
@@ -87,7 +90,7 @@ function parsePayload(data: unknown): {
     };
   }
 
-  return { subscribed, planKey, subscriptionEnd, trial, isAdmin, isOwner };
+  return { subscribed, planKey, subscriptionEnd, subscriptionStatus, cancelAtPeriodEnd, trial, isAdmin, isOwner };
 }
 
 export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
@@ -97,6 +100,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [subscribed, setSubscribed] = useState(false);
   const [planKey, setPlanKey] = useState<PlanKey | null>(null);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
   const [trial, setTrial] = useState<TrialInfo | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
@@ -112,6 +117,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setSubscribed(false);
     setPlanKey(null);
     setSubscriptionEnd(null);
+    setSubscriptionStatus(null);
+    setCancelAtPeriodEnd(false);
     setTrial(null);
     setIsAdmin(false);
     setIsOwner(false);
@@ -187,6 +194,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setSubscribed(parsed.subscribed);
       setPlanKey(parsed.planKey);
       setSubscriptionEnd(parsed.subscriptionEnd);
+      setSubscriptionStatus(parsed.subscriptionStatus);
+      setCancelAtPeriodEnd(parsed.cancelAtPeriodEnd);
       setTrial(parsed.trial);
       setIsAdmin(parsed.isAdmin);
       setIsOwner(parsed.isOwner);
@@ -216,10 +225,27 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [session, refresh]);
 
+  // Auto-refresh on checkout return
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "success") {
+      // Clean up URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("checkout");
+      window.history.replaceState({}, "", url.pathname);
+      // Delay refresh to let webhook process
+      const timer = setTimeout(() => void refresh(), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [refresh]);
+
   const canScan = isOwner || isAdmin || subscribed || (trial?.active ?? false);
 
   return (
-    <SubscriptionContext.Provider value={{ loading, accessResolved, checked, subscribed, planKey, subscriptionEnd, trial, canScan, isAdmin, isOwner, refresh }}>
+    <SubscriptionContext.Provider value={{
+      loading, accessResolved, checked, subscribed, planKey, subscriptionEnd,
+      subscriptionStatus, cancelAtPeriodEnd, trial, canScan, isAdmin, isOwner, refresh,
+    }}>
       {children}
     </SubscriptionContext.Provider>
   );

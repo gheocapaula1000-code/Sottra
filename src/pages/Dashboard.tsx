@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { APP_BRAND } from "@/lib/legalEntity";
 import { BILLING_ENABLED } from "@/lib/billing";
+import { PLANS } from "@/lib/plans";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
@@ -30,7 +31,7 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { subscribed, trial, isAdmin, isOwner } = useSubscription();
+  const { subscribed, trial, isAdmin, isOwner, subscriptionStatus, cancelAtPeriodEnd, planKey } = useSubscription();
   const { toast } = useToast();
   const { scans } = useScanHistory();
   const { count: importCount } = useImportCount();
@@ -61,7 +62,7 @@ const Dashboard = () => {
   const displayTrial = isOwner ? null : trial;
 
   const accountLabel = displaySubscribed
-    ? "Abbonamento attivo"
+    ? cancelAtPeriodEnd ? "In scadenza" : "Abbonamento attivo"
     : displayTrial?.active
       ? "Trial attivo"
       : "Attivo";
@@ -211,10 +212,22 @@ const Dashboard = () => {
                   </div>
                 )}
                 {displaySubscribed && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Piano</span>
-                    <span className="text-xs font-medium text-foreground">Attivo</span>
-                  </div>
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Piano</span>
+                      <span className="text-xs font-medium text-foreground">{planKey ? PLANS[planKey].name : "Attivo"}</span>
+                    </div>
+                    {subscriptionStatus === "past_due" && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-destructive font-medium">Pagamento in sospeso</span>
+                      </div>
+                    )}
+                    {cancelAtPeriodEnd && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-destructive/80 font-medium">Si disattiverà a fine periodo</span>
+                      </div>
+                    )}
+                  </>
                 )}
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Email</span>

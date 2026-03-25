@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { isBillingActive } from "../_shared/billing.ts";
+import { isAllowedPriceId } from "../_shared/allowedPrices.ts";
 
 serve(async (req) => {
   const preflight = handleCors(req);
@@ -23,6 +24,14 @@ serve(async (req) => {
 
     const { priceId } = await req.json();
     if (!priceId) throw new Error("priceId is required");
+
+    // Server-side validation: only allow known price IDs
+    if (!isAllowedPriceId(priceId)) {
+      return new Response(JSON.stringify({ error: "Piano non valido." }), {
+        headers: { ...cors, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
 
     if (!isBillingActive()) {
       return new Response(JSON.stringify({
@@ -46,6 +55,7 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
+      client_reference_id: user.id,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       success_url: `${req.headers.get("origin")}/app?checkout=success`,
@@ -57,7 +67,8 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : "Errore sconosciuto";
+    return new Response(JSON.stringify({ error: message }), {
       headers: { ...cors, "Content-Type": "application/json" },
       status: 500,
     });

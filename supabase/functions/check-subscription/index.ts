@@ -13,7 +13,10 @@ const BASE_RESPONSE = {
   ok: false,
   subscribed: false,
   product_id: null as string | null,
+  price_id: null as string | null,
   subscription_end: null as string | null,
+  cancel_at_period_end: false,
+  subscription_status: null as string | null,
   is_admin: false,
   is_owner: false,
   owner: false,
@@ -203,51 +206,96 @@ serve(async (req) => {
       log("trial exception", String(e));
     }
 
-    // ── 5. Stripe (only if billing is active) ───────────────
+    // ── 5. DB subscription check (source of truth) ──────────
     let subscribed = false;
     let productId: string | null = null;
+    let priceId: string | null = null;
     let subscriptionEnd: string | null = null;
+    let cancelAtPeriodEnd = false;
+    let subscriptionStatus: string | null = null;
 
-    if (isBillingActive()) {
-      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
-      const email = userEmail;
+    try {
+      const { data: subData, error: subErr } = await serviceClient
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", userId)
+        .in("status", ["active", "trialing", "past_due"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (email) {
-        try {
-          const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
-          const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+      if (subErr) {
+        log("subscription DB lookup failed", subErr.message);
+      } else if (subData) {
+        subscribed = subData.status === "active" || subData.status === "trialing";
+        priceId = subData.price_id ?? null;
+        subscriptionEnd = subData.current_period_end ?? null;
+        cancelAtPeriodEnd = subData.cancel_at_period_end ?? false;
+        subscriptionStatus = subData.status ?? null;
 
-          const customers = await stripe.customers.list({ email, limit: 1 });
-          const customer = customers?.data?.[0];
+        // Resolve product_id from price_id if needed (for plan mapping)
+        // We'll pass price_id and let the client resolve
+      }
+    } catch (e) {
+      log("subscription DB exception", String(e));
+    }
 
-          if (customer?.id) {
-            const subscriptions = await stripe.subscriptions.list({
-              customer: customer.id,
-              status: "active",
-              limit: 1,
-            });
+    // ── 5b. Fallback: Stripe direct check (if billing active and no DB sub) ──
+    if (!subscribed && isBillingActive() && userEmail) {
+      try {
+        const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
+        const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
+        const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-            const sub = subscriptions?.data?.[0];
-            if (sub) {
-              subscribed = true;
+        const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
+        const customer = customers?.data?.[0];
 
-              if (typeof sub.current_period_end === "number" && sub.current_period_end > 0) {
-                subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
-              }
+        if (customer?.id) {
+          const subscriptions = await stripe.subscriptions.list({
+            customer: customer.id,
+            status: "active",
+            limit: 1,
+          });
 
-              const firstItem = sub.items?.data?.[0];
-              const price = firstItem?.price;
-              const product = price?.product;
-              if (typeof product === "string") {
-                productId = product;
-              } else if (product && typeof product === "object" && "id" in product) {
-                productId = (product as { id: string }).id;
-              }
+          const sub = subscriptions?.data?.[0];
+          if (sub) {
+            subscribed = true;
+            subscriptionStatus = sub.status;
+            cancelAtPeriodEnd = sub.cancel_at_period_end === true;
+
+            if (typeof sub.current_period_end === "number" && sub.current_period_end > 0) {
+              subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
+            }
+
+            const firstItem = sub.items?.data?.[0];
+            const price = firstItem?.price;
+            if (price?.id) priceId = price.id;
+            const product = price?.product;
+            if (typeof product === "string") {
+              productId = product;
+            } else if (product && typeof product === "object" && "id" in product) {
+              productId = (product as { id: string }).id;
+            }
+
+            // Backfill DB
+            try {
+              await serviceClient.from("subscriptions").upsert({
+                user_id: userId,
+                stripe_customer_id: customer.id,
+                stripe_subscription_id: sub.id,
+                price_id: priceId,
+                status: sub.status,
+                current_period_end: subscriptionEnd,
+                cancel_at_period_end: cancelAtPeriodEnd,
+              }, { onConflict: "stripe_subscription_id" });
+              log("backfilled DB from Stripe", sub.id);
+            } catch (e) {
+              log("backfill failed (non-fatal)", String(e));
             }
           }
-        } catch (stripeErr) {
-          log("stripe lookup failed", String(stripeErr));
         }
+      } catch (stripeErr) {
+        log("stripe fallback failed", String(stripeErr));
       }
     }
 
@@ -256,7 +304,10 @@ serve(async (req) => {
       ok: true,
       subscribed,
       product_id: productId,
+      price_id: priceId,
       subscription_end: subscriptionEnd,
+      cancel_at_period_end: cancelAtPeriodEnd,
+      subscription_status: subscriptionStatus,
       is_admin: false,
       trial: trialPayload,
       code: "resolved",
