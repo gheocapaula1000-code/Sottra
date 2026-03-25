@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { PLANS, PlanKey } from "@/lib/plans";
-import { BILLING_ENABLED } from "@/lib/billing";
+import { isBillingReady } from "@/lib/billing";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
