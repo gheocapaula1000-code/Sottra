@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPlanByProductId, getPlanByPriceId, PlanKey } from "@/lib/plans";
+import { setBillingReady } from "@/lib/billing";
 
 interface TrialInfo {
   active: boolean;
@@ -202,6 +203,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setChecked(true);
       setResolved(true);
       setLoading(false);
+
+      // Sync billing readiness from server response
+      const body2 = responseData as Record<string, unknown> | null;
+      if (body2 && body2.billing_active === true) {
+        setBillingReady(true);
+      }
     } catch (e) {
       console.error("[Subscription] unexpected error (non-fatal):", e);
       applyDefaults(true);

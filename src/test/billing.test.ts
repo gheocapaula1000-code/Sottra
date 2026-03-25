@@ -1,15 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { BILLING_ENABLED } from "@/lib/billing";
+import { isBillingReady, setBillingReady } from "@/lib/billing";
 import { PLANS, ALLOWED_PRICE_IDS, getPlanByProductId, getPlanByPriceId } from "@/lib/plans";
 import type { PlanKey } from "@/lib/plans";
 
-describe("Billing feature flag", () => {
-  it("billing is disabled by default", () => {
-    expect(BILLING_ENABLED).toBe(false);
+describe("Billing runtime flag", () => {
+  it("billing is not ready by default", () => {
+    setBillingReady(false);
+    expect(isBillingReady()).toBe(false);
   });
 
-  it("BILLING_ENABLED is a boolean", () => {
-    expect(typeof BILLING_ENABLED).toBe("boolean");
+  it("setBillingReady activates billing", () => {
+    setBillingReady(true);
+    expect(isBillingReady()).toBe(true);
+    setBillingReady(false); // reset
+  });
+
+  it("isBillingReady returns boolean", () => {
+    expect(typeof isBillingReady()).toBe("boolean");
   });
 });
 
@@ -52,6 +59,13 @@ describe("Plans catalog", () => {
     for (const key of Object.keys(PLANS) as PlanKey[]) {
       const annual = PLANS[key].price_id_annual;
       expect(typeof annual).toBe("string");
+    }
+  });
+
+  it("annual price = monthly × 10 for all plans", () => {
+    for (const key of Object.keys(PLANS) as PlanKey[]) {
+      const plan = PLANS[key];
+      expect(plan.price_annual).toBe(plan.price * 10);
     }
   });
 });

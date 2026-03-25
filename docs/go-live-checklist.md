@@ -18,7 +18,9 @@
 - [x] `CORE_API_KEY` set in edge function secrets
 - [x] `ADMIN_BOOTSTRAP_EMAILS` set (gheocapaula1000@gmail.com — sole owner/admin)
 - [x] `COMMERCIAL_BYPASS_EMAILS` set (matteo.ippolito@gmail.com — full user access, no admin)
-- [ ] `STRIPE_SECRET_KEY` set (optional — billing degrades gracefully without it)
+- [ ] `STRIPE_SECRET_KEY` set (required for billing — UI auto-detects via `billing_active` flag)
+- [ ] `STRIPE_WEBHOOK_SECRET` set (required for webhook signature verification)
+- [ ] `ALLOWED_ORIGINS` set (comma-separated allowlist for CORS and Stripe return URLs)
 - [x] `SUPABASE_SERVICE_ROLE_KEY` set for admin operations
 - [x] No secrets exposed in frontend bundle
 

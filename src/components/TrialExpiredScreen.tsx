@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { PLANS, PlanKey } from "@/lib/plans";
-import { BILLING_ENABLED } from "@/lib/billing";
+import { isBillingReady } from "@/lib/billing";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -56,8 +56,10 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
   const [interval, setInterval] = useState<BillingInterval>("monthly");
   const { toast } = useToast();
 
+  const billingReady = isBillingReady();
+
   const handleCheckout = async (key: PlanKey) => {
-    if (!BILLING_ENABLED) {
+    if (!billingReady) {
       toast({ title: "Non disponibile", description: "Il sistema di pagamento sarà attivo a breve. Contattaci per informazioni.", variant: "default" });
       return;
     }
@@ -107,7 +109,7 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
         </h1>
         <p className="mt-3 text-base text-muted-foreground sm:text-lg" style={{ textWrap: "balance" } as React.CSSProperties}>
           Hai utilizzato <strong className="text-foreground">{scansUsed} scansioni</strong> durante i 3 giorni di prova.
-          {BILLING_ENABLED
+          {billingReady
             ? " Per continuare a utilizzare Sottra, scegli il piano più adatto."
             : ` Per attivare un piano, contattaci a ${APP_BRAND.supportEmail}.`}
         </p>
@@ -115,7 +117,7 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
           Nessun dato bancario è stato richiesto durante la prova · Paghi solo se decidi di proseguire
         </p>
 
-        {BILLING_ENABLED && (
+        {billingReady && (
           <>
             {/* Interval toggle */}
             <div className="mt-8 inline-flex items-center rounded-full border border-border bg-muted/50 p-1">
