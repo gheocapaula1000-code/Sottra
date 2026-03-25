@@ -1,4 +1,5 @@
 // Stripe product/price mapping for Sottra plans
+// Rule: annual price = monthly × 10 (customer saves 2 months)
 export const PLANS = {
   agente: {
     product_id: "prod_U6V2uqzObgPxBE",
@@ -6,7 +7,7 @@ export const PLANS = {
     price_id_annual: "", // To be set when annual pricing is created in Stripe
     name: "Agente",
     price: 129,
-    price_annual: 1238, // ~€103/mo billed annually
+    price_annual: 1290, // 129 × 10
     scans: 80,
   },
   agenzia: {
@@ -15,7 +16,7 @@ export const PLANS = {
     price_id_annual: "",
     name: "Agenzia",
     price: 349,
-    price_annual: 3350, // ~€279/mo billed annually
+    price_annual: 3490, // 349 × 10
     scans: 250,
   },
   enterprise: {
@@ -24,7 +25,7 @@ export const PLANS = {
     price_id_annual: "",
     name: "Enterprise",
     price: 749,
-    price_annual: 7190, // ~€599/mo billed annually
+    price_annual: 7490, // 749 × 10
     scans: 800,
   },
 } as const;

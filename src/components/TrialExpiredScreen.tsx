@@ -90,6 +90,7 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
   const getDisplayPrice = (key: PlanKey): { price: number; suffix: string } => {
     const plan = PLANS[key];
     if (interval === "annual" && plan.price_annual) {
+      // annual = monthly × 10, display per-month equivalent
       return { price: Math.round(plan.price_annual / 12), suffix: "/mese" };
     }
     return { price: plan.price, suffix: "/mese" };
@@ -133,7 +134,7 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
                 onClick={() => setInterval("annual")}
               >
                 Annuale
-                <span className="ml-1 text-xs text-primary">-20%</span>
+                <span className="ml-1 text-xs text-primary">2 mesi gratis</span>
               </button>
             </div>
 

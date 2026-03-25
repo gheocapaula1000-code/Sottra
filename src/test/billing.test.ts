@@ -67,16 +67,17 @@ describe("Subscription gating logic", () => {
   });
 
   it("canScan is true when trial active", () => {
-    const canScan = false || false || false || true;
-    expect(canScan).toBe(true);
+    const isOwner = false, isAdmin = false, subscribed = false, trialActive = true;
+    expect(isOwner || isAdmin || subscribed || trialActive).toBe(true);
   });
 
   it("canScan is false when nothing active", () => {
-    const canScan = false || false || false || false;
-    expect(canScan).toBe(false);
+    const isOwner = false, isAdmin = false, subscribed = false, trialActive = false;
+    expect(isOwner || isAdmin || subscribed || trialActive).toBe(false);
   });
 
   it("canScan is true for owner/admin regardless of subscription", () => {
-    expect(true || false || false || false).toBe(true);
+    const isOwner = true, isAdmin = false, subscribed = false, trialActive = false;
+    expect(isOwner || isAdmin || subscribed || trialActive).toBe(true);
   });
 });
