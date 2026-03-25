@@ -12,7 +12,7 @@ serve(async (req) => {
   const cors = corsHeaders(req);
 
   try {
-    const supabaseClient = createClient(
+    const serviceClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
@@ -24,7 +24,7 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "").trim();
     if (!token) throw new Error("Empty token");
 
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: userData, error: userError } = await serviceClient.auth.getUser(token);
     if (userError) throw new Error(`Auth error: ${userError.message}`);
     const user = userData.user;
     if (!user) throw new Error("User not authenticated");
@@ -51,10 +51,30 @@ serve(async (req) => {
     const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    if (!user.email) throw new Error("User email not available");
+    // Priority 1: resolve stripe_customer_id from DB
+    let customerId: string | undefined;
 
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    if (customers.data.length === 0) {
+    const { data: existingSub } = await serviceClient
+      .from("subscriptions")
+      .select("stripe_customer_id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingSub?.stripe_customer_id) {
+      customerId = existingSub.stripe_customer_id;
+    }
+
+    // Priority 2: email fallback on Stripe
+    if (!customerId && user.email) {
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+      }
+    }
+
+    if (!customerId) {
       return new Response(JSON.stringify({
         error: "Nessun abbonamento attivo. Puoi continuare a usare il trial gratuito."
       }), {
@@ -66,7 +86,7 @@ serve(async (req) => {
     const returnOrigin = resolveReturnOrigin(req);
 
     const portalSession = await stripe.billingPortal.sessions.create({
-      customer: customers.data[0].id,
+      customer: customerId,
       return_url: `${returnOrigin}/app`,
     });
 

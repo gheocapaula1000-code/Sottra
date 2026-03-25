@@ -18,7 +18,7 @@ const Loader = () => (
  */
 const AppDashboardGate = () => {
   const { session, loading: authLoading } = useAuth();
-  const { loading: subLoading, accessResolved, checked, canScan, trial } = useSubscription();
+  const { loading: subLoading, accessResolved, checked, canScan, canManageBilling, trial, subscriptionStatus } = useSubscription();
 
   // Single stable loader until everything is resolved
   if (authLoading || subLoading || !accessResolved || !checked) {
@@ -29,9 +29,16 @@ const AppDashboardGate = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Trial expired / no access → show paywall directly, never mount Dashboard
+  // Trial expired / no scan access → show paywall
+  // But pass canManageBilling so past_due users can open the portal
   if (!canScan) {
-    return <TrialExpiredScreen scansUsed={trial?.scans_used ?? 0} />;
+    return (
+      <TrialExpiredScreen
+        scansUsed={trial?.scans_used ?? 0}
+        canManageBilling={canManageBilling}
+        subscriptionStatus={subscriptionStatus}
+      />
+    );
   }
 
   return (
