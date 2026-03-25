@@ -44,11 +44,6 @@ serve(async (req) => {
     }
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
-    const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-
-    // Reuse existing Stripe customer if we have one in DB
-    let customerId: string | undefined;
 
     const serviceClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -56,26 +51,73 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // ── Block duplicate subscriptions ──
     const { data: existingSub } = await serviceClient
       .from("subscriptions")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, status, current_period_end")
       .eq("user_id", user.id)
+      .in("status", ["active", "trialing", "past_due"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (existingSub?.stripe_customer_id) {
-      customerId = existingSub.stripe_customer_id;
-    } else {
-      // Fallback: search Stripe by email
-      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-      if (customers.data.length > 0) {
-        customerId = customers.data[0].id;
+    if (existingSub) {
+      const periodEnd = existingSub.current_period_end
+        ? new Date(existingSub.current_period_end)
+        : null;
+      const stillValid = !periodEnd || periodEnd > new Date();
+
+      if (stillValid) {
+        const errorCode = existingSub.status === "past_due"
+          ? "use_customer_portal"
+          : "already_subscribed";
+        const errorMsg = existingSub.status === "past_due"
+          ? "Hai un pagamento in sospeso. Usa il portale di gestione per aggiornare il metodo di pagamento."
+          : "Hai già un abbonamento attivo.";
+
+        return new Response(JSON.stringify({
+          error: errorMsg,
+          error_code: errorCode,
+        }), {
+          headers: { ...cors, "Content-Type": "application/json" },
+          status: 409,
+        });
       }
     }
 
-    // Resolve return origin from ALLOWED_ORIGINS (same logic as customer-portal)
+    // ── Reuse existing Stripe customer if available ──
+    let customerId: string | undefined;
+
+    if (existingSub?.stripe_customer_id) {
+      customerId = existingSub.stripe_customer_id;
+    } else {
+      // Check DB for any previous subscription record
+      const { data: prevSub } = await serviceClient
+        .from("subscriptions")
+        .select("stripe_customer_id")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (prevSub?.stripe_customer_id) {
+        customerId = prevSub.stripe_customer_id;
+      } else {
+        // Fallback: search Stripe by email
+        const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
+        const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id;
+        }
+      }
+    }
+
+    // Resolve return origin from ALLOWED_ORIGINS
     const returnOrigin = resolveReturnOrigin(req);
+
+    const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
