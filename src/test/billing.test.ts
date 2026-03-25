@@ -116,7 +116,7 @@ describe("Subscription gating logic", () => {
 
   it("active user: canManageBilling is true", () => {
     const isOwner = false, isAdmin = false, subscribed = true;
-    const subscriptionStatus = "active";
+    const subscriptionStatus: string | null = "active";
     const canManageBilling = isOwner || isAdmin || subscribed || subscriptionStatus === "past_due";
     expect(canManageBilling).toBe(true);
   });
