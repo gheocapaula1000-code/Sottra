@@ -71,8 +71,11 @@ serve(async (req) => {
         log("unhandled event type", eventType);
     }
   } catch (err) {
-    log("handler error", String(err));
-    // Return 200 anyway to prevent Stripe retries on logic errors
+    log("processing error after signature verification", String(err));
+    return new Response(JSON.stringify({ error: "Processing failed" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   return new Response(JSON.stringify({ received: true }), {
@@ -83,13 +86,6 @@ serve(async (req) => {
 
 /* ── User Resolution ── */
 
-/**
- * Resolve Supabase user_id from Stripe data with priority:
- * 1. metadata.supabase_user_id
- * 2. client_reference_id (checkout sessions)
- * 3. stripe_customer_id already saved in DB
- * 4. Customer email as final fallback
- */
 async function resolveUserId(
   opts: {
     metadata?: Record<string, unknown> | null;
@@ -171,8 +167,7 @@ async function handleCheckoutCompleted(
   const clientReferenceId = obj.client_reference_id as string | null;
 
   if (!customerId || !subscriptionId) {
-    log("checkout.session.completed", "missing customer or subscription ID");
-    return;
+    throw new Error("checkout.session.completed: missing customer or subscription ID");
   }
 
   const userId = await resolveUserId(
@@ -181,47 +176,40 @@ async function handleCheckoutCompleted(
   );
 
   if (!userId) {
-    log("checkout.session.completed", `no user resolved for customer=${customerId}`);
-    return;
+    throw new Error(`checkout.session.completed: no user resolved for customer=${customerId}`);
   }
 
-  // Eagerly upsert subscription from checkout to avoid race with subscription.created
-  try {
-    const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const sub = await stripe.subscriptions.retrieve(subscriptionId);
+  const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
+  const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+  const sub = await stripe.subscriptions.retrieve(subscriptionId);
 
-    const items = sub.items as { data?: Array<{ price?: { id?: string } }> } | undefined;
-    const priceId = items?.data?.[0]?.price?.id ?? null;
+  const items = sub.items as { data?: Array<{ price?: { id?: string } }> } | undefined;
+  const priceId = items?.data?.[0]?.price?.id ?? null;
 
-    const currentPeriodEnd = typeof sub.current_period_end === "number"
-      ? new Date(sub.current_period_end * 1000).toISOString()
-      : null;
+  const currentPeriodEnd = typeof sub.current_period_end === "number"
+    ? new Date(sub.current_period_end * 1000).toISOString()
+    : null;
 
-    const { error } = await client.from("subscriptions").upsert(
-      {
-        user_id: userId,
-        stripe_customer_id: customerId,
-        stripe_subscription_id: subscriptionId,
-        price_id: priceId,
-        status: sub.status,
-        current_period_end: currentPeriodEnd,
-        cancel_at_period_end: sub.cancel_at_period_end === true,
-        trial_end: typeof sub.trial_end === "number"
-          ? new Date(sub.trial_end * 1000).toISOString()
-          : null,
-      },
-      { onConflict: "stripe_subscription_id" },
-    );
+  const { error } = await client.from("subscriptions").upsert(
+    {
+      user_id: userId,
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subscriptionId,
+      price_id: priceId,
+      status: sub.status,
+      current_period_end: currentPeriodEnd,
+      cancel_at_period_end: sub.cancel_at_period_end === true,
+      trial_end: typeof sub.trial_end === "number"
+        ? new Date(sub.trial_end * 1000).toISOString()
+        : null,
+    },
+    { onConflict: "stripe_subscription_id" },
+  );
 
-    if (error) {
-      log("checkout upsert failed", error.message);
-    } else {
-      log("checkout.session.completed", `upserted sub=${subscriptionId} user=${userId}`);
-    }
-  } catch (e) {
-    log("checkout sub retrieve failed", String(e));
+  if (error) {
+    throw new Error(`checkout upsert failed: ${error.message}`);
   }
+  log("checkout.session.completed", `upserted sub=${subscriptionId} user=${userId}`);
 }
 
 async function handleSubscriptionChange(
@@ -249,8 +237,7 @@ async function handleSubscriptionChange(
   const items = sub.items as { data?: Array<{ price?: { id?: string } }> } | undefined;
   const priceId = items?.data?.[0]?.price?.id ?? null;
 
-  // Resolve user_id with priority chain
-  // First check existing DB record
+  // Resolve user_id: check existing DB record first
   const { data: existingSub } = await client
     .from("subscriptions")
     .select("user_id")
@@ -267,11 +254,9 @@ async function handleSubscriptionChange(
   }
 
   if (!userId) {
-    log("subscription change", `no user_id for sub=${stripeSubscriptionId}`);
-    return;
+    throw new Error(`subscription change: no user_id for sub=${stripeSubscriptionId}`);
   }
 
-  // Idempotent upsert
   const { error } = await client.from("subscriptions").upsert(
     {
       user_id: userId,
@@ -287,10 +272,9 @@ async function handleSubscriptionChange(
   );
 
   if (error) {
-    log("upsert failed", error.message);
-  } else {
-    log("subscription upserted", `sub=${stripeSubscriptionId} status=${status}`);
+    throw new Error(`subscription upsert failed: ${error.message}`);
   }
+  log("subscription upserted", `sub=${stripeSubscriptionId} status=${status}`);
 }
 
 async function handleInvoicePaid(
@@ -310,10 +294,9 @@ async function handleInvoicePaid(
     .eq("status", "past_due");
 
   if (error) {
-    log("invoice.paid update failed", error.message);
-  } else {
-    log("invoice.paid", `sub=${subscriptionId} → active`);
+    throw new Error(`invoice.paid update failed: ${error.message}`);
   }
+  log("invoice.paid", `sub=${subscriptionId} → active`);
 }
 
 async function handleInvoicePaymentFailed(
@@ -332,8 +315,7 @@ async function handleInvoicePaymentFailed(
     .eq("stripe_subscription_id", subscriptionId);
 
   if (error) {
-    log("invoice.payment_failed update failed", error.message);
-  } else {
-    log("invoice.payment_failed", `sub=${subscriptionId} → past_due`);
+    throw new Error(`invoice.payment_failed update failed: ${error.message}`);
   }
+  log("invoice.payment_failed", `sub=${subscriptionId} → past_due`);
 }

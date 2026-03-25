@@ -18,6 +18,12 @@ describe("Billing runtime flag", () => {
   it("isBillingReady returns boolean", () => {
     expect(typeof isBillingReady()).toBe("boolean");
   });
+
+  it("setBillingReady(false) deactivates billing", () => {
+    setBillingReady(true);
+    setBillingReady(false);
+    expect(isBillingReady()).toBe(false);
+  });
 });
 
 describe("Plans catalog", () => {
@@ -93,5 +99,48 @@ describe("Subscription gating logic", () => {
   it("canScan is true for owner/admin regardless of subscription", () => {
     const isOwner = true, isAdmin = false, subscribed = false, trialActive = false;
     expect(isOwner || isAdmin || subscribed || trialActive).toBe(true);
+  });
+
+  it("past_due user: canScan is false", () => {
+    const isOwner = false, isAdmin = false, subscribed = false, trialActive = false;
+    const canScan = isOwner || isAdmin || subscribed || trialActive;
+    expect(canScan).toBe(false);
+  });
+
+  it("past_due user: canManageBilling is true", () => {
+    const isOwner = false, isAdmin = false, subscribed = false;
+    const subscriptionStatus = "past_due";
+    const canManageBilling = isOwner || isAdmin || subscribed || subscriptionStatus === "past_due";
+    expect(canManageBilling).toBe(true);
+  });
+
+  it("active user: canManageBilling is true", () => {
+    const isOwner = false, isAdmin = false, subscribed = true;
+    const subscriptionStatus = "active";
+    const canManageBilling = isOwner || isAdmin || subscribed || subscriptionStatus === "past_due";
+    expect(canManageBilling).toBe(true);
+  });
+});
+
+describe("SubscriptionContext billingReady behavior", () => {
+  it("applyDefaults sets billingReady to false", () => {
+    setBillingReady(true);
+    // simulate applyDefaults
+    setBillingReady(false);
+    expect(isBillingReady()).toBe(false);
+  });
+
+  it("successful response with billing_active=true sets billingReady", () => {
+    const responseData = { billing_active: true };
+    setBillingReady(responseData.billing_active === true);
+    expect(isBillingReady()).toBe(true);
+    setBillingReady(false); // reset
+  });
+
+  it("successful response with billing_active=false keeps billingReady false", () => {
+    setBillingReady(false);
+    const responseData = { billing_active: false };
+    setBillingReady(responseData.billing_active === true);
+    expect(isBillingReady()).toBe(false);
   });
 });

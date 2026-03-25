@@ -10,7 +10,7 @@ serve(async (req) => {
 
   const cors = corsHeaders(req);
 
-  const supabaseClient = createClient(
+  const serviceClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     { auth: { persistSession: false } }
@@ -33,7 +33,7 @@ serve(async (req) => {
       });
     }
 
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: userData, error: userError } = await serviceClient.auth.getUser(token);
     if (userError || !userData.user) {
       return new Response(JSON.stringify({ error: "Sessione non valida" }), {
         headers: { ...cors, "Content-Type": "application/json" },
@@ -52,7 +52,7 @@ serve(async (req) => {
     }
 
     // Check admin role
-    const { data: roleData } = await supabaseClient
+    const { data: roleData } = await serviceClient
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
@@ -85,7 +85,7 @@ serve(async (req) => {
     }
 
     // ── Check trial/subscription limits before recording ──
-    let { data: trial } = await supabaseClient
+    let { data: trial } = await serviceClient
       .from("user_trials")
       .select("scans_used, max_scans, trial_end")
       .eq("user_id", user.id)
@@ -93,7 +93,7 @@ serve(async (req) => {
 
     // Auto-create trial row if missing
     if (!trial) {
-      const { data: newTrial } = await supabaseClient
+      const { data: newTrial } = await serviceClient
         .from("user_trials")
         .insert({ user_id: user.id })
         .select("scans_used, max_scans, trial_end")
@@ -106,20 +106,63 @@ serve(async (req) => {
       ? now < new Date(trial.trial_end) && trial.scans_used < trial.max_scans
       : false;
 
-    // Check Stripe subscription (optional, non-blocking, only if billing active)
+    // ── DB-first subscription check (source of truth) ──
     let hasSubscription = false;
-    if (isBillingActive() && user.email) {
+    const { data: subData } = await serviceClient
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", user.id)
+      .in("status", ["active", "trialing"])
+      .limit(1)
+      .maybeSingle();
+
+    if (subData) {
+      hasSubscription = true;
+    }
+
+    // ── Stripe fallback (only if DB has no useful record and billing is active) ──
+    if (!hasSubscription && isBillingActive()) {
       try {
-        const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
-        const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
-        const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-        if (customers.data.length > 0) {
-          const subs = await stripe.subscriptions.list({ customer: customers.data[0].id, status: "active", limit: 1 });
-          hasSubscription = subs.data.length > 0;
+        // Look up by stripe_customer_id already in DB
+        const { data: existingSub } = await serviceClient
+          .from("subscriptions")
+          .select("stripe_customer_id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        let stripeCustomerId = existingSub?.stripe_customer_id;
+
+        // If no customer_id in DB, try email lookup as last resort
+        if (!stripeCustomerId && user.email) {
+          const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
+          const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
+          const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+          const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+          if (customers.data.length > 0) {
+            stripeCustomerId = customers.data[0].id;
+          }
+        }
+
+        if (stripeCustomerId) {
+          const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
+          const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
+          const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+          for (const checkStatus of ["active", "trialing"] as const) {
+            const subs = await stripe.subscriptions.list({
+              customer: stripeCustomerId,
+              status: checkStatus,
+              limit: 1,
+            });
+            if (subs.data.length > 0) {
+              hasSubscription = true;
+              break;
+            }
+          }
         }
       } catch {
-        // Stripe not available — that's fine
+        // Stripe not available — non-blocking
       }
     }
 
@@ -136,7 +179,7 @@ serve(async (req) => {
     }
 
     // Call the idempotent DB function
-    const { data, error } = await supabaseClient.rpc("record_scan", {
+    const { data, error } = await serviceClient.rpc("record_scan", {
       _user_id: user.id,
       _scan_id: scan_id,
     });

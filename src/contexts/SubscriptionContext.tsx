@@ -24,6 +24,7 @@ interface SubscriptionState {
   cancelAtPeriodEnd: boolean;
   trial: TrialInfo | null;
   canScan: boolean;
+  canManageBilling: boolean;
   isAdmin: boolean;
   isOwner: boolean;
   refresh: () => Promise<void>;
@@ -40,6 +41,7 @@ const SubscriptionContext = createContext<SubscriptionState>({
   cancelAtPeriodEnd: false,
   trial: null,
   canScan: false,
+  canManageBilling: false,
   isAdmin: false,
   isOwner: false,
   refresh: async () => {},
@@ -123,6 +125,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setTrial(null);
     setIsAdmin(false);
     setIsOwner(false);
+    setChecked(true);
+    setBillingReady(false);
     setResolved(resolved);
     if (!authLoading) setLoading(false);
   }, [authLoading, setResolved]);
@@ -206,9 +210,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       // Sync billing readiness from server response
       const body2 = responseData as Record<string, unknown> | null;
-      if (body2 && body2.billing_active === true) {
-        setBillingReady(true);
-      }
+      setBillingReady(body2?.billing_active === true);
     } catch (e) {
       console.error("[Subscription] unexpected error (non-fatal):", e);
       applyDefaults(true);
@@ -246,12 +248,15 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [refresh]);
 
+  // canScan: only active/trialing subscriptions or active trial
   const canScan = isOwner || isAdmin || subscribed || (trial?.active ?? false);
+  // canManageBilling: also includes past_due (so user can fix payment)
+  const canManageBilling = isOwner || isAdmin || subscribed || subscriptionStatus === "past_due";
 
   return (
     <SubscriptionContext.Provider value={{
       loading, accessResolved, checked, subscribed, planKey, subscriptionEnd,
-      subscriptionStatus, cancelAtPeriodEnd, trial, canScan, isAdmin, isOwner, refresh,
+      subscriptionStatus, cancelAtPeriodEnd, trial, canScan, canManageBilling, isAdmin, isOwner, refresh,
     }}>
       {children}
     </SubscriptionContext.Provider>

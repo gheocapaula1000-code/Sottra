@@ -31,7 +31,7 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { subscribed, trial, isAdmin, isOwner, subscriptionStatus, cancelAtPeriodEnd, planKey } = useSubscription();
+  const { subscribed, trial, isAdmin, isOwner, subscriptionStatus, cancelAtPeriodEnd, planKey, canManageBilling } = useSubscription();
   const { toast } = useToast();
   const { scans } = useScanHistory();
   const { count: importCount } = useImportCount();
@@ -46,8 +46,6 @@ const Dashboard = () => {
     }
   };
 
-  // Gating is handled by AppDashboardGate — Dashboard only renders when canScan is true.
-
   const recentScans = scans.slice(0, 5);
   const totalScans = scans.length;
   const lastScanDate = scans[0]?.date
@@ -60,6 +58,9 @@ const Dashboard = () => {
   // Owner sees neutral UI — hide fake "Pro" / "Abbonamento attivo"
   const displaySubscribed = isOwner ? false : subscribed;
   const displayTrial = isOwner ? null : trial;
+
+  // Show billing CTA for subscribed users AND past_due users (so they can fix payment)
+  const showBillingCta = isBillingReady() && canManageBilling && !isAdmin;
 
   const accountLabel = displaySubscribed
     ? cancelAtPeriodEnd ? "In scadenza" : "Abbonamento attivo"
@@ -78,7 +79,7 @@ const Dashboard = () => {
               <span className="hidden sm:inline">Pannello admin</span>
             </Button>
           )}
-          {isBillingReady() && displaySubscribed && !isAdmin && (
+          {showBillingCta && (
             <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={handleManageSubscription}>
               <CreditCard className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Abbonamento</span>
@@ -250,7 +251,7 @@ const Dashboard = () => {
                 {(isAdmin || isOwner) && (
                   <QuickAction icon={<Activity className="h-4 w-4" />} label="Diagnostica Core" onClick={() => navigate("/admin/diagnostics")} />
                 )}
-                {isBillingReady() && displaySubscribed && (
+                {showBillingCta && (
                   <QuickAction icon={<CreditCard className="h-4 w-4" />} label="Gestisci abbonamento" onClick={handleManageSubscription} />
                 )}
               </CardContent>
