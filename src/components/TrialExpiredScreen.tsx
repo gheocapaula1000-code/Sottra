@@ -117,7 +117,7 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
           Nessun dato bancario è stato richiesto durante la prova · Paghi solo se decidi di proseguire
         </p>
 
-        {BILLING_ENABLED && (
+        {billingReady && (
           <>
             {/* Interval toggle */}
             <div className="mt-8 inline-flex items-center rounded-full border border-border bg-muted/50 p-1">
