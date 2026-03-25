@@ -56,8 +56,10 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
   const [interval, setInterval] = useState<BillingInterval>("monthly");
   const { toast } = useToast();
 
+  const billingReady = isBillingReady();
+
   const handleCheckout = async (key: PlanKey) => {
-    if (!BILLING_ENABLED) {
+    if (!billingReady) {
       toast({ title: "Non disponibile", description: "Il sistema di pagamento sarà attivo a breve. Contattaci per informazioni.", variant: "default" });
       return;
     }
