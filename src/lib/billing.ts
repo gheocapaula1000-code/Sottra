@@ -12,8 +12,12 @@
  * Until the first successful check-subscription response, billing defaults
  * to NOT ready — no broken CTAs will ever appear.
  *
- * On transient errors, billing readiness is set to false to avoid showing
- * payment CTAs backed by a potentially unavailable Stripe configuration.
+ * On transient errors (including first-boot failures), billing readiness
+ * is set to false to avoid showing payment CTAs backed by a potentially
+ * unavailable Stripe configuration. The SubscriptionContext handles this
+ * by calling setBillingReady(false) in all error/failure branches, and
+ * setting bootFailed=true on first-boot errors so the gate shows retry UI
+ * instead of the paywall.
  */
 
 /** Runtime billing-ready flag — set by SubscriptionContext after check-subscription responds. */
