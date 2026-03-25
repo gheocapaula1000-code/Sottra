@@ -27,6 +27,8 @@ interface SubscriptionState {
   canManageBilling: boolean;
   isAdmin: boolean;
   isOwner: boolean;
+  /** True when a transient error occurred and we're showing stale data */
+  stale: boolean;
   refresh: () => Promise<void>;
 }
 
@@ -44,28 +46,17 @@ const SubscriptionContext = createContext<SubscriptionState>({
   canManageBilling: false,
   isAdmin: false,
   isOwner: false,
+  stale: false,
   refresh: async () => {},
 });
 
 export const useSubscription = () => useContext(SubscriptionContext);
 
-/** Reset to safe defaults — never leaves UI in ambiguous state */
-const SAFE_DEFAULTS = {
-  subscribed: false,
-  planKey: null as PlanKey | null,
-  subscriptionEnd: null as string | null,
-  subscriptionStatus: null as string | null,
-  cancelAtPeriodEnd: false,
-  trial: null as TrialInfo | null,
-  isAdmin: false,
-  isOwner: false,
-};
-
 /** Validate that payload is a non-null object with expected shape */
-function parsePayload(data: unknown): typeof SAFE_DEFAULTS {
+function parsePayload(data: unknown) {
   if (!data || typeof data !== "object") {
     console.warn("[Subscription] malformed payload — not an object");
-    return { ...SAFE_DEFAULTS };
+    return null;
   }
 
   const d = data as Record<string, unknown>;
@@ -93,7 +84,9 @@ function parsePayload(data: unknown): typeof SAFE_DEFAULTS {
     };
   }
 
-  return { subscribed, planKey, subscriptionEnd, subscriptionStatus, cancelAtPeriodEnd, trial, isAdmin, isOwner };
+  const billingActive = d.billing_active === true;
+
+  return { subscribed, planKey, subscriptionEnd, subscriptionStatus, cancelAtPeriodEnd, trial, isAdmin, isOwner, billingActive };
 }
 
 export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
@@ -109,14 +102,18 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [stale, setStale] = useState(false);
   const accessResolvedRef = useRef(false);
+  /** Tracks whether we've ever received a successful response */
+  const hasEverCheckedRef = useRef(false);
 
   const setResolved = useCallback((resolved: boolean) => {
     accessResolvedRef.current = resolved;
     setAccessResolved(resolved);
   }, []);
 
-  const applyDefaults = useCallback((resolved: boolean) => {
+  /** Reset to safe defaults — used ONLY on logout / no session */
+  const resetToDefaults = useCallback(() => {
     setSubscribed(false);
     setPlanKey(null);
     setSubscriptionEnd(null);
@@ -126,8 +123,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setIsAdmin(false);
     setIsOwner(false);
     setChecked(true);
+    setStale(false);
     setBillingReady(false);
-    setResolved(resolved);
+    setResolved(true);
+    hasEverCheckedRef.current = false;
     if (!authLoading) setLoading(false);
   }, [authLoading, setResolved]);
 
@@ -135,7 +134,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     if (authLoading) return;
 
     if (!session) {
-      applyDefaults(true);
+      resetToDefaults();
       return;
     }
 
@@ -150,14 +149,14 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     const expiresAt = activeSession.expires_at;
     if (expiresAt && expiresAt * 1000 < Date.now()) {
       console.warn("[Subscription] session expired, skipping");
-      applyDefaults(true);
+      resetToDefaults();
       return;
     }
 
     const accessToken = activeSession.access_token;
     if (!accessToken) {
       console.warn("[Subscription] missing access token, skipping");
-      applyDefaults(true);
+      resetToDefaults();
       return;
     }
 
@@ -179,23 +178,57 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             ? (result.error as { message: string }).message
             : String(result.error);
           console.warn("[Subscription] invoke error (non-fatal):", msg);
-          applyDefaults(true);
+
+          // If we already have a valid state, keep it and mark stale
+          if (hasEverCheckedRef.current) {
+            setStale(true);
+            setResolved(true);
+            setLoading(false);
+            return;
+          }
+          // First boot error: resolve with safe defaults so we don't hang
+          resetToDefaults();
           return;
         }
       } catch (invokeError) {
         console.warn("[Subscription] invoke exception (non-fatal):", invokeError);
-        applyDefaults(true);
+
+        if (hasEverCheckedRef.current) {
+          setStale(true);
+          setResolved(true);
+          setLoading(false);
+          return;
+        }
+        resetToDefaults();
         return;
       }
 
       const body = responseData as Record<string, unknown> | null;
       if (body && typeof body.error === "string" && body.error) {
         console.warn("[Subscription] function error (non-fatal):", body.error);
-        applyDefaults(true);
+
+        if (hasEverCheckedRef.current) {
+          setStale(true);
+          setResolved(true);
+          setLoading(false);
+          return;
+        }
+        resetToDefaults();
         return;
       }
 
       const parsed = parsePayload(responseData);
+      if (!parsed) {
+        if (hasEverCheckedRef.current) {
+          setStale(true);
+          setResolved(true);
+          setLoading(false);
+          return;
+        }
+        resetToDefaults();
+        return;
+      }
+
       setSubscribed(parsed.subscribed);
       setPlanKey(parsed.planKey);
       setSubscriptionEnd(parsed.subscriptionEnd);
@@ -205,17 +238,23 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setIsAdmin(parsed.isAdmin);
       setIsOwner(parsed.isOwner);
       setChecked(true);
+      setStale(false);
       setResolved(true);
       setLoading(false);
+      hasEverCheckedRef.current = true;
 
-      // Sync billing readiness from server response
-      const body2 = responseData as Record<string, unknown> | null;
-      setBillingReady(body2?.billing_active === true);
+      setBillingReady(parsed.billingActive);
     } catch (e) {
       console.error("[Subscription] unexpected error (non-fatal):", e);
-      applyDefaults(true);
+      if (hasEverCheckedRef.current) {
+        setStale(true);
+        setResolved(true);
+        setLoading(false);
+        return;
+      }
+      resetToDefaults();
     }
-  }, [session, authLoading, applyDefaults, setResolved]);
+  }, [session, authLoading, resetToDefaults, setResolved]);
 
   useEffect(() => {
     void refresh();
@@ -256,7 +295,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   return (
     <SubscriptionContext.Provider value={{
       loading, accessResolved, checked, subscribed, planKey, subscriptionEnd,
-      subscriptionStatus, cancelAtPeriodEnd, trial, canScan, canManageBilling, isAdmin, isOwner, refresh,
+      subscriptionStatus, cancelAtPeriodEnd, trial, canScan, canManageBilling, isAdmin, isOwner, stale, refresh,
     }}>
       {children}
     </SubscriptionContext.Provider>
