@@ -47,13 +47,17 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
 
 ### Frontend: `SubscriptionContext`
 
-1. **Never sends paying users to paywall on transient errors**: On error, if a previous successful state exists, keeps last-known state and sets `stale: true` instead of resetting to defaults
-2. **First-boot errors**: Resolve with safe defaults (no access) — never hangs
-3. **`checked` flag**: Guards paywall display — set to `true` in all terminal branches
-4. **Periodic refresh**: Every 60s, with session expiry check
-5. **Network failure tolerance**: `invoke()` errors caught and logged
-6. **`canScan`**: `true` only for `active`/`trialing` subscriptions or active trial
-7. **`canManageBilling`**: Also includes `past_due` (so user can fix payment via portal)
+1. **Never sends paying users to paywall on transient errors**:
+   - **Existing state available**: Keeps last-known state and sets `stale: true`
+   - **First boot (no prior state)**: Sets `bootFailed: true` — gate shows retry UI, **never** `TrialExpiredScreen`
+2. **`accessResolved` and `checked` remain `false` on first-boot transient errors** — this prevents `AppDashboardGate` from rendering paywall based on default (unsubscribed) state
+3. **`bootFailed` flag**: Enables the gate to distinguish between "genuine no access" and "unknown due to error"
+4. **First-boot retry**: `AppDashboardGate` shows a retry button when `bootFailed` is true
+5. **`checked` flag**: Guards paywall display — set to `true` only on successful response or genuine logout/no-session
+6. **Periodic refresh**: Every 60s, with session expiry check
+7. **Network failure tolerance**: `invoke()` errors caught and logged
+8. **`canScan`**: `true` only for `active`/`trialing` subscriptions or active trial
+9. **`canManageBilling`**: Also includes `past_due` (so user can fix payment via portal)
 
 ### `isBillingActive()` / `isBillingReady()`
 
@@ -61,7 +65,7 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
   - `STRIPE_SECRET_KEY`
   - `STRIPE_WEBHOOK_SECRET`
   - `ALLOWED_ORIGINS`
-- **Client-side** (`src/lib/billing.ts`): Runtime flag set by `SubscriptionContext` from `billing_active` response field
+- **Client-side** (`src/lib/billing.ts`): Runtime flag set by `SubscriptionContext` from `billing_active` response field. Set to `false` on transient errors to prevent showing payment CTAs backed by a potentially unavailable backend.
 
 ### Trial Independence
 
@@ -74,6 +78,7 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
 - `main.tsx` catches missing root element and render exceptions
 - User-friendly Italian fallback with retry button
 - `ErrorBoundary` wraps the entire app tree
+- **First-boot check-subscription failures** show retry UI, never paywall
 
 ## Configuration States
 

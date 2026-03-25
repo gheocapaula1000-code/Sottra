@@ -29,6 +29,8 @@ interface SubscriptionState {
   isOwner: boolean;
   /** True when a transient error occurred and we're showing stale data */
   stale: boolean;
+  /** True when the first bootstrap failed due to a transient error — no valid state exists yet */
+  bootFailed: boolean;
   refresh: () => Promise<void>;
 }
 
@@ -47,6 +49,7 @@ const SubscriptionContext = createContext<SubscriptionState>({
   isAdmin: false,
   isOwner: false,
   stale: false,
+  bootFailed: false,
   refresh: async () => {},
 });
 
@@ -103,6 +106,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [isOwner, setIsOwner] = useState(false);
   const [checked, setChecked] = useState(false);
   const [stale, setStale] = useState(false);
+  const [bootFailed, setBootFailed] = useState(false);
   const accessResolvedRef = useRef(false);
   /** Tracks whether we've ever received a successful response */
   const hasEverCheckedRef = useRef(false);
@@ -124,11 +128,34 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setIsOwner(false);
     setChecked(true);
     setStale(false);
+    setBootFailed(false);
     setBillingReady(false);
     setResolved(true);
     hasEverCheckedRef.current = false;
     if (!authLoading) setLoading(false);
   }, [authLoading, setResolved]);
+
+  /**
+   * Handle transient errors during check-subscription.
+   * - If we already have a valid state (hasEverCheckedRef), keep it and mark stale.
+   * - If this is the FIRST boot attempt, do NOT resolve access (no paywall).
+   *   Instead set bootFailed=true so the gate can show retry UI.
+   */
+  const handleTransientError = useCallback(() => {
+    setBillingReady(false);
+    if (hasEverCheckedRef.current) {
+      // We have previous valid state — keep it, mark stale
+      setStale(true);
+      setResolved(true);
+      setLoading(false);
+    } else {
+      // First boot: do NOT resolve access — show retry, not paywall
+      setBootFailed(true);
+      setLoading(false);
+      // accessResolved stays false, checked stays false
+      // → gate shows loader/retry, never paywall
+    }
+  }, [setResolved]);
 
   const refresh = useCallback(async () => {
     if (authLoading) return;
@@ -164,6 +191,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     if (isBootstrap) {
       setLoading(true);
       setResolved(false);
+      setBootFailed(false);
     }
 
     try {
@@ -178,54 +206,25 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             ? (result.error as { message: string }).message
             : String(result.error);
           console.warn("[Subscription] invoke error (non-fatal):", msg);
-
-          // If we already have a valid state, keep it and mark stale
-          if (hasEverCheckedRef.current) {
-            setStale(true);
-            setResolved(true);
-            setLoading(false);
-            return;
-          }
-          // First boot error: resolve with safe defaults so we don't hang
-          resetToDefaults();
+          handleTransientError();
           return;
         }
       } catch (invokeError) {
         console.warn("[Subscription] invoke exception (non-fatal):", invokeError);
-
-        if (hasEverCheckedRef.current) {
-          setStale(true);
-          setResolved(true);
-          setLoading(false);
-          return;
-        }
-        resetToDefaults();
+        handleTransientError();
         return;
       }
 
       const body = responseData as Record<string, unknown> | null;
       if (body && typeof body.error === "string" && body.error) {
         console.warn("[Subscription] function error (non-fatal):", body.error);
-
-        if (hasEverCheckedRef.current) {
-          setStale(true);
-          setResolved(true);
-          setLoading(false);
-          return;
-        }
-        resetToDefaults();
+        handleTransientError();
         return;
       }
 
       const parsed = parsePayload(responseData);
       if (!parsed) {
-        if (hasEverCheckedRef.current) {
-          setStale(true);
-          setResolved(true);
-          setLoading(false);
-          return;
-        }
-        resetToDefaults();
+        handleTransientError();
         return;
       }
 
@@ -239,6 +238,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setIsOwner(parsed.isOwner);
       setChecked(true);
       setStale(false);
+      setBootFailed(false);
       setResolved(true);
       setLoading(false);
       hasEverCheckedRef.current = true;
@@ -246,15 +246,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setBillingReady(parsed.billingActive);
     } catch (e) {
       console.error("[Subscription] unexpected error (non-fatal):", e);
-      if (hasEverCheckedRef.current) {
-        setStale(true);
-        setResolved(true);
-        setLoading(false);
-        return;
-      }
-      resetToDefaults();
+      handleTransientError();
     }
-  }, [session, authLoading, resetToDefaults, setResolved]);
+  }, [session, authLoading, resetToDefaults, setResolved, handleTransientError]);
 
   useEffect(() => {
     void refresh();
@@ -295,7 +289,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   return (
     <SubscriptionContext.Provider value={{
       loading, accessResolved, checked, subscribed, planKey, subscriptionEnd,
-      subscriptionStatus, cancelAtPeriodEnd, trial, canScan, canManageBilling, isAdmin, isOwner, stale, refresh,
+      subscriptionStatus, cancelAtPeriodEnd, trial, canScan, canManageBilling,
+      isAdmin, isOwner, stale, bootFailed, refresh,
     }}>
       {children}
     </SubscriptionContext.Provider>
