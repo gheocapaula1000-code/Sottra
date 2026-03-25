@@ -211,10 +211,22 @@ const Dashboard = () => {
                   </div>
                 )}
                 {displaySubscribed && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Piano</span>
-                    <span className="text-xs font-medium text-foreground">Attivo</span>
-                  </div>
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Piano</span>
+                      <span className="text-xs font-medium text-foreground">{planKey ? PLANS[planKey].name : "Attivo"}</span>
+                    </div>
+                    {subscriptionStatus === "past_due" && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-destructive font-medium">Pagamento in sospeso</span>
+                      </div>
+                    )}
+                    {cancelAtPeriodEnd && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-amber-600 font-medium">Si disattiverà a fine periodo</span>
+                      </div>
+                    )}
+                  </>
                 )}
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Email</span>
