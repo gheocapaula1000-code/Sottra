@@ -134,7 +134,7 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
                 onClick={() => setInterval("annual")}
               >
                 Annuale
-                <span className="ml-1 text-xs text-primary">-20%</span>
+                <span className="ml-1 text-xs text-primary">2 mesi gratis</span>
               </button>
             </div>
 
