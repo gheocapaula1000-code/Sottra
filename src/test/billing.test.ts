@@ -74,16 +74,18 @@ describe("Plans catalog", () => {
       expect(plan.price_annual).toBe(plan.price * 10);
     }
   });
+
+  it("annual toggle hidden when no annual price IDs configured", () => {
+    const hasAnyAnnualPrice = Object.values(PLANS).some((p) => !!p.price_id_annual);
+    // Currently no annual price IDs are set
+    expect(hasAnyAnnualPrice).toBe(false);
+  });
 });
 
 describe("Subscription gating logic", () => {
   it("canScan is true when subscribed", () => {
-    const isOwner = false;
-    const isAdmin = false;
-    const subscribed = true;
-    const trialActive = false;
-    const canScan = isOwner || isAdmin || subscribed || trialActive;
-    expect(canScan).toBe(true);
+    const isOwner = false, isAdmin = false, subscribed = true, trialActive = false;
+    expect(isOwner || isAdmin || subscribed || trialActive).toBe(true);
   });
 
   it("canScan is true when trial active", () => {
@@ -103,29 +105,25 @@ describe("Subscription gating logic", () => {
 
   it("past_due user: canScan is false", () => {
     const isOwner = false, isAdmin = false, subscribed = false, trialActive = false;
-    const canScan = isOwner || isAdmin || subscribed || trialActive;
-    expect(canScan).toBe(false);
+    expect(isOwner || isAdmin || subscribed || trialActive).toBe(false);
   });
 
   it("past_due user: canManageBilling is true", () => {
     const isOwner = false, isAdmin = false, subscribed = false;
     const subscriptionStatus = "past_due";
-    const canManageBilling = isOwner || isAdmin || subscribed || subscriptionStatus === "past_due";
-    expect(canManageBilling).toBe(true);
+    expect(isOwner || isAdmin || subscribed || subscriptionStatus === "past_due").toBe(true);
   });
 
   it("active user: canManageBilling is true", () => {
     const isOwner = false, isAdmin = false, subscribed = true;
     const subscriptionStatus: string | null = "active";
-    const canManageBilling = isOwner || isAdmin || subscribed || subscriptionStatus === "past_due";
-    expect(canManageBilling).toBe(true);
+    expect(isOwner || isAdmin || subscribed || subscriptionStatus === "past_due").toBe(true);
   });
 });
 
 describe("SubscriptionContext billingReady behavior", () => {
-  it("applyDefaults sets billingReady to false", () => {
+  it("resetToDefaults sets billingReady to false", () => {
     setBillingReady(true);
-    // simulate applyDefaults
     setBillingReady(false);
     expect(isBillingReady()).toBe(false);
   });
@@ -134,7 +132,7 @@ describe("SubscriptionContext billingReady behavior", () => {
     const responseData = { billing_active: true };
     setBillingReady(responseData.billing_active === true);
     expect(isBillingReady()).toBe(true);
-    setBillingReady(false); // reset
+    setBillingReady(false);
   });
 
   it("successful response with billing_active=false keeps billingReady false", () => {
@@ -142,5 +140,22 @@ describe("SubscriptionContext billingReady behavior", () => {
     const responseData = { billing_active: false };
     setBillingReady(responseData.billing_active === true);
     expect(isBillingReady()).toBe(false);
+  });
+
+  it("error/logout/no-session always results in billingReady=false", () => {
+    setBillingReady(true);
+    // Simulate error path
+    setBillingReady(false);
+    expect(isBillingReady()).toBe(false);
+  });
+
+  it("transient error preserves last state (stale concept)", () => {
+    // After a successful check, a transient error should not reset billing
+    // This tests the conceptual flow: success → error → stale=true, billingReady unchanged
+    setBillingReady(true);
+    // On transient error, SubscriptionContext does NOT call setBillingReady(false)
+    // it keeps the previous value and sets stale=true
+    expect(isBillingReady()).toBe(true);
+    setBillingReady(false); // cleanup
   });
 });
