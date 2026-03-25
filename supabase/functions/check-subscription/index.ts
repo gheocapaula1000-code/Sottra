@@ -309,6 +309,7 @@ serve(async (req) => {
     // ── 6. Stable response ──────────────────────────────────
     return json({
       ok: true,
+      billing_active: isBillingActive(),
       subscribed,
       product_id: productId,
       price_id: priceId,
