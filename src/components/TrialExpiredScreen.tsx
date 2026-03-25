@@ -90,6 +90,7 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
   const getDisplayPrice = (key: PlanKey): { price: number; suffix: string } => {
     const plan = PLANS[key];
     if (interval === "annual" && plan.price_annual) {
+      // annual = monthly × 10, display per-month equivalent
       return { price: Math.round(plan.price_annual / 12), suffix: "/mese" };
     }
     return { price: plan.price, suffix: "/mese" };
