@@ -54,12 +54,12 @@ serve(async (req) => {
   try {
     switch (eventType) {
       case "checkout.session.completed":
-        await handleCheckoutCompleted(event, serviceClient);
+        await handleCheckoutCompleted(event, serviceClient, stripeKey);
         break;
       case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted":
-        await handleSubscriptionChange(event, serviceClient);
+        await handleSubscriptionChange(event, serviceClient, stripeKey);
         break;
       case "invoice.paid":
         await handleInvoicePaid(event, serviceClient);
@@ -81,31 +81,81 @@ serve(async (req) => {
   });
 });
 
-/* ── Helpers ── */
+/* ── User Resolution ── */
 
+/**
+ * Resolve Supabase user_id from Stripe data with priority:
+ * 1. metadata.supabase_user_id
+ * 2. client_reference_id (checkout sessions)
+ * 3. stripe_customer_id already saved in DB
+ * 4. Customer email as final fallback
+ */
 async function resolveUserId(
-  customerEmail: string | null | undefined,
+  opts: {
+    metadata?: Record<string, unknown> | null;
+    clientReferenceId?: string | null;
+    stripeCustomerId?: string | null;
+    stripeKey?: string;
+  },
   serviceClient: ReturnType<typeof createClient>,
 ): Promise<string | null> {
-  if (!customerEmail) return null;
-  try {
-    const { data } = await serviceClient.auth.admin.listUsers({ perPage: 1 });
-    // listUsers doesn't filter by email, so we search manually
-    // Alternative: use a direct query for better performance at scale
-    const { data: users } = await serviceClient.auth.admin.listUsers({ perPage: 1000 });
-    const match = users?.users?.find(
-      (u: { email?: string }) => u.email?.toLowerCase() === customerEmail.toLowerCase(),
-    );
-    return match?.id ?? null;
-  } catch (e) {
-    log("resolveUserId failed", String(e));
-    return null;
+  // Priority 1: metadata
+  if (opts.metadata && typeof opts.metadata.supabase_user_id === "string") {
+    log("resolveUserId", `via metadata: ${opts.metadata.supabase_user_id}`);
+    return opts.metadata.supabase_user_id;
   }
+
+  // Priority 2: client_reference_id
+  if (opts.clientReferenceId) {
+    log("resolveUserId", `via client_reference_id: ${opts.clientReferenceId}`);
+    return opts.clientReferenceId;
+  }
+
+  // Priority 3: existing DB record by stripe_customer_id
+  if (opts.stripeCustomerId) {
+    const { data: existingSub } = await serviceClient
+      .from("subscriptions")
+      .select("user_id")
+      .eq("stripe_customer_id", opts.stripeCustomerId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingSub?.user_id) {
+      log("resolveUserId", `via DB stripe_customer_id: ${existingSub.user_id}`);
+      return existingSub.user_id;
+    }
+  }
+
+  // Priority 4: email fallback via Stripe customer lookup
+  if (opts.stripeCustomerId && opts.stripeKey) {
+    try {
+      const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
+      const stripe = new Stripe(opts.stripeKey, { apiVersion: "2025-08-27.basil" });
+      const customer = await stripe.customers.retrieve(opts.stripeCustomerId);
+      if (customer && !customer.deleted && customer.email) {
+        const { data: users } = await serviceClient.auth.admin.listUsers({ perPage: 1000 });
+        const match = users?.users?.find(
+          (u: { email?: string }) => u.email?.toLowerCase() === customer.email.toLowerCase(),
+        );
+        if (match?.id) {
+          log("resolveUserId", `via email fallback: ${match.id}`);
+          return match.id;
+        }
+      }
+    } catch (e) {
+      log("resolveUserId email fallback failed", String(e));
+    }
+  }
+
+  return null;
 }
+
+/* ── Event Handlers ── */
 
 async function handleCheckoutCompleted(
   event: Record<string, unknown>,
   client: ReturnType<typeof createClient>,
+  stripeKey: string,
 ) {
   const session = event.data as { object: Record<string, unknown> };
   const obj = session.object;
@@ -117,26 +167,67 @@ async function handleCheckoutCompleted(
 
   const customerId = obj.customer as string;
   const subscriptionId = obj.subscription as string;
-  const customerEmail = obj.customer_email as string | null;
+  const metadata = obj.metadata as Record<string, unknown> | null;
+  const clientReferenceId = obj.client_reference_id as string | null;
 
   if (!customerId || !subscriptionId) {
     log("checkout.session.completed", "missing customer or subscription ID");
     return;
   }
 
-  const userId = await resolveUserId(customerEmail, client);
+  const userId = await resolveUserId(
+    { metadata, clientReferenceId, stripeCustomerId: customerId, stripeKey },
+    client,
+  );
+
   if (!userId) {
-    log("checkout.session.completed", `no user found for ${customerEmail}`);
+    log("checkout.session.completed", `no user resolved for customer=${customerId}`);
     return;
   }
 
-  // The subscription.created event will handle the actual upsert
-  log("checkout.session.completed", `user=${userId} sub=${subscriptionId}`);
+  // Eagerly upsert subscription from checkout to avoid race with subscription.created
+  try {
+    const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const sub = await stripe.subscriptions.retrieve(subscriptionId);
+
+    const items = sub.items as { data?: Array<{ price?: { id?: string } }> } | undefined;
+    const priceId = items?.data?.[0]?.price?.id ?? null;
+
+    const currentPeriodEnd = typeof sub.current_period_end === "number"
+      ? new Date(sub.current_period_end * 1000).toISOString()
+      : null;
+
+    const { error } = await client.from("subscriptions").upsert(
+      {
+        user_id: userId,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscriptionId,
+        price_id: priceId,
+        status: sub.status,
+        current_period_end: currentPeriodEnd,
+        cancel_at_period_end: sub.cancel_at_period_end === true,
+        trial_end: typeof sub.trial_end === "number"
+          ? new Date(sub.trial_end * 1000).toISOString()
+          : null,
+      },
+      { onConflict: "stripe_subscription_id" },
+    );
+
+    if (error) {
+      log("checkout upsert failed", error.message);
+    } else {
+      log("checkout.session.completed", `upserted sub=${subscriptionId} user=${userId}`);
+    }
+  } catch (e) {
+    log("checkout sub retrieve failed", String(e));
+  }
 }
 
 async function handleSubscriptionChange(
   event: Record<string, unknown>,
   client: ReturnType<typeof createClient>,
+  stripeKey: string,
 ) {
   const data = event.data as { object: Record<string, unknown> };
   const sub = data.object;
@@ -145,6 +236,7 @@ async function handleSubscriptionChange(
   const stripeCustomerId = sub.customer as string;
   const status = sub.status as string;
   const cancelAtPeriodEnd = sub.cancel_at_period_end === true;
+  const metadata = sub.metadata as Record<string, unknown> | null;
 
   const currentPeriodEnd = typeof sub.current_period_end === "number"
     ? new Date(sub.current_period_end * 1000).toISOString()
@@ -154,12 +246,11 @@ async function handleSubscriptionChange(
     ? new Date(sub.trial_end * 1000).toISOString()
     : null;
 
-  // Extract price_id from items
   const items = sub.items as { data?: Array<{ price?: { id?: string } }> } | undefined;
   const priceId = items?.data?.[0]?.price?.id ?? null;
 
-  // Resolve user_id from customer email
-  // First try to find existing subscription record
+  // Resolve user_id with priority chain
+  // First check existing DB record
   const { data: existingSub } = await client
     .from("subscriptions")
     .select("user_id")
@@ -169,18 +260,10 @@ async function handleSubscriptionChange(
   let userId = existingSub?.user_id;
 
   if (!userId) {
-    // Look up customer email via Stripe
-    try {
-      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
-      const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
-      const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-      const customer = await stripe.customers.retrieve(stripeCustomerId);
-      if (customer && !customer.deleted && customer.email) {
-        userId = await resolveUserId(customer.email, client) ?? undefined;
-      }
-    } catch (e) {
-      log("customer lookup failed", String(e));
-    }
+    userId = await resolveUserId(
+      { metadata, stripeCustomerId, stripeKey },
+      client,
+    ) ?? undefined;
   }
 
   if (!userId) {
@@ -220,7 +303,6 @@ async function handleInvoicePaid(
 
   if (!subscriptionId) return;
 
-  // Update subscription status to active on successful payment
   const { error } = await client
     .from("subscriptions")
     .update({ status: "active" })

@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isOwnerById } from "../_shared/ownerUtils.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { isBillingActive } from "../_shared/billing.ts";
+import { resolveReturnOrigin } from "../_shared/originResolver.ts";
 
 serve(async (req) => {
   const preflight = handleCors(req);
@@ -62,13 +63,7 @@ serve(async (req) => {
       });
     }
 
-    const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map(o => o.trim().toLowerCase()).filter(Boolean);
-    const reqOrigin = (req.headers.get("Origin") ?? "").toLowerCase();
-    const returnOrigin = allowedOrigins.includes(reqOrigin) ? reqOrigin : allowedOrigins[0] || "";
-
-    if (!returnOrigin) {
-      throw new Error("No allowed origin configured for portal return URL");
-    }
+    const returnOrigin = resolveReturnOrigin(req);
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customers.data[0].id,

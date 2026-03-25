@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { isBillingActive } from "../_shared/billing.ts";
 import { isAllowedPriceId } from "../_shared/allowedPrices.ts";
+import { resolveReturnOrigin } from "../_shared/originResolver.ts";
 
 serve(async (req) => {
   const preflight = handleCors(req);
@@ -46,20 +47,48 @@ serve(async (req) => {
     const { default: Stripe } = await import("https://esm.sh/stripe@18.5.0");
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
+    // Reuse existing Stripe customer if we have one in DB
+    let customerId: string | undefined;
+
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    const { data: existingSub } = await serviceClient
+      .from("subscriptions")
+      .select("stripe_customer_id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingSub?.stripe_customer_id) {
+      customerId = existingSub.stripe_customer_id;
+    } else {
+      // Fallback: search Stripe by email
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+      }
     }
+
+    // Resolve return origin from ALLOWED_ORIGINS (same logic as customer-portal)
+    const returnOrigin = resolveReturnOrigin(req);
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       client_reference_id: user.id,
+      metadata: { supabase_user_id: user.id },
+      subscription_data: {
+        metadata: { supabase_user_id: user.id },
+      },
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/app?checkout=success`,
-      cancel_url: `${req.headers.get("origin")}/app?checkout=cancel`,
+      success_url: `${returnOrigin}/app?checkout=success`,
+      cancel_url: `${returnOrigin}/app?checkout=cancel`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
