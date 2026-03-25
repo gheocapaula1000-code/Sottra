@@ -224,7 +224,7 @@ const Dashboard = () => {
                     )}
                     {cancelAtPeriodEnd && (
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-amber-600 font-medium">Si disattiverà a fine periodo</span>
+                        <span className="text-xs text-destructive/80 font-medium">Si disattiverà a fine periodo</span>
                       </div>
                     )}
                   </>
