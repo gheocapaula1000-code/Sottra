@@ -109,7 +109,7 @@ export const TrialExpiredScreen = ({ scansUsed }: TrialExpiredScreenProps) => {
         </h1>
         <p className="mt-3 text-base text-muted-foreground sm:text-lg" style={{ textWrap: "balance" } as React.CSSProperties}>
           Hai utilizzato <strong className="text-foreground">{scansUsed} scansioni</strong> durante i 3 giorni di prova.
-          {BILLING_ENABLED
+          {billingReady
             ? " Per continuare a utilizzare Sottra, scegli il piano più adatto."
             : ` Per attivare un piano, contattaci a ${APP_BRAND.supportEmail}.`}
         </p>
