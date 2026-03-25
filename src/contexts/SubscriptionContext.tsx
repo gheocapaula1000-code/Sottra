@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPlanByProductId, getPlanByPriceId, PlanKey } from "@/lib/plans";
 import { setBillingReady } from "@/lib/billing";
-import { getPlanByProductId, getPlanByPriceId, PlanKey } from "@/lib/plans";
 
 interface TrialInfo {
   active: boolean;
