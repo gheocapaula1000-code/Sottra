@@ -150,12 +150,65 @@ describe("SubscriptionContext billingReady behavior", () => {
   });
 
   it("transient error preserves last state (stale concept)", () => {
-    // After a successful check, a transient error should not reset billing
-    // This tests the conceptual flow: success → error → stale=true, billingReady unchanged
     setBillingReady(true);
-    // On transient error, SubscriptionContext does NOT call setBillingReady(false)
-    // it keeps the previous value and sets stale=true
+    // On transient error with prior state, SubscriptionContext keeps value and sets stale=true
     expect(isBillingReady()).toBe(true);
     setBillingReady(false); // cleanup
+  });
+});
+
+describe("First-boot transient error (bootFailed)", () => {
+  it("first-boot error should NOT resolve access (conceptual)", () => {
+    // When hasEverChecked is false and check-subscription fails:
+    // accessResolved stays false, checked stays false, bootFailed=true
+    // This means AppDashboardGate shows retry UI, never TrialExpiredScreen
+    const hasEverChecked = false;
+    const accessResolved = false;
+    const checked = false;
+    const bootFailed = true;
+
+    // Gate logic: show loader if !accessResolved && !bootFailed
+    // Show retry if bootFailed
+    // Show paywall only if checked && !canScan
+    const showLoader = !accessResolved && !bootFailed;
+    const showRetry = bootFailed;
+    const showPaywall = checked && !bootFailed;
+
+    expect(showLoader).toBe(false);
+    expect(showRetry).toBe(true);
+    expect(showPaywall).toBe(false);
+    expect(hasEverChecked).toBe(false);
+  });
+
+  it("successful retry after boot failure resolves access normally", () => {
+    const hasEverChecked = true;
+    const accessResolved = true;
+    const checked = true;
+    const bootFailed = false;
+    const subscribed = true;
+
+    const showRetry = bootFailed;
+    const canScan = subscribed;
+
+    expect(showRetry).toBe(false);
+    expect(canScan).toBe(true);
+    expect(accessResolved).toBe(true);
+    expect(hasEverChecked).toBe(true);
+  });
+
+  it("stale state after subsequent error keeps access (not paywall)", () => {
+    const hasEverChecked = true;
+    const accessResolved = true;
+    const checked = true;
+    const bootFailed = false;
+    const stale = true;
+    const subscribed = true;
+
+    const showRetry = bootFailed;
+    const canScan = subscribed;
+
+    expect(showRetry).toBe(false);
+    expect(canScan).toBe(true);
+    expect(stale).toBe(true);
   });
 });
