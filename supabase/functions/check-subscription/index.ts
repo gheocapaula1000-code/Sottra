@@ -252,13 +252,19 @@ serve(async (req) => {
         const customer = customers?.data?.[0];
 
         if (customer?.id) {
-          const subscriptions = await stripe.subscriptions.list({
-            customer: customer.id,
-            status: "active",
-            limit: 1,
-          });
-
-          const sub = subscriptions?.data?.[0];
+          // Check both active and trialing statuses
+          let sub = null;
+          for (const checkStatus of ["active", "trialing"] as const) {
+            const subs = await stripe.subscriptions.list({
+              customer: customer.id,
+              status: checkStatus,
+              limit: 1,
+            });
+            if (subs?.data?.[0]) {
+              sub = subs.data[0];
+              break;
+            }
+          }
           if (sub) {
             subscribed = true;
             subscriptionStatus = sub.status;
