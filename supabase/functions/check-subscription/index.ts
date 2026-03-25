@@ -12,6 +12,7 @@ const log = (step: string, detail?: string) =>
 const BASE_RESPONSE = {
   ok: false,
   subscribed: false,
+  billing_active: false,
   product_id: null as string | null,
   price_id: null as string | null,
   subscription_end: null as string | null,
