@@ -30,7 +30,7 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { subscribed, trial, isAdmin, isOwner } = useSubscription();
+  const { subscribed, trial, isAdmin, isOwner, subscriptionStatus, cancelAtPeriodEnd, planKey } = useSubscription();
   const { toast } = useToast();
   const { scans } = useScanHistory();
   const { count: importCount } = useImportCount();
