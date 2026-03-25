@@ -61,7 +61,7 @@ const Dashboard = () => {
   const displayTrial = isOwner ? null : trial;
 
   const accountLabel = displaySubscribed
-    ? "Abbonamento attivo"
+    ? cancelAtPeriodEnd ? "In scadenza" : "Abbonamento attivo"
     : displayTrial?.active
       ? "Trial attivo"
       : "Attivo";
