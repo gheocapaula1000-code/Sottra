@@ -45,7 +45,8 @@ const planMeta: Record<PlanKey, { users: string; scans: string; popular: boolean
   enterprise: { users: "10 account inclusi", scans: "800 scansioni/mese", popular: false },
 };
 
-type BillingInterval = "monthly" | "annual";
+/** True if at least one plan has a real annual price ID configured */
+const hasAnyAnnualPrice = Object.values(PLANS).some((p) => !!p.price_id_annual);
 
 interface TrialExpiredScreenProps {
   scansUsed: number;
@@ -56,7 +57,6 @@ interface TrialExpiredScreenProps {
 export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionStatus }: TrialExpiredScreenProps) => {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [loadingPortal, setLoadingPortal] = useState(false);
-  const [interval, setInterval] = useState<BillingInterval>("monthly");
   const { toast } = useToast();
 
   const billingReady = isBillingReady();
@@ -68,21 +68,40 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
       return;
     }
     const plan = PLANS[key];
-    const priceId = interval === "annual" && plan.price_id_annual
-      ? plan.price_id_annual
-      : plan.price_id;
+    const priceId = plan.price_id;
 
     if (!priceId) {
-      toast({ title: "Non disponibile", description: "Questo piano non è ancora disponibile per la fatturazione annuale.", variant: "default" });
+      toast({ title: "Non disponibile", description: "Questo piano non è ancora disponibile.", variant: "default" });
       return;
     }
 
-    setLoadingPlan(`${key}-${interval}`);
+    setLoadingPlan(key);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId },
       });
-      if (error) throw error;
+
+      // Handle 409 duplicate subscription
+      if (error) {
+        const parsed = typeof error === "object" && "message" in error ? (error as { message: string }).message : String(error);
+        if (parsed.includes("409") || parsed.includes("already_subscribed")) {
+          toast({ title: "Abbonamento esistente", description: "Hai già un abbonamento attivo.", variant: "default" });
+          return;
+        }
+        if (parsed.includes("use_customer_portal")) {
+          toast({ title: "Pagamento in sospeso", description: "Aggiorna il metodo di pagamento dal portale di gestione.", variant: "default" });
+          return;
+        }
+        throw error;
+      }
+      if (data?.error_code === "already_subscribed") {
+        toast({ title: "Abbonamento esistente", description: "Hai già un abbonamento attivo.", variant: "default" });
+        return;
+      }
+      if (data?.error_code === "use_customer_portal") {
+        toast({ title: "Pagamento in sospeso", description: "Aggiorna il metodo di pagamento dal portale di gestione.", variant: "default" });
+        return;
+      }
       if (data?.url) {
         window.location.href = data.url;
       }
@@ -104,14 +123,6 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
     } finally {
       setLoadingPortal(false);
     }
-  };
-
-  const getDisplayPrice = (key: PlanKey): { price: number; suffix: string } => {
-    const plan = PLANS[key];
-    if (interval === "annual" && plan.price_annual) {
-      return { price: Math.round(plan.price_annual / 12), suffix: "/mese" };
-    }
-    return { price: plan.price, suffix: "/mese" };
   };
 
   return (
@@ -161,34 +172,27 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
 
             {billingReady && (
               <>
-                {/* Interval toggle */}
-                <div className="mt-8 inline-flex items-center rounded-full border border-border bg-muted/50 p-1">
-                  <button
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                      interval === "monthly" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
-                    }`}
-                    onClick={() => setInterval("monthly")}
-                  >
-                    Mensile
-                  </button>
-                  <button
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                      interval === "annual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
-                    }`}
-                    onClick={() => setInterval("annual")}
-                  >
-                    Annuale
-                    <span className="ml-1 text-xs text-primary">2 mesi gratis</span>
-                  </button>
-                </div>
+                {/* Annual toggle — only shown when real annual price IDs exist */}
+                {hasAnyAnnualPrice && (
+                  <div className="mt-8 inline-flex items-center rounded-full border border-border bg-muted/50 p-1">
+                    <button className="rounded-full px-4 py-1.5 text-sm font-medium bg-background text-foreground shadow-sm">
+                      Mensile
+                    </button>
+                    <button
+                      className="rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground"
+                      disabled
+                    >
+                      Annuale
+                      <span className="ml-1 text-xs text-primary">2 mesi gratis</span>
+                    </button>
+                  </div>
+                )}
 
                 <div className="mt-8 grid gap-6 lg:grid-cols-3">
                   {(Object.keys(PLANS) as PlanKey[]).map((key) => {
                     const plan = PLANS[key];
                     const meta = planMeta[key];
                     const features = planFeatures[key];
-                    const display = getDisplayPrice(key);
-                    const hasAnnual = !!plan.price_id_annual;
 
                     return (
                       <Card
@@ -207,14 +211,9 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
                         <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
 
                         <div className="mt-4 flex items-baseline gap-1">
-                          <span className="text-4xl font-black text-foreground">€{display.price}</span>
-                          <span className="text-muted-foreground">{display.suffix}</span>
+                          <span className="text-4xl font-black text-foreground">€{plan.price}</span>
+                          <span className="text-muted-foreground">/mese</span>
                         </div>
-                        {interval === "annual" && hasAnnual && (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            €{plan.price_annual}/anno fatturato annualmente
-                          </p>
-                        )}
 
                         <div className="mt-3 flex flex-wrap gap-2">
                           <Badge variant="secondary" className="text-xs">{meta.scans}</Badge>
@@ -236,16 +235,11 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
                           className="mt-6 w-full gap-2"
                           variant={meta.popular ? "default" : "outline"}
                           size="lg"
-                          disabled={loadingPlan !== null || (interval === "annual" && !hasAnnual)}
+                          disabled={loadingPlan !== null}
                           onClick={() => handleCheckout(key)}
                         >
-                          {loadingPlan === `${key}-${interval}` ? "Caricamento…" : `Scegli ${plan.name}`}
+                          {loadingPlan === key ? "Caricamento…" : `Scegli ${plan.name}`}
                         </Button>
-                        {interval === "annual" && !hasAnnual && (
-                          <p className="mt-2 text-xs text-muted-foreground text-center">
-                            Piano annuale in arrivo
-                          </p>
-                        )}
                       </Card>
                     );
                   })}

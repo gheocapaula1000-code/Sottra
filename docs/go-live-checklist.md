@@ -24,6 +24,15 @@
 - [x] `SUPABASE_SERVICE_ROLE_KEY` set for admin operations
 - [x] No secrets exposed in frontend bundle
 
+### Billing activation (`billing_active`)
+
+`billing_active` is returned by `check-subscription` and requires **all three** secrets:
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `ALLOWED_ORIGINS`
+
+If any is missing, `billing_active = false` → payment CTAs are hidden/disabled.
+
 ## Admin & Owner Access
 
 - [x] Owner/admin bootstrap via `ADMIN_BOOTSTRAP_EMAILS` env (server-side only)
@@ -46,12 +55,13 @@
 ## Edge Functions
 
 - [x] `core-proxy` deployed and responding
-- [x] `check-subscription` deployed, returns HTTP 200 envelope
+- [x] `check-subscription` deployed, returns HTTP 200 envelope with `billing_active` flag
 - [x] `diagnostics` deployed, restricted to admin OR owner (server-side)
-- [x] `record-scan` deployed, idempotent scan recording works
+- [x] `record-scan` deployed, DB-first subscription check with Stripe fallback
 - [x] `pro-sources` deployed for OMI/POI lookups
-- [x] `create-checkout` deployed, degrades gracefully without Stripe
-- [x] `customer-portal` deployed, degrades gracefully without Stripe
+- [x] `create-checkout` deployed, blocks duplicate subscriptions (409), degrades without Stripe
+- [x] `customer-portal` deployed, DB-first customer ID lookup, degrades without Stripe
+- [x] `stripe-webhook` deployed, returns 500 on processing failure (enables Stripe retries)
 - [x] All functions have `verify_jwt = false` in config.toml (JWT validated in code)
 
 ## PWA
@@ -69,6 +79,7 @@
 - [x] `main.tsx` catches render exceptions with retry button
 - [x] `ErrorBoundary` wraps App with Italian-language error + reload
 - [x] `SubscriptionContext` never hangs — resolves even on API failure
+- [x] Transient errors preserve last-known state (no paywall on network blip)
 
 ## Data Integrity
 
@@ -93,6 +104,7 @@
 ## Post-Deploy
 
 - [ ] Smoke test: login → scan → report → save flow
-- [ ] Verify the two bootstrap accounts have full access
+- [ ] Verify the bootstrap account has full access
 - [ ] Verify PWA installs on Android and iOS
 - [ ] Verify Stripe absence causes no errors or blocked flows
+- [ ] Verify `past_due` users see portal CTA, not scan access

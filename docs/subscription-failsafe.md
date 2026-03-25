@@ -18,7 +18,6 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
 
 ### Current bootstrap accounts
 - `gheocapaula1000@gmail.com`
-- `massimilianogalli75@gmail.com`
 
 ## Defensive Architecture
 
@@ -28,20 +27,41 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
 2. **Bootstrap check runs first** — before owner, admin, trial, or Stripe
 3. **Owner bypass** (table-based) — `is_owner: true`, `is_admin: false`, `subscribed: true`
 4. **Admin bypass** (RBAC) — `is_admin: true`, `subscribed: true`
-5. **Stripe is checked last** — only if `STRIPE_SECRET_KEY` is set
-6. **If Stripe fails**: Error logged, subscription defaults to `false`, trial still works
+5. **DB subscription check** — source of truth from `subscriptions` table; valid statuses: `active`, `trialing`
+6. **Stripe is checked last** — only as fallback if `isBillingActive()` returns `true` and DB has no useful record
+7. **`billing_active` flag** — returned in response; true only when `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + `ALLOWED_ORIGINS` are all set
+8. **If Stripe fails**: Error logged, subscription defaults to `false`, trial still works
 
 ### Edge Functions: `create-checkout`, `customer-portal`
 
 - Return clear error if Stripe is not configured
-- Frontend handles error gracefully (toast, not crash)
+- `create-checkout` blocks duplicate subscriptions (409 if `active`/`trialing`/`past_due` exists)
+- `create-checkout` directs `past_due` users to Customer Portal instead of creating new checkout
+- Frontend handles errors gracefully (toast, not crash)
+
+### Edge Function: `record-scan`
+
+- Uses DB `subscriptions` table as primary source of truth (valid: `active`, `trialing`)
+- Falls back to Stripe customer lookup via `stripe_customer_id` from DB
+- Email lookup is a last-resort fallback only when `stripe_customer_id` is not available
 
 ### Frontend: `SubscriptionContext`
 
-1. **Never hangs on loading**: `applyDefaults(true)` resolves access even on errors
-2. **`checked` flag**: Guards paywall display — never shows paywall from default/error state
-3. **Periodic refresh**: Every 60s, with session expiry check
-4. **Network failure tolerance**: `invoke()` errors caught and logged
+1. **Never sends paying users to paywall on transient errors**: On error, if a previous successful state exists, keeps last-known state and sets `stale: true` instead of resetting to defaults
+2. **First-boot errors**: Resolve with safe defaults (no access) — never hangs
+3. **`checked` flag**: Guards paywall display — set to `true` in all terminal branches
+4. **Periodic refresh**: Every 60s, with session expiry check
+5. **Network failure tolerance**: `invoke()` errors caught and logged
+6. **`canScan`**: `true` only for `active`/`trialing` subscriptions or active trial
+7. **`canManageBilling`**: Also includes `past_due` (so user can fix payment via portal)
+
+### `isBillingActive()` / `isBillingReady()`
+
+- **Server-side** (`_shared/billing.ts`): Returns `true` only when all three secrets are configured:
+  - `STRIPE_SECRET_KEY`
+  - `STRIPE_WEBHOOK_SECRET`
+  - `ALLOWED_ORIGINS`
+- **Client-side** (`src/lib/billing.ts`): Runtime flag set by `SubscriptionContext` from `billing_active` response field
 
 ### Trial Independence
 
@@ -67,3 +87,11 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
 |---|---|
 | Set with emails | Matching users get permanent owner+admin access |
 | Empty or not set | No bootstrap, normal access flow applies |
+
+## Required Secrets for Billing
+
+| Secret | Purpose |
+|---|---|
+| `STRIPE_SECRET_KEY` | Stripe API authentication |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
+| `ALLOWED_ORIGINS` | CORS allowlist and return URL resolution |
