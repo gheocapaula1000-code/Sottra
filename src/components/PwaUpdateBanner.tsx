@@ -1,8 +1,10 @@
 import { useRegisterSW } from "virtual:pwa-register/react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { BUILD_VERSION } from "@/lib/buildInfo";
 
 const isDev = import.meta.env.DEV;
+const POLL_INTERVAL = 30_000; // 30s
+const MAX_CONSECUTIVE_ERRORS = 3;
 
 /**
  * Cleans up legacy localStorage/sessionStorage keys from old builds.
@@ -36,6 +38,7 @@ cleanLegacyStorage();
 export default function PwaUpdateBanner() {
   const [showBanner, setShowBanner] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const consecutiveErrors = useRef(0);
 
   const {
     needRefresh: [needRefresh],
@@ -43,13 +46,19 @@ export default function PwaUpdateBanner() {
   } = useRegisterSW({
     onRegisteredSW(_swUrl, registration) {
       if (isDev) console.log("[PWA] SW registered, build:", BUILD_VERSION);
-      // Poll for updates every 30s — aggressive for stuck devices
       if (registration) {
-        setInterval(() => {
-          registration.update();
-        }, 30_000);
+        const poll = setInterval(() => {
+          // Stop polling after too many consecutive errors to prevent loops
+          if (consecutiveErrors.current >= MAX_CONSECUTIVE_ERRORS) {
+            clearInterval(poll);
+            console.warn("[PWA] Stopping update poll after repeated errors");
+            return;
+          }
+          registration.update().catch(() => {
+            consecutiveErrors.current++;
+          });
+        }, POLL_INTERVAL);
       }
-      // Store diagnostics
       try {
         localStorage.setItem("sottra-sw-status", JSON.stringify({
           build: BUILD_VERSION,
@@ -63,12 +72,9 @@ export default function PwaUpdateBanner() {
     },
   });
 
-  // With autoUpdate + skipWaiting, the new SW activates immediately.
-  // We show a brief banner then auto-reload so user sees the new build.
   useEffect(() => {
     if (needRefresh && !dismissed) {
       setShowBanner(true);
-      // Auto-reload after 2 seconds if user doesn't interact
       const timer = setTimeout(() => {
         window.location.reload();
       }, 3000);
@@ -78,7 +84,6 @@ export default function PwaUpdateBanner() {
 
   const handleUpdate = useCallback(() => {
     updateServiceWorker(true);
-    // Fallback reload in case SW update doesn't trigger page refresh
     setTimeout(() => window.location.reload(), 500);
   }, [updateServiceWorker]);
 

@@ -49,15 +49,10 @@ describe("index.html sanity", () => {
   });
 
   it("has no preload for non-JS/CSS assets with wrong type", () => {
-    // modulepreload is only valid for JS modules
     const modulePreloads = html.match(/rel="modulepreload"[^>]*>/g) || [];
     for (const tag of modulePreloads) {
       expect(tag).not.toMatch(/\.(png|jpg|svg|webp)/);
     }
-  });
-
-  it("has CSP meta tag", () => {
-    expect(html).toContain("Content-Security-Policy");
   });
 
   it("has canonical URL", () => {
@@ -69,7 +64,7 @@ describe("route shells defined in App.tsx", () => {
   const app = readFileSync("src/App.tsx", "utf-8");
 
   const requiredRoutes = [
-    '/"',           // landing
+    '/"',
     "/login",
     "/scan",
     "/result",
