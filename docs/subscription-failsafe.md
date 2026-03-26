@@ -87,6 +87,7 @@ The retry UI includes a "Verifica accesso" button that calls the `diagnostics` e
 - `billing_configured` — Whether all Stripe secrets are set
 - `owner_match` — Whether the email matches `ADMIN_BOOTSTRAP_EMAILS`
 - `admin_match` — Whether the user has admin role
+- `bypass_match` — Whether the email matches `COMMERCIAL_BYPASS_EMAILS`
 - `check_reachable` — Whether the function is reachable
 - `check_code` — The diagnostic code from the check
 
