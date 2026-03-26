@@ -233,7 +233,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket|refused|unreachable|offline/i.test(errMsg);
         const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "UNEXPECTED_ERROR";
         console.warn("[Subscription] invoke exception (non-fatal):", errMsg, "→", code);
-        handleTransientError(code);
+        handleTransientError(code, errMsg);
         return;
       }
 
