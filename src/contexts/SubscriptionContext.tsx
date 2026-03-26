@@ -115,6 +115,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [checked, setChecked] = useState(false);
   const [stale, setStale] = useState(false);
   const [bootFailed, setBootFailed] = useState(false);
+  const [lastErrorCode, setLastErrorCode] = useState<string | null>(null);
   const accessResolvedRef = useRef(false);
   /** Tracks whether we've ever received a successful response */
   const hasEverCheckedRef = useRef(false);
