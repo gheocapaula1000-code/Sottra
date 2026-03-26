@@ -243,7 +243,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
         // Non-auth function error → transient
         console.warn("[Subscription] function error (non-fatal):", body.error);
-        handleTransientError();
+        handleTransientError(errorCode || "FUNCTION_ERROR");
         return;
       }
 
