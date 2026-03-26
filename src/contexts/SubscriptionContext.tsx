@@ -158,8 +158,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
    *   Instead set bootFailed=true so the gate can show retry UI.
    *   billingReady is set to false because no valid state exists yet.
    */
-  const handleTransientError = useCallback((errorCode?: string) => {
+  const handleTransientError = useCallback((errorCode?: string, errorHint?: string) => {
     setLastErrorCode(errorCode || "UNKNOWN_BOOT_FAILURE");
+    setLastErrorHint(errorHint || null);
     if (hasEverCheckedRef.current) {
       setStale(true);
       setResolved(true);
