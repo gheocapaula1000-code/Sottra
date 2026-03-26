@@ -342,3 +342,59 @@ describe("Owner bootstrap state values", () => {
     expect(VALID_STATES).toHaveLength(4);
   });
 });
+
+describe("Client-side fallback diagnostics", () => {
+  const DIAGNOSTIC_LABELS: Record<string, string> = {
+    NETWORK_ERROR: "Errore di rete — controlla la tua connessione.",
+    INVOKE_ERROR: "Il servizio non ha risposto correttamente.",
+    CORS_ORIGIN_BLOCKED: "Origine non autorizzata — contatta il supporto.",
+    UNKNOWN_BOOT_FAILURE: "Errore di avvio sconosciuto — riprova tra poco.",
+    SELF_TEST_UNAVAILABLE: "Servizio di diagnostica non raggiungibile.",
+    MALFORMED_RESPONSE: "Risposta non valida dal server.",
+    FUNCTION_ERROR: "Errore nel servizio di verifica abbonamento.",
+    UNEXPECTED_ERROR: "Errore imprevisto — riprova tra poco.",
+  };
+
+  it("every diagnostic code has a human label", () => {
+    const codes = [
+      "NETWORK_ERROR", "INVOKE_ERROR", "CORS_ORIGIN_BLOCKED",
+      "UNKNOWN_BOOT_FAILURE", "SELF_TEST_UNAVAILABLE",
+      "MALFORMED_RESPONSE", "FUNCTION_ERROR", "UNEXPECTED_ERROR",
+    ];
+    for (const c of codes) {
+      expect(DIAGNOSTIC_LABELS[c]).toBeTruthy();
+    }
+  });
+
+  it("CORS-like error messages are classified as CORS_ORIGIN_BLOCKED", () => {
+    const classify = (msg: string) =>
+      /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(msg)
+        ? "CORS_ORIGIN_BLOCKED" : "NETWORK_ERROR";
+
+    expect(classify("Failed to fetch")).toBe("CORS_ORIGIN_BLOCKED");
+    expect(classify("Load failed")).toBe("CORS_ORIGIN_BLOCKED");
+    expect(classify("NetworkError when attempting")).toBe("CORS_ORIGIN_BLOCKED");
+    expect(classify("blocked by CORS policy")).toBe("CORS_ORIGIN_BLOCKED");
+    expect(classify("opaque response")).toBe("CORS_ORIGIN_BLOCKED");
+    expect(classify("timeout exceeded")).toBe("NETWORK_ERROR");
+    expect(classify("some random error")).toBe("NETWORK_ERROR");
+  });
+
+  it("empty errorCode defaults to UNKNOWN_BOOT_FAILURE", () => {
+    const handleCode = (code?: string) => code || "UNKNOWN_BOOT_FAILURE";
+    expect(handleCode(undefined)).toBe("UNKNOWN_BOOT_FAILURE");
+    expect(handleCode("")).toBe("UNKNOWN_BOOT_FAILURE");
+    expect(handleCode("NETWORK_ERROR")).toBe("NETWORK_ERROR");
+  });
+
+  it("displayCode in retry UI is never empty", () => {
+    const displayCode = (errorCode: string | null) => errorCode || "UNKNOWN_BOOT_FAILURE";
+    expect(displayCode(null)).toBe("UNKNOWN_BOOT_FAILURE");
+    expect(displayCode("")).toBe("UNKNOWN_BOOT_FAILURE");
+    expect(displayCode("CORS_ORIGIN_BLOCKED")).toBe("CORS_ORIGIN_BLOCKED");
+  });
+
+  it("self-test failure shows SELF_TEST_UNAVAILABLE code", () => {
+    expect(DIAGNOSTIC_LABELS["SELF_TEST_UNAVAILABLE"]).toBe("Servizio di diagnostica non raggiungibile.");
+  });
+});

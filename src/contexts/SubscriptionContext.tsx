@@ -154,7 +154,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
    *   billingReady is set to false because no valid state exists yet.
    */
   const handleTransientError = useCallback((errorCode?: string) => {
-    setLastErrorCode(errorCode ?? "CHECK_SUBSCRIPTION_FAILED");
+    setLastErrorCode(errorCode || "UNKNOWN_BOOT_FAILURE");
     if (hasEverCheckedRef.current) {
       setStale(true);
       setResolved(true);
@@ -219,8 +219,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
       } catch (invokeError) {
-        console.warn("[Subscription] invoke exception (non-fatal):", invokeError);
-        handleTransientError("NETWORK_ERROR");
+        const errMsg = invokeError instanceof Error ? invokeError.message : String(invokeError);
+        const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(errMsg);
+        const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : "NETWORK_ERROR";
+        console.warn("[Subscription] invoke exception (non-fatal):", errMsg, "→", code);
+        handleTransientError(code);
         return;
       }
 
@@ -274,8 +277,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       setBillingReady(parsed.billingActive);
     } catch (e) {
-      console.error("[Subscription] unexpected error (non-fatal):", e);
-      handleTransientError("UNEXPECTED_ERROR");
+      const errMsg = e instanceof Error ? e.message : String(e);
+      const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(errMsg);
+      const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : "UNEXPECTED_ERROR";
+      console.error("[Subscription] unexpected error (non-fatal):", errMsg, "→", code);
+      handleTransientError(code);
     }
   }, [session, authLoading, resetToDefaults, setResolved, handleTransientError]);
 

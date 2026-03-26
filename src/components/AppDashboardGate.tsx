@@ -23,6 +23,8 @@ const DIAGNOSTIC_LABELS: Record<string, string> = {
   FUNCTION_ERROR: "Errore nel servizio di verifica abbonamento.",
   MALFORMED_RESPONSE: "Risposta non valida dal server.",
   UNEXPECTED_ERROR: "Errore imprevisto — riprova tra poco.",
+  UNKNOWN_BOOT_FAILURE: "Errore di avvio sconosciuto — riprova tra poco.",
+  SELF_TEST_UNAVAILABLE: "Servizio di diagnostica non raggiungibile.",
   fatal: "Errore interno del server.",
   init_error: "Errore di configurazione del server.",
   CHECK_SUBSCRIPTION_FAILED: "Impossibile verificare lo stato dell'account.",
@@ -59,6 +61,7 @@ const BootFailedRetry = ({
   errorCode: string | null;
 }) => {
   const [selfTest, setSelfTest] = useState<SelfTestResult | null>(null);
+  const [selfTestFailed, setSelfTestFailed] = useState(false);
   const [testing, setTesting] = useState(false);
 
   const handleSignOut = async () => {
@@ -68,42 +71,34 @@ const BootFailedRetry = ({
   const handleSelfTest = async () => {
     setTesting(true);
     try {
-      const { data } = await supabase.functions.invoke("diagnostics", {
+      const { data, error } = await supabase.functions.invoke("diagnostics", {
         body: { action: "self-test" },
       });
-      if (data && typeof data === "object") {
+      if (!error && data && typeof data === "object") {
         setSelfTest(data as SelfTestResult);
+      } else {
+        // Server responded but with an error — show client-side fallback
+        setSelfTestFailed(true);
       }
     } catch {
-      setSelfTest({
-        session_present: false,
-        user_email: "—",
-        check_reachable: false,
-        check_code: "UNREACHABLE",
-        billing_configured: false,
-        owner_match: false,
-        admin_match: false,
-        bypass_match: false,
-        origin_allowed: false,
-        owner_bootstrap_state: "not_applicable",
-      });
+      // Backend completely unreachable — show client-side fallback diagnostics
+      setSelfTestFailed(true);
     } finally {
       setTesting(false);
     }
   };
 
-  const label = errorCode ? DIAGNOSTIC_LABELS[errorCode] ?? errorCode : null;
+  const displayCode = errorCode || "UNKNOWN_BOOT_FAILURE";
+  const label = DIAGNOSTIC_LABELS[displayCode] ?? displayCode;
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
       <p className="text-muted-foreground">
         Impossibile verificare lo stato del tuo account. Potrebbe essere un problema temporaneo.
       </p>
-      {label && (
-        <p className="rounded-md bg-muted px-3 py-1.5 font-mono text-xs text-muted-foreground">
-          {errorCode}: {label}
-        </p>
-      )}
+      <p className="rounded-md bg-muted px-3 py-1.5 font-mono text-xs text-muted-foreground">
+        {displayCode}: {label}
+      </p>
       <div className="flex flex-wrap justify-center gap-3">
         <Button onClick={onRetry} disabled={retrying} variant="outline" className="gap-2">
           <RefreshCw className={`h-4 w-4 ${retrying ? "animate-spin" : ""}`} />
@@ -118,6 +113,29 @@ const BootFailedRetry = ({
           Esci e rientra
         </Button>
       </div>
+
+      {selfTestFailed && !selfTest && (
+        <div className="mt-4 w-full max-w-sm rounded-lg border border-border bg-card p-4 text-left text-sm">
+          <h4 className="mb-2 font-semibold text-foreground">Diagnostica locale</h4>
+          <p className="mb-2 rounded-md bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
+            SELF_TEST_UNAVAILABLE: {DIAGNOSTIC_LABELS.SELF_TEST_UNAVAILABLE}
+          </p>
+          <dl className="space-y-1 text-muted-foreground">
+            <div className="flex justify-between">
+              <dt>Origin corrente</dt>
+              <dd className="font-mono text-xs">{typeof window !== "undefined" ? window.location.origin : "—"}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Codice bootstrap</dt>
+              <dd className="font-mono text-xs">{displayCode}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Backend raggiungibile</dt>
+              <dd className="text-destructive">✗ no</dd>
+            </div>
+          </dl>
+        </div>
+      )}
 
       {selfTest && (
         <div className="mt-4 w-full max-w-sm rounded-lg border border-border bg-card p-4 text-left text-sm">
@@ -174,7 +192,7 @@ const BootFailedRetry = ({
               <dd className="font-mono text-xs">{selfTest.check_code}</dd>
             </div>
             <div className="flex justify-between">
-              <dt>Owner bootstrap</dt>
+              <dt>Owner bootstrap state</dt>
               <dd className={
                 selfTest.owner_bootstrap_state === "matched" ? "text-green-600" :
                 selfTest.owner_bootstrap_state === "failed" ? "text-destructive" :
