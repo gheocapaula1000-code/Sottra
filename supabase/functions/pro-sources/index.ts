@@ -129,6 +129,8 @@ interface IstatResult {
   sourceLabel: string;
   sourceFreshness?: string;
   sourceCoverageLevel?: string;
+  geoLevel?: string;
+  geoLabel?: string;
   availabilityReason?: string;
   licensingNote?: string;
 }
@@ -180,12 +182,98 @@ async function queryIstatSdmx(istatCode: string, comuneLabel: string): Promise<I
       sourceLabel: "ISTAT — Popolazione residente al 1° gennaio",
       sourceFreshness: period ?? undefined,
       sourceCoverageLevel: "comune",
+      geoLevel: "comune",
+      geoLabel: comuneLabel ? `Comune di ${comuneLabel}` : undefined,
       licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
     };
   } catch (e) {
     log("istat exception", String(e));
     return unavailableIstat("provider_unavailable") as IstatResult;
   }
+}
+
+/* ══════════════════════════════════════════════════════
+   SUB-MUNICIPAL DEMOGRAPHICS — from demographic_zones table
+   Checks for sub-municipal data first, falls back to ISTAT municipal
+   ══════════════════════════════════════════════════════ */
+
+async function querySubMunicipalDemographics(
+  lat: number,
+  lng: number,
+  cadastralCode: string | null,
+  zonaOmi: string | null,
+  supabase: ReturnType<typeof createClient>,
+): Promise<IstatResult | null> {
+  if (!cadastralCode) return null;
+
+  try {
+    // Strategy 1: If we have a matched OMI zone, try direct join via zona_omi
+    if (zonaOmi) {
+      const { data: zoneData, error } = await supabase
+        .from("demographic_zones")
+        .select("*")
+        .eq("codice_comune_catastale", cadastralCode)
+        .eq("zona_omi", zonaOmi)
+        .order("anno_rilevazione", { ascending: false })
+        .limit(1);
+
+      if (!error && zoneData && zoneData.length > 0) {
+        const z = zoneData[0];
+        log("demographic_zones", `OMI join match: zone=${z.zona_label}, type=${z.zona_type}`);
+        return mapDemographicZoneToResult(z);
+      }
+    }
+
+    // Strategy 2: Point-in-polygon on demographic zone polygons
+    const { data: polyData, error: polyError } = await supabase
+      .from("demographic_zones")
+      .select("*")
+      .eq("codice_comune_catastale", cadastralCode)
+      .not("polygon_coords", "is", null)
+      .order("anno_rilevazione", { ascending: false });
+
+    if (!polyError && polyData && polyData.length > 0) {
+      for (const zone of polyData) {
+        const coords = zone.polygon_coords as number[][][];
+        if (coords && pointInMultiPolygon(lat, lng, coords)) {
+          log("demographic_zones", `polygon match: zone=${zone.zona_label}, type=${zone.zona_type}`);
+          return mapDemographicZoneToResult(zone);
+        }
+      }
+      log("demographic_zones", `${polyData.length} zones checked, no polygon match`);
+    }
+
+    return null;
+  } catch (e) {
+    log("demographic_zones exception", String(e));
+    return null;
+  }
+}
+
+function mapDemographicZoneToResult(z: Record<string, unknown>): IstatResult {
+  const zonaType = String(z.zona_type ?? "quartiere");
+  const geoLevel = zonaType === "microzona_omi" ? "microzona"
+    : zonaType === "sezione_censuaria" ? "microzona"
+    : zonaType === "quartiere" ? "quartiere"
+    : zonaType === "circoscrizione" ? "quartiere"
+    : "zona";
+
+  return {
+    popolazione: typeof z.popolazione === "number" ? z.popolazione : null,
+    nucleiFamiliari: typeof z.nuclei_familiari === "number" ? z.nuclei_familiari : null,
+    densita: typeof z.densita === "number" ? z.densita : null,
+    indiceVecchiaia: typeof z.indice_vecchiaia === "number" ? z.indice_vecchiaia : null,
+    percentualeStranieri: typeof z.percentuale_stranieri === "number" ? z.percentuale_stranieri : null,
+    comuneLabel: typeof z.comune_label === "string" ? z.comune_label : null,
+    annoRilevazione: typeof z.anno_rilevazione === "string" ? z.anno_rilevazione : null,
+    sourceType: String(z.source_type ?? "official"),
+    sourceProvider: "istat",
+    sourceLabel: typeof z.source_label === "string" ? z.source_label : "ISTAT Censimento",
+    sourceCoverageLevel: zonaType === "microzona_omi" ? "zone_omi" : "quartiere",
+    geoLevel,
+    geoLabel: typeof z.zona_label === "string" ? z.zona_label : undefined,
+    licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
+  };
 }
 
 /* ══════════════════════════════════════════════════════
@@ -662,9 +750,33 @@ serve(async (req) => {
       promises.push(
         (async () => {
           try {
-            if (!geoId?.istatCode) {
-              log("istat", "no ISTAT code available — skipping");
+            // Step 1: Try sub-municipal demographics from demographic_zones table
+            // We need OMI results for zona_omi join, so OMI runs in parallel
+            // but we check results after all promises settle
+            if (!geoId?.istatCode && !geoId?.cadastralCode) {
+              log("istat", "no ISTAT/cadastral code available — skipping");
               results.istat = unavailableIstat(geoId?.comuneLabel ? "no_match" : "no_coverage");
+              return;
+            }
+
+            // Try sub-municipal first
+            const subMunicipal = await querySubMunicipalDemographics(
+              lat, lng,
+              geoId?.cadastralCode ?? null,
+              null, // zona_omi not yet known at this point
+              supabaseAdmin,
+            );
+
+            if (subMunicipal) {
+              log("istat", `sub-municipal data found: geoLevel=${subMunicipal.geoLevel}, label=${subMunicipal.geoLabel}`);
+              results.istat = subMunicipal;
+              return;
+            }
+
+            // Fallback to municipal ISTAT
+            if (!geoId?.istatCode) {
+              log("istat", "no ISTAT code for municipal fallback");
+              results.istat = unavailableIstat("no_coverage");
               return;
             }
             results.istat = await queryIstatSdmx(geoId.istatCode, geoId.comuneLabel ?? "");
@@ -697,6 +809,24 @@ serve(async (req) => {
     }
 
     await Promise.allSettled(promises);
+
+    // Post-processing: If ISTAT is still municipal and OMI found a zone, retry sub-municipal with zona_omi
+    const istatResult = results.istat as IstatResult | undefined;
+    const omiResult = results.omi as Record<string, unknown> | undefined;
+    if (
+      istatResult?.geoLevel === "comune" &&
+      omiResult?.zonaOmi &&
+      typeof omiResult.zonaOmi === "string" &&
+      geoId?.cadastralCode
+    ) {
+      const subWithOmi = await querySubMunicipalDemographics(
+        lat, lng, geoId.cadastralCode, omiResult.zonaOmi as string, supabaseAdmin,
+      );
+      if (subWithOmi) {
+        log("istat post-process", `upgraded to sub-municipal via OMI zone: ${subWithOmi.geoLabel}`);
+        results.istat = subWithOmi;
+      }
+    }
 
     return json({
       ok: true,

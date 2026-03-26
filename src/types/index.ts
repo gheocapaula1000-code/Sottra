@@ -362,6 +362,10 @@ export interface IstatDemographicData extends SourceMetadata {
   percentualeStranieri?: number | null;
   comuneLabel?: string | null;
   annoRilevazione?: string | null;
+  /** Geographic level of the data (comune, quartiere, microzona) */
+  geoLevel?: GeoLevel | null;
+  /** Human-readable label for the geographic area */
+  geoLabel?: string | null;
 }
 
 /** Risultato completo di una scansione — solo moduli realmente operativi */

@@ -100,6 +100,8 @@ function parseIstatResult(raw: unknown): IstatDemographicData | null {
     percentualeStranieri: typeof d.percentualeStranieri === "number" ? d.percentualeStranieri : null,
     comuneLabel: typeof d.comuneLabel === "string" ? d.comuneLabel : null,
     annoRilevazione: typeof d.annoRilevazione === "string" ? d.annoRilevazione : null,
+    geoLevel: typeof d.geoLevel === "string" ? d.geoLevel as IstatDemographicData["geoLevel"] : null,
+    geoLabel: typeof d.geoLabel === "string" ? d.geoLabel : null,
     sourceType: (d.sourceType as IstatDemographicData["sourceType"]) ?? "official",
     sourceProvider: "istat",
     sourceLabel: typeof d.sourceLabel === "string" ? d.sourceLabel : "ISTAT",

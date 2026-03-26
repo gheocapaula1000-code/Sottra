@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { isRenderableTrendDemografico } from "@/lib/demographic";
-import type { TrendDemograficoData, GeoLevel } from "@/types";
+import type { TrendDemograficoData, GeoLevel, IstatDemographicData } from "@/types";
 
 /**
  * Tests for geographic transparency rules:
  * Municipal data must never be presented as zone-level data.
+ * Sub-municipal data must be used when available.
  */
 
 describe("Geographic transparency — demographic data", () => {
@@ -24,7 +25,6 @@ describe("Geographic transparency — demographic data", () => {
   it("municipal data should be labeled as comunale, not zona", () => {
     const d = makeDemographic({ geoLevel: "comune", geoLabel: "Padova" });
     expect(d.geoLevel).toBe("comune");
-    // The UI should show "del comune" suffix — verified by isMunicipal logic
     const isMunicipal = d.geoLevel === "comune" || (!d.geoLevel && !d.geoLabel);
     expect(isMunicipal).toBe(true);
   });
@@ -103,11 +103,9 @@ describe("Geographic transparency — section title logic", () => {
 
 describe("Geographic transparency — no false zone localization", () => {
   it("badge and geoLevel must be coherent", () => {
-    // When geoLevel is "comune", the badge text must reflect municipal scope
     const geoLevel: GeoLevel = "comune";
     const geoLabel = "Padova";
     
-    // Simulates the GeoLevelTag logic
     const bannerText = geoLevel === "comune"
       ? `Dato riferito all'intero comune di ${geoLabel}, non alla singola zona analizzata.`
       : null;
@@ -124,5 +122,62 @@ describe("Geographic transparency — no false zone localization", () => {
       ? "Dato riferito all'intero comune"
       : null;
     expect(bannerText).toBeNull();
+  });
+});
+
+describe("Geographic transparency — ISTAT card geo-level handling", () => {
+  function makeIstat(overrides: Partial<IstatDemographicData> = {}): IstatDemographicData {
+    return {
+      popolazione: 210000,
+      comuneLabel: "Padova",
+      sourceType: "official",
+      sourceProvider: "istat",
+      sourceLabel: "ISTAT",
+      ...overrides,
+    };
+  }
+
+  it("ISTAT with geoLevel=comune shows municipal warning", () => {
+    const d = makeIstat({ geoLevel: "comune" });
+    const isMunicipal = !d.geoLevel || d.geoLevel === "comune" || d.geoLevel === "area_vasta" || d.geoLevel === "stimato";
+    expect(isMunicipal).toBe(true);
+  });
+
+  it("ISTAT with geoLevel=quartiere shows sub-municipal", () => {
+    const d = makeIstat({ geoLevel: "quartiere", geoLabel: "Arcella", popolazione: 15000 });
+    const isSubMunicipal = d.geoLevel === "microzona" || d.geoLevel === "quartiere" || d.geoLevel === "zona";
+    expect(isSubMunicipal).toBe(true);
+    const isMunicipal = !d.geoLevel || d.geoLevel === "comune";
+    expect(isMunicipal).toBe(false);
+  });
+
+  it("ISTAT with geoLevel=microzona shows sub-municipal", () => {
+    const d = makeIstat({ geoLevel: "microzona", geoLabel: "B1 - Centro", popolazione: 5200 });
+    const isSubMunicipal = d.geoLevel === "microzona" || d.geoLevel === "quartiere" || d.geoLevel === "zona";
+    expect(isSubMunicipal).toBe(true);
+  });
+
+  it("ISTAT with no geoLevel defaults to municipal (conservative)", () => {
+    const d = makeIstat({});
+    const isMunicipal = !d.geoLevel || d.geoLevel === "comune" || d.geoLevel === "area_vasta" || d.geoLevel === "stimato";
+    expect(isMunicipal).toBe(true);
+  });
+
+  it("sub-municipal label uses geoLabel not comuneLabel", () => {
+    const d = makeIstat({ geoLevel: "quartiere", geoLabel: "Arcella", comuneLabel: "Padova" });
+    const titleLabel = (d.geoLevel === "microzona" || d.geoLevel === "quartiere" || d.geoLevel === "zona")
+      ? `Dati Demografici — ${d.geoLabel}`
+      : `Dati ISTAT Ufficiali (Comune)`;
+    expect(titleLabel).toBe("Dati Demografici — Arcella");
+    expect(titleLabel).not.toContain("Comune");
+  });
+
+  it("municipal label includes Comune", () => {
+    const d = makeIstat({ geoLevel: "comune", comuneLabel: "Padova" });
+    const isSubMunicipal = d.geoLevel === "microzona" || d.geoLevel === "quartiere" || d.geoLevel === "zona";
+    const titleLabel = isSubMunicipal
+      ? `Dati Demografici — ${d.geoLabel}`
+      : `Dati ISTAT Ufficiali (Comune)`;
+    expect(titleLabel).toContain("Comune");
   });
 });

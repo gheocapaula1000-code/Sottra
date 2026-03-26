@@ -1075,41 +1075,62 @@ function IstatCard({ data, loading }: { data: import("@/types").IstatDemographic
   if (loading) return <SectionSkeleton />;
   if (!data || data.sourceType === "unavailable" || data.popolazione == null) return null;
 
+  const isMunicipal = !data.geoLevel || data.geoLevel === "comune" || data.geoLevel === "area_vasta" || data.geoLevel === "stimato";
+  const isSubMunicipal = data.geoLevel === "microzona" || data.geoLevel === "quartiere" || data.geoLevel === "zona";
+
+  const geoSuffix = isMunicipal ? " del comune" : "";
+  const titleLabel = isSubMunicipal
+    ? `Dati Demografici${data.geoLabel ? ` — ${data.geoLabel}` : ""}`
+    : `Dati ISTAT Ufficiali${data.geoLabel ? ` — ${data.geoLabel}` : " (Comune)"}`;
+
+  const geoLevelLabels: Record<string, string> = {
+    microzona: "Microzona", quartiere: "Quartiere", zona: "Zona",
+    comune: "Comune", area_vasta: "Area vasta", stimato: "Stima",
+  };
+  const geoLevelBadge = data.geoLevel ? geoLevelLabels[data.geoLevel] ?? null : null;
+
   return (
-    <Section gradient="from-blue-500/10 to-indigo-500/5 border-blue-500/15">
-      <SectionHeader icon={Users} title="Dati ISTAT Ufficiali" badge={data.annoRilevazione ?? null} />
+    <Section gradient={isSubMunicipal ? "from-emerald-500/10 to-teal-500/5 border-emerald-500/15" : "from-blue-500/10 to-indigo-500/5 border-blue-500/15"}>
+      <SectionHeader icon={Users} title={titleLabel} badge={geoLevelBadge ?? data.annoRilevazione ?? null} />
       {data.comuneLabel && (
         <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
-          <MapPin className="h-3 w-3" />Comune: <span className="font-semibold text-foreground">{data.comuneLabel}</span>
+          <MapPin className="h-3 w-3" />
+          {isSubMunicipal ? "Zona: " : "Comune: "}
+          <span className="font-semibold text-foreground">{data.geoLabel ?? data.comuneLabel}</span>
         </p>
+      )}
+      {isMunicipal && (
+        <div className="flex items-start gap-2 rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2 mb-3">
+          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-400" />
+          <p className="text-[11px] text-amber-400">
+            Dato riferito all'intero comune{data.comuneLabel ? ` di ${data.comuneLabel}` : ""}, non alla singola zona analizzata.
+          </p>
+        </div>
       )}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className="rounded-lg bg-muted/50 px-3 py-2">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Popolazione</span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Popolazione{geoSuffix}</span>
           <p className="font-bold text-foreground text-sm mt-0.5">{fmt(data.popolazione)}</p>
         </div>
         {data.densita != null && (
           <div className="rounded-lg bg-muted/50 px-3 py-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Densità</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Densità{geoSuffix}</span>
             <p className="font-bold text-foreground text-sm mt-0.5">{fmt(data.densita)} ab/km²</p>
           </div>
         )}
         {data.indiceVecchiaia != null && (
           <div className="rounded-lg bg-muted/50 px-3 py-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Indice vecchiaia</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Indice vecchiaia{geoSuffix}</span>
             <p className="font-bold text-foreground text-sm mt-0.5">{fmt(data.indiceVecchiaia)}</p>
           </div>
         )}
         {data.percentualeStranieri != null && (
           <div className="rounded-lg bg-muted/50 px-3 py-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Stranieri</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Stranieri{geoSuffix}</span>
             <p className="font-bold text-foreground text-sm mt-0.5">{fmt(data.percentualeStranieri)}%</p>
           </div>
         )}
       </div>
-      {data.sourceCoverageLevel === "comune" && (
-        <p className="text-[10px] text-amber-400/70 mt-1">Dato riferito al livello comunale</p>
-      )}
       <SourceTag meta={data} />
     </Section>
   );
