@@ -100,6 +100,57 @@ const TARGET_FIELDS = [
   "notes",
 ];
 
+/** Robust RFC 4180-ish CSV parser: handles quoted fields, internal separators, newlines inside quotes */
+function parseCSVRows(text: string, sep: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        field += '"';
+        i++; // skip escaped quote
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === sep) {
+        row.push(field);
+        field = "";
+      } else if (ch === "\r" && next === "\n") {
+        row.push(field);
+        field = "";
+        rows.push(row);
+        row = [];
+        i++; // skip \n
+      } else if (ch === "\n") {
+        row.push(field);
+        field = "";
+        rows.push(row);
+        row = [];
+      } else {
+        field += ch;
+      }
+    }
+  }
+  // Last field/row
+  if (field || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
 type Phase = "upload" | "validating" | "mapping" | "preview" | "importing" | "done" | "error";
 
 const AdminDemographicImport = () => {
