@@ -1308,7 +1308,11 @@ function buildTrasparenzaFonti(result: ScanResult): TrasparenzaFontiData | null 
     fonti.push({ categoria: "dato_ufficiale", categoriaLabel: "Quotazioni OMI", provider: "Agenzia delle Entrate", periodo: omi.semestre ?? undefined, copertura: omi.polygonMatch ? "Zona identificata da coordinate" : "Media comunale" });
   }
   if (result.istatDemographic.status === "success" && result.istatDemographic.data) {
-    fonti.push({ categoria: "dato_ufficiale", categoriaLabel: "Dati demografici ISTAT", provider: "ISTAT", copertura: "Livello comunale" });
+    const istat = result.istatDemographic.data as import("@/types").IstatDemographicData;
+    const istatGeoLabel = istat.geoLevel === "microzona" || istat.geoLevel === "quartiere" || istat.geoLevel === "zona"
+      ? `Livello ${istat.geoLevel}${istat.geoLabel ? ` — ${istat.geoLabel}` : ""}`
+      : "Livello comunale";
+    fonti.push({ categoria: "dato_ufficiale", categoriaLabel: "Dati demografici ISTAT", provider: "ISTAT", copertura: istatGeoLabel });
   }
   if (result.pricing.status === "success" && result.pricing.data) {
     fonti.push({ categoria: "dato_mercato", categoriaLabel: "Prezzi di mercato", provider: "Fonti di mercato verificate", dettaglio: "Elaborazione da comparabili e dati di mercato" });
