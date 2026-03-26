@@ -1090,6 +1090,11 @@ function IstatCard({ data, loading }: { data: import("@/types").IstatDemographic
   };
   const geoLevelBadge = data.geoLevel ? geoLevelLabels[data.geoLevel] ?? null : null;
 
+  const matchMethodLabels: Record<string, string> = {
+    zona_omi: "Match zona OMI", point_in_polygon: "Match spaziale",
+    municipal_fallback: "Fallback comunale",
+  };
+
   return (
     <Section gradient={isSubMunicipal ? "from-emerald-500/10 to-teal-500/5 border-emerald-500/15" : "from-blue-500/10 to-indigo-500/5 border-blue-500/15"}>
       <SectionHeader icon={Users} title={titleLabel} badge={geoLevelBadge ?? data.annoRilevazione ?? null} />
@@ -1132,6 +1137,27 @@ function IstatCard({ data, loading }: { data: import("@/types").IstatDemographic
           </div>
         )}
       </div>
+      {/* Transparency metadata — matchMethod, confidence, selectionReason */}
+      {(data.matchMethod || data.annoRilevazione || data.selectionReason) && (
+        <div className="rounded-lg bg-muted/30 border border-border/30 px-3 py-2 mb-3 space-y-0.5">
+          {data.matchMethod && (
+            <p className="text-[10px] text-muted-foreground">
+              Metodo: <span className="font-medium text-foreground/80">{matchMethodLabels[data.matchMethod] ?? data.matchMethod}</span>
+              {data.matchConfidence != null && <span className="ml-2">· Confidenza: {Math.round(data.matchConfidence * 100)}%</span>}
+            </p>
+          )}
+          {data.annoRilevazione && (
+            <p className="text-[10px] text-muted-foreground">
+              Anno rilevazione: <span className="font-medium text-foreground/80">{data.annoRilevazione}</span>
+            </p>
+          )}
+          {data.selectionReason && (
+            <p className="text-[10px] text-muted-foreground">
+              Selezione: <span className="font-medium text-foreground/80">{data.selectionReason.replace(/_/g, " ")}</span>
+            </p>
+          )}
+        </div>
+      )}
       <SourceTag meta={data} />
     </Section>
   );
