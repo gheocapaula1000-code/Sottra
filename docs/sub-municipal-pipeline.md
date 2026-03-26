@@ -195,3 +195,33 @@ importata una fonte reale georeferenziata. Fonti possibili:
 - Dati percezione sicurezza da indagini ISTAT
 
 Per attivare: popolare la tabella e aggiungere query in `pro-sources`.
+
+## Residui chiusi prima del primo dataset reale
+
+### Vincolo UNIQUE legacy neutralizzato
+
+Il vecchio vincolo `demographic_zones_zona_key_comune_unique` su `(zona_key, codice_comune_catastale)`
+è stato rimosso tramite migration correttiva. Questo vincolo impediva la coesistenza di record
+multi-anno e multi-source per la stessa zona, schiacciando versioni temporali diverse.
+
+L'unico vincolo UNIQUE attivo ora è `demographic_zones_dedup_key` su
+`(zona_key, codice_comune_catastale, anno_rilevazione, source_label)`.
+
+La migration è idempotente: elimina dinamicamente qualsiasi constraint UNIQUE legacy
+che non sia `demographic_zones_dedup_key`, inclusi nomi imprevisti da migrazioni precedenti.
+
+### Parser CSV pronto per dataset ISTAT reali
+
+Il parser CSV dell'admin è stato riscritto per supportare:
+- Campi quotati con virgole o punti e virgola interni
+- Separatore `,` o `;` (auto-rilevato dalla prima riga)
+- BOM UTF-8 (rimosso automaticamente)
+- Righe vuote (ignorate)
+- Quote escaped con raddoppio (`""`)
+- Line endings CRLF e LF
+
+### Unico blocker residuo
+
+A questo punto l'unico blocker reale per avere dati sub-comunali è il **reperimento e caricamento
+del primo dataset ISTAT con geometrie censuarie/sub-comunali** (shapefile o GeoJSON delle sezioni
+di censimento 2021 con attributi demografici associati).
