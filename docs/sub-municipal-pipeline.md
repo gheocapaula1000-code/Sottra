@@ -16,7 +16,7 @@ Coordinate (lat, lng)
     ├─> querySubMunicipalDemographics()
     │     ├─ Strategy 1: JOIN via zona_omi (se OMI ha trovato la zona)
     │     ├─ Strategy 2: Point-in-polygon su polygon_coords
-    │     ├─ Selezione miglior record: anno > is_official > data_quality > metriche
+    │     ├─ Selezione miglior record (selectBestRecord)
     │     └─ Se match → return sub-municipal data (geoLevel: microzona/quartiere)
     │
     └─> queryIstatSdmx() → fallback comunale (geoLevel: comune)
@@ -29,15 +29,17 @@ si ritenta `querySubMunicipalDemographics` con il `zona_omi` trovato da OMI.
 
 ### Selezione miglior record (selectBestRecord)
 
-Quando esistono più record candidati per la stessa zona:
+Quando esistono più record candidati per la stessa zona, priorità deterministica:
 
-1. **Anno più recente** (`anno_rilevazione` DESC)
-2. **Fonte ufficiale** (`is_official = true` prioritaria)
-3. **Qualità dato** (`alto > standard > basso`)
-4. **Più metriche** (record con più campi compilati)
+1. **Coverage più preciso** (`microzona > sezione_censimento > zona > quartiere > area_subcomunale > comune`)
+2. **Anno più recente** (`anno_rilevazione` DESC)
+3. **Fonte ufficiale** (`is_official = true` prioritaria)
+4. **Qualità dato** (`alto > standard > basso`)
+5. **Presenza zona_omi** (record con zona_omi vince su quelli senza)
+6. **Più metriche** (record con più campi compilati)
 
-Il metodo di match (`matchMethod`) e la confidence (`matchConfidence`) sono propagati
-fino alla UI per totale trasparenza.
+Il `selectionReason` spiega perché un record è stato scelto (es. `migliore_per_copertura_più_precisa`).
+Il `matchMethod` e `matchConfidence` sono propagati fino alla UI per totale trasparenza.
 
 ## Tabella `demographic_zones`
 
@@ -51,11 +53,12 @@ fino alla UI per totale trasparenza.
 | polygon_coords | jsonb? | Poligono per point-in-polygon |
 | centroid_lat/lng | numeric? | Centroide (auto-calcolato se mancante) |
 | popolazione, densita, eta_media, ... | numeric? | Metriche demografiche |
-| coverage_level | text | zona, quartiere, comune, microzona |
+| coverage_level | text | zona, quartiere, comune, microzona, sezione_censimento, area_subcomunale |
 | data_quality | text | alto, standard, basso |
 | is_official | boolean | Se fonte istituzionale |
 | source_label, source_type | text | Metadati fonte |
 | import_batch_id | text? | ID batch per rollback |
+| source_file | text? | Nome file sorgente |
 
 ### Vincolo univoco
 
@@ -68,6 +71,13 @@ fino alla UI per totale trasparenza.
 3. **Comunale ISTAT** (SDMX API) → `geoLevel: comune` (fallback trasparente)
 4. **Non disponibile** → `sourceType: unavailable`
 
+## Deduplica e idempotenza
+
+- Chiave unica: `(zona_key, codice_comune_catastale)`
+- Upsert con `onConflict` su questa chiave: se lo stesso record arriva di nuovo, viene aggiornato
+- Nessun duplicato logico possibile per la stessa zona nello stesso comune
+- `import_batch_id` consente rollback per batch
+
 ## Import dei dati reali
 
 ### Flusso admin
@@ -79,6 +89,7 @@ Pagina admin `/admin/demographic-import` con:
 - Import batch con ID univoco
 - Rollback per batch recenti
 - Auto-calcolo centroide se mancante
+- Statistiche: comuni coperti, record totali
 
 ### Edge Function `demographic-import`
 
@@ -87,16 +98,17 @@ Actions disponibili:
 - `import` — upsert idempotente in chunk da 500
 - `rollback` — elimina un batch per import_batch_id
 - `list-batches` — lista batch importati
-- `stats` — conteggio record con filtri
+- `stats` — conteggio record con filtri + comuni distinti
+
+### Formati supportati
+- **GeoJSON** FeatureCollection con proprietà demografiche
+- **CSV** con codice zona + metriche (campi obbligatori in header)
 
 ### Fonti utilizzabili
 - ISTAT Censimento Permanente (sezioni censuarie con geometrie)
 - Dataset comunali aperti (es. Padova Open Data)
 - Dati Agenzia delle Entrate georeferenziati
-
-### Formato supportato
-- **GeoJSON** FeatureCollection con proprietà demografiche
-- **CSV** con codice zona + metriche (campi obbligatori in header)
+- Dataset IDISE (come layer aggiuntivo, non sostitutivo)
 
 ### Cosa serve per attivare
 1. Scaricare shapefile/GeoJSON sezioni censuarie ISTAT
@@ -114,6 +126,7 @@ Composito da 5 sotto-dimensioni:
 - **Mercato** (peso 15%): quotazioni OMI, stabilità
 
 Copertura minima: 3 dimensioni su 5 per calcolare il punteggio.
+Quando i dati demografici sono comunali, la nota lo dichiara esplicitamente.
 
 ## Sicurezza / Criminalità
 
