@@ -213,7 +213,7 @@ function parseGeoJSON(input: unknown): Record<string, unknown>[] {
 
 /* ── Dedup key helper ───────────────────────────────── */
 function dedupKey(r: DemographicRecord): string {
-  return `${r.zona_key}|${r.codice_comune_catastale}`;
+  return `${r.zona_key}|${r.codice_comune_catastale}|${r.anno_rilevazione ?? "0000"}|${r.source_label}`;
 }
 
 /* ── Main handler ───────────────────────────────────── */
