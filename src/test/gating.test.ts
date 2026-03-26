@@ -393,15 +393,22 @@ describe("Client-side fallback diagnostics", () => {
   });
 
   it("backend unreachable prefers NETWORK_ERROR over INVOKE_ERROR", () => {
-    const classifyInvokeError = (msg: string) => {
-      const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(msg);
-      const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket/i.test(msg);
-      return isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "INVOKE_ERROR";
-    };
+    expect(classify("ECONNREFUSED 127.0.0.1:443")).toBe("NETWORK_ERROR");
+    expect(classify("socket hang up")).toBe("NETWORK_ERROR");
+    expect(classify("network timeout at: https://...")).toBe("NETWORK_ERROR");
+    expect(classify("connection refused")).toBe("NETWORK_ERROR");
+    expect(classify("host unreachable")).toBe("NETWORK_ERROR");
+  });
 
-    expect(classifyInvokeError("ECONNREFUSED 127.0.0.1:443")).toBe("NETWORK_ERROR");
-    expect(classifyInvokeError("socket hang up")).toBe("NETWORK_ERROR");
-    expect(classifyInvokeError("network timeout at: https://...")).toBe("NETWORK_ERROR");
+  it("INVOKE_ERROR reclassified to CORS_ORIGIN_BLOCKED when self-test shows backend unreachable", () => {
+    // Simulates AppDashboardGate reclassification logic
+    const reclassify = (errorCode: string, selfTestFailed: boolean) => {
+      if (errorCode === "INVOKE_ERROR" && selfTestFailed) return "CORS_ORIGIN_BLOCKED";
+      return errorCode;
+    };
+    expect(reclassify("INVOKE_ERROR", true)).toBe("CORS_ORIGIN_BLOCKED");
+    expect(reclassify("INVOKE_ERROR", false)).toBe("INVOKE_ERROR");
+    expect(reclassify("NETWORK_ERROR", true)).toBe("NETWORK_ERROR");
   });
 
   it("empty errorCode defaults to UNKNOWN_BOOT_FAILURE", () => {
