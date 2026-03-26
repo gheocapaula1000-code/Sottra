@@ -349,6 +349,10 @@ function mapDemographicZoneToResult(z: Record<string, unknown>, matchMethod: str
     ? (dataQuality === "alto" ? 0.97 : dataQuality === "standard" ? 0.90 : 0.75)
     : (dataQuality === "alto" ? 0.92 : dataQuality === "standard" ? 0.85 : 0.70);
 
+  const selectionReason = typeof (z as Record<string, unknown>)._selectionReason === "string"
+    ? (z as Record<string, unknown>)._selectionReason as string
+    : undefined;
+
   return {
     popolazione: typeof z.popolazione === "number" ? z.popolazione : null,
     nucleiFamiliari: typeof z.nuclei_familiari === "number" ? z.nuclei_familiari : null,
@@ -367,6 +371,9 @@ function mapDemographicZoneToResult(z: Record<string, unknown>, matchMethod: str
     licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
     matchMethod,
     matchConfidence: confidence,
+    selectionReason,
+    isOfficial,
+    dataQuality,
   } as IstatResult;
 }
 
