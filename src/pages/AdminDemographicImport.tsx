@@ -630,7 +630,7 @@ const AdminDemographicImport = () => {
           <Card>
             <CardContent className="py-8 space-y-4">
               <div className="flex flex-col items-center gap-3">
-                <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                <CheckCircle2 className="h-12 w-12 text-primary" />
                 <p className="text-lg font-bold text-foreground">Import completato</p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
