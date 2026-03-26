@@ -114,6 +114,29 @@ const BootFailedRetry = ({
         </Button>
       </div>
 
+      {selfTestFailed && !selfTest && (
+        <div className="mt-4 w-full max-w-sm rounded-lg border border-border bg-card p-4 text-left text-sm">
+          <h4 className="mb-2 font-semibold text-foreground">Diagnostica locale</h4>
+          <p className="mb-2 rounded-md bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
+            SELF_TEST_UNAVAILABLE: {DIAGNOSTIC_LABELS.SELF_TEST_UNAVAILABLE}
+          </p>
+          <dl className="space-y-1 text-muted-foreground">
+            <div className="flex justify-between">
+              <dt>Origin corrente</dt>
+              <dd className="font-mono text-xs">{typeof window !== "undefined" ? window.location.origin : "—"}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Codice bootstrap</dt>
+              <dd className="font-mono text-xs">{displayCode}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Backend raggiungibile</dt>
+              <dd className="text-destructive">✗ no</dd>
+            </div>
+          </dl>
+        </div>
+      )}
+
       {selfTest && (
         <div className="mt-4 w-full max-w-sm rounded-lg border border-border bg-card p-4 text-left text-sm">
           <h4 className="mb-2 font-semibold text-foreground">Diagnostica accesso</h4>
@@ -169,7 +192,7 @@ const BootFailedRetry = ({
               <dd className="font-mono text-xs">{selfTest.check_code}</dd>
             </div>
             <div className="flex justify-between">
-              <dt>Owner bootstrap</dt>
+              <dt>Owner bootstrap state</dt>
               <dd className={
                 selfTest.owner_bootstrap_state === "matched" ? "text-green-600" :
                 selfTest.owner_bootstrap_state === "failed" ? "text-destructive" :

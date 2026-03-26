@@ -277,8 +277,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       setBillingReady(parsed.billingActive);
     } catch (e) {
-      console.error("[Subscription] unexpected error (non-fatal):", e);
-      handleTransientError("UNEXPECTED_ERROR");
+      const errMsg = e instanceof Error ? e.message : String(e);
+      const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(errMsg);
+      const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : "UNEXPECTED_ERROR";
+      console.error("[Subscription] unexpected error (non-fatal):", errMsg, "→", code);
+      handleTransientError(code);
     }
   }, [session, authLoading, resetToDefaults, setResolved, handleTransientError]);
 
