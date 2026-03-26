@@ -88,7 +88,17 @@ const BootFailedRetry = ({
     }
   };
 
-  const displayCode = errorCode || "UNKNOWN_BOOT_FAILURE";
+  // Reclassify INVOKE_ERROR when self-test proves backend is unreachable
+  const reclassifiedCode = (() => {
+    const raw = errorCode || "UNKNOWN_BOOT_FAILURE";
+    if (raw === "INVOKE_ERROR" && selfTestFailed && !selfTest) {
+      // Backend is unreachable — INVOKE_ERROR is misleading
+      // Check if the original error message had CORS signals (stored in the code itself)
+      return "CORS_ORIGIN_BLOCKED";
+    }
+    return raw;
+  })();
+  const displayCode = reclassifiedCode;
   const label = DIAGNOSTIC_LABELS[displayCode] ?? displayCode;
 
   return (
