@@ -1137,7 +1137,106 @@ function IstatCard({ data, loading }: { data: import("@/types").IstatDemographic
   );
 }
 
-/* ── POI Enrichment Card ─────────────────────────────── */
+/* ── Neighborhood Index Card ──────────────────────────── */
+
+function DimensionStatusIcon({ status }: { status: SubDimension["status"] }) {
+  if (status === "disponibile") return <CheckCircle2 className="h-3 w-3 text-emerald-400" />;
+  if (status === "parziale") return <AlertTriangle className="h-3 w-3 text-amber-400" />;
+  return <AlertTriangle className="h-3 w-3 text-muted-foreground/40" />;
+}
+
+function NeighborhoodIndexCard({ index, loading }: { index: NeighborhoodIndex | null; loading: boolean }) {
+  if (loading) return <SectionSkeleton />;
+  if (!index || !index.isRenderable || index.score == null) return null;
+
+  const bandColors: Record<string, string> = {
+    ottimo: "from-emerald-500/15 to-green-500/5 border-emerald-500/20",
+    buono: "from-sky-500/15 to-blue-500/5 border-sky-500/20",
+    discreto: "from-violet-500/10 to-indigo-500/5 border-violet-500/20",
+    sufficiente: "from-amber-500/10 to-yellow-500/5 border-amber-500/20",
+    insufficiente: "from-stone-500/10 to-stone-400/5 border-stone-500/20",
+  };
+  const bandLabels: Record<string, string> = {
+    ottimo: "Ottimo", buono: "Buono", discreto: "Discreto", sufficiente: "Sufficiente", insufficiente: "Insufficiente",
+  };
+
+  const geoLevelLabels: Record<string, string> = {
+    microzona: "Microzona", quartiere: "Quartiere", zona: "Zona locale",
+    comune: "Comunale", area_vasta: "Area vasta", stimato: "Stimato",
+  };
+
+  return (
+    <Section gradient={index.band ? bandColors[index.band] ?? "" : ""}>
+      <SectionHeader icon={Layers} title="Profilo di Zona" badge={index.band ? bandLabels[index.band] : null} />
+
+      {/* Geo level indicator */}
+      {index.geoLevel && (
+        <div className="flex items-center gap-1.5 mb-3">
+          <span className={cn(
+            "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium",
+            index.geoLevel === "microzona" || index.geoLevel === "quartiere"
+              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+              : index.geoLevel === "comune"
+                ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                : "bg-muted/50 border-border/50 text-muted-foreground",
+          )}>
+            <MapPin className="h-3 w-3" />{geoLevelLabels[index.geoLevel] ?? index.geoLevel}
+          </span>
+          {index.geoLabel && <span className="text-[10px] text-muted-foreground/60">{index.geoLabel}</span>}
+        </div>
+      )}
+
+      {/* Score arc + coverage */}
+      <div className="flex items-center gap-4 mb-4">
+        <ScoreArc value={index.score} />
+        <div className="flex-1 space-y-1.5">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">Copertura dati</span>
+            <span className="font-semibold text-foreground">{index.coveragePct}%</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">Dimensioni</span>
+            <span className="font-semibold text-foreground">{index.dimensionsAvailable}/{index.dimensionsTotal}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-dimensions */}
+      <div className="space-y-2 mb-3">
+        {index.dimensions.map((dim) => (
+          <div key={dim.id} className="rounded-lg bg-background/40 border border-border/30 px-3 py-2">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1.5">
+                <DimensionStatusIcon status={dim.status} />
+                <span className="text-xs font-medium text-foreground">{dim.label}</span>
+              </div>
+              {dim.score != null && (
+                <span className="text-xs font-bold text-foreground">{dim.score}/100</span>
+              )}
+            </div>
+            {dim.note && (
+              <p className="text-[10px] text-muted-foreground/60 leading-relaxed">{dim.note}</p>
+            )}
+            {dim.sources.length > 0 && (
+              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                {dim.sources.map((s, i) => (
+                  <span key={i} className="text-[9px] text-muted-foreground/40">{s}</span>
+                ))}
+                {dim.geoLevel && dim.geoLevel !== index.geoLevel && (
+                  <span className="text-[9px] text-muted-foreground/40">· {geoLevelLabels[dim.geoLevel] ?? dim.geoLevel}</span>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[9px] text-muted-foreground/30">{index.disclaimer}</p>
+    </Section>
+  );
+}
+
+
 
 function PoiEnrichmentCard({ data, loading }: { data: PoiEnrichmentData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
