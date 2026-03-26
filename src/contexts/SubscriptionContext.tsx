@@ -35,6 +35,8 @@ interface SubscriptionState {
   stale: boolean;
   /** True when the first bootstrap failed due to a transient error — no valid state exists yet */
   bootFailed: boolean;
+  /** Last diagnostic error code from check-subscription (e.g. "auth_invalid", "fatal") */
+  lastErrorCode: string | null;
   refresh: () => Promise<void>;
 }
 
@@ -54,6 +56,7 @@ const SubscriptionContext = createContext<SubscriptionState>({
   isOwner: false,
   stale: false,
   bootFailed: false,
+  lastErrorCode: null,
   refresh: async () => {},
 });
 
@@ -112,6 +115,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [checked, setChecked] = useState(false);
   const [stale, setStale] = useState(false);
   const [bootFailed, setBootFailed] = useState(false);
+  const [lastErrorCode, setLastErrorCode] = useState<string | null>(null);
   const accessResolvedRef = useRef(false);
   /** Tracks whether we've ever received a successful response */
   const hasEverCheckedRef = useRef(false);
@@ -134,6 +138,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setChecked(true);
     setStale(false);
     setBootFailed(false);
+    setLastErrorCode(null);
     setBillingReady(false);
     setResolved(true);
     hasEverCheckedRef.current = false;
@@ -148,19 +153,16 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
    *   Instead set bootFailed=true so the gate can show retry UI.
    *   billingReady is set to false because no valid state exists yet.
    */
-  const handleTransientError = useCallback(() => {
+  const handleTransientError = useCallback((errorCode?: string) => {
+    setLastErrorCode(errorCode ?? "CHECK_SUBSCRIPTION_FAILED");
     if (hasEverCheckedRef.current) {
-      // We have previous valid state — keep it AND keep billingReady as-is
       setStale(true);
       setResolved(true);
       setLoading(false);
     } else {
-      // First boot: no prior state — safe to clear billingReady
       setBillingReady(false);
       setBootFailed(true);
       setLoading(false);
-      // accessResolved stays false, checked stays false
-      // → gate shows loader/retry, never paywall
     }
   }, [setResolved]);
 
@@ -213,12 +215,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             ? (result.error as { message: string }).message
             : String(result.error);
           console.warn("[Subscription] invoke error (non-fatal):", msg);
-          handleTransientError();
+          handleTransientError("INVOKE_ERROR");
           return;
         }
       } catch (invokeError) {
         console.warn("[Subscription] invoke exception (non-fatal):", invokeError);
-        handleTransientError();
+        handleTransientError("NETWORK_ERROR");
         return;
       }
 
@@ -241,13 +243,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
         // Non-auth function error → transient
         console.warn("[Subscription] function error (non-fatal):", body.error);
-        handleTransientError();
+        handleTransientError(errorCode || "FUNCTION_ERROR");
         return;
       }
 
       const parsed = parsePayload(responseData);
       if (!parsed) {
-        handleTransientError();
+        handleTransientError("MALFORMED_RESPONSE");
         return;
       }
 
@@ -262,6 +264,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setChecked(true);
       setStale(false);
       setBootFailed(false);
+      setLastErrorCode(null);
       setResolved(true);
       setLoading(false);
       hasEverCheckedRef.current = true;
@@ -269,7 +272,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setBillingReady(parsed.billingActive);
     } catch (e) {
       console.error("[Subscription] unexpected error (non-fatal):", e);
-      handleTransientError();
+      handleTransientError("UNEXPECTED_ERROR");
     }
   }, [session, authLoading, resetToDefaults, setResolved, handleTransientError]);
 
@@ -313,7 +316,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     <SubscriptionContext.Provider value={{
       loading, accessResolved, checked, subscribed, planKey, subscriptionEnd,
       subscriptionStatus, cancelAtPeriodEnd, trial, canScan, canManageBilling,
-      isAdmin, isOwner, stale, bootFailed, refresh,
+      isAdmin, isOwner, stale, bootFailed, lastErrorCode, refresh,
     }}>
       {children}
     </SubscriptionContext.Provider>
