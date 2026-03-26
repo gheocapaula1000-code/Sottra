@@ -577,7 +577,7 @@ const AdminDemographicImport = () => {
                               <TableCell className="text-xs">{r.anno_rilevazione ?? "—"}</TableCell>
                               <TableCell className="text-xs">{r.popolazione ?? "—"}</TableCell>
                               <TableCell className="text-xs">
-                                {r.hasPolygon ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" /> : "—"}
+                                {r.hasPolygon ? <CheckCircle2 className="h-3.5 w-3.5 text-primary inline" /> : "—"}
                                 {r.hasZonaOmi && <span className="ml-1 text-[10px] text-primary">OMI</span>}
                               </TableCell>
                             </TableRow>
