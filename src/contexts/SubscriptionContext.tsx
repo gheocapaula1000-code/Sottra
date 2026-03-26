@@ -37,6 +37,8 @@ interface SubscriptionState {
   bootFailed: boolean;
   /** Last diagnostic error code from check-subscription (e.g. "auth_invalid", "fatal") */
   lastErrorCode: string | null;
+  /** Raw error message/hint from the failed invoke — used by AppDashboardGate for final classification */
+  lastErrorHint: string | null;
   refresh: () => Promise<void>;
 }
 
