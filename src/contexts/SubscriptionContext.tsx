@@ -4,6 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPlanByProductId, getPlanByPriceId, PlanKey } from "@/lib/plans";
 import { setBillingReady } from "@/lib/billing";
+import { useToast } from "@/hooks/use-toast";
+
+/** Error codes from check-subscription that indicate an auth problem (not transient). */
+const AUTH_ERROR_CODES = new Set(["auth_missing", "auth_empty", "auth_invalid", "auth_exception"]);
 
 interface TrialInfo {
   active: boolean;
@@ -94,6 +98,7 @@ function parsePayload(data: unknown) {
 
 export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const { session, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [accessResolved, setAccessResolved] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
@@ -219,6 +224,22 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       const body = responseData as Record<string, unknown> | null;
       if (body && typeof body.error === "string" && body.error) {
+        const errorCode = typeof body.code === "string" ? body.code : "";
+
+        // Auth errors → invalidate local session, redirect to login
+        if (AUTH_ERROR_CODES.has(errorCode)) {
+          console.warn("[Subscription] auth error — signing out locally:", errorCode, body.error);
+          await supabase.auth.signOut({ scope: "local" });
+          resetToDefaults();
+          toast({
+            title: "Sessione scaduta",
+            description: "Sessione scaduta o non valida, accedi di nuovo.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Non-auth function error → transient
         console.warn("[Subscription] function error (non-fatal):", body.error);
         handleTransientError();
         return;

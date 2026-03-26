@@ -47,13 +47,20 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
 
 ### Frontend: `SubscriptionContext`
 
-1. **Never sends paying users to paywall on transient errors**:
+1. **Auth errors are NOT treated as transient**:
+   - If `check-subscription` returns `code` in `auth_missing`, `auth_empty`, `auth_invalid`, `auth_exception`:
+     - Local session is invalidated via `supabase.auth.signOut({ scope: "local" })`
+     - Subscription state is reset to defaults
+     - A toast notifies the user ("Sessione scaduta o non valida, accedi di nuovo.")
+     - `AppDashboardGate` redirects to `/login` (because `session` becomes null)
+     - `bootFailed` is NOT set — these are definitive, not retryable
+2. **Never sends paying users to paywall on transient errors**:
    - **Existing state available**: Keeps last-known state and sets `stale: true`
    - **First boot (no prior state)**: Sets `bootFailed: true` — gate shows retry UI, **never** `TrialExpiredScreen`
-2. **`accessResolved` and `checked` remain `false` on first-boot transient errors** — this prevents `AppDashboardGate` from rendering paywall based on default (unsubscribed) state
-3. **`bootFailed` flag**: Enables the gate to distinguish between "genuine no access" and "unknown due to error"
-4. **First-boot retry**: `AppDashboardGate` shows a retry button when `bootFailed` is true
-5. **`checked` flag**: Guards paywall display — set to `true` only on successful response or genuine logout/no-session
+3. **`accessResolved` and `checked` remain `false` on first-boot transient errors** — this prevents `AppDashboardGate` from rendering paywall based on default (unsubscribed) state
+4. **`bootFailed` flag**: Enables the gate to distinguish between "genuine no access" and "unknown due to error"
+5. **First-boot retry**: `AppDashboardGate` shows a retry button AND "Esci e rientra" when `bootFailed` is true
+6. **`checked` flag**: Guards paywall display — set to `true` only on successful response or genuine logout/no-session
 6. **Periodic refresh**: Every 60s, with session expiry check
 7. **Network failure tolerance**: `invoke()` errors caught and logged
 8. **`canScan`**: `true` only for `active`/`trialing` subscriptions or active trial
