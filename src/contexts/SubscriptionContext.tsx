@@ -59,6 +59,7 @@ const SubscriptionContext = createContext<SubscriptionState>({
   stale: false,
   bootFailed: false,
   lastErrorCode: null,
+  lastErrorHint: null,
   refresh: async () => {},
 });
 
