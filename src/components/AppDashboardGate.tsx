@@ -61,6 +61,7 @@ const BootFailedRetry = ({
   errorCode: string | null;
 }) => {
   const [selfTest, setSelfTest] = useState<SelfTestResult | null>(null);
+  const [selfTestFailed, setSelfTestFailed] = useState(false);
   const [testing, setTesting] = useState(false);
 
   const handleSignOut = async () => {
