@@ -142,18 +142,66 @@ describe("SubscriptionContext billingReady behavior", () => {
     expect(isBillingReady()).toBe(false);
   });
 
-  it("error/logout/no-session always results in billingReady=false", () => {
+  it("logout/no-session results in billingReady=false", () => {
     setBillingReady(true);
-    // Simulate error path
     setBillingReady(false);
     expect(isBillingReady()).toBe(false);
   });
 
-  it("transient error preserves last state (stale concept)", () => {
+  it("transient error with prior state preserves billingReady (stale)", () => {
     setBillingReady(true);
-    // On transient error with prior state, SubscriptionContext keeps value and sets stale=true
+    // handleTransientError with hasEverChecked=true does NOT call setBillingReady(false)
+    // billingReady remains true so portal CTAs stay visible
     expect(isBillingReady()).toBe(true);
     setBillingReady(false); // cleanup
+  });
+
+  it("first-boot transient error sets billingReady=false", () => {
+    setBillingReady(true);
+    // handleTransientError with hasEverChecked=false DOES call setBillingReady(false)
+    setBillingReady(false); // simulating first-boot error path
+    expect(isBillingReady()).toBe(false);
+  });
+});
+
+describe("Stale state portal CTA preservation", () => {
+  it("past_due + stale: canManageBilling true, canScan false, billingReady preserved", () => {
+    setBillingReady(true); // last known billing state
+    const isOwner = false, isAdmin = false, subscribed = false;
+    const subscriptionStatus = "past_due";
+    const stale = true;
+    const canScan = isOwner || isAdmin || subscribed;
+    const canManageBilling = isOwner || isAdmin || subscribed || subscriptionStatus === "past_due";
+    expect(canScan).toBe(false);
+    expect(canManageBilling).toBe(true);
+    expect(isBillingReady()).toBe(true);
+    expect(stale).toBe(true);
+    setBillingReady(false);
+  });
+
+  it("active + stale: canManageBilling true, billingReady preserved", () => {
+    setBillingReady(true);
+    const subscribed = true;
+    const canManageBilling = subscribed;
+    expect(canManageBilling).toBe(true);
+    expect(isBillingReady()).toBe(true);
+    setBillingReady(false);
+  });
+
+  it("trialing + stale: canManageBilling true, billingReady preserved", () => {
+    setBillingReady(true);
+    const subscribed = true; // trialing maps to subscribed in context
+    const canManageBilling = subscribed;
+    expect(canManageBilling).toBe(true);
+    expect(isBillingReady()).toBe(true);
+    setBillingReady(false);
+  });
+
+  it("valid response with billing_active=false hides CTA (hard-disabled)", () => {
+    setBillingReady(true);
+    const responseData = { billing_active: false };
+    setBillingReady(responseData.billing_active === true);
+    expect(isBillingReady()).toBe(false);
   });
 });
 

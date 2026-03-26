@@ -65,7 +65,11 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
   - `STRIPE_SECRET_KEY`
   - `STRIPE_WEBHOOK_SECRET`
   - `ALLOWED_ORIGINS`
-- **Client-side** (`src/lib/billing.ts`): Runtime flag set by `SubscriptionContext` from `billing_active` response field. Set to `false` on transient errors to prevent showing payment CTAs backed by a potentially unavailable backend.
+- **Client-side** (`src/lib/billing.ts`): Runtime flag set by `SubscriptionContext` from `billing_active` response field.
+  - **Successful response with `billing_active=true`**: `billingReady` set to `true`
+  - **Successful response with `billing_active=false`** (hard-disabled): `billingReady` set to `false` — CTAs hidden
+  - **First-boot transient error** (no prior state): `billingReady` set to `false` — no CTAs shown
+  - **Subsequent transient error** (prior valid state exists): `billingReady` **preserved** — portal CTAs remain visible so past_due users can still manage their subscription
 
 ### Trial Independence
 
