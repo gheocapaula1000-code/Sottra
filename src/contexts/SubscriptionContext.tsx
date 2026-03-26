@@ -37,6 +37,8 @@ interface SubscriptionState {
   bootFailed: boolean;
   /** Last diagnostic error code from check-subscription (e.g. "auth_invalid", "fatal") */
   lastErrorCode: string | null;
+  /** Raw error message/hint from the failed invoke — used by AppDashboardGate for final classification */
+  lastErrorHint: string | null;
   refresh: () => Promise<void>;
 }
 
@@ -57,6 +59,7 @@ const SubscriptionContext = createContext<SubscriptionState>({
   stale: false,
   bootFailed: false,
   lastErrorCode: null,
+  lastErrorHint: null,
   refresh: async () => {},
 });
 
@@ -116,6 +119,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [stale, setStale] = useState(false);
   const [bootFailed, setBootFailed] = useState(false);
   const [lastErrorCode, setLastErrorCode] = useState<string | null>(null);
+  const [lastErrorHint, setLastErrorHint] = useState<string | null>(null);
   const accessResolvedRef = useRef(false);
   /** Tracks whether we've ever received a successful response */
   const hasEverCheckedRef = useRef(false);
@@ -139,6 +143,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setStale(false);
     setBootFailed(false);
     setLastErrorCode(null);
+    setLastErrorHint(null);
     setBillingReady(false);
     setResolved(true);
     hasEverCheckedRef.current = false;
@@ -153,8 +158,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
    *   Instead set bootFailed=true so the gate can show retry UI.
    *   billingReady is set to false because no valid state exists yet.
    */
-  const handleTransientError = useCallback((errorCode?: string) => {
+  const handleTransientError = useCallback((errorCode?: string, errorHint?: string) => {
     setLastErrorCode(errorCode || "UNKNOWN_BOOT_FAILURE");
+    setLastErrorHint(errorHint || null);
     if (hasEverCheckedRef.current) {
       setStale(true);
       setResolved(true);
@@ -218,7 +224,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket|refused|unreachable|offline/i.test(msg);
           const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "INVOKE_ERROR";
           console.warn("[Subscription] invoke error (non-fatal):", msg, "→", code);
-          handleTransientError(code);
+          handleTransientError(code, msg);
           return;
         }
       } catch (invokeError) {
@@ -227,7 +233,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket|refused|unreachable|offline/i.test(errMsg);
         const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "UNEXPECTED_ERROR";
         console.warn("[Subscription] invoke exception (non-fatal):", errMsg, "→", code);
-        handleTransientError(code);
+        handleTransientError(code, errMsg);
         return;
       }
 
@@ -275,6 +281,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setStale(false);
       setBootFailed(false);
       setLastErrorCode(null);
+      setLastErrorHint(null);
       setResolved(true);
       setLoading(false);
       hasEverCheckedRef.current = true;
@@ -286,7 +293,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket|refused|unreachable|offline/i.test(errMsg);
       const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "UNEXPECTED_ERROR";
       console.error("[Subscription] unexpected error (non-fatal):", errMsg, "→", code);
-      handleTransientError(code);
+      handleTransientError(code, errMsg);
     }
   }, [session, authLoading, resetToDefaults, setResolved, handleTransientError]);
 
@@ -330,7 +337,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     <SubscriptionContext.Provider value={{
       loading, accessResolved, checked, subscribed, planKey, subscriptionEnd,
       subscriptionStatus, cancelAtPeriodEnd, trial, canScan, canManageBilling,
-      isAdmin, isOwner, stale, bootFailed, lastErrorCode, refresh,
+      isAdmin, isOwner, stale, bootFailed, lastErrorCode, lastErrorHint, refresh,
     }}>
       {children}
     </SubscriptionContext.Provider>

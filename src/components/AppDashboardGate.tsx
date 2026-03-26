@@ -34,6 +34,35 @@ const DIAGNOSTIC_LABELS: Record<string, string> = {
   billing_not_configured: "Sistema di pagamento non ancora configurato.",
 };
 
+const CORS_LIKE_RE = /failed to (fetch|send)|load failed|networkerror|cors|blocked|opaque|origin|policy/i;
+
+/**
+ * Deterministic resolution of the final display code shown in UI.
+ * Exported for testability.
+ *
+ * Rule: when backendReachable === false, INVOKE_ERROR is NEVER returned.
+ */
+export function resolveFinalDisplayCode(opts: {
+  rawCode: string | null;
+  rawHint: string | null;
+  backendReachable: boolean;
+}): string {
+  const raw = opts.rawCode || "UNKNOWN_BOOT_FAILURE";
+
+  // When backend is confirmed unreachable, override generic codes
+  if (!opts.backendReachable) {
+    // If raw is already specific (CORS or NETWORK), keep it
+    if (raw === "CORS_ORIGIN_BLOCKED" || raw === "NETWORK_ERROR") return raw;
+    // Check hint for CORS signals
+    if (opts.rawHint && CORS_LIKE_RE.test(opts.rawHint)) return "CORS_ORIGIN_BLOCKED";
+    // Default for unreachable backend
+    return "NETWORK_ERROR";
+  }
+
+  // Backend is reachable — use raw code as-is
+  return raw;
+}
+
 interface SelfTestResult {
   session_present: boolean;
   user_email: string;
@@ -55,10 +84,12 @@ const BootFailedRetry = ({
   onRetry,
   retrying,
   errorCode,
+  errorHint,
 }: {
   onRetry: () => void;
   retrying: boolean;
   errorCode: string | null;
+  errorHint: string | null;
 }) => {
   const [selfTest, setSelfTest] = useState<SelfTestResult | null>(null);
   const [selfTestFailed, setSelfTestFailed] = useState(false);
@@ -77,28 +108,28 @@ const BootFailedRetry = ({
       if (!error && data && typeof data === "object") {
         setSelfTest(data as SelfTestResult);
       } else {
-        // Server responded but with an error — show client-side fallback
         setSelfTestFailed(true);
       }
     } catch {
-      // Backend completely unreachable — show client-side fallback diagnostics
       setSelfTestFailed(true);
     } finally {
       setTesting(false);
     }
   };
 
-  // Reclassify INVOKE_ERROR when self-test proves backend is unreachable
-  const reclassifiedCode = (() => {
-    const raw = errorCode || "UNKNOWN_BOOT_FAILURE";
-    if (raw === "INVOKE_ERROR" && selfTestFailed && !selfTest) {
-      // Backend is unreachable — INVOKE_ERROR is misleading
-      // Check if the original error message had CORS signals (stored in the code itself)
-      return "CORS_ORIGIN_BLOCKED";
-    }
-    return raw;
-  })();
-  const displayCode = reclassifiedCode;
+  // Determine backendReachable: false if selfTest failed, or if selfTest says check_reachable=false
+  const backendReachable = selfTestFailed
+    ? false
+    : selfTest
+      ? selfTest.check_reachable
+      : true; // before self-test runs, don't override
+
+  // Single source of truth for the display code
+  const displayCode = resolveFinalDisplayCode({
+    rawCode: errorCode,
+    rawHint: errorHint,
+    backendReachable,
+  });
   const label = DIAGNOSTIC_LABELS[displayCode] ?? displayCode;
 
   return (
@@ -226,7 +257,7 @@ const AppDashboardGate = () => {
   const { session, loading: authLoading } = useAuth();
   const {
     loading: subLoading, accessResolved, checked, canScan,
-    canManageBilling, trial, subscriptionStatus, bootFailed, lastErrorCode, refresh,
+    canManageBilling, trial, subscriptionStatus, bootFailed, lastErrorCode, lastErrorHint, refresh,
   } = useSubscription();
 
   // Single stable loader until everything is resolved
@@ -245,6 +276,7 @@ const AppDashboardGate = () => {
         onRetry={() => void refresh()}
         retrying={subLoading}
         errorCode={lastErrorCode}
+        errorHint={lastErrorHint}
       />
     );
   }
