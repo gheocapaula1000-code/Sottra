@@ -797,6 +797,10 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
   return hasContent ? data : null;
 }
 
+/* ── M) Indice di Vicinato ────────────────────────────────── */
+
+export { calculateNeighborhoodIndex } from "@/lib/neighborhoodIndex";
+
 /* ── L) Priorità / Criticità ─────────────────────────────── */
 
 export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaData | null {

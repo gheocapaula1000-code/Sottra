@@ -17,16 +17,22 @@ export type Database = {
       demographic_zones: {
         Row: {
           anno_rilevazione: string | null
+          centroid_lat: number | null
+          centroid_lng: number | null
           codice_comune_catastale: string
           codice_comune_istat: string | null
           comune_label: string
+          coverage_level: string
           created_at: string | null
+          data_quality: string
           densita: number | null
           eta_media: number | null
           flusso_residenti_12m: number | null
           id: string
           import_batch_id: string | null
           indice_vecchiaia: number | null
+          is_official: boolean
+          notes: string | null
           nuclei_familiari: number | null
           percentuale_famiglie: number | null
           percentuale_giovani: number | null
@@ -44,16 +50,22 @@ export type Database = {
         }
         Insert: {
           anno_rilevazione?: string | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
           codice_comune_catastale: string
           codice_comune_istat?: string | null
           comune_label?: string
+          coverage_level?: string
           created_at?: string | null
+          data_quality?: string
           densita?: number | null
           eta_media?: number | null
           flusso_residenti_12m?: number | null
           id?: string
           import_batch_id?: string | null
           indice_vecchiaia?: number | null
+          is_official?: boolean
+          notes?: string | null
           nuclei_familiari?: number | null
           percentuale_famiglie?: number | null
           percentuale_giovani?: number | null
@@ -71,16 +83,22 @@ export type Database = {
         }
         Update: {
           anno_rilevazione?: string | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
           codice_comune_catastale?: string
           codice_comune_istat?: string | null
           comune_label?: string
+          coverage_level?: string
           created_at?: string | null
+          data_quality?: string
           densita?: number | null
           eta_media?: number | null
           flusso_residenti_12m?: number | null
           id?: string
           import_batch_id?: string | null
           indice_vecchiaia?: number | null
+          is_official?: boolean
+          notes?: string | null
           nuclei_familiari?: number | null
           percentuale_famiglie?: number | null
           percentuale_giovani?: number | null
@@ -308,6 +326,96 @@ export type Database = {
           id?: string
           label?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      safety_zones: {
+        Row: {
+          anno_rilevazione: string | null
+          centroid_lat: number | null
+          centroid_lng: number | null
+          codice_comune_catastale: string
+          codice_comune_istat: string | null
+          comune_label: string
+          coverage_level: string
+          created_at: string | null
+          data_quality: string
+          furti_abitazione: number | null
+          id: string
+          import_batch_id: string | null
+          indice_sicurezza_percepita: number | null
+          is_official: boolean
+          notes: string | null
+          polygon_coords: Json | null
+          rapine: number | null
+          reati_per_1000_abitanti: number | null
+          reati_totali: number | null
+          source_file: string | null
+          source_label: string
+          source_type: string
+          updated_at: string | null
+          zona_key: string
+          zona_label: string
+          zona_omi: string | null
+          zona_type: string
+        }
+        Insert: {
+          anno_rilevazione?: string | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
+          codice_comune_catastale: string
+          codice_comune_istat?: string | null
+          comune_label?: string
+          coverage_level?: string
+          created_at?: string | null
+          data_quality?: string
+          furti_abitazione?: number | null
+          id?: string
+          import_batch_id?: string | null
+          indice_sicurezza_percepita?: number | null
+          is_official?: boolean
+          notes?: string | null
+          polygon_coords?: Json | null
+          rapine?: number | null
+          reati_per_1000_abitanti?: number | null
+          reati_totali?: number | null
+          source_file?: string | null
+          source_label?: string
+          source_type?: string
+          updated_at?: string | null
+          zona_key: string
+          zona_label?: string
+          zona_omi?: string | null
+          zona_type?: string
+        }
+        Update: {
+          anno_rilevazione?: string | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
+          codice_comune_catastale?: string
+          codice_comune_istat?: string | null
+          comune_label?: string
+          coverage_level?: string
+          created_at?: string | null
+          data_quality?: string
+          furti_abitazione?: number | null
+          id?: string
+          import_batch_id?: string | null
+          indice_sicurezza_percepita?: number | null
+          is_official?: boolean
+          notes?: string | null
+          polygon_coords?: Json | null
+          rapine?: number | null
+          reati_per_1000_abitanti?: number | null
+          reati_totali?: number | null
+          source_file?: string | null
+          source_label?: string
+          source_type?: string
+          updated_at?: string | null
+          zona_key?: string
+          zona_label?: string
+          zona_omi?: string | null
+          zona_type?: string
         }
         Relationships: []
       }
