@@ -12,6 +12,7 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
    - A record is upserted into `owner_access` (owner entitlements)
    - A record is upserted into `user_roles` with `role=admin` (RBAC admin)
    - Both operations are idempotent (ON CONFLICT DO NOTHING)
+   - **Email is normalized** (trim + lowercase) before matching
 2. The response returns `is_owner: true`, `is_admin: true`, `subscribed: true`
 3. These accounts bypass all trial limits, plan restrictions, and billing gates
 4. **No client-side exposure** — the allowlist is never sent to the frontend
@@ -19,18 +20,66 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
 ### Current bootstrap accounts
 - `gheocapaula1000@gmail.com`
 
+## Error Classification
+
+### Auth errors (NOT transient)
+
+When `check-subscription` returns one of these codes, the local session is invalid and the user must re-authenticate:
+- `auth_missing` — No Authorization header
+- `auth_empty` — Empty token
+- `auth_invalid` — Token verification failed
+- `auth_exception` — Token verification threw an exception
+
+**Behavior**: `SubscriptionContext` calls `supabase.auth.signOut({ scope: "local" })`, resets state, shows toast "Sessione scaduta o non valida, accedi di nuovo." The user is redirected to `/login` because the session becomes null.
+
+**`bootFailed` is NOT set** — these errors are definitive, not retryable.
+
+### Transient errors
+
+Network failures, CORS issues, 5xx errors, or function unavailability. These are genuinely retryable.
+
+**Behavior**: If prior valid state exists, it's preserved and marked `stale: true`. If it's the first boot attempt, `bootFailed: true` is set and the gate shows retry UI with diagnostic code.
+
+### Diagnostic codes shown in UI
+
+When `bootFailed` is true, the retry UI shows a machine-readable code with a human description:
+- `NETWORK_ERROR` — Connection failure
+- `INVOKE_ERROR` — Edge function invocation error
+- `FUNCTION_ERROR` — Function returned an error body
+- `MALFORMED_RESPONSE` — Response couldn't be parsed
+- `UNEXPECTED_ERROR` — Unexpected exception
+- `fatal` — Server-side fatal error
+- `init_error` — Server configuration error
+
+No secrets, tokens, or email addresses are exposed in these codes.
+
+## Self-Test Diagnostic
+
+The retry UI includes a "Verifica accesso" button that calls the `diagnostics` edge function with `action: "self-test"`. It returns safe information:
+- `session_present` — Whether a valid session exists
+- `user_email` — Masked email (e.g., `gh***@gmail.com`)
+- `origin_allowed` — Whether the request origin is in `ALLOWED_ORIGINS`
+- `billing_configured` — Whether all Stripe secrets are set
+- `owner_match` — Whether the email matches `ADMIN_BOOTSTRAP_EMAILS`
+- `admin_match` — Whether the user has admin role
+- `check_reachable` — Whether the function is reachable
+- `check_code` — The diagnostic code from the check
+
+**The user does not need access to secrets or dashboards** — all diagnosis is possible from the UI.
+
 ## Defensive Architecture
 
 ### Edge Function: `check-subscription`
 
-1. **Always returns HTTP 200** with a stable JSON envelope
+1. **Always returns HTTP 200** with a stable JSON envelope including `code` field
 2. **Bootstrap check runs first** — before owner, admin, trial, or Stripe
-3. **Owner bypass** (table-based) — `is_owner: true`, `is_admin: false`, `subscribed: true`
-4. **Admin bypass** (RBAC) — `is_admin: true`, `subscribed: true`
-5. **DB subscription check** — source of truth from `subscriptions` table; valid statuses: `active`, `trialing`
-6. **Stripe is checked last** — only as fallback if `isBillingActive()` returns `true` and DB has no useful record
-7. **`billing_active` flag** — returned in response; true only when `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + `ALLOWED_ORIGINS` are all set
-8. **If Stripe fails**: Error logged, subscription defaults to `false`, trial still works
+3. **Email normalization** — `trim().toLowerCase()` on all email comparisons
+4. **Owner bypass** (table-based) — `is_owner: true`, `is_admin: false`, `subscribed: true`
+5. **Admin bypass** (RBAC) — `is_admin: true`, `subscribed: true`
+6. **DB subscription check** — source of truth from `subscriptions` table; valid statuses: `active`, `trialing`
+7. **Stripe is checked last** — only as fallback if `isBillingActive()` returns `true` and DB has no useful record
+8. **`billing_active` flag** — returned in response; true only when `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + `ALLOWED_ORIGINS` are all set
+9. **If Stripe fails**: Error logged, subscription defaults to `false`, trial still works
 
 ### Edge Functions: `create-checkout`, `customer-portal`
 
@@ -56,15 +105,16 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
      - `bootFailed` is NOT set — these are definitive, not retryable
 2. **Never sends paying users to paywall on transient errors**:
    - **Existing state available**: Keeps last-known state and sets `stale: true`
-   - **First boot (no prior state)**: Sets `bootFailed: true` — gate shows retry UI, **never** `TrialExpiredScreen`
+   - **First boot (no prior state)**: Sets `bootFailed: true` — gate shows retry UI with diagnostic code, **never** `TrialExpiredScreen`
 3. **`accessResolved` and `checked` remain `false` on first-boot transient errors** — this prevents `AppDashboardGate` from rendering paywall based on default (unsubscribed) state
 4. **`bootFailed` flag**: Enables the gate to distinguish between "genuine no access" and "unknown due to error"
-5. **First-boot retry**: `AppDashboardGate` shows a retry button AND "Esci e rientra" when `bootFailed` is true
-6. **`checked` flag**: Guards paywall display — set to `true` only on successful response or genuine logout/no-session
-6. **Periodic refresh**: Every 60s, with session expiry check
-7. **Network failure tolerance**: `invoke()` errors caught and logged
-8. **`canScan`**: `true` only for `active`/`trialing` subscriptions or active trial
-9. **`canManageBilling`**: Also includes `past_due` (so user can fix payment via portal)
+5. **`lastErrorCode`**: Machine-readable diagnostic code displayed in retry UI
+6. **First-boot retry**: `AppDashboardGate` shows retry button, self-test button, AND "Esci e rientra" when `bootFailed` is true
+7. **`checked` flag**: Guards paywall display — set to `true` only on successful response or genuine logout/no-session
+8. **Periodic refresh**: Every 60s, with session expiry check
+9. **Network failure tolerance**: `invoke()` errors caught and logged
+10. **`canScan`**: `true` only for `active`/`trialing` subscriptions or active trial
+11. **`canManageBilling`**: Also includes `past_due` (so user can fix payment via portal)
 
 ### `isBillingActive()` / `isBillingReady()`
 
@@ -89,7 +139,8 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
 - `main.tsx` catches missing root element and render exceptions
 - User-friendly Italian fallback with retry button
 - `ErrorBoundary` wraps the entire app tree
-- **First-boot check-subscription failures** show retry UI, never paywall
+- **First-boot check-subscription failures** show retry UI with diagnostic code, never paywall
+- **Auth errors** trigger signout + redirect, never retry UI
 
 ## Configuration States
 
@@ -111,3 +162,10 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
 | `STRIPE_SECRET_KEY` | Stripe API authentication |
 | `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
 | `ALLOWED_ORIGINS` | CORS allowlist and return URL resolution |
+
+## Diagnosis Without Secret Access
+
+Users do not need access to secrets or server dashboards. All diagnosis is possible via:
+1. **Diagnostic codes** in the retry UI (e.g., `NETWORK_ERROR`, `FUNCTION_ERROR`)
+2. **Self-test button** ("Verifica accesso") that returns masked, safe diagnostic info
+3. **Console logs** prefixed with `[Subscription]` for developer debugging

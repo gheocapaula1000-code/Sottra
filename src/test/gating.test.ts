@@ -8,7 +8,6 @@ const AUTH_ERROR_CODES = new Set(["auth_missing", "auth_empty", "auth_invalid", 
 
 describe("Screen gating logic", () => {
   describe("canScan derivation", () => {
-    // Mirrors SubscriptionContext line: isOwner || isAdmin || subscribed || trial?.active
     function canScan(opts: { isOwner: boolean; isAdmin: boolean; subscribed: boolean; trialActive: boolean }) {
       return opts.isOwner || opts.isAdmin || opts.subscribed || opts.trialActive;
     }
@@ -46,7 +45,6 @@ describe("Screen gating logic", () => {
 });
 
 describe("SubscriptionContext parsePayload safety", () => {
-  // Test the parsing logic in isolation
   function parseMinimal(data: unknown): { subscribed: boolean; isOwner: boolean; isAdmin: boolean } {
     if (!data || typeof data !== "object") return { subscribed: false, isOwner: false, isAdmin: false };
     const d = data as Record<string, unknown>;
@@ -110,17 +108,76 @@ describe("Auth error vs transient error classification", () => {
   });
 
   it("network/invoke errors have no code → transient by default", () => {
-    // When invoke itself throws (network/CORS), there's no code at all
-    // SubscriptionContext calls handleTransientError() in the catch block
     expect(classifyError("")).toBe("transient");
   });
 
   it("owner bootstrap returns code=bootstrap → valid, not an error", () => {
-    // bootstrap is a success code, not an error — parsePayload handles it
     const payload = { ok: true, subscribed: true, is_owner: true, is_admin: true, code: "bootstrap" };
     expect(payload.subscribed).toBe(true);
     expect(payload.is_owner).toBe(true);
-    // No error field → parsePayload succeeds, no error classification needed
     expect(payload.ok).toBe(true);
+  });
+});
+
+describe("Diagnostic code mapping", () => {
+  const DIAGNOSTIC_LABELS: Record<string, string> = {
+    NETWORK_ERROR: "Errore di rete — controlla la tua connessione.",
+    INVOKE_ERROR: "Il servizio non ha risposto correttamente.",
+    CORS_ORIGIN_BLOCKED: "Origine non autorizzata — contatta il supporto.",
+    FUNCTION_ERROR: "Errore nel servizio di verifica abbonamento.",
+    MALFORMED_RESPONSE: "Risposta non valida dal server.",
+    UNEXPECTED_ERROR: "Errore imprevisto — riprova tra poco.",
+    fatal: "Errore interno del server.",
+    init_error: "Errore di configurazione del server.",
+    CHECK_SUBSCRIPTION_FAILED: "Impossibile verificare lo stato dell'account.",
+  };
+
+  it("all transient codes have a label", () => {
+    const transientCodes = [
+      "NETWORK_ERROR", "INVOKE_ERROR", "FUNCTION_ERROR",
+      "MALFORMED_RESPONSE", "UNEXPECTED_ERROR", "fatal",
+      "init_error", "CHECK_SUBSCRIPTION_FAILED",
+    ];
+    for (const code of transientCodes) {
+      expect(DIAGNOSTIC_LABELS[code]).toBeDefined();
+      expect(DIAGNOSTIC_LABELS[code].length).toBeGreaterThan(5);
+    }
+  });
+
+  it("auth codes do NOT appear in diagnostic labels (they trigger signout)", () => {
+    for (const code of AUTH_ERROR_CODES) {
+      expect(DIAGNOSTIC_LABELS[code]).toBeUndefined();
+    }
+  });
+});
+
+describe("Email normalization for owner bootstrap", () => {
+  function normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
+  function isInAllowlist(email: string, allowlist: string[]): boolean {
+    const normalized = normalizeEmail(email);
+    return allowlist.map(normalizeEmail).includes(normalized);
+  }
+
+  it("matches exact email", () => {
+    expect(isInAllowlist("gheocapaula1000@gmail.com", ["gheocapaula1000@gmail.com"])).toBe(true);
+  });
+
+  it("matches email with uppercase", () => {
+    expect(isInAllowlist("GheocaPaula1000@Gmail.COM", ["gheocapaula1000@gmail.com"])).toBe(true);
+  });
+
+  it("matches email with leading/trailing spaces", () => {
+    expect(isInAllowlist("  gheocapaula1000@gmail.com  ", ["gheocapaula1000@gmail.com"])).toBe(true);
+  });
+
+  it("matches email when allowlist has spaces", () => {
+    expect(isInAllowlist("gheocapaula1000@gmail.com", [" gheocapaula1000@gmail.com "])).toBe(true);
+  });
+
+  it("does not match different email", () => {
+    expect(isInAllowlist("other@gmail.com", ["gheocapaula1000@gmail.com"])).toBe(false);
   });
 });
