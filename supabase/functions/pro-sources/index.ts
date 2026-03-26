@@ -294,17 +294,22 @@ function selectBestRecord(candidates: Record<string, unknown>[], method: string)
   return sorted[0];
 }
 
-function mapDemographicZoneToResult(z: Record<string, unknown>): IstatResult {
+function mapDemographicZoneToResult(z: Record<string, unknown>, matchMethod: string): IstatResult {
   const zonaType = String(z.zona_type ?? "quartiere");
   const geoLevel = zonaType === "microzona_omi" ? "microzona"
     : zonaType === "sezione_censuaria" ? "microzona"
     : zonaType === "quartiere" ? "quartiere"
     : zonaType === "circoscrizione" ? "quartiere"
+    : zonaType === "zona_statistica" ? "quartiere"
     : "zona";
 
   const coverageLevel = typeof z.coverage_level === "string" ? z.coverage_level : undefined;
   const isOfficial = typeof z.is_official === "boolean" ? z.is_official : true;
   const dataQuality = typeof z.data_quality === "string" ? z.data_quality : "standard";
+
+  const confidence = matchMethod === "zona_omi"
+    ? (dataQuality === "alto" ? 0.97 : dataQuality === "standard" ? 0.90 : 0.75)
+    : (dataQuality === "alto" ? 0.92 : dataQuality === "standard" ? 0.85 : 0.70);
 
   return {
     popolazione: typeof z.popolazione === "number" ? z.popolazione : null,
@@ -322,9 +327,8 @@ function mapDemographicZoneToResult(z: Record<string, unknown>): IstatResult {
     geoLevel,
     geoLabel: typeof z.zona_label === "string" ? z.zona_label : undefined,
     licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
-    // Extra sub-municipal metadata
-    matchMethod: "sub_municipal_zone",
-    matchConfidence: dataQuality === "alto" ? 0.95 : dataQuality === "standard" ? 0.85 : 0.7,
+    matchMethod,
+    matchConfidence: confidence,
   } as IstatResult;
 }
 
