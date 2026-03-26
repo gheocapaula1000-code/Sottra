@@ -54,6 +54,7 @@ const AdminOmiKmlIngest = lazyWithRecovery(() => import("./pages/AdminOmiKmlInge
 const AdminDemographicImport = lazyWithRecovery(() => import("./pages/AdminDemographicImport"));
 const ImportedDrafts = lazyWithRecovery(() => import("./pages/ImportedDrafts"));
 const ImportedDraftDetail = lazyWithRecovery(() => import("./pages/ImportedDraftDetail"));
+const AdminSubMunicipal = lazyWithRecovery(() => import("./pages/AdminSubMunicipal"));
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,7 @@ const App = () => (
                     <Route path="/admin/omi-ingest" element={<ProtectedAdminRoute><AdminOmiIngest /></ProtectedAdminRoute>} />
                     <Route path="/admin/omi-kml" element={<ProtectedAdminRoute><AdminOmiKmlIngest /></ProtectedAdminRoute>} />
                     <Route path="/admin/demographic-import" element={<ProtectedAdminRoute><AdminDemographicImport /></ProtectedAdminRoute>} />
+                    <Route path="/admin/sub-municipal" element={<ProtectedAdminRoute><AdminSubMunicipal /></ProtectedAdminRoute>} />
                     <Route path="/scan" element={<TrialProtectedRoute><Scan /></TrialProtectedRoute>} />
                     <Route path="/result" element={<TrialProtectedRoute><Result /></TrialProtectedRoute>} />
                     <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />

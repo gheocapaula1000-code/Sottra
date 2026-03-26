@@ -440,6 +440,99 @@ export type Database = {
         }
         Relationships: []
       }
+      sub_municipal_areas_2021: {
+        Row: {
+          area_code: string
+          area_name: string
+          area_type: string
+          asc_level: number | null
+          bbox: Json | null
+          centroid_lat: number | null
+          centroid_lng: number | null
+          comune_catastale_code: string | null
+          comune_istat_code: string | null
+          comune_name: string
+          created_at: string | null
+          densita: number | null
+          eta_media: number | null
+          id: string
+          import_batch_id: string | null
+          imported_at: string | null
+          metadata_json: Json | null
+          nuclei_familiari: number | null
+          polygon_coords: Json | null
+          popolazione: number | null
+          provincia_code: string | null
+          provincia_name: string | null
+          regione_code: string | null
+          regione_name: string | null
+          source_dataset: string
+          source_label: string
+          source_year: number
+          superficie_kmq: number | null
+        }
+        Insert: {
+          area_code: string
+          area_name?: string
+          area_type?: string
+          asc_level?: number | null
+          bbox?: Json | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
+          comune_catastale_code?: string | null
+          comune_istat_code?: string | null
+          comune_name?: string
+          created_at?: string | null
+          densita?: number | null
+          eta_media?: number | null
+          id?: string
+          import_batch_id?: string | null
+          imported_at?: string | null
+          metadata_json?: Json | null
+          nuclei_familiari?: number | null
+          polygon_coords?: Json | null
+          popolazione?: number | null
+          provincia_code?: string | null
+          provincia_name?: string | null
+          regione_code?: string | null
+          regione_name?: string | null
+          source_dataset: string
+          source_label?: string
+          source_year?: number
+          superficie_kmq?: number | null
+        }
+        Update: {
+          area_code?: string
+          area_name?: string
+          area_type?: string
+          asc_level?: number | null
+          bbox?: Json | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
+          comune_catastale_code?: string | null
+          comune_istat_code?: string | null
+          comune_name?: string
+          created_at?: string | null
+          densita?: number | null
+          eta_media?: number | null
+          id?: string
+          import_batch_id?: string | null
+          imported_at?: string | null
+          metadata_json?: Json | null
+          nuclei_familiari?: number | null
+          polygon_coords?: Json | null
+          popolazione?: number | null
+          provincia_code?: string | null
+          provincia_name?: string | null
+          regione_code?: string | null
+          regione_name?: string | null
+          source_dataset?: string
+          source_label?: string
+          source_year?: number
+          superficie_kmq?: number | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean
