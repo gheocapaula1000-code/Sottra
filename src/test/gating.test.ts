@@ -181,3 +181,76 @@ describe("Email normalization for owner bootstrap", () => {
     expect(isInAllowlist("other@gmail.com", ["gheocapaula1000@gmail.com"])).toBe(false);
   });
 });
+
+describe("Sottra access matrix — three-tier model", () => {
+  const ADMIN_BOOTSTRAP = ["gheocapaula1000@gmail.com"];
+  const COMMERCIAL_BYPASS = ["matteo.ippolito@gmail.com"];
+
+  function normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
+  function isOwnerAdmin(email: string): boolean {
+    return ADMIN_BOOTSTRAP.map(normalizeEmail).includes(normalizeEmail(email));
+  }
+
+  function isBypass(email: string): boolean {
+    return COMMERCIAL_BYPASS.map(normalizeEmail).includes(normalizeEmail(email));
+  }
+
+  function getAccessTier(email: string) {
+    const norm = normalizeEmail(email);
+    if (isOwnerAdmin(norm)) return { isOwner: true, isAdmin: true, subscribed: true, canAccessAdmin: true };
+    if (isBypass(norm)) return { isOwner: false, isAdmin: false, subscribed: true, canAccessAdmin: false };
+    return { isOwner: false, isAdmin: false, subscribed: false, canAccessAdmin: false };
+  }
+
+  it("gheocapaula1000 = owner + admin + full bypass", () => {
+    const tier = getAccessTier("gheocapaula1000@gmail.com");
+    expect(tier).toEqual({ isOwner: true, isAdmin: true, subscribed: true, canAccessAdmin: true });
+  });
+
+  it("gheocapaula1000 with mixed case = same tier", () => {
+    const tier = getAccessTier("  GheocaPaula1000@Gmail.COM  ");
+    expect(tier).toEqual({ isOwner: true, isAdmin: true, subscribed: true, canAccessAdmin: true });
+  });
+
+  it("matteo.ippolito = bypass access, NOT admin", () => {
+    const tier = getAccessTier("matteo.ippolito@gmail.com");
+    expect(tier.subscribed).toBe(true);
+    expect(tier.isAdmin).toBe(false);
+    expect(tier.isOwner).toBe(false);
+    expect(tier.canAccessAdmin).toBe(false);
+  });
+
+  it("matteo.ippolito with spaces/caps = same tier", () => {
+    const tier = getAccessTier("  Matteo.Ippolito@Gmail.COM  ");
+    expect(tier.subscribed).toBe(true);
+    expect(tier.isAdmin).toBe(false);
+    expect(tier.canAccessAdmin).toBe(false);
+  });
+
+  it("massimilianogalli75 = standard user, no bypass", () => {
+    const tier = getAccessTier("massimilianogalli75@gmail.com");
+    expect(tier).toEqual({ isOwner: false, isAdmin: false, subscribed: false, canAccessAdmin: false });
+  });
+
+  it("massimilianogalli75 cannot access admin", () => {
+    expect(getAccessTier("massimilianogalli75@gmail.com").canAccessAdmin).toBe(false);
+  });
+
+  it("matteo cannot access admin/diagnostica", () => {
+    expect(getAccessTier("matteo.ippolito@gmail.com").canAccessAdmin).toBe(false);
+  });
+
+  it("only gheocapaula1000 is in ADMIN_BOOTSTRAP", () => {
+    expect(ADMIN_BOOTSTRAP).toHaveLength(1);
+    expect(ADMIN_BOOTSTRAP[0]).toBe("gheocapaula1000@gmail.com");
+  });
+
+  it("COMMERCIAL_BYPASS does not overlap ADMIN_BOOTSTRAP", () => {
+    for (const email of COMMERCIAL_BYPASS) {
+      expect(ADMIN_BOOTSTRAP).not.toContain(email);
+    }
+  });
+});
