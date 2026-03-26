@@ -220,7 +220,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (invokeError) {
         console.warn("[Subscription] invoke exception (non-fatal):", invokeError);
-        handleTransientError();
+        handleTransientError("NETWORK_ERROR");
         return;
       }
 
