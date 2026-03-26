@@ -97,7 +97,7 @@ function validateRecord(r: Record<string, unknown>, idx: number): { valid: Demog
 
   const annoRilevazione = typeof r.anno_rilevazione === "string" ? r.anno_rilevazione.trim()
     : typeof r.anno_rilevazione === "number" ? String(r.anno_rilevazione)
-    : null;
+    : "0000";
 
   // Validate polygon_coords if present
   let polygonCoords = r.polygon_coords ?? null;
@@ -213,7 +213,7 @@ function parseGeoJSON(input: unknown): Record<string, unknown>[] {
 
 /* ── Dedup key helper ───────────────────────────────── */
 function dedupKey(r: DemographicRecord): string {
-  return `${r.zona_key}|${r.codice_comune_catastale}`;
+  return `${r.zona_key}|${r.codice_comune_catastale}|${r.anno_rilevazione ?? "0000"}|${r.source_label}`;
 }
 
 /* ── Main handler ───────────────────────────────────── */
@@ -300,14 +300,27 @@ serve(async (req) => {
         if (result.error) invalid.push(result.error);
       }
 
+      // Dedup analysis within batch
+      const dedupMap = new Map<string, number>();
+      let duplicatesInBatch = 0;
+      for (const r of valid) {
+        const dk = dedupKey(r);
+        dedupMap.set(dk, (dedupMap.get(dk) ?? 0) + 1);
+      }
+      for (const count of dedupMap.values()) {
+        if (count > 1) duplicatesInBatch += count - 1;
+      }
+
       // Compute distinct comuni & coverage levels & anni
       const comuniSet = new Set<string>();
       const coverageSet = new Set<string>();
       const anniSet = new Set<string>();
+      const sourceSet = new Set<string>();
       for (const r of valid) {
         comuniSet.add(r.codice_comune_catastale);
         coverageSet.add(r.coverage_level);
-        if (r.anno_rilevazione) anniSet.add(r.anno_rilevazione);
+        if (r.anno_rilevazione && r.anno_rilevazione !== "0000") anniSet.add(r.anno_rilevazione);
+        sourceSet.add(r.source_label);
       }
 
       // Count records with polygon/centroid
@@ -321,14 +334,18 @@ serve(async (req) => {
         totalRecords: records.length,
         validCount: valid.length,
         invalidCount: invalid.length,
+        duplicatesInBatch,
+        dedupedCount: dedupMap.size,
         invalidDetails: invalid.slice(0, 50),
         sourceColumns,
         distinctComuni: comuniSet.size,
         coverageLevels: Array.from(coverageSet),
         anniRilevazione: Array.from(anniSet),
+        sourceLabels: Array.from(sourceSet),
         withPolygon,
         withCentroid,
         withZonaOmi,
+        dedupKey: "zona_key + codice_comune_catastale + anno_rilevazione + source_label",
         preview: valid.slice(0, 10).map(r => ({
           zona_key: r.zona_key,
           zona_label: r.zona_label,
@@ -337,6 +354,8 @@ serve(async (req) => {
           comune_label: r.comune_label,
           coverage_level: r.coverage_level,
           anno_rilevazione: r.anno_rilevazione,
+          source_label: r.source_label,
+          is_official: r.is_official,
           popolazione: r.popolazione,
           hasCentroid: r.centroid_lat != null,
           hasPolygon: r.polygon_coords != null,
@@ -411,7 +430,7 @@ serve(async (req) => {
           .from("demographic_zones")
           .upsert(
             chunk.map(r => ({ ...r, updated_at: new Date().toISOString() })),
-            { onConflict: "zona_key,codice_comune_catastale", ignoreDuplicates: false },
+            { onConflict: "zona_key,codice_comune_catastale,anno_rilevazione,source_label", ignoreDuplicates: false },
           )
           .select("id");
 

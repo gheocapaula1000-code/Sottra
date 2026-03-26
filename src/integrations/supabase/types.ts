@@ -16,7 +16,7 @@ export type Database = {
     Tables: {
       demographic_zones: {
         Row: {
-          anno_rilevazione: string | null
+          anno_rilevazione: string
           centroid_lat: number | null
           centroid_lng: number | null
           codice_comune_catastale: string
@@ -49,7 +49,7 @@ export type Database = {
           zona_type: string
         }
         Insert: {
-          anno_rilevazione?: string | null
+          anno_rilevazione?: string
           centroid_lat?: number | null
           centroid_lng?: number | null
           codice_comune_catastale: string
@@ -82,7 +82,7 @@ export type Database = {
           zona_type?: string
         }
         Update: {
-          anno_rilevazione?: string | null
+          anno_rilevazione?: string
           centroid_lat?: number | null
           centroid_lng?: number | null
           codice_comune_catastale?: string
