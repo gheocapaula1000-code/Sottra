@@ -129,6 +129,8 @@ interface IstatResult {
   sourceLabel: string;
   sourceFreshness?: string;
   sourceCoverageLevel?: string;
+  geoLevel?: string;
+  geoLabel?: string;
   availabilityReason?: string;
   licensingNote?: string;
 }
