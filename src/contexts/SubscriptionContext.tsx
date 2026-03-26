@@ -153,19 +153,16 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
    *   Instead set bootFailed=true so the gate can show retry UI.
    *   billingReady is set to false because no valid state exists yet.
    */
-  const handleTransientError = useCallback(() => {
+  const handleTransientError = useCallback((errorCode?: string) => {
+    setLastErrorCode(errorCode ?? "CHECK_SUBSCRIPTION_FAILED");
     if (hasEverCheckedRef.current) {
-      // We have previous valid state — keep it AND keep billingReady as-is
       setStale(true);
       setResolved(true);
       setLoading(false);
     } else {
-      // First boot: no prior state — safe to clear billingReady
       setBillingReady(false);
       setBootFailed(true);
       setLoading(false);
-      // accessResolved stays false, checked stays false
-      // → gate shows loader/retry, never paywall
     }
   }, [setResolved]);
 
