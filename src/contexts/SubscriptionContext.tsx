@@ -4,6 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPlanByProductId, getPlanByPriceId, PlanKey } from "@/lib/plans";
 import { setBillingReady } from "@/lib/billing";
+import { useToast } from "@/hooks/use-toast";
+
+/** Error codes from check-subscription that indicate an auth problem (not transient). */
+const AUTH_ERROR_CODES = new Set(["auth_missing", "auth_empty", "auth_invalid", "auth_exception"]);
 
 interface TrialInfo {
   active: boolean;
