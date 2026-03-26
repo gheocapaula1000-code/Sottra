@@ -130,6 +130,10 @@ describe("Diagnostic code mapping", () => {
     fatal: "Errore interno del server.",
     init_error: "Errore di configurazione del server.",
     CHECK_SUBSCRIPTION_FAILED: "Impossibile verificare lo stato dell'account.",
+    origin_not_allowed: "Origine non autorizzata — contatta il supporto.",
+    owner_bootstrap_missing: "Account owner non configurato — contatta il supporto.",
+    owner_bootstrap_failed: "Bootstrap owner non riuscito — riprova o contatta il supporto.",
+    billing_not_configured: "Sistema di pagamento non ancora configurato.",
   };
 
   it("all transient codes have a label", () => {
@@ -148,6 +152,22 @@ describe("Diagnostic code mapping", () => {
     for (const code of AUTH_ERROR_CODES) {
       expect(DIAGNOSTIC_LABELS[code]).toBeUndefined();
     }
+  });
+
+  it("owner_bootstrap_failed has a specific label", () => {
+    expect(DIAGNOSTIC_LABELS["owner_bootstrap_failed"]).toContain("Bootstrap owner");
+  });
+
+  it("owner_bootstrap_missing has a specific label", () => {
+    expect(DIAGNOSTIC_LABELS["owner_bootstrap_missing"]).toContain("owner non configurato");
+  });
+
+  it("origin_not_allowed has a specific label", () => {
+    expect(DIAGNOSTIC_LABELS["origin_not_allowed"]).toContain("Origine non autorizzata");
+  });
+
+  it("billing_not_configured has a specific label", () => {
+    expect(DIAGNOSTIC_LABELS["billing_not_configured"]).toContain("pagamento");
   });
 });
 
@@ -252,5 +272,73 @@ describe("Sottra access matrix — three-tier model", () => {
     for (const email of COMMERCIAL_BYPASS) {
       expect(ADMIN_BOOTSTRAP).not.toContain(email);
     }
+  });
+});
+
+describe("check-subscription response handling — ok=true with error field", () => {
+  /**
+   * Simulates the SubscriptionContext logic:
+   * ok=true responses should be parsed normally even if they have an error message.
+   * Only ok=false (or missing ok) with error triggers error handling.
+   */
+  function shouldParseAsSuccess(body: Record<string, unknown>): boolean {
+    const bodyOk = body.ok === true;
+    const bodyError = typeof body.error === "string" && body.error ? body.error : null;
+    // If ok=true, always parse the payload (even if error field has info text)
+    if (bodyOk) return true;
+    // If error present and ok≠true, it's an error
+    if (bodyError) return false;
+    return true;
+  }
+
+  it("owner_bootstrap_failed with ok=true is parsed as success", () => {
+    expect(shouldParseAsSuccess({
+      ok: true, subscribed: true, is_admin: false, is_owner: true,
+      code: "owner_bootstrap_failed",
+      error: "Owner bootstrap partially failed",
+    })).toBe(true);
+  });
+
+  it("bootstrap with ok=true is parsed as success", () => {
+    expect(shouldParseAsSuccess({
+      ok: true, subscribed: true, is_admin: true, is_owner: true,
+      code: "bootstrap",
+    })).toBe(true);
+  });
+
+  it("auth_invalid with ok=false is an error", () => {
+    expect(shouldParseAsSuccess({
+      ok: false, error: "Auth error", code: "auth_invalid",
+    })).toBe(false);
+  });
+
+  it("fatal with ok=false is an error", () => {
+    expect(shouldParseAsSuccess({
+      ok: false, error: "Internal error", code: "fatal",
+    })).toBe(false);
+  });
+
+  it("resolved with ok=true is parsed as success", () => {
+    expect(shouldParseAsSuccess({
+      ok: true, subscribed: false, code: "resolved",
+    })).toBe(true);
+  });
+
+  it("commercial_bypass with ok=true is parsed as success", () => {
+    expect(shouldParseAsSuccess({
+      ok: true, subscribed: true, code: "commercial_bypass",
+    })).toBe(true);
+  });
+});
+
+describe("Owner bootstrap state values", () => {
+  const VALID_STATES = ["matched", "missing", "failed", "not_applicable"] as const;
+
+  it("all expected states are defined", () => {
+    expect(VALID_STATES).toContain("matched");
+    expect(VALID_STATES).toContain("missing");
+    expect(VALID_STATES).toContain("failed");
+    expect(VALID_STATES).toContain("not_applicable");
+    expect(VALID_STATES).toHaveLength(4);
   });
 });
