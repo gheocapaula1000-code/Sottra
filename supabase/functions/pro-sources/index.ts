@@ -750,9 +750,33 @@ serve(async (req) => {
       promises.push(
         (async () => {
           try {
-            if (!geoId?.istatCode) {
-              log("istat", "no ISTAT code available — skipping");
+            // Step 1: Try sub-municipal demographics from demographic_zones table
+            // We need OMI results for zona_omi join, so OMI runs in parallel
+            // but we check results after all promises settle
+            if (!geoId?.istatCode && !geoId?.cadastralCode) {
+              log("istat", "no ISTAT/cadastral code available — skipping");
               results.istat = unavailableIstat(geoId?.comuneLabel ? "no_match" : "no_coverage");
+              return;
+            }
+
+            // Try sub-municipal first
+            const subMunicipal = await querySubMunicipalDemographics(
+              lat, lng,
+              geoId?.cadastralCode ?? null,
+              null, // zona_omi not yet known at this point
+              supabaseAdmin,
+            );
+
+            if (subMunicipal) {
+              log("istat", `sub-municipal data found: geoLevel=${subMunicipal.geoLevel}, label=${subMunicipal.geoLabel}`);
+              results.istat = subMunicipal;
+              return;
+            }
+
+            // Fallback to municipal ISTAT
+            if (!geoId?.istatCode) {
+              log("istat", "no ISTAT code for municipal fallback");
+              results.istat = unavailableIstat("no_coverage");
               return;
             }
             results.istat = await queryIstatSdmx(geoId.istatCode, geoId.comuneLabel ?? "");
