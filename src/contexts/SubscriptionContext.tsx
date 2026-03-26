@@ -214,14 +214,18 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           const msg = typeof result.error === "object" && "message" in result.error
             ? (result.error as { message: string }).message
             : String(result.error);
-          console.warn("[Subscription] invoke error (non-fatal):", msg);
-          handleTransientError("INVOKE_ERROR");
+          const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(msg);
+          const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket/i.test(msg);
+          const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "INVOKE_ERROR";
+          console.warn("[Subscription] invoke error (non-fatal):", msg, "→", code);
+          handleTransientError(code);
           return;
         }
       } catch (invokeError) {
         const errMsg = invokeError instanceof Error ? invokeError.message : String(invokeError);
         const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(errMsg);
-        const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : "NETWORK_ERROR";
+        const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket/i.test(errMsg);
+        const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "UNEXPECTED_ERROR";
         console.warn("[Subscription] invoke exception (non-fatal):", errMsg, "→", code);
         handleTransientError(code);
         return;
