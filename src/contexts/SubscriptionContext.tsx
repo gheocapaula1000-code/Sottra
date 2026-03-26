@@ -98,6 +98,7 @@ function parsePayload(data: unknown) {
 
 export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const { session, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [accessResolved, setAccessResolved] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
