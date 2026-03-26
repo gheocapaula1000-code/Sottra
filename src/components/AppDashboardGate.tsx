@@ -36,6 +36,7 @@ interface SelfTestResult {
   billing_configured: boolean;
   owner_match: boolean;
   admin_match: boolean;
+  bypass_match: boolean;
   origin_allowed: boolean;
 }
 
