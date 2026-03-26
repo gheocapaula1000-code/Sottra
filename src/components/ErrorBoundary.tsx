@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { isChunkLoadError, recoverFromChunkError } from "@/lib/chunkErrorRecovery";
 
 interface Props {
   children: ReactNode;
@@ -8,24 +9,43 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  recovering: boolean;
 }
 
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, recovering: false };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[ErrorBoundary]", error, errorInfo);
+
+    if (isChunkLoadError(error)) {
+      this.setState({ recovering: true });
+      recoverFromChunkError().then((willReload) => {
+        if (!willReload) {
+          this.setState({ recovering: false });
+        }
+      });
+    }
   }
 
   render() {
     if (this.state.hasError) {
+      // While recovery reload is in progress, show spinner
+      if (this.state.recovering) {
+        return (
+          <div className="flex min-h-svh items-center justify-center bg-background">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+          </div>
+        );
+      }
+
       if (this.props.fallback) return this.props.fallback;
 
       return (

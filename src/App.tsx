@@ -16,29 +16,43 @@ import AppDashboardGate from "@/components/AppDashboardGate";
 import PwaUpdateBanner from "@/components/PwaUpdateBanner";
 import OfflineBanner from "@/components/OfflineBanner";
 import { BUILD_VERSION } from "@/lib/buildInfo";
+import { isChunkLoadError, recoverFromChunkError } from "@/lib/chunkErrorRecovery";
 import Index from "./pages/Index";
 
 if (import.meta.env.DEV) console.log(`[Sottra] build ${BUILD_VERSION}`);
 
-// Dashboard is lazy-loaded inside AppDashboardGate
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const Scan = lazy(() => import("./pages/Scan"));
-const Result = lazy(() => import("./pages/Result"));
-const History = lazy(() => import("./pages/History"));
-const Login = lazy(() => import("./pages/Login"));
-const Signup = lazy(() => import("./pages/Signup"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
-const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
-const TerminiCondizioni = lazy(() => import("./pages/TerminiCondizioni"));
-const NoteLegali = lazy(() => import("./pages/NoteLegali"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const Diagnostics = lazy(() => import("./pages/Diagnostics"));
-const AdminOmiIngest = lazy(() => import("./pages/AdminOmiIngest"));
-const AdminOmiKmlIngest = lazy(() => import("./pages/AdminOmiKmlIngest"));
-const ImportedDrafts = lazy(() => import("./pages/ImportedDrafts"));
-const ImportedDraftDetail = lazy(() => import("./pages/ImportedDraftDetail"));
+// Lazy-loaded routes with chunk error recovery
+function lazyWithRecovery(factory: () => Promise<{ default: React.ComponentType }>) {
+  return lazy(() =>
+    factory().catch((err) => {
+      if (isChunkLoadError(err)) {
+        recoverFromChunkError();
+        // Return a placeholder while reloading
+        return { default: () => null } as { default: React.ComponentType };
+      }
+      throw err;
+    })
+  );
+}
+
+const AdminDashboard = lazyWithRecovery(() => import("./pages/AdminDashboard"));
+const Scan = lazyWithRecovery(() => import("./pages/Scan"));
+const Result = lazyWithRecovery(() => import("./pages/Result"));
+const History = lazyWithRecovery(() => import("./pages/History"));
+const Login = lazyWithRecovery(() => import("./pages/Login"));
+const Signup = lazyWithRecovery(() => import("./pages/Signup"));
+const PrivacyPolicy = lazyWithRecovery(() => import("./pages/PrivacyPolicy"));
+const CookiePolicy = lazyWithRecovery(() => import("./pages/CookiePolicy"));
+const TerminiCondizioni = lazyWithRecovery(() => import("./pages/TerminiCondizioni"));
+const NoteLegali = lazyWithRecovery(() => import("./pages/NoteLegali"));
+const ForgotPassword = lazyWithRecovery(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazyWithRecovery(() => import("./pages/ResetPassword"));
+const NotFound = lazyWithRecovery(() => import("./pages/NotFound"));
+const Diagnostics = lazyWithRecovery(() => import("./pages/Diagnostics"));
+const AdminOmiIngest = lazyWithRecovery(() => import("./pages/AdminOmiIngest"));
+const AdminOmiKmlIngest = lazyWithRecovery(() => import("./pages/AdminOmiKmlIngest"));
+const ImportedDrafts = lazyWithRecovery(() => import("./pages/ImportedDrafts"));
+const ImportedDraftDetail = lazyWithRecovery(() => import("./pages/ImportedDraftDetail"));
 
 const queryClient = new QueryClient();
 
