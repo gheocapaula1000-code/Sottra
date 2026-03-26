@@ -100,6 +100,57 @@ const TARGET_FIELDS = [
   "notes",
 ];
 
+/** Robust RFC 4180-ish CSV parser: handles quoted fields, internal separators, newlines inside quotes */
+function parseCSVRows(text: string, sep: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        field += '"';
+        i++; // skip escaped quote
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === sep) {
+        row.push(field);
+        field = "";
+      } else if (ch === "\r" && next === "\n") {
+        row.push(field);
+        field = "";
+        rows.push(row);
+        row = [];
+        i++; // skip \n
+      } else if (ch === "\n") {
+        row.push(field);
+        field = "";
+        rows.push(row);
+        row = [];
+      } else {
+        field += ch;
+      }
+    }
+  }
+  // Last field/row
+  if (field || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
 type Phase = "upload" | "validating" | "mapping" | "preview" | "importing" | "done" | "error";
 
 const AdminDemographicImport = () => {
@@ -156,18 +207,29 @@ const AdminDemographicImport = () => {
           columns = Object.keys(props);
         }
       } else {
-        const lines = text.split("\n").filter(l => l.trim());
-        if (lines.length < 2) throw new Error("CSV vuoto o senza header");
-        const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+        // Robust CSV parsing: handles quoted fields, internal commas/semicolons, BOM, empty rows
+        let cleanText = text;
+        // Strip UTF-8 BOM
+        if (cleanText.charCodeAt(0) === 0xFEFF) cleanText = cleanText.slice(1);
+
+        // Detect separator: semicolon vs comma (check first line)
+        const firstLine = cleanText.split(/\r?\n/)[0] ?? "";
+        const sep = (firstLine.split(";").length > firstLine.split(",").length) ? ";" : ",";
+
+        const allRows = parseCSVRows(cleanText, sep);
+        if (allRows.length < 2) throw new Error("CSV vuoto o senza header");
+
+        const headers = allRows[0].map(h => h.trim());
         columns = headers;
-        addLog(`CSV: ${lines.length - 1} righe, colonne: ${headers.join(", ")}`);
+        addLog(`CSV: ${allRows.length - 1} righe, separatore "${sep}", colonne: ${headers.join(", ")}`);
 
         const records = [];
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(",").map(v => v.trim().replace(/^"|"$/g, ""));
+        for (let i = 1; i < allRows.length; i++) {
+          const values = allRows[i];
+          if (values.length === 1 && values[0].trim() === "") continue; // skip empty rows
           const obj: Record<string, unknown> = {};
           headers.forEach((h, idx) => {
-            const val = values[idx] ?? "";
+            const val = (values[idx] ?? "").trim();
             if (val !== "" && !isNaN(Number(val))) {
               obj[h] = Number(val);
             } else if (val.toLowerCase() === "true") {
