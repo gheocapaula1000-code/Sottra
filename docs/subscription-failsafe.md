@@ -65,16 +65,30 @@ Network failures, CORS issues, 5xx errors, or function unavailability. These are
 
 **Behavior**: If prior valid state exists, it's preserved and marked `stale: true`. If it's the first boot attempt, `bootFailed: true` is set and the gate shows retry UI with diagnostic code.
 
-### Diagnostic codes shown in UI
+### Server-side diagnostic codes (from check-subscription)
 
 When `bootFailed` is true, the retry UI shows a machine-readable code with a human description:
 - `NETWORK_ERROR` — Connection failure
 - `INVOKE_ERROR` — Edge function invocation error
+- `CORS_ORIGIN_BLOCKED` — Fetch failed with CORS/opaque/blocked signals
 - `FUNCTION_ERROR` — Function returned an error body
 - `MALFORMED_RESPONSE` — Response couldn't be parsed
 - `UNEXPECTED_ERROR` — Unexpected exception
+- `UNKNOWN_BOOT_FAILURE` — No specific code could be determined
 - `fatal` — Server-side fatal error
 - `init_error` — Server configuration error
+
+### Client-side fallback diagnostics
+
+When the backend is completely unreachable (CORS block, network down, function not deployed), the UI **still** shows:
+1. The bootstrap error code (always non-empty — defaults to `UNKNOWN_BOOT_FAILURE`)
+2. If the user clicks "Verifica accesso" and the self-test also fails, a local fallback panel appears showing:
+   - `SELF_TEST_UNAVAILABLE` code
+   - Current browser origin (`window.location.origin`)
+   - Last bootstrap error code
+   - "Backend raggiungibile: ✗ no"
+
+This ensures the user and support always have diagnostic information, even when no server response is available.
 
 No secrets, tokens, or email addresses are exposed in these codes.
 
@@ -90,6 +104,8 @@ The retry UI includes a "Verifica accesso" button that calls the `diagnostics` e
 - `bypass_match` — Whether the email matches `COMMERCIAL_BYPASS_EMAILS`
 - `check_reachable` — Whether the function is reachable
 - `check_code` — The diagnostic code from the check
+
+If the self-test call itself fails, a **client-side fallback** panel is shown instead (see above).
 
 **The user does not need access to secrets or dashboards** — all diagnosis is possible from the UI.
 
