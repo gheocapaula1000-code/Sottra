@@ -270,7 +270,7 @@ describe("NeighborhoodIndex overclaim prevention", () => {
   });
 
   it("sub-municipal dimension should NOT mention 'intero comune'", () => {
-    const geoLevel = "microzona";
+    const geoLevel = "microzona" as string;
     const geoLabel = "Arcella";
     const note = geoLevel === "comune"
       ? `Dato riferito all'intero comune`
