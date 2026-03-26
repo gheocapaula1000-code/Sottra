@@ -80,6 +80,7 @@ const App = () => (
                     <Route path="/admin/diagnostics" element={<ProtectedAdminRoute><Diagnostics /></ProtectedAdminRoute>} />
                     <Route path="/admin/omi-ingest" element={<ProtectedAdminRoute><AdminOmiIngest /></ProtectedAdminRoute>} />
                     <Route path="/admin/omi-kml" element={<ProtectedAdminRoute><AdminOmiKmlIngest /></ProtectedAdminRoute>} />
+                    <Route path="/admin/demographic-import" element={<ProtectedAdminRoute><AdminDemographicImport /></ProtectedAdminRoute>} />
                     <Route path="/scan" element={<TrialProtectedRoute><Scan /></TrialProtectedRoute>} />
                     <Route path="/result" element={<TrialProtectedRoute><Result /></TrialProtectedRoute>} />
                     <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
