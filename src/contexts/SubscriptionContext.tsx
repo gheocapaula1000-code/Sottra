@@ -337,7 +337,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     <SubscriptionContext.Provider value={{
       loading, accessResolved, checked, subscribed, planKey, subscriptionEnd,
       subscriptionStatus, cancelAtPeriodEnd, trial, canScan, canManageBilling,
-      isAdmin, isOwner, stale, bootFailed, lastErrorCode, refresh,
+      isAdmin, isOwner, stale, bootFailed, lastErrorCode, lastErrorHint, refresh,
     }}>
       {children}
     </SubscriptionContext.Provider>
