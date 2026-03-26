@@ -24,7 +24,7 @@ const AdminSubMunicipal = () => {
 
   return (
     <div className="min-h-svh bg-background">
-      <AppHeader onLogout={signOut} />
+      <AppHeader />
       <main className="container max-w-4xl py-8 space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
