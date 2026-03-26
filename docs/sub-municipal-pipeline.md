@@ -62,15 +62,24 @@ Il `matchMethod` e `matchConfidence` sono propagati fino alla UI per totale tras
 
 ### Vincolo univoco
 
-`UNIQUE (zona_key, codice_comune_catastale)` — garantisce idempotenza degli import.
+`UNIQUE (zona_key, codice_comune_catastale, anno_rilevazione, source_label)` — garantisce idempotenza multi-anno e multi-source.
+
+`anno_rilevazione` è NOT NULL con default `'0000'` per garantire il vincolo composito.
 
 ### Chiave di deduplica
 
-La chiave logica per l'idempotenza è `zona_key + codice_comune_catastale`.
-- Un **duplicato** è un record con la stessa combinazione zona_key + codice_comune_catastale.
-- Un **update** avviene quando arriva un record con la stessa chiave ma dati diversi (upsert).
-- Record con anno_rilevazione diverso ma stessa zona vengono aggiornati (l'ultimo import sovrascrive).
-- Per mantenere serie storiche multi-anno, usare zona_key diverse per anno (es. `PD_ARCELLA_2021`).
+La chiave logica per l'idempotenza è `zona_key + codice_comune_catastale + anno_rilevazione + source_label`.
+
+**Perché non basta `zona_key + codice_comune_catastale`:**
+- Schiaccia versioni temporali diverse della stessa zona (es. dati 2021 e 2023)
+- Impedisce la coesistenza di fonti diverse per la stessa zona (es. ISTAT vs Open Data comunale)
+- Rende impossibile il versioning naturale dei dati territoriali
+
+**Con la nuova chiave composita:**
+- Un **duplicato** è un record con la stessa combinazione di tutti e 4 i campi.
+- Un **update** avviene solo quando arriva un record con la stessa entità logica esatta (stessa zona, stesso anno, stessa fonte).
+- Record con anno diverso coesistono naturalmente — il resolver `selectBestRecord` sceglie il più recente.
+- Record con fonte diversa coesistono — il resolver preferisce quello ufficiale.
 
 ## Priorità di scelta del dato
 
@@ -81,9 +90,10 @@ La chiave logica per l'idempotenza è `zona_key + codice_comune_catastale`.
 
 ## Deduplica e idempotenza
 
-- Chiave unica: `(zona_key, codice_comune_catastale)`
+- Chiave unica: `(zona_key, codice_comune_catastale, anno_rilevazione, source_label)`
 - Upsert con `onConflict` su questa chiave: se lo stesso record arriva di nuovo, viene aggiornato
-- Nessun duplicato logico possibile per la stessa zona nello stesso comune
+- Anni diversi della stessa zona coesistono come record separati
+- Fonti diverse della stessa zona coesistono come record separati
 - `import_batch_id` consente rollback per batch
 - Duplicati intra-batch: il sistema tiene l'ultima occorrenza
 
