@@ -35,6 +35,8 @@ interface SubscriptionState {
   stale: boolean;
   /** True when the first bootstrap failed due to a transient error — no valid state exists yet */
   bootFailed: boolean;
+  /** Last diagnostic error code from check-subscription (e.g. "auth_invalid", "fatal") */
+  lastErrorCode: string | null;
   refresh: () => Promise<void>;
 }
 
