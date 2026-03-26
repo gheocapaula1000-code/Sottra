@@ -215,7 +215,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             ? (result.error as { message: string }).message
             : String(result.error);
           console.warn("[Subscription] invoke error (non-fatal):", msg);
-          handleTransientError();
+          handleTransientError("INVOKE_ERROR");
           return;
         }
       } catch (invokeError) {
