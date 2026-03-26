@@ -242,18 +242,39 @@ describe("UI labeling correctness", () => {
   });
 });
 
-describe("Idempotency via zona_key + codice_comune_catastale", () => {
-  it("same zona_key + comune should produce same record (upsert)", () => {
-    const key1 = { zona_key: "PD_ARCELLA_01", codice_comune_catastale: "G224" };
-    const key2 = { zona_key: "PD_ARCELLA_01", codice_comune_catastale: "G224" };
-    expect(key1.zona_key).toBe(key2.zona_key);
-    expect(key1.codice_comune_catastale).toBe(key2.codice_comune_catastale);
+describe("Idempotency via composite dedup key", () => {
+  function dedupKey(r: { zona_key: string; codice_comune_catastale: string; anno_rilevazione: string; source_label: string }): string {
+    return `${r.zona_key}|${r.codice_comune_catastale}|${r.anno_rilevazione}|${r.source_label}`;
+  }
+
+  it("same full key should produce same record (upsert)", () => {
+    const key1 = { zona_key: "PD_ARCELLA_01", codice_comune_catastale: "G224", anno_rilevazione: "2021", source_label: "ISTAT Censimento" };
+    const key2 = { zona_key: "PD_ARCELLA_01", codice_comune_catastale: "G224", anno_rilevazione: "2021", source_label: "ISTAT Censimento" };
+    expect(dedupKey(key1)).toBe(dedupKey(key2));
+  });
+
+  it("different anno_rilevazione should produce different records", () => {
+    const key1 = { zona_key: "PD_ARCELLA_01", codice_comune_catastale: "G224", anno_rilevazione: "2021", source_label: "ISTAT Censimento" };
+    const key2 = { zona_key: "PD_ARCELLA_01", codice_comune_catastale: "G224", anno_rilevazione: "2023", source_label: "ISTAT Censimento" };
+    expect(dedupKey(key1)).not.toBe(dedupKey(key2));
+  });
+
+  it("different source_label should produce different records", () => {
+    const key1 = { zona_key: "PD_ARCELLA_01", codice_comune_catastale: "G224", anno_rilevazione: "2021", source_label: "ISTAT Censimento" };
+    const key2 = { zona_key: "PD_ARCELLA_01", codice_comune_catastale: "G224", anno_rilevazione: "2021", source_label: "Padova Open Data" };
+    expect(dedupKey(key1)).not.toBe(dedupKey(key2));
   });
 
   it("different zona_key should produce different records", () => {
-    const key1 = { zona_key: "PD_ARCELLA_01", codice_comune_catastale: "G224" };
-    const key2 = { zona_key: "PD_CENTRO_01", codice_comune_catastale: "G224" };
-    expect(key1.zona_key).not.toBe(key2.zona_key);
+    const key1 = { zona_key: "PD_ARCELLA_01", codice_comune_catastale: "G224", anno_rilevazione: "2021", source_label: "ISTAT" };
+    const key2 = { zona_key: "PD_CENTRO_01", codice_comune_catastale: "G224", anno_rilevazione: "2021", source_label: "ISTAT" };
+    expect(dedupKey(key1)).not.toBe(dedupKey(key2));
+  });
+
+  it("different comuni are not duplicates", () => {
+    const key1 = { zona_key: "CENTRO_01", codice_comune_catastale: "G224", anno_rilevazione: "2021", source_label: "ISTAT" };
+    const key2 = { zona_key: "CENTRO_01", codice_comune_catastale: "L736", anno_rilevazione: "2021", source_label: "ISTAT" };
+    expect(dedupKey(key1)).not.toBe(dedupKey(key2));
   });
 });
 
