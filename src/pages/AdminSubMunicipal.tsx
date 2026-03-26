@@ -7,18 +7,7 @@ import AppHeader from "@/components/AppHeader";
 import { ArrowLeft, Database, MapPin, Layers, AlertTriangle } from "lucide-react";
 import { fetchSubMunicipalStats } from "@/lib/subMunicipalImporter";
 
-type Stats = Awaited<ReturnType<typeof fetchSubMunicipalStats>>;
-
-interface Stats {
-  totalRecords: number;
-  byDataset: Record<string, number>;
-  byLevel: Record<string, number>;
-  byRegione: Record<string, number>;
-  comuniDistinti: number;
-  withGeometry: number;
-  withCentroid: number;
-  withPopolazione: number;
-}
+type Stats = NonNullable<Awaited<ReturnType<typeof fetchSubMunicipalStats>>>;
 
 const AdminSubMunicipal = () => {
   const navigate = useNavigate();
