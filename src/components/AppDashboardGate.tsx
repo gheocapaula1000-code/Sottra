@@ -23,6 +23,8 @@ const DIAGNOSTIC_LABELS: Record<string, string> = {
   FUNCTION_ERROR: "Errore nel servizio di verifica abbonamento.",
   MALFORMED_RESPONSE: "Risposta non valida dal server.",
   UNEXPECTED_ERROR: "Errore imprevisto — riprova tra poco.",
+  UNKNOWN_BOOT_FAILURE: "Errore di avvio sconosciuto — riprova tra poco.",
+  SELF_TEST_UNAVAILABLE: "Servizio di diagnostica non raggiungibile.",
   fatal: "Errore interno del server.",
   init_error: "Errore di configurazione del server.",
   CHECK_SUBSCRIPTION_FAILED: "Impossibile verificare lo stato dell'account.",
