@@ -26,6 +26,8 @@ interface PreviewRecord {
   comune_label?: string;
   coverage_level?: string;
   anno_rilevazione?: string | null;
+  source_label?: string;
+  is_official?: boolean;
   popolazione: number | null;
   hasCentroid: boolean;
   hasPolygon: boolean;
@@ -36,15 +38,19 @@ interface ValidationResult {
   totalRecords: number;
   validCount: number;
   invalidCount: number;
+  duplicatesInBatch?: number;
+  dedupedCount?: number;
   invalidDetails: { index: number; zona_key: string; errors: string[] }[];
   preview: PreviewRecord[];
   sourceColumns?: string[];
   distinctComuni?: number;
   coverageLevels?: string[];
   anniRilevazione?: string[];
+  sourceLabels?: string[];
   withPolygon?: number;
   withCentroid?: number;
   withZonaOmi?: number;
+  dedupKey?: string;
 }
 
 interface ImportResult {
