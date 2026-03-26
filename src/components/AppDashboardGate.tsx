@@ -42,6 +42,7 @@ interface SelfTestResult {
   admin_match: boolean;
   bypass_match: boolean;
   origin_allowed: boolean;
+  owner_bootstrap_state: "matched" | "missing" | "failed" | "not_applicable";
 }
 
 /**
