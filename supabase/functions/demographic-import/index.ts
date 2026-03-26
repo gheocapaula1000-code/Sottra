@@ -97,7 +97,7 @@ function validateRecord(r: Record<string, unknown>, idx: number): { valid: Demog
 
   const annoRilevazione = typeof r.anno_rilevazione === "string" ? r.anno_rilevazione.trim()
     : typeof r.anno_rilevazione === "number" ? String(r.anno_rilevazione)
-    : null;
+    : "0000";
 
   // Validate polygon_coords if present
   let polygonCoords = r.polygon_coords ?? null;
