@@ -225,3 +225,100 @@ Il parser CSV dell'admin è stato riscritto per supportare:
 A questo punto l'unico blocker reale per avere dati sub-comunali è il **reperimento e caricamento
 del primo dataset ISTAT con geometrie censuarie/sub-comunali** (shapefile o GeoJSON delle sezioni
 di censimento 2021 con attributi demografici associati).
+
+---
+
+## Fase 0 preparatoria — Integrazione ASC/Sezioni censuarie 2021
+
+### Dataset attesi
+
+| Dataset | Contenuto | Copertura |
+|---------|-----------|-----------|
+| `ASC_21` | Aree Sub Comunali ISTAT 2021 — 3 livelli (Liv1, Liv2, Liv3) | Nazionale |
+| `R03_21` | Sezioni censuarie Lombardia 2021 con tabelle demografiche | Regionale (Lombardia) |
+
+### Campi attesi nei dataset ASC_21 (da documentazione ISTAT)
+
+- `PRO_COM_T` — codice ISTAT comune (testo, 6 cifre)
+- `COD_REG` — codice regione
+- `COD_PRO` — codice provincia
+- `DEN_PROV` — denominazione provincia
+- `DEN_REG` — denominazione regione
+- `DEN_COM` — denominazione comune
+- `COD_ASC` — codice area sub-comunale
+- `DEN_ASC` — denominazione area sub-comunale
+- `POP_RES` — popolazione residente
+- Geometria poligonale nel shapefile
+
+### Campi attesi nei dataset R03_21 (da documentazione ISTAT)
+
+Tabelle CSV associate:
+- `SEZ_R03_21.csv` — attributi sezioni censuarie
+- `ASC1_R03_21.csv` — aggregati livello ASC 1
+- `ASC2_R03_21.csv` — aggregati livello ASC 2
+- `LOC_R03_21.csv` — dati per località
+
+Chiavi di join: `SEZ2011`, `PRO_COM`, `COD_REG`
+
+### Nuova tabella `sub_municipal_areas_2021`
+
+Tabella dedicata, separata da `demographic_zones`, per i dati ASC/sezioni ISTAT 2021.
+
+| Colonna | Tipo | Descrizione |
+|---------|------|-------------|
+| id | uuid | PK |
+| source_dataset | text | 'ASC_21' o 'R03_21' |
+| source_year | integer | 2021 |
+| source_label | text | Es. 'ISTAT Censimento 2021' |
+| asc_level | integer | 1, 2, 3 (livello ASC) o NULL per sezioni |
+| area_code | text | Codice ISTAT area |
+| area_name | text | Denominazione |
+| area_type | text | area_sub_comunale, sezione_censuaria, localita |
+| comune_istat_code | text | Codice ISTAT comune |
+| comune_catastale_code | text | Codice Belfiore |
+| comune_name | text | Denominazione comune |
+| provincia_code | text | Codice provincia |
+| provincia_name | text | Denominazione provincia |
+| regione_code | text | Codice regione |
+| regione_name | text | Denominazione regione |
+| popolazione | integer | Popolazione residente |
+| nuclei_familiari | integer | Nuclei familiari |
+| densita | numeric | Densità abitativa |
+| eta_media | numeric | Età media |
+| superficie_kmq | numeric | Superficie in km² |
+| centroid_lat/lng | numeric | Centroide (auto-calcolato) |
+| bbox | jsonb | Bounding box |
+| polygon_coords | jsonb | Geometria GeoJSON |
+| metadata_json | jsonb | Attributi extra dal dataset |
+| import_batch_id | text | ID batch per rollback |
+
+**Chiave univoca:** `UNIQUE (source_dataset, asc_level, area_code)`
+
+**Indici:** centroid, comune_catastale_code+asc_level, regione_code+asc_level
+
+**RLS:** admin full access, authenticated read-only
+
+### Moduli preparati (non attivi nel motore pubblico)
+
+| Modulo | File | Stato |
+|--------|------|-------|
+| Importer astratto | `src/lib/subMunicipalImporter.ts` | Pronto, non eseguito |
+| Point-in-polygon | `src/lib/pointInPolygon.ts` | Pronto, non collegato al report |
+| Admin view tecnica | `src/pages/AdminSubMunicipal.tsx` | Pronta, route `/admin/sub-municipal` |
+| Test | `src/test/subMunicipal.test.ts` | Copertura validazione + PIP |
+
+### Cosa NON è ancora attivo
+
+- Nessun dato sub-comunale mostrato nel report pubblico da questa tabella
+- Nessun import automatico eseguito
+- Nessun collegamento a `demographic_zones` o al resolver `selectBestRecord`
+- Il motore pubblico di Sottra continua a usare solo `demographic_zones` + ISTAT SDMX
+
+### Prossimi step per attivazione
+
+1. Rendere disponibili i file `ASC_21` e `R03_21` nell'ambiente (upload o storage bucket)
+2. Convertire shapefile in GeoJSON (`ogr2ogr` o equivalente)
+3. Eseguire l'import nella nuova tabella via importer
+4. Validare copertura e qualità geometrica
+5. Collegare `findSubMunicipalArea()` al resolver del report (con flag progressivo)
+6. Attivare nel motore pubblico solo dopo validazione completa
