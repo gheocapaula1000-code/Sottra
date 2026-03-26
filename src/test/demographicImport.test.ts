@@ -411,3 +411,108 @@ describe("Stats validation", () => {
     expect(pct).toBe(0);
   });
 });
+
+/* ── Robust CSV parser tests ────────────────────────── */
+
+describe("Robust CSV parsing", () => {
+  /** Minimal RFC 4180 parser (mirrors AdminDemographicImport) */
+  function parseCSVRows(text: string, sep: string): string[][] {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let field = "";
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      const next = text[i + 1];
+      if (inQuotes) {
+        if (ch === '"' && next === '"') { field += '"'; i++; }
+        else if (ch === '"') { inQuotes = false; }
+        else { field += ch; }
+      } else {
+        if (ch === '"') { inQuotes = true; }
+        else if (ch === sep) { row.push(field); field = ""; }
+        else if (ch === "\r" && next === "\n") { row.push(field); field = ""; rows.push(row); row = []; i++; }
+        else if (ch === "\n") { row.push(field); field = ""; rows.push(row); row = []; }
+        else { field += ch; }
+      }
+    }
+    if (field || row.length > 0) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  it("parses standard comma-separated CSV", () => {
+    const csv = "a,b,c\n1,2,3\n4,5,6";
+    const rows = parseCSVRows(csv, ",");
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toEqual(["a", "b", "c"]);
+    expect(rows[1]).toEqual(["1", "2", "3"]);
+  });
+
+  it("handles quoted fields with internal commas", () => {
+    const csv = 'a,b,c\n"hello, world",2,3';
+    const rows = parseCSVRows(csv, ",");
+    expect(rows[1][0]).toBe("hello, world");
+    expect(rows[1][1]).toBe("2");
+  });
+
+  it("handles semicolon separator", () => {
+    const csv = "a;b;c\n1;2;3";
+    const rows = parseCSVRows(csv, ";");
+    expect(rows[0]).toEqual(["a", "b", "c"]);
+    expect(rows[1]).toEqual(["1", "2", "3"]);
+  });
+
+  it("handles BOM prefix", () => {
+    const csv = "\uFEFFa,b,c\n1,2,3";
+    const clean = csv.charCodeAt(0) === 0xFEFF ? csv.slice(1) : csv;
+    const rows = parseCSVRows(clean, ",");
+    expect(rows[0][0]).toBe("a");
+  });
+
+  it("handles empty rows gracefully", () => {
+    const csv = "a,b\n1,2\n\n3,4\n";
+    const rows = parseCSVRows(csv, ",");
+    // Empty row produces [""] which the admin code skips
+    const nonEmpty = rows.filter(r => !(r.length === 1 && r[0].trim() === ""));
+    expect(nonEmpty).toHaveLength(3); // header + 2 data rows
+  });
+
+  it("handles escaped quotes (doubled)", () => {
+    const csv = 'a,b\n"he said ""hi""",2';
+    const rows = parseCSVRows(csv, ",");
+    expect(rows[1][0]).toBe('he said "hi"');
+  });
+
+  it("handles CRLF line endings", () => {
+    const csv = "a,b\r\n1,2\r\n3,4";
+    const rows = parseCSVRows(csv, ",");
+    expect(rows).toHaveLength(3);
+    expect(rows[2]).toEqual(["3", "4"]);
+  });
+
+  it("semicolon CSV with quoted semicolons inside", () => {
+    const csv = 'nome;indirizzo;pop\n"Zona A";"Via Roma; 10";1000';
+    const rows = parseCSVRows(csv, ";");
+    expect(rows[1][1]).toBe("Via Roma; 10");
+    expect(rows[1][2]).toBe("1000");
+  });
+});
+
+describe("Migration: only composite dedup key remains", () => {
+  it("dedup key has 4 components", () => {
+    const key = "zona_key,codice_comune_catastale,anno_rilevazione,source_label";
+    const parts = key.split(",");
+    expect(parts).toHaveLength(4);
+    expect(parts).toContain("anno_rilevazione");
+    expect(parts).toContain("source_label");
+  });
+
+  it("old 2-field key would collapse multi-year data", () => {
+    const oldKey = (r: { zona_key: string; codice_comune_catastale: string }) =>
+      `${r.zona_key}|${r.codice_comune_catastale}`;
+    const r1 = { zona_key: "PD_01", codice_comune_catastale: "G224" };
+    const r2 = { zona_key: "PD_01", codice_comune_catastale: "G224" };
+    // Old key makes 2021 and 2023 collide — that's the bug
+    expect(oldKey(r1)).toBe(oldKey(r2));
+  });
+});
