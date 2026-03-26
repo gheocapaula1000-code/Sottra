@@ -85,6 +85,7 @@ const BootFailedRetry = ({
         admin_match: false,
         bypass_match: false,
         origin_allowed: false,
+        owner_bootstrap_state: "not_applicable",
       });
     } finally {
       setTesting(false);
