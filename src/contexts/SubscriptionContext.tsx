@@ -249,7 +249,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       const parsed = parsePayload(responseData);
       if (!parsed) {
-        handleTransientError();
+        handleTransientError("MALFORMED_RESPONSE");
         return;
       }
 
