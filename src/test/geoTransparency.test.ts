@@ -92,7 +92,7 @@ describe("Geographic transparency — section title logic", () => {
 
   it("non-municipal demographic section title is generic", () => {
     const geoLevel: GeoLevel = "microzona";
-    const isMunicipal = geoLevel === "comune";
+    const isMunicipal = (geoLevel as GeoLevel) === "comune";
     const title = isMunicipal
       ? "Contesto Demografico Comunale"
       : "Trend Demografico";
