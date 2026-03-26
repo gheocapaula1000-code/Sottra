@@ -178,8 +178,8 @@ describe("GeoJSON centroid computation", () => {
 
 describe("Matching method priority", () => {
   it("zona_omi match has higher confidence than polygon", () => {
-    const zonaOmiConf = 0.90; // standard quality via zona_omi
-    const polygonConf = 0.85; // standard quality via polygon
+    const zonaOmiConf = 0.90;
+    const polygonConf = 0.85;
     expect(zonaOmiConf).toBeGreaterThan(polygonConf);
   });
 
@@ -259,7 +259,6 @@ describe("Idempotency via zona_key + codice_comune_catastale", () => {
 
 describe("NeighborhoodIndex overclaim prevention", () => {
   it("municipal demographic dimension should note 'intero comune'", () => {
-    // Simulates the note generation from neighborhoodIndex.ts
     const geoLevel = "comune";
     const comuneLabel = "Padova";
     const note = geoLevel === "comune"
@@ -282,9 +281,100 @@ describe("NeighborhoodIndex overclaim prevention", () => {
 
 describe("No crime data without real source", () => {
   it("safety_zones should not be exposed in UI", () => {
-    // This test validates the design principle: safety_zones data
-    // is never shown in UI unless a real georeferenced dataset is imported
-    const safetyZonesExposedInUI = false; // design invariant
+    const safetyZonesExposedInUI = false;
     expect(safetyZonesExposedInUI).toBe(false);
+  });
+});
+
+/* ── Field mapping tests ────────────────────────────── */
+
+describe("Field mapping for ISTAT import", () => {
+  function applyFieldMapping(record: Record<string, unknown>, mapping: Record<string, string>): Record<string, unknown> {
+    if (!mapping || Object.keys(mapping).length === 0) return record;
+    const mapped: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(record)) {
+      const targetKey = mapping[key] ?? key;
+      mapped[targetKey] = value;
+    }
+    return mapped;
+  }
+
+  it("maps custom column names to target fields", () => {
+    const record = { SEZ2011: "001", NOME_ZONA: "Arcella", POP: 12000 };
+    const mapping = { SEZ2011: "zona_key", NOME_ZONA: "zona_label", POP: "popolazione" };
+    const mapped = applyFieldMapping(record, mapping);
+    expect(mapped.zona_key).toBe("001");
+    expect(mapped.zona_label).toBe("Arcella");
+    expect(mapped.popolazione).toBe(12000);
+  });
+
+  it("preserves unmapped fields with original keys", () => {
+    const record = { zona_key: "A01", extra_field: "hello" };
+    const mapping = {};
+    const mapped = applyFieldMapping(record, mapping);
+    expect(mapped.zona_key).toBe("A01");
+    expect(mapped.extra_field).toBe("hello");
+  });
+
+  it("applies defaults for missing fields", () => {
+    const record = { zona_key: "A01" };
+    const defaults = { coverage_level: "sezione_censimento", is_official: true };
+    const merged = { ...defaults, ...record };
+    expect(merged.coverage_level).toBe("sezione_censimento");
+    expect(merged.is_official).toBe(true);
+    expect(merged.zona_key).toBe("A01");
+  });
+
+  it("record values override defaults", () => {
+    const record = { zona_key: "A01", coverage_level: "quartiere" };
+    const defaults = { coverage_level: "sezione_censimento" };
+    const merged = { ...defaults, ...record };
+    expect(merged.coverage_level).toBe("quartiere");
+  });
+});
+
+describe("Deduplication within batch", () => {
+  function dedupKey(r: { zona_key: string; codice_comune_catastale: string }): string {
+    return `${r.zona_key}|${r.codice_comune_catastale}`;
+  }
+
+  it("identifies duplicate records by zona_key + codice_comune_catastale", () => {
+    const r1 = { zona_key: "PD_01", codice_comune_catastale: "G224", popolazione: 1000 };
+    const r2 = { zona_key: "PD_01", codice_comune_catastale: "G224", popolazione: 1100 };
+    expect(dedupKey(r1)).toBe(dedupKey(r2));
+  });
+
+  it("keeps last occurrence when deduplicating", () => {
+    const records = [
+      { zona_key: "PD_01", codice_comune_catastale: "G224", popolazione: 1000 },
+      { zona_key: "PD_02", codice_comune_catastale: "G224", popolazione: 2000 },
+      { zona_key: "PD_01", codice_comune_catastale: "G224", popolazione: 1100 },
+    ];
+    const map = new Map<string, typeof records[0]>();
+    for (const r of records) map.set(dedupKey(r), r);
+    const deduped = Array.from(map.values());
+    expect(deduped).toHaveLength(2);
+    expect(deduped.find(r => r.zona_key === "PD_01")?.popolazione).toBe(1100);
+  });
+
+  it("different comuni are not considered duplicates", () => {
+    const r1 = { zona_key: "CENTRO_01", codice_comune_catastale: "G224" };
+    const r2 = { zona_key: "CENTRO_01", codice_comune_catastale: "L736" };
+    expect(dedupKey(r1)).not.toBe(dedupKey(r2));
+  });
+});
+
+describe("Stats validation", () => {
+  it("computes correct percentages", () => {
+    const total = 100;
+    const withPolygon = 85;
+    const pct = Math.round((withPolygon / total) * 100);
+    expect(pct).toBe(85);
+  });
+
+  it("handles zero records gracefully", () => {
+    const total = 0;
+    const pct = total > 0 ? Math.round((0 / total) * 100) : 0;
+    expect(pct).toBe(0);
   });
 });

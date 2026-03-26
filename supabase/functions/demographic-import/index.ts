@@ -55,6 +55,19 @@ interface ValidationError {
   errors: string[];
 }
 
+/**
+ * Apply field mapping: renames source keys to target keys before validation.
+ */
+function applyFieldMapping(record: Record<string, unknown>, mapping: Record<string, string>): Record<string, unknown> {
+  if (!mapping || Object.keys(mapping).length === 0) return record;
+  const mapped: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    const targetKey = mapping[key] ?? key;
+    mapped[targetKey] = value;
+  }
+  return mapped;
+}
+
 function validateRecord(r: Record<string, unknown>, idx: number): { valid: DemographicRecord | null; error: ValidationError | null } {
   const errors: string[] = [];
 
@@ -82,7 +95,9 @@ function validateRecord(r: Record<string, unknown>, idx: number): { valid: Demog
   const sourceLabel = typeof r.source_label === "string" ? r.source_label.trim() : "";
   if (!sourceLabel) errors.push("source_label mancante");
 
-  const annoRilevazione = typeof r.anno_rilevazione === "string" ? r.anno_rilevazione.trim() : null;
+  const annoRilevazione = typeof r.anno_rilevazione === "string" ? r.anno_rilevazione.trim()
+    : typeof r.anno_rilevazione === "number" ? String(r.anno_rilevazione)
+    : null;
 
   // Validate polygon_coords if present
   let polygonCoords = r.polygon_coords ?? null;
@@ -196,6 +211,11 @@ function parseGeoJSON(input: unknown): Record<string, unknown>[] {
   });
 }
 
+/* ── Dedup key helper ───────────────────────────────── */
+function dedupKey(r: DemographicRecord): string {
+  return `${r.zona_key}|${r.codice_comune_catastale}`;
+}
+
 /* ── Main handler ───────────────────────────────────── */
 
 serve(async (req) => {
@@ -245,11 +265,14 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action } = body as { action: string };
+    const { action, fieldMapping } = body as { action: string; fieldMapping?: Record<string, string> };
 
     // ── ACTION: validate ──
     if (action === "validate") {
-      const { records: rawRecords, format } = body as { records: unknown; format?: string };
+      const { records: rawRecords, format, defaults } = body as {
+        records: unknown; format?: string;
+        defaults?: Record<string, unknown>;
+      };
       let records: Record<string, unknown>[] = [];
 
       if (format === "geojson" && rawRecords && typeof rawRecords === "object") {
@@ -258,14 +281,39 @@ serve(async (req) => {
         records = rawRecords as Record<string, unknown>[];
       }
 
+      // Apply field mapping + defaults
+      records = records.map(r => {
+        let mapped = fieldMapping ? applyFieldMapping(r, fieldMapping) : r;
+        if (defaults) mapped = { ...defaults, ...mapped };
+        return mapped;
+      });
+
       const valid: DemographicRecord[] = [];
       const invalid: ValidationError[] = [];
+
+      // Detect source columns for mapping assistance
+      const sourceColumns = records.length > 0 ? Object.keys(records[0]) : [];
 
       for (let i = 0; i < records.length; i++) {
         const result = validateRecord(records[i], i);
         if (result.valid) valid.push(result.valid);
         if (result.error) invalid.push(result.error);
       }
+
+      // Compute distinct comuni & coverage levels & anni
+      const comuniSet = new Set<string>();
+      const coverageSet = new Set<string>();
+      const anniSet = new Set<string>();
+      for (const r of valid) {
+        comuniSet.add(r.codice_comune_catastale);
+        coverageSet.add(r.coverage_level);
+        if (r.anno_rilevazione) anniSet.add(r.anno_rilevazione);
+      }
+
+      // Count records with polygon/centroid
+      const withPolygon = valid.filter(r => r.polygon_coords != null).length;
+      const withCentroid = valid.filter(r => r.centroid_lat != null).length;
+      const withZonaOmi = valid.filter(r => r.zona_omi != null && r.zona_omi !== "").length;
 
       return json({
         ok: true,
@@ -274,22 +322,34 @@ serve(async (req) => {
         validCount: valid.length,
         invalidCount: invalid.length,
         invalidDetails: invalid.slice(0, 50),
+        sourceColumns,
+        distinctComuni: comuniSet.size,
+        coverageLevels: Array.from(coverageSet),
+        anniRilevazione: Array.from(anniSet),
+        withPolygon,
+        withCentroid,
+        withZonaOmi,
         preview: valid.slice(0, 10).map(r => ({
           zona_key: r.zona_key,
           zona_label: r.zona_label,
           zona_type: r.zona_type,
           codice_comune_catastale: r.codice_comune_catastale,
+          comune_label: r.comune_label,
+          coverage_level: r.coverage_level,
+          anno_rilevazione: r.anno_rilevazione,
           popolazione: r.popolazione,
           hasCentroid: r.centroid_lat != null,
           hasPolygon: r.polygon_coords != null,
+          hasZonaOmi: r.zona_omi != null && r.zona_omi !== "",
         })),
       });
     }
 
     // ── ACTION: import ──
     if (action === "import") {
-      const { records: rawRecords, format, batchId } = body as {
+      const { records: rawRecords, format, batchId, defaults } = body as {
         records: unknown; format?: string; batchId?: string;
+        defaults?: Record<string, unknown>;
       };
 
       const importBatchId = batchId || crypto.randomUUID();
@@ -301,19 +361,41 @@ serve(async (req) => {
         records = rawRecords as Record<string, unknown>[];
       }
 
+      // Apply field mapping + defaults
+      records = records.map(r => {
+        let mapped = fieldMapping ? applyFieldMapping(r, fieldMapping) : r;
+        if (defaults) mapped = { ...defaults, ...mapped };
+        return mapped;
+      });
+
       const valid: DemographicRecord[] = [];
       const invalid: ValidationError[] = [];
+      const seenKeys = new Set<string>();
+      let duplicatesInBatch = 0;
 
       for (let i = 0; i < records.length; i++) {
         const result = validateRecord(records[i], i);
         if (result.valid) {
+          const dk = dedupKey(result.valid);
+          if (seenKeys.has(dk)) {
+            duplicatesInBatch++;
+            // Keep the later record (overwrites)
+          }
+          seenKeys.add(dk);
           result.valid.import_batch_id = importBatchId;
           valid.push(result.valid);
         }
         if (result.error) invalid.push(result.error);
       }
 
-      if (valid.length === 0) {
+      // Deduplicate: keep last occurrence per key within same batch
+      const dedupMap = new Map<string, DemographicRecord>();
+      for (const r of valid) {
+        dedupMap.set(dedupKey(r), r);
+      }
+      const dedupedValid = Array.from(dedupMap.values());
+
+      if (dedupedValid.length === 0) {
         return json({ ok: false, error: "Nessun record valido da importare", invalidCount: invalid.length, invalidDetails: invalid.slice(0, 20) });
       }
 
@@ -322,8 +404,8 @@ serve(async (req) => {
       let inserted = 0;
       const upsertErrors: string[] = [];
 
-      for (let i = 0; i < valid.length; i += CHUNK_SIZE) {
-        const chunk = valid.slice(i, i + CHUNK_SIZE);
+      for (let i = 0; i < dedupedValid.length; i += CHUNK_SIZE) {
+        const chunk = dedupedValid.slice(i, i + CHUNK_SIZE);
 
         const { data: upsertData, error: upsertError } = await adminClient
           .from("demographic_zones")
@@ -348,6 +430,8 @@ serve(async (req) => {
         totalRecords: records.length,
         validCount: valid.length,
         invalidCount: invalid.length,
+        duplicatesInBatch,
+        dedupedCount: dedupedValid.length,
         insertedOrUpdated: inserted,
         errors: upsertErrors.length > 0 ? upsertErrors : undefined,
         invalidDetails: invalid.slice(0, 20),
@@ -376,23 +460,32 @@ serve(async (req) => {
     if (action === "list-batches") {
       const { data, error } = await adminClient
         .from("demographic_zones")
-        .select("import_batch_id, codice_comune_catastale, anno_rilevazione, source_label, is_official, coverage_level")
+        .select("import_batch_id, codice_comune_catastale, anno_rilevazione, source_label, is_official, coverage_level, created_at")
         .not("import_batch_id", "is", null)
-        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(1000);
 
       if (error) return json({ ok: false, error: error.message });
 
       // Group by batch
-      const batches = new Map<string, { count: number; comuni: Set<string>; sources: Set<string> }>();
+      const batches = new Map<string, {
+        count: number; comuni: Set<string>; sources: Set<string>;
+        coverages: Set<string>; anni: Set<string>; firstCreated: string;
+      }>();
       for (const row of data ?? []) {
         const bid = row.import_batch_id;
         if (!bid) continue;
-        if (!batches.has(bid)) batches.set(bid, { count: 0, comuni: new Set(), sources: new Set() });
+        if (!batches.has(bid)) batches.set(bid, {
+          count: 0, comuni: new Set(), sources: new Set(),
+          coverages: new Set(), anni: new Set(), firstCreated: row.created_at ?? "",
+        });
         const b = batches.get(bid)!;
         b.count++;
         if (row.codice_comune_catastale) b.comuni.add(row.codice_comune_catastale);
         if (row.source_label) b.sources.add(row.source_label);
+        if (row.coverage_level) b.coverages.add(row.coverage_level);
+        if (row.anno_rilevazione) b.anni.add(row.anno_rilevazione);
+        if (!b.firstCreated && row.created_at) b.firstCreated = row.created_at;
       }
 
       return json({
@@ -402,29 +495,68 @@ serve(async (req) => {
           recordCount: b.count,
           comuniCount: b.comuni.size,
           sources: Array.from(b.sources),
+          coverageLevels: Array.from(b.coverages),
+          anni: Array.from(b.anni),
+          createdAt: b.firstCreated,
         })),
       });
     }
 
     // ── ACTION: stats ──
     if (action === "stats") {
-      const { comune, anno, coverage } = body as { comune?: string; anno?: string; coverage?: string };
-      let query = adminClient.from("demographic_zones").select("id, codice_comune_catastale, anno_rilevazione, coverage_level, is_official, zona_type", { count: "exact" });
+      const { comune, anno, coverage, sourceLabel, isOfficial } = body as {
+        comune?: string; anno?: string; coverage?: string;
+        sourceLabel?: string; isOfficial?: boolean;
+      };
+
+      // Fetch all records (up to limit) for aggregation
+      let query = adminClient.from("demographic_zones")
+        .select("codice_comune_catastale, anno_rilevazione, coverage_level, is_official, source_label, zona_omi, polygon_coords, centroid_lat, centroid_lng", { count: "exact" });
       if (comune) query = query.eq("codice_comune_catastale", comune);
       if (anno) query = query.eq("anno_rilevazione", anno);
       if (coverage) query = query.eq("coverage_level", coverage);
+      if (sourceLabel) query = query.eq("source_label", sourceLabel);
+      if (isOfficial !== undefined) query = query.eq("is_official", isOfficial);
 
-      const { count, error } = await query;
+      const { data, count, error } = await query.limit(5000);
       if (error) return json({ ok: false, error: error.message });
 
-      // Get distinct comuni count
-      const { data: comuniData } = await adminClient
-        .from("demographic_zones")
-        .select("codice_comune_catastale")
-        .limit(1000);
-      const distinctComuni = new Set((comuniData ?? []).map(r => r.codice_comune_catastale)).size;
+      const rows = data ?? [];
+      const comuniSet = new Set<string>();
+      const coverageBreakdown: Record<string, number> = {};
+      const annoBreakdown: Record<string, number> = {};
+      const officialBreakdown = { official: 0, nonOfficial: 0 };
+      const sourceBreakdown: Record<string, number> = {};
+      let withPolygon = 0, withCentroid = 0, withZonaOmi = 0;
 
-      return json({ ok: true, totalRecords: count ?? 0, distinctComuni });
+      for (const r of rows) {
+        comuniSet.add(r.codice_comune_catastale);
+        coverageBreakdown[r.coverage_level] = (coverageBreakdown[r.coverage_level] ?? 0) + 1;
+        if (r.anno_rilevazione) annoBreakdown[r.anno_rilevazione] = (annoBreakdown[r.anno_rilevazione] ?? 0) + 1;
+        if (r.is_official) officialBreakdown.official++; else officialBreakdown.nonOfficial++;
+        sourceBreakdown[r.source_label] = (sourceBreakdown[r.source_label] ?? 0) + 1;
+        if (r.polygon_coords != null) withPolygon++;
+        if (r.centroid_lat != null) withCentroid++;
+        if (r.zona_omi != null && r.zona_omi !== "") withZonaOmi++;
+      }
+
+      return json({
+        ok: true,
+        action: "stats",
+        totalRecords: count ?? rows.length,
+        distinctComuni: comuniSet.size,
+        coverageBreakdown,
+        annoBreakdown,
+        officialBreakdown,
+        sourceBreakdown,
+        withPolygon,
+        withPolygonPct: rows.length > 0 ? Math.round((withPolygon / rows.length) * 100) : 0,
+        withCentroid,
+        withCentroidPct: rows.length > 0 ? Math.round((withCentroid / rows.length) * 100) : 0,
+        matchableViaZonaOmi: withZonaOmi,
+        matchableViaPolygon: withPolygon,
+        comuniWithoutSubMunicipal: 0, // Would need cross-reference with all managed comuni
+      });
     }
 
     return json({ error: `Unknown action: ${action}` }, 400);
