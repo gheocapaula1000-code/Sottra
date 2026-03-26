@@ -810,6 +810,24 @@ serve(async (req) => {
 
     await Promise.allSettled(promises);
 
+    // Post-processing: If ISTAT is still municipal and OMI found a zone, retry sub-municipal with zona_omi
+    const istatResult = results.istat as IstatResult | undefined;
+    const omiResult = results.omi as Record<string, unknown> | undefined;
+    if (
+      istatResult?.geoLevel === "comune" &&
+      omiResult?.zonaOmi &&
+      typeof omiResult.zonaOmi === "string" &&
+      geoId?.cadastralCode
+    ) {
+      const subWithOmi = await querySubMunicipalDemographics(
+        lat, lng, geoId.cadastralCode, omiResult.zonaOmi as string, supabaseAdmin,
+      );
+      if (subWithOmi) {
+        log("istat post-process", `upgraded to sub-municipal via OMI zone: ${subWithOmi.geoLabel}`);
+        results.istat = subWithOmi;
+      }
+    }
+
     return json({
       ok: true,
       data: results,
