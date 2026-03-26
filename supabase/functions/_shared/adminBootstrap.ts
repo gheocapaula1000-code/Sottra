@@ -32,20 +32,30 @@ function getCommercialBypassEmails(): Set<string> {
   );
 }
 
+export type BootstrapResult = {
+  /** Bootstrap was fully applied (owner + admin rows created/confirmed) */
+  bootstrapped: boolean;
+  isOwner: boolean;
+  isAdmin: boolean;
+  /** 'matched' = email in allowlist & upserts OK, 'missing' = email not in allowlist,
+   *  'failed' = email in allowlist but upsert failed, 'not_applicable' = no email provided */
+  state: "matched" | "missing" | "failed" | "not_applicable";
+};
+
 /**
  * If the given email is in the bootstrap allowlist,
  * upsert owner_access + user_roles for the user_id.
- * Returns { bootstrapped, isOwner, isAdmin }.
+ * Never throws — returns state describing what happened.
  */
 export async function ensureBootstrap(
   userId: string,
   email: string | undefined | null,
-): Promise<{ bootstrapped: boolean; isOwner: boolean; isAdmin: boolean }> {
-  if (!email || !userId) return { bootstrapped: false, isOwner: false, isAdmin: false };
+): Promise<BootstrapResult> {
+  if (!email || !userId) return { bootstrapped: false, isOwner: false, isAdmin: false, state: "not_applicable" };
 
   const allowlist = getBootstrapEmails();
-  if (!allowlist.has(email.toLowerCase())) {
-    return { bootstrapped: false, isOwner: false, isAdmin: false };
+  if (!allowlist.has(email.trim().toLowerCase())) {
+    return { bootstrapped: false, isOwner: false, isAdmin: false, state: "missing" };
   }
 
   log(`bootstrap match for ${email}`);
@@ -56,28 +66,40 @@ export async function ensureBootstrap(
     { auth: { persistSession: false } },
   );
 
+  let ownerOk = false;
+  let adminOk = false;
+
   // Upsert owner_access
   try {
-    await client.from("owner_access").upsert(
+    const { error } = await client.from("owner_access").upsert(
       { user_id: userId, label: `bootstrap:${email}` },
       { onConflict: "user_id" },
     );
+    ownerOk = !error;
+    if (error) log(`owner_access upsert failed: ${error.message}`);
   } catch (e) {
-    log(`owner_access upsert failed: ${e}`);
+    log(`owner_access upsert exception: ${e}`);
   }
 
   // Upsert user_roles (admin)
   try {
-    await client.from("user_roles").upsert(
+    const { error } = await client.from("user_roles").upsert(
       { user_id: userId, role: "admin" },
       { onConflict: "user_id,role" },
     );
+    adminOk = !error;
+    if (error) log(`user_roles upsert failed: ${error.message}`);
   } catch (e) {
-    log(`user_roles upsert failed: ${e}`);
+    log(`user_roles upsert exception: ${e}`);
   }
 
-  log(`bootstrap complete for ${userId}`);
-  return { bootstrapped: true, isOwner: true, isAdmin: true };
+  if (ownerOk && adminOk) {
+    log(`bootstrap complete for ${userId}`);
+    return { bootstrapped: true, isOwner: true, isAdmin: true, state: "matched" };
+  }
+
+  log(`bootstrap PARTIAL for ${userId} — owner=${ownerOk} admin=${adminOk}`);
+  return { bootstrapped: false, isOwner: ownerOk, isAdmin: adminOk, state: "failed" };
 }
 
 /**
@@ -88,4 +110,12 @@ export async function ensureBootstrap(
 export function isCommercialBypass(email: string | undefined | null): boolean {
   if (!email) return false;
   return getCommercialBypassEmails().has(email.trim().toLowerCase());
+}
+
+/**
+ * Check if email is in the admin bootstrap allowlist (without performing upserts).
+ */
+export function isInBootstrapAllowlist(email: string | undefined | null): boolean {
+  if (!email) return false;
+  return getBootstrapEmails().has(email.trim().toLowerCase());
 }

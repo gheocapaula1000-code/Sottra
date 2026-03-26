@@ -93,21 +93,32 @@ serve(async (req) => {
       userEmail = userData?.user?.email;
     } catch { /* non-blocking */ }
 
-    try {
-      const bootstrap = await ensureBootstrap(userId, userEmail);
-      if (bootstrap.bootstrapped) {
-        log("bootstrap applied", userEmail ?? userId);
-        return json({
-          ok: true,
-          subscribed: true,
-          is_admin: true,
-          is_owner: true,
-          owner: true,
-          code: "bootstrap",
-        }, req);
-      }
-    } catch (e) {
-      log("bootstrap check failed (non-fatal)", String(e));
+    const bootstrap = await ensureBootstrap(userId, userEmail);
+
+    if (bootstrap.state === "matched" && bootstrap.bootstrapped) {
+      log("bootstrap applied", userEmail ?? userId);
+      return json({
+        ok: true,
+        subscribed: true,
+        is_admin: true,
+        is_owner: true,
+        owner: true,
+        code: "bootstrap",
+      }, req);
+    }
+
+    // Bootstrap email matched but upserts failed — return explicit code
+    if (bootstrap.state === "failed") {
+      log("bootstrap FAILED — email matched but upserts failed", userEmail ?? userId);
+      return json({
+        ok: true,
+        subscribed: true,
+        is_admin: bootstrap.isAdmin,
+        is_owner: bootstrap.isOwner,
+        owner: bootstrap.isOwner,
+        code: "owner_bootstrap_failed",
+        error: "Owner bootstrap partially failed — access granted with best-effort privileges",
+      }, req);
     }
 
     // ── 1c. Commercial bypass: full user access, no admin ──
@@ -233,9 +244,6 @@ serve(async (req) => {
         subscriptionEnd = subData.current_period_end ?? null;
         cancelAtPeriodEnd = subData.cancel_at_period_end ?? false;
         subscriptionStatus = subData.status ?? null;
-
-        // Resolve product_id from price_id if needed (for plan mapping)
-        // We'll pass price_id and let the client resolve
       }
     } catch (e) {
       log("subscription DB exception", String(e));
@@ -252,7 +260,6 @@ serve(async (req) => {
         const customer = customers?.data?.[0];
 
         if (customer?.id) {
-          // Check both active and trialing statuses
           let sub = null;
           for (const checkStatus of ["active", "trialing"] as const) {
             const subs = await stripe.subscriptions.list({

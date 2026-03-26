@@ -26,6 +26,10 @@ const DIAGNOSTIC_LABELS: Record<string, string> = {
   fatal: "Errore interno del server.",
   init_error: "Errore di configurazione del server.",
   CHECK_SUBSCRIPTION_FAILED: "Impossibile verificare lo stato dell'account.",
+  origin_not_allowed: "Origine non autorizzata — contatta il supporto.",
+  owner_bootstrap_missing: "Account owner non configurato — contatta il supporto.",
+  owner_bootstrap_failed: "Bootstrap owner non riuscito — riprova o contatta il supporto.",
+  billing_not_configured: "Sistema di pagamento non ancora configurato.",
 };
 
 interface SelfTestResult {
@@ -38,6 +42,7 @@ interface SelfTestResult {
   admin_match: boolean;
   bypass_match: boolean;
   origin_allowed: boolean;
+  owner_bootstrap_state: "matched" | "missing" | "failed" | "not_applicable";
 }
 
 /**
@@ -80,6 +85,7 @@ const BootFailedRetry = ({
         admin_match: false,
         bypass_match: false,
         origin_allowed: false,
+        owner_bootstrap_state: "not_applicable",
       });
     } finally {
       setTesting(false);
@@ -166,6 +172,16 @@ const BootFailedRetry = ({
             <div className="flex justify-between">
               <dt>Codice risposta</dt>
               <dd className="font-mono text-xs">{selfTest.check_code}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Owner bootstrap</dt>
+              <dd className={
+                selfTest.owner_bootstrap_state === "matched" ? "text-green-600" :
+                selfTest.owner_bootstrap_state === "failed" ? "text-destructive" :
+                "text-muted-foreground"
+              }>
+                {selfTest.owner_bootstrap_state}
+              </dd>
             </div>
           </dl>
         </div>
