@@ -1,0 +1,1 @@
+ALTER TABLE public.demographic_zones ADD CONSTRAINT demographic_zones_zona_key_comune_unique UNIQUE (zona_key, codice_comune_catastale);
