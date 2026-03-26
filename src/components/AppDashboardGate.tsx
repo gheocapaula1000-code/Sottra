@@ -173,6 +173,16 @@ const BootFailedRetry = ({
               <dt>Codice risposta</dt>
               <dd className="font-mono text-xs">{selfTest.check_code}</dd>
             </div>
+            <div className="flex justify-between">
+              <dt>Owner bootstrap</dt>
+              <dd className={
+                selfTest.owner_bootstrap_state === "matched" ? "text-green-600" :
+                selfTest.owner_bootstrap_state === "failed" ? "text-destructive" :
+                "text-muted-foreground"
+              }>
+                {selfTest.owner_bootstrap_state}
+              </dd>
+            </div>
           </dl>
         </div>
       )}

@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { isOwnerById } from "../_shared/ownerUtils.ts";
 import { isBillingActive } from "../_shared/billing.ts";
+import { isInBootstrapAllowlist, isCommercialBypass } from "../_shared/adminBootstrap.ts";
 
 function sanitizeUrl(raw: string): string {
   try {
@@ -35,6 +36,30 @@ function isOriginAllowed(req: Request): boolean {
   const origins = raw.split(",").map((o) => o.trim().toLowerCase()).filter(Boolean);
   const reqOrigin = (req.headers.get("Origin") ?? "").toLowerCase();
   return origins.includes(reqOrigin);
+}
+
+/**
+ * Determine owner_bootstrap_state for self-test.
+ * - "matched": email is in ADMIN_BOOTSTRAP_EMAILS and owner_access row exists
+ * - "missing": email is NOT in ADMIN_BOOTSTRAP_EMAILS
+ * - "failed": email is in ADMIN_BOOTSTRAP_EMAILS but owner_access row missing
+ * - "not_applicable": no email provided or no userId
+ */
+async function getOwnerBootstrapState(
+  userId: string | null,
+  email: string | undefined | null,
+  serviceClient: ReturnType<typeof createClient>,
+): Promise<"matched" | "missing" | "failed" | "not_applicable"> {
+  if (!email || !userId) return "not_applicable";
+  if (!isInBootstrapAllowlist(email)) return "missing";
+
+  // Email is in allowlist — check if owner_access row exists
+  try {
+    const isOwner = await isOwnerById(userId);
+    return isOwner ? "matched" : "failed";
+  } catch {
+    return "failed";
+  }
 }
 
 serve(async (req) => {
@@ -73,7 +98,9 @@ serve(async (req) => {
         billing_configured: isBillingActive(),
         owner_match: false,
         admin_match: false,
+        bypass_match: false,
         origin_allowed: isOriginAllowed(req),
+        owner_bootstrap_state: "not_applicable",
       });
     }
 
@@ -90,7 +117,6 @@ serve(async (req) => {
         auth: { persistSession: false },
       });
 
-      // Try getClaims first, fall back to getUser
       let claimsOk = false;
       try {
         const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
@@ -111,7 +137,9 @@ serve(async (req) => {
             billing_configured: isBillingActive(),
             owner_match: false,
             admin_match: false,
+            bypass_match: false,
             origin_allowed: isOriginAllowed(req),
+            owner_bootstrap_state: "not_applicable",
           });
         }
         userId = userData.user.id;
@@ -125,7 +153,9 @@ serve(async (req) => {
         billing_configured: isBillingActive(),
         owner_match: false,
         admin_match: false,
+        bypass_match: false,
         origin_allowed: isOriginAllowed(req),
+        owner_bootstrap_state: "not_applicable",
       });
     }
 
@@ -134,16 +164,20 @@ serve(async (req) => {
     let ownerMatch = false;
     let adminMatch = false;
     let bypassMatch = false;
+    let ownerBootstrapState: "matched" | "missing" | "failed" | "not_applicable" = "not_applicable";
+
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
 
     try {
-      const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
-        auth: { persistSession: false },
-      });
       const { data: userData } = await serviceClient.auth.admin.getUserById(userId!);
       if (userData?.user?.email) {
         userEmail = maskEmail(userData.user.email);
         ownerMatch = emailInEnvList(userData.user.email, "ADMIN_BOOTSTRAP_EMAILS");
-        bypassMatch = emailInEnvList(userData.user.email, "COMMERCIAL_BYPASS_EMAILS");
+        bypassMatch = isCommercialBypass(userData.user.email);
+
+        ownerBootstrapState = await getOwnerBootstrapState(userId, userData.user.email, serviceClient);
 
         try {
           const { data: roleData } = await serviceClient
@@ -167,6 +201,7 @@ serve(async (req) => {
       admin_match: adminMatch || ownerMatch,
       bypass_match: bypassMatch,
       origin_allowed: isOriginAllowed(req),
+      owner_bootstrap_state: ownerBootstrapState,
     });
   }
 
