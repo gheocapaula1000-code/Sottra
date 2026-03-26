@@ -1510,6 +1510,19 @@ const Result = () => {
               <SectionSafe><IstatCard data={result.istatDemographic.data as import("@/types").IstatDemographicData | null} loading={result.istatDemographic.status === "loading"} /></SectionSafe>
               <SectionSafe><TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} /></SectionSafe>
 
+              {/* M) Profilo di Zona — Indice di Vicinato */}
+              <SectionSafe>
+                <NeighborhoodIndexCard
+                  index={calculateNeighborhoodIndex(
+                    result.poiEnrichment.data as PoiEnrichmentData | null,
+                    result.istatDemographic.data as import("@/types").IstatDemographicData | null,
+                    result.rischioZona.data as RischioZonaData | null,
+                    result.omiZone.data as import("@/types").OmiZoneData | null,
+                  )}
+                  loading={scanning}
+                />
+              </SectionSafe>
+
               {/* Tier 2 */}
               <SectionSafe><ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} /></SectionSafe>
               <SectionSafe><OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} /></SectionSafe>
