@@ -152,6 +152,12 @@ const BootFailedRetry = ({
               </dd>
             </div>
             <div className="flex justify-between">
+              <dt>Bypass accesso</dt>
+              <dd className={selfTest.bypass_match ? "text-green-600" : "text-muted-foreground"}>
+                {selfTest.bypass_match ? "✓ sì" : "— no"}
+              </dd>
+            </div>
+            <div className="flex justify-between">
               <dt>Servizio raggiungibile</dt>
               <dd className={selfTest.check_reachable ? "text-green-600" : "text-destructive"}>
                 {selfTest.check_reachable ? "✓ sì" : "✗ no"}
