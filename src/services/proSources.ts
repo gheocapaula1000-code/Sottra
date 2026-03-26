@@ -102,9 +102,12 @@ function parseIstatResult(raw: unknown): IstatDemographicData | null {
     annoRilevazione: typeof d.annoRilevazione === "string" ? d.annoRilevazione : null,
     geoLevel: typeof d.geoLevel === "string" ? d.geoLevel as IstatDemographicData["geoLevel"] : null,
     geoLabel: typeof d.geoLabel === "string" ? d.geoLabel : null,
+    matchMethod: typeof d.matchMethod === "string" ? d.matchMethod : null,
+    matchConfidence: typeof d.matchConfidence === "number" ? d.matchConfidence : null,
     sourceType: (d.sourceType as IstatDemographicData["sourceType"]) ?? "official",
     sourceProvider: "istat",
     sourceLabel: typeof d.sourceLabel === "string" ? d.sourceLabel : "ISTAT",
     sourcePeriod: typeof d.annoRilevazione === "string" ? d.annoRilevazione : undefined,
+    sourceCoverageLevel: typeof d.sourceCoverageLevel === "string" ? d.sourceCoverageLevel as IstatDemographicData["sourceCoverageLevel"] : undefined,
   };
 }

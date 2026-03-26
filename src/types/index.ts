@@ -366,6 +366,10 @@ export interface IstatDemographicData extends SourceMetadata {
   geoLevel?: GeoLevel | null;
   /** Human-readable label for the geographic area */
   geoLabel?: string | null;
+  /** How the match was made (zona_omi, point_in_polygon, municipal_fallback) */
+  matchMethod?: string | null;
+  /** Match confidence [0-1] */
+  matchConfidence?: number | null;
 }
 
 /** Risultato completo di una scansione — solo moduli realmente operativi */
