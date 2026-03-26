@@ -21,6 +21,7 @@ import type {
   InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
 } from "@/types";
 import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
+import { calculateNeighborhoodIndex, type NeighborhoodIndex, type SubDimension } from "@/lib/neighborhoodIndex";
 import {
   ProfiloRapidoCard, ImmobileFacciataCard, ContestoVicinatoCard,
   PosizionamentoCommercialeCard, ProfiloAreaCard,

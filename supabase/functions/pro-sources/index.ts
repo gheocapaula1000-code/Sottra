@@ -258,6 +258,10 @@ function mapDemographicZoneToResult(z: Record<string, unknown>): IstatResult {
     : zonaType === "circoscrizione" ? "quartiere"
     : "zona";
 
+  const coverageLevel = typeof z.coverage_level === "string" ? z.coverage_level : undefined;
+  const isOfficial = typeof z.is_official === "boolean" ? z.is_official : true;
+  const dataQuality = typeof z.data_quality === "string" ? z.data_quality : "standard";
+
   return {
     popolazione: typeof z.popolazione === "number" ? z.popolazione : null,
     nucleiFamiliari: typeof z.nuclei_familiari === "number" ? z.nuclei_familiari : null,
@@ -266,14 +270,18 @@ function mapDemographicZoneToResult(z: Record<string, unknown>): IstatResult {
     percentualeStranieri: typeof z.percentuale_stranieri === "number" ? z.percentuale_stranieri : null,
     comuneLabel: typeof z.comune_label === "string" ? z.comune_label : null,
     annoRilevazione: typeof z.anno_rilevazione === "string" ? z.anno_rilevazione : null,
-    sourceType: String(z.source_type ?? "official"),
+    sourceType: isOfficial ? "official" : String(z.source_type ?? "elaborated"),
     sourceProvider: "istat",
     sourceLabel: typeof z.source_label === "string" ? z.source_label : "ISTAT Censimento",
-    sourceCoverageLevel: zonaType === "microzona_omi" ? "zone_omi" : "quartiere",
+    sourceFreshness: typeof z.anno_rilevazione === "string" ? z.anno_rilevazione : undefined,
+    sourceCoverageLevel: zonaType === "microzona_omi" ? "zone_omi" : (coverageLevel ?? "quartiere"),
     geoLevel,
     geoLabel: typeof z.zona_label === "string" ? z.zona_label : undefined,
     licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
-  };
+    // Extra sub-municipal metadata
+    matchMethod: "sub_municipal_zone",
+    matchConfidence: dataQuality === "alto" ? 0.95 : dataQuality === "standard" ? 0.85 : 0.7,
+  } as IstatResult;
 }
 
 /* ══════════════════════════════════════════════════════
