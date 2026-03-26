@@ -70,25 +70,18 @@ const BootFailedRetry = ({
   const handleSelfTest = async () => {
     setTesting(true);
     try {
-      const { data } = await supabase.functions.invoke("diagnostics", {
+      const { data, error } = await supabase.functions.invoke("diagnostics", {
         body: { action: "self-test" },
       });
-      if (data && typeof data === "object") {
+      if (!error && data && typeof data === "object") {
         setSelfTest(data as SelfTestResult);
+      } else {
+        // Server responded but with an error — show client-side fallback
+        setSelfTestFailed(true);
       }
     } catch {
-      setSelfTest({
-        session_present: false,
-        user_email: "—",
-        check_reachable: false,
-        check_code: "UNREACHABLE",
-        billing_configured: false,
-        owner_match: false,
-        admin_match: false,
-        bypass_match: false,
-        origin_allowed: false,
-        owner_bootstrap_state: "not_applicable",
-      });
+      // Backend completely unreachable — show client-side fallback diagnostics
+      setSelfTestFailed(true);
     } finally {
       setTesting(false);
     }
