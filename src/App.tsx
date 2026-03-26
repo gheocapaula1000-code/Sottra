@@ -54,6 +54,7 @@ const AdminOmiKmlIngest = lazyWithRecovery(() => import("./pages/AdminOmiKmlInge
 const AdminDemographicImport = lazyWithRecovery(() => import("./pages/AdminDemographicImport"));
 const ImportedDrafts = lazyWithRecovery(() => import("./pages/ImportedDrafts"));
 const ImportedDraftDetail = lazyWithRecovery(() => import("./pages/ImportedDraftDetail"));
+const AdminSubMunicipal = lazyWithRecovery(() => import("./pages/AdminSubMunicipal"));
 
 const queryClient = new QueryClient();
 
