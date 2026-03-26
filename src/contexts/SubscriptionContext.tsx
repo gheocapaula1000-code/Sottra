@@ -225,12 +225,15 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const body = responseData as Record<string, unknown> | null;
-      if (body && typeof body.error === "string" && body.error) {
-        const errorCode = typeof body.code === "string" ? body.code : "";
+      const bodyOk = body?.ok === true;
+      const bodyError = typeof body?.error === "string" && body.error ? body.error : null;
+      const errorCode = typeof body?.code === "string" ? body.code : "";
 
+      // If response has error AND ok=false, it's a real error
+      if (bodyError && !bodyOk) {
         // Auth errors → invalidate local session, redirect to login
         if (AUTH_ERROR_CODES.has(errorCode)) {
-          console.warn("[Subscription] auth error — signing out locally:", errorCode, body.error);
+          console.warn("[Subscription] auth error — signing out locally:", errorCode, bodyError);
           await supabase.auth.signOut({ scope: "local" });
           resetToDefaults();
           toast({
@@ -242,7 +245,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // Non-auth function error → transient
-        console.warn("[Subscription] function error (non-fatal):", body.error);
+        console.warn("[Subscription] function error (non-fatal):", bodyError);
         handleTransientError(errorCode || "FUNCTION_ERROR");
         return;
       }
