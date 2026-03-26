@@ -154,7 +154,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
    *   billingReady is set to false because no valid state exists yet.
    */
   const handleTransientError = useCallback((errorCode?: string) => {
-    setLastErrorCode(errorCode ?? "CHECK_SUBSCRIPTION_FAILED");
+    setLastErrorCode(errorCode || "UNKNOWN_BOOT_FAILURE");
     if (hasEverCheckedRef.current) {
       setStale(true);
       setResolved(true);
