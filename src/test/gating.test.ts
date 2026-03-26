@@ -345,9 +345,9 @@ describe("Owner bootstrap state values", () => {
 
 describe("Client-side fallback diagnostics", () => {
   const DIAGNOSTIC_LABELS: Record<string, string> = {
-    NETWORK_ERROR: "Errore di rete — controlla la tua connessione.",
-    INVOKE_ERROR: "Il servizio non ha risposto correttamente.",
-    CORS_ORIGIN_BLOCKED: "Origine non autorizzata — contatta il supporto.",
+    NETWORK_ERROR: "Backend o rete non raggiungibile — controlla la connessione.",
+    INVOKE_ERROR: "Errore tecnico di invocazione del servizio.",
+    CORS_ORIGIN_BLOCKED: "Richiesta bloccata dalla policy di origine consentita.",
     UNKNOWN_BOOT_FAILURE: "Errore di avvio sconosciuto — riprova tra poco.",
     SELF_TEST_UNAVAILABLE: "Servizio di diagnostica non raggiungibile.",
     MALFORMED_RESPONSE: "Risposta non valida dal server.",
