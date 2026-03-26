@@ -214,8 +214,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           const msg = typeof result.error === "object" && "message" in result.error
             ? (result.error as { message: string }).message
             : String(result.error);
-          const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(msg);
-          const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket/i.test(msg);
+          const isCorsLike = /failed to (fetch|send)|load failed|networkerror|cors|blocked|opaque|origin|policy/i.test(msg);
+          const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket|refused|unreachable|offline/i.test(msg);
           const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "INVOKE_ERROR";
           console.warn("[Subscription] invoke error (non-fatal):", msg, "→", code);
           handleTransientError(code);
@@ -223,8 +223,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (invokeError) {
         const errMsg = invokeError instanceof Error ? invokeError.message : String(invokeError);
-        const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(errMsg);
-        const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket/i.test(errMsg);
+        const isCorsLike = /failed to (fetch|send)|load failed|networkerror|cors|blocked|opaque|origin|policy/i.test(errMsg);
+        const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket|refused|unreachable|offline/i.test(errMsg);
         const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "UNEXPECTED_ERROR";
         console.warn("[Subscription] invoke exception (non-fatal):", errMsg, "→", code);
         handleTransientError(code);
@@ -282,8 +282,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setBillingReady(parsed.billingActive);
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e);
-      const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(errMsg);
-      const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : "UNEXPECTED_ERROR";
+      const isCorsLike = /failed to (fetch|send)|load failed|networkerror|cors|blocked|opaque|origin|policy/i.test(errMsg);
+      const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket|refused|unreachable|offline/i.test(errMsg);
+      const code = isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "UNEXPECTED_ERROR";
       console.error("[Subscription] unexpected error (non-fatal):", errMsg, "→", code);
       handleTransientError(code);
     }
