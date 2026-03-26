@@ -26,6 +26,10 @@ const DIAGNOSTIC_LABELS: Record<string, string> = {
   fatal: "Errore interno del server.",
   init_error: "Errore di configurazione del server.",
   CHECK_SUBSCRIPTION_FAILED: "Impossibile verificare lo stato dell'account.",
+  origin_not_allowed: "Origine non autorizzata — contatta il supporto.",
+  owner_bootstrap_missing: "Account owner non configurato — contatta il supporto.",
+  owner_bootstrap_failed: "Bootstrap owner non riuscito — riprova o contatta il supporto.",
+  billing_not_configured: "Sistema di pagamento non ancora configurato.",
 };
 
 interface SelfTestResult {
