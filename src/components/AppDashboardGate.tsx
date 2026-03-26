@@ -78,6 +78,7 @@ const BootFailedRetry = ({
         billing_configured: false,
         owner_match: false,
         admin_match: false,
+        bypass_match: false,
         origin_allowed: false,
       });
     } finally {
