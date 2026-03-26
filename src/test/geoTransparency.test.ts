@@ -72,7 +72,7 @@ describe("Geographic transparency — demographic data", () => {
 
   it("geo suffix string is empty for non-municipal level", () => {
     const geoLevel: GeoLevel = "microzona";
-    const isMunicipal = geoLevel === "comune";
+    const isMunicipal = (geoLevel as GeoLevel) === "comune";
     const geoSuffix = isMunicipal ? " del comune" : "";
     expect(geoSuffix).toBe("");
   });
