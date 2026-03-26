@@ -7,6 +7,8 @@ import AppHeader from "@/components/AppHeader";
 import { ArrowLeft, Database, MapPin, Layers, AlertTriangle } from "lucide-react";
 import { fetchSubMunicipalStats } from "@/lib/subMunicipalImporter";
 
+type Stats = Awaited<ReturnType<typeof fetchSubMunicipalStats>>;
+
 interface Stats {
   totalRecords: number;
   byDataset: Record<string, number>;
