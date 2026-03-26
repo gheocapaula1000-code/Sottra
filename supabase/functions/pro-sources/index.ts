@@ -256,42 +256,80 @@ async function querySubMunicipalDemographics(
   }
 }
 
-/** Select the best record among multiple candidates with explicit priority rules */
-function selectBestRecord(candidates: Record<string, unknown>[], method: string): Record<string, unknown> {
-  if (candidates.length === 1) return candidates[0];
+/** Coverage level precision rank (lower = more precise) */
+const COVERAGE_RANK: Record<string, number> = {
+  microzona: 0, sezione_censimento: 1, zona: 2, quartiere: 3,
+  area_subcomunale: 4, comune: 5,
+};
+
+/** Select the best record among multiple candidates with explicit priority rules.
+ *  Returns the record AND the selectionReason string. */
+function selectBestRecord(candidates: Record<string, unknown>[], method: string): Record<string, unknown> & { _selectionReason?: string } {
+  if (candidates.length === 1) {
+    const r = candidates[0] as Record<string, unknown> & { _selectionReason?: string };
+    r._selectionReason = "unico_candidato";
+    return r;
+  }
 
   const QUALITY_ORDER: Record<string, number> = { alto: 3, standard: 2, basso: 1 };
 
-  // Sort: most recent anno > is_official > higher data_quality > has more metrics
+  const metricsCount = (r: Record<string, unknown>) => {
+    let c = 0;
+    for (const k of ["popolazione", "densita", "eta_media", "nuclei_familiari", "percentuale_stranieri", "percentuale_giovani", "percentuale_famiglie"]) {
+      if (typeof r[k] === "number") c++;
+    }
+    return c;
+  };
+
+  // Sort with deterministic priority chain
   const sorted = [...candidates].sort((a, b) => {
-    // 1. Most recent anno_rilevazione
+    // 1. More precise coverage_level
+    const covA = COVERAGE_RANK[String(a.coverage_level ?? "comune")] ?? 5;
+    const covB = COVERAGE_RANK[String(b.coverage_level ?? "comune")] ?? 5;
+    if (covA !== covB) return covA - covB;
+
+    // 2. Most recent anno_rilevazione
     const annoA = String(a.anno_rilevazione ?? "0");
     const annoB = String(b.anno_rilevazione ?? "0");
     if (annoA !== annoB) return annoB.localeCompare(annoA);
 
-    // 2. is_official = true wins
+    // 3. is_official = true wins
     const offA = a.is_official === true ? 1 : 0;
     const offB = b.is_official === true ? 1 : 0;
     if (offA !== offB) return offB - offA;
 
-    // 3. Higher data_quality
+    // 4. Higher data_quality
     const qA = QUALITY_ORDER[String(a.data_quality ?? "standard")] ?? 2;
     const qB = QUALITY_ORDER[String(b.data_quality ?? "standard")] ?? 2;
     if (qA !== qB) return qB - qA;
 
-    // 4. More metrics available
-    const metricsCount = (r: Record<string, unknown>) => {
-      let c = 0;
-      for (const k of ["popolazione", "densita", "eta_media", "nuclei_familiari", "percentuale_stranieri"]) {
-        if (typeof r[k] === "number") c++;
-      }
-      return c;
-    };
+    // 5. Prefer zona_omi match method over polygon
+    const hasZonaOmiA = typeof a.zona_omi === "string" && a.zona_omi.length > 0 ? 1 : 0;
+    const hasZonaOmiB = typeof b.zona_omi === "string" && b.zona_omi.length > 0 ? 1 : 0;
+    if (hasZonaOmiA !== hasZonaOmiB) return hasZonaOmiB - hasZonaOmiA;
+
+    // 6. More metrics available
     return metricsCount(b) - metricsCount(a);
   });
 
-  log("selectBestRecord", `${candidates.length} candidates, selected anno=${sorted[0].anno_rilevazione}, official=${sorted[0].is_official}, quality=${sorted[0].data_quality}, method=${method}`);
-  return sorted[0];
+  // Determine WHY this record won
+  const winner = sorted[0];
+  const runnerUp = sorted[1];
+  let reason = "migliore_per_";
+  const covW = COVERAGE_RANK[String(winner.coverage_level ?? "comune")] ?? 5;
+  const covR = COVERAGE_RANK[String(runnerUp.coverage_level ?? "comune")] ?? 5;
+  if (covW < covR) reason += "copertura_più_precisa";
+  else if (String(winner.anno_rilevazione ?? "0") > String(runnerUp.anno_rilevazione ?? "0")) reason += "anno_più_recente";
+  else if ((winner.is_official === true) && !(runnerUp.is_official === true)) reason += "fonte_ufficiale";
+  else if ((QUALITY_ORDER[String(winner.data_quality ?? "standard")] ?? 2) > (QUALITY_ORDER[String(runnerUp.data_quality ?? "standard")] ?? 2)) reason += "qualità_dato_superiore";
+  else if (metricsCount(winner) > metricsCount(runnerUp)) reason += "più_metriche_disponibili";
+  else reason += "ordine_deterministico";
+
+  log("selectBestRecord", `${candidates.length} candidates, selected anno=${winner.anno_rilevazione}, official=${winner.is_official}, quality=${winner.data_quality}, method=${method}, reason=${reason}`);
+
+  const result = winner as Record<string, unknown> & { _selectionReason?: string };
+  result._selectionReason = reason;
+  return result;
 }
 
 function mapDemographicZoneToResult(z: Record<string, unknown>, matchMethod: string): IstatResult {
