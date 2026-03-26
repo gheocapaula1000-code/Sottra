@@ -434,20 +434,39 @@ function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | 
   // data is guaranteed non-null by the check above
   const d = data!;
 
-  // Build only non-null metric tiles
+  const isMunicipal = d.geoLevel === "comune" || (!d.geoLevel && !d.geoLabel);
+  const geoSuffix = isMunicipal ? " del comune" : "";
+
+  // Build only non-null metric tiles — label reflects geo level
   const metrics: { label: string; value: string }[] = [];
-  if (d.etaMedia != null) metrics.push({ label: "Età media", value: fmt(d.etaMedia) });
-  if (d.densitaAbitanti != null) metrics.push({ label: "Densità", value: `${fmt(d.densitaAbitanti)} ab/km²` });
-  if (d.flussoResidenti12Mesi != null) metrics.push({ label: "Flusso 12m", value: `${d.flussoResidenti12Mesi > 0 ? "+" : ""}${fmt(d.flussoResidenti12Mesi)}%` });
-  if (d.percentualeGiovani != null) metrics.push({ label: "Under 35", value: `${fmt(d.percentualeGiovani)}%` });
+  if (d.etaMedia != null) metrics.push({ label: `Età media${geoSuffix}`, value: fmt(d.etaMedia) });
+  if (d.densitaAbitanti != null) metrics.push({ label: `Densità${geoSuffix}`, value: `${fmt(d.densitaAbitanti)} ab/km²` });
+  if (d.flussoResidenti12Mesi != null) metrics.push({ label: `Flusso residenti 12m${geoSuffix}`, value: `${d.flussoResidenti12Mesi > 0 ? "+" : ""}${fmt(d.flussoResidenti12Mesi)}%` });
+  if (d.percentualeGiovani != null) metrics.push({ label: `Under 35${geoSuffix}`, value: `${fmt(d.percentualeGiovani)}%` });
 
   const hasBars = d.percentualeFamiglie != null || d.percentualeStranieri != null;
   const totalVisibleItems = getAvailableDemographicMetricCount(d);
 
+  // Title and subtitle reflect geo level
+  const sectionTitle = isMunicipal
+    ? `Contesto Demografico Comunale${d.geoLabel ? ` — ${d.geoLabel}` : ""}`
+    : "Trend Demografico";
+
   return (
     <Section>
-      <SectionHeader icon={Users} title="Trend Demografico" />
+      <SectionHeader icon={Users} title={sectionTitle} />
       <GeoLevelTag geoLevel={d.geoLevel} geoLabel={d.geoLabel} />
+      {isMunicipal && (
+        <div className="flex items-start gap-2 rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2 mb-4">
+          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-400" />
+          <div>
+            <p className="text-[11px] font-medium text-amber-400">
+              Dato riferito all'intero comune{d.geoLabel ? ` di ${d.geoLabel}` : ""}, non alla singola zona analizzata.
+            </p>
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5">I valori della zona specifica dell'immobile potrebbero differire significativamente.</p>
+          </div>
+        </div>
+      )}
       {metrics.length > 0 && (
         <div className={cn("grid gap-3 mb-4", metrics.length >= 2 ? "grid-cols-2" : "grid-cols-1")}>
           {metrics.map((item, i) => (
@@ -460,12 +479,9 @@ function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | 
       )}
       {hasBars && (
         <div className="space-y-2">
-          {d.percentualeFamiglie != null && <MiniBar label="Famiglie" value={d.percentualeFamiglie} />}
-          {d.percentualeStranieri != null && <MiniBar label="Stranieri" value={d.percentualeStranieri} />}
+          {d.percentualeFamiglie != null && <MiniBar label={`Famiglie${geoSuffix}`} value={d.percentualeFamiglie} />}
+          {d.percentualeStranieri != null && <MiniBar label={`Stranieri${geoSuffix}`} value={d.percentualeStranieri} />}
         </div>
-      )}
-      {d.geoLevel === "comune" && (
-        <p className="text-[10px] text-amber-400/70 mt-2">Dato riferito al livello comunale — la zona specifica potrebbe variare</p>
       )}
       {totalVisibleItems <= 2 && totalVisibleItems > 0 && (
         <p className="text-[10px] text-muted-foreground/50 mt-2">Alcuni indicatori non sono disponibili per questa zona</p>
