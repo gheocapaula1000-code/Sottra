@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      demographic_zones: {
+        Row: {
+          anno_rilevazione: string | null
+          codice_comune_catastale: string
+          codice_comune_istat: string | null
+          comune_label: string
+          created_at: string | null
+          densita: number | null
+          eta_media: number | null
+          flusso_residenti_12m: number | null
+          id: string
+          import_batch_id: string | null
+          indice_vecchiaia: number | null
+          nuclei_familiari: number | null
+          percentuale_famiglie: number | null
+          percentuale_giovani: number | null
+          percentuale_stranieri: number | null
+          polygon_coords: Json | null
+          popolazione: number | null
+          source_file: string | null
+          source_label: string
+          source_type: string
+          updated_at: string | null
+          zona_key: string
+          zona_label: string
+          zona_omi: string | null
+          zona_type: string
+        }
+        Insert: {
+          anno_rilevazione?: string | null
+          codice_comune_catastale: string
+          codice_comune_istat?: string | null
+          comune_label?: string
+          created_at?: string | null
+          densita?: number | null
+          eta_media?: number | null
+          flusso_residenti_12m?: number | null
+          id?: string
+          import_batch_id?: string | null
+          indice_vecchiaia?: number | null
+          nuclei_familiari?: number | null
+          percentuale_famiglie?: number | null
+          percentuale_giovani?: number | null
+          percentuale_stranieri?: number | null
+          polygon_coords?: Json | null
+          popolazione?: number | null
+          source_file?: string | null
+          source_label?: string
+          source_type?: string
+          updated_at?: string | null
+          zona_key: string
+          zona_label?: string
+          zona_omi?: string | null
+          zona_type?: string
+        }
+        Update: {
+          anno_rilevazione?: string | null
+          codice_comune_catastale?: string
+          codice_comune_istat?: string | null
+          comune_label?: string
+          created_at?: string | null
+          densita?: number | null
+          eta_media?: number | null
+          flusso_residenti_12m?: number | null
+          id?: string
+          import_batch_id?: string | null
+          indice_vecchiaia?: number | null
+          nuclei_familiari?: number | null
+          percentuale_famiglie?: number | null
+          percentuale_giovani?: number | null
+          percentuale_stranieri?: number | null
+          polygon_coords?: Json | null
+          popolazione?: number | null
+          source_file?: string | null
+          source_label?: string
+          source_type?: string
+          updated_at?: string | null
+          zona_key?: string
+          zona_label?: string
+          zona_omi?: string | null
+          zona_type?: string
+        }
+        Relationships: []
+      }
       keydraft_imports: {
         Row: {
           bridge_payload: Json
