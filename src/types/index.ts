@@ -370,6 +370,12 @@ export interface IstatDemographicData extends SourceMetadata {
   matchMethod?: string | null;
   /** Match confidence [0-1] */
   matchConfidence?: number | null;
+  /** Why this record was selected over alternatives */
+  selectionReason?: string | null;
+  /** Whether this is an official source */
+  isOfficial?: boolean | null;
+  /** Quality tier of the data */
+  dataQuality?: string | null;
 }
 
 /** Risultato completo di una scansione — solo moduli realmente operativi */

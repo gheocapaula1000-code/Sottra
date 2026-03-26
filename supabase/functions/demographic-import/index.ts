@@ -45,7 +45,7 @@ interface DemographicRecord {
 }
 
 const VALID_ZONA_TYPES = ["microzona_omi", "quartiere", "sezione_censuaria", "circoscrizione", "zona_statistica", "altro"];
-const VALID_COVERAGE = ["zona", "quartiere", "comune", "microzona"];
+const VALID_COVERAGE = ["zona", "quartiere", "comune", "microzona", "sezione_censimento", "area_subcomunale"];
 const VALID_QUALITY = ["alto", "standard", "basso"];
 const VALID_SOURCE_TYPES = ["official", "elaborated", "estimate", "community"];
 
@@ -91,7 +91,6 @@ function validateRecord(r: Record<string, unknown>, idx: number): { valid: Demog
       try { polygonCoords = JSON.parse(polygonCoords); } catch { errors.push("polygon_coords non è un JSON valido"); polygonCoords = null; }
     }
     if (polygonCoords != null && !Array.isArray(polygonCoords)) {
-      // Allow GeoJSON geometry object
       const geo = polygonCoords as Record<string, unknown>;
       if (geo.type === "Polygon" && Array.isArray(geo.coordinates)) {
         polygonCoords = geo.coordinates;
@@ -321,7 +320,6 @@ serve(async (req) => {
       // Upsert in chunks of 500 (idempotent via zona_key + codice_comune_catastale)
       const CHUNK_SIZE = 500;
       let inserted = 0;
-      let updated = 0;
       const upsertErrors: string[] = [];
 
       for (let i = 0; i < valid.length; i += CHUNK_SIZE) {
@@ -419,7 +417,14 @@ serve(async (req) => {
       const { count, error } = await query;
       if (error) return json({ ok: false, error: error.message });
 
-      return json({ ok: true, totalRecords: count ?? 0 });
+      // Get distinct comuni count
+      const { data: comuniData } = await adminClient
+        .from("demographic_zones")
+        .select("codice_comune_catastale")
+        .limit(1000);
+      const distinctComuni = new Set((comuniData ?? []).map(r => r.codice_comune_catastale)).size;
+
+      return json({ ok: true, totalRecords: count ?? 0, distinctComuni });
     }
 
     return json({ error: `Unknown action: ${action}` }, 400);
