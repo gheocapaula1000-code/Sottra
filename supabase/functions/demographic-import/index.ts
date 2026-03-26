@@ -411,7 +411,7 @@ serve(async (req) => {
           .from("demographic_zones")
           .upsert(
             chunk.map(r => ({ ...r, updated_at: new Date().toISOString() })),
-            { onConflict: "zona_key,codice_comune_catastale", ignoreDuplicates: false },
+            { onConflict: "zona_key,codice_comune_catastale,anno_rilevazione,source_label", ignoreDuplicates: false },
           )
           .select("id");
 
