@@ -367,9 +367,11 @@ describe("Client-side fallback diagnostics", () => {
   });
 
   it("CORS-like error messages are classified as CORS_ORIGIN_BLOCKED", () => {
-    const classify = (msg: string) =>
-      /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(msg)
-        ? "CORS_ORIGIN_BLOCKED" : "NETWORK_ERROR";
+    const classify = (msg: string) => {
+      const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(msg);
+      const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket/i.test(msg);
+      return isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "INVOKE_ERROR";
+    };
 
     expect(classify("Failed to fetch")).toBe("CORS_ORIGIN_BLOCKED");
     expect(classify("Load failed")).toBe("CORS_ORIGIN_BLOCKED");
@@ -377,7 +379,35 @@ describe("Client-side fallback diagnostics", () => {
     expect(classify("blocked by CORS policy")).toBe("CORS_ORIGIN_BLOCKED");
     expect(classify("opaque response")).toBe("CORS_ORIGIN_BLOCKED");
     expect(classify("timeout exceeded")).toBe("NETWORK_ERROR");
-    expect(classify("some random error")).toBe("NETWORK_ERROR");
+    expect(classify("ECONNREFUSED")).toBe("NETWORK_ERROR");
+    expect(classify("socket hang up")).toBe("NETWORK_ERROR");
+    expect(classify("some random error")).toBe("INVOKE_ERROR");
+  });
+
+  it("invoke result.error with CORS-like message classifies as CORS_ORIGIN_BLOCKED, not INVOKE_ERROR", () => {
+    const classifyInvokeError = (msg: string) => {
+      const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(msg);
+      const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket/i.test(msg);
+      return isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "INVOKE_ERROR";
+    };
+
+    // These come from supabase.functions.invoke result.error (not catch)
+    expect(classifyInvokeError("Failed to send a request to the Edge Function")).toBe("INVOKE_ERROR");
+    expect(classifyInvokeError("Failed to fetch")).toBe("CORS_ORIGIN_BLOCKED");
+    expect(classifyInvokeError("NetworkError: blocked by CORS")).toBe("CORS_ORIGIN_BLOCKED");
+    expect(classifyInvokeError("abort timeout")).toBe("NETWORK_ERROR");
+  });
+
+  it("backend unreachable prefers NETWORK_ERROR over INVOKE_ERROR", () => {
+    const classifyInvokeError = (msg: string) => {
+      const isCorsLike = /failed to fetch|load failed|networkerror|cors|blocked|opaque/i.test(msg);
+      const isNetworkLike = /network|timeout|abort|econnrefused|enotfound|socket/i.test(msg);
+      return isCorsLike ? "CORS_ORIGIN_BLOCKED" : isNetworkLike ? "NETWORK_ERROR" : "INVOKE_ERROR";
+    };
+
+    expect(classifyInvokeError("ECONNREFUSED 127.0.0.1:443")).toBe("NETWORK_ERROR");
+    expect(classifyInvokeError("socket hang up")).toBe("NETWORK_ERROR");
+    expect(classifyInvokeError("network timeout at: https://...")).toBe("NETWORK_ERROR");
   });
 
   it("empty errorCode defaults to UNKNOWN_BOOT_FAILURE", () => {

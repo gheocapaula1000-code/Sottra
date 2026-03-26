@@ -17,9 +17,9 @@ const Loader = () => (
 
 /** Human-readable labels for diagnostic codes */
 const DIAGNOSTIC_LABELS: Record<string, string> = {
-  NETWORK_ERROR: "Errore di rete — controlla la tua connessione.",
-  INVOKE_ERROR: "Il servizio non ha risposto correttamente.",
-  CORS_ORIGIN_BLOCKED: "Origine non autorizzata — contatta il supporto.",
+  NETWORK_ERROR: "Backend o rete non raggiungibile — controlla la connessione.",
+  INVOKE_ERROR: "Errore tecnico di invocazione del servizio.",
+  CORS_ORIGIN_BLOCKED: "Richiesta bloccata dalla policy di origine consentita.",
   FUNCTION_ERROR: "Errore nel servizio di verifica abbonamento.",
   MALFORMED_RESPONSE: "Risposta non valida dal server.",
   UNEXPECTED_ERROR: "Errore imprevisto — riprova tra poco.",
