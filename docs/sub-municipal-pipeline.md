@@ -64,6 +64,14 @@ Il `matchMethod` e `matchConfidence` sono propagati fino alla UI per totale tras
 
 `UNIQUE (zona_key, codice_comune_catastale)` — garantisce idempotenza degli import.
 
+### Chiave di deduplica
+
+La chiave logica per l'idempotenza è `zona_key + codice_comune_catastale`.
+- Un **duplicato** è un record con la stessa combinazione zona_key + codice_comune_catastale.
+- Un **update** avviene quando arriva un record con la stessa chiave ma dati diversi (upsert).
+- Record con anno_rilevazione diverso ma stessa zona vengono aggiornati (l'ultimo import sovrascrive).
+- Per mantenere serie storiche multi-anno, usare zona_key diverse per anno (es. `PD_ARCELLA_2021`).
+
 ## Priorità di scelta del dato
 
 1. **Sub-comunale diretto** (zona_omi match) → `geoLevel: microzona`
@@ -77,6 +85,48 @@ Il `matchMethod` e `matchConfidence` sono propagati fino alla UI per totale tras
 - Upsert con `onConflict` su questa chiave: se lo stesso record arriva di nuovo, viene aggiornato
 - Nessun duplicato logico possibile per la stessa zona nello stesso comune
 - `import_batch_id` consente rollback per batch
+- Duplicati intra-batch: il sistema tiene l'ultima occorrenza
+
+## Primo import reale ISTAT
+
+### Prerequisiti
+
+1. Scaricare shapefile/GeoJSON sezioni censuarie ISTAT 2021
+2. Convertire in GeoJSON se necessario (con `ogr2ogr` o tool QGIS)
+3. Associare metriche demografiche (join per codice sezione)
+4. Verificare che ogni feature abbia: `codice_comune_catastale`, `zona_key`, `zona_label`
+
+### Flusso operativo
+
+1. Accedere a `/admin/demographic-import` come admin
+2. Caricare il file GeoJSON o CSV
+3. **Mapping campi**: il sistema mostra le colonne sorgente e consente di mapparle ai campi target
+4. **Valori predefiniti**: impostare coverage_level, data_quality, source_label, anno_rilevazione, is_official
+5. **Validazione**: il backend verifica schema, calcola centroidi mancanti, conta validi/invalidi
+6. **Preview**: riepilogo con conteggi, comuni distinti, coverage levels, errori per riga
+7. **Commit**: import idempotente in chunk da 500 con batch_id
+8. **Rollback**: eliminazione per batch_id se necessario
+
+### Formati supportati
+
+- **GeoJSON** FeatureCollection con proprietà demografiche nelle properties
+- **CSV** con colonne mappabili ai campi target
+
+### Mapping campi
+
+Il sistema supporta mapping configurabile tra colonne sorgente e campi target:
+- Le colonne con nome identico al campo target sono auto-mappate
+- L'admin può associare manualmente ogni colonna sorgente
+- I valori predefiniti (defaults) vengono applicati ai campi non presenti nel file
+
+### Stats post-import
+
+L'action `stats` restituisce:
+- Record totali
+- Comuni distinti coperti
+- Breakdown per coverage_level, anno, fonte, ufficialità
+- Percentuale record con geometria e centroide validi
+- Record matchabili via zona_omi vs point-in-polygon
 
 ## Import dei dati reali
 
@@ -84,25 +134,23 @@ Il `matchMethod` e `matchConfidence` sono propagati fino alla UI per totale tras
 
 Pagina admin `/admin/demographic-import` con:
 - Upload GeoJSON o CSV
+- Mapping campi configurabile
+- Valori predefiniti per batch
 - Validazione server-side (campi, tipi, geometrie)
-- Anteprima record validi/scartati
+- Anteprima record validi/scartati con metadati
 - Import batch con ID univoco
 - Rollback per batch recenti
+- Stats con breakdown dettagliati
 - Auto-calcolo centroide se mancante
-- Statistiche: comuni coperti, record totali
 
 ### Edge Function `demographic-import`
 
 Actions disponibili:
-- `validate` — validazione senza scrittura
-- `import` — upsert idempotente in chunk da 500
+- `validate` — validazione con field mapping e defaults, senza scrittura
+- `import` — upsert idempotente in chunk da 500 con dedup intra-batch
 - `rollback` — elimina un batch per import_batch_id
-- `list-batches` — lista batch importati
-- `stats` — conteggio record con filtri + comuni distinti
-
-### Formati supportati
-- **GeoJSON** FeatureCollection con proprietà demografiche
-- **CSV** con codice zona + metriche (campi obbligatori in header)
+- `list-batches` — lista batch importati con metadati
+- `stats` — conteggio con breakdown per coverage, anno, fonte, ufficialità, geometrie
 
 ### Fonti utilizzabili
 - ISTAT Censimento Permanente (sezioni censuarie con geometrie)

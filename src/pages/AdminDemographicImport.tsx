@@ -5,26 +5,46 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import AppHeader from "@/components/AppHeader";
-import { ArrowLeft, Upload, FileText, CheckCircle2, AlertTriangle, Trash2, BarChart3, Layers } from "lucide-react";
+import { ArrowLeft, Upload, FileText, CheckCircle2, AlertTriangle, Trash2, BarChart3, Layers, Settings2, Database } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+
+/* ── Types ──────────────────────────────────────────── */
+
+interface PreviewRecord {
+  zona_key: string;
+  zona_label: string;
+  zona_type: string;
+  codice_comune_catastale: string;
+  comune_label?: string;
+  coverage_level?: string;
+  anno_rilevazione?: string | null;
+  popolazione: number | null;
+  hasCentroid: boolean;
+  hasPolygon: boolean;
+  hasZonaOmi?: boolean;
+}
 
 interface ValidationResult {
   totalRecords: number;
   validCount: number;
   invalidCount: number;
   invalidDetails: { index: number; zona_key: string; errors: string[] }[];
-  preview: {
-    zona_key: string;
-    zona_label: string;
-    zona_type: string;
-    codice_comune_catastale: string;
-    popolazione: number | null;
-    hasCentroid: boolean;
-    hasPolygon: boolean;
-  }[];
+  preview: PreviewRecord[];
+  sourceColumns?: string[];
+  distinctComuni?: number;
+  coverageLevels?: string[];
+  anniRilevazione?: string[];
+  withPolygon?: number;
+  withCentroid?: number;
+  withZonaOmi?: number;
 }
 
 interface ImportResult {
@@ -34,6 +54,8 @@ interface ImportResult {
   validCount: number;
   invalidCount: number;
   insertedOrUpdated: number;
+  duplicatesInBatch?: number;
+  dedupedCount?: number;
   errors?: string[];
 }
 
@@ -42,9 +64,37 @@ interface BatchInfo {
   recordCount: number;
   comuniCount: number;
   sources: string[];
+  coverageLevels?: string[];
+  anni?: string[];
+  createdAt?: string;
 }
 
-type Phase = "upload" | "validating" | "preview" | "importing" | "done" | "error";
+interface StatsResult {
+  totalRecords: number;
+  distinctComuni: number;
+  coverageBreakdown: Record<string, number>;
+  annoBreakdown: Record<string, number>;
+  officialBreakdown: { official: number; nonOfficial: number };
+  sourceBreakdown: Record<string, number>;
+  withPolygon: number;
+  withPolygonPct: number;
+  withCentroid: number;
+  withCentroidPct: number;
+  matchableViaZonaOmi: number;
+  matchableViaPolygon: number;
+}
+
+const TARGET_FIELDS = [
+  "codice_comune_catastale", "zona_key", "zona_label", "zona_type",
+  "coverage_level", "data_quality", "is_official", "source_label",
+  "source_type", "anno_rilevazione", "codice_comune_istat", "comune_label",
+  "zona_omi", "popolazione", "nuclei_familiari", "densita", "eta_media",
+  "indice_vecchiaia", "percentuale_stranieri", "percentuale_giovani",
+  "percentuale_famiglie", "flusso_residenti_12m", "centroid_lat", "centroid_lng",
+  "notes",
+];
+
+type Phase = "upload" | "validating" | "mapping" | "preview" | "importing" | "done" | "error";
 
 const AdminDemographicImport = () => {
   const navigate = useNavigate();
@@ -55,13 +105,25 @@ const AdminDemographicImport = () => {
   const [fileName, setFileName] = useState<string>("");
   const [fileFormat, setFileFormat] = useState<"geojson" | "csv">("csv");
   const [rawData, setRawData] = useState<unknown>(null);
+  const [sourceColumns, setSourceColumns] = useState<string[]>([]);
+  const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
+  const [defaults, setDefaults] = useState<Record<string, string>>({
+    coverage_level: "sezione_censimento",
+    data_quality: "standard",
+    is_official: "true",
+    source_label: "ISTAT Censimento",
+    source_type: "official",
+  });
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [batches, setBatches] = useState<BatchInfo[]>([]);
+  const [stats, setStats] = useState<StatsResult | null>(null);
   const [error, setError] = useState<string>("");
   const [log, setLog] = useState<string[]>([]);
 
   const addLog = useCallback((msg: string) => setLog(prev => [...prev.slice(-49), `[${new Date().toLocaleTimeString()}] ${msg}`]), []);
+
+  /* ── File parsing ──────────────────────────── */
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -69,23 +131,29 @@ const AdminDemographicImport = () => {
 
     setFileName(file.name);
     setError("");
-    setPhase("validating");
     addLog(`File selezionato: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
 
     try {
       const text = await file.text();
       let parsed: unknown;
+      let columns: string[] = [];
       const isGeoJson = file.name.endsWith(".geojson") || file.name.endsWith(".json");
 
       if (isGeoJson) {
         parsed = JSON.parse(text);
         setFileFormat("geojson");
         addLog("Formato rilevato: GeoJSON");
+        // Extract columns from first feature
+        const geo = parsed as Record<string, unknown>;
+        if (geo.type === "FeatureCollection" && Array.isArray(geo.features) && geo.features.length > 0) {
+          const props = ((geo.features[0] as Record<string, unknown>).properties ?? {}) as Record<string, unknown>;
+          columns = Object.keys(props);
+        }
       } else {
-        // CSV parsing
         const lines = text.split("\n").filter(l => l.trim());
         if (lines.length < 2) throw new Error("CSV vuoto o senza header");
         const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+        columns = headers;
         addLog(`CSV: ${lines.length - 1} righe, colonne: ${headers.join(", ")}`);
 
         const records = [];
@@ -94,7 +162,6 @@ const AdminDemographicImport = () => {
           const obj: Record<string, unknown> = {};
           headers.forEach((h, idx) => {
             const val = values[idx] ?? "";
-            // Try to parse numbers
             if (val !== "" && !isNaN(Number(val))) {
               obj[h] = Number(val);
             } else if (val.toLowerCase() === "true") {
@@ -112,14 +179,45 @@ const AdminDemographicImport = () => {
       }
 
       setRawData(parsed);
+      setSourceColumns(columns);
 
-      // Send to validation endpoint
-      addLog("Invio validazione al backend...");
+      // Auto-map columns that match target fields exactly
+      const autoMap: Record<string, string> = {};
+      for (const col of columns) {
+        if (TARGET_FIELDS.includes(col)) {
+          autoMap[col] = col;
+        }
+      }
+      setFieldMapping(autoMap);
+
+      addLog(`Colonne sorgente: ${columns.join(", ")}`);
+      addLog(`Auto-mapping: ${Object.keys(autoMap).length}/${columns.length} colonne mappate`);
+      setPhase("mapping");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      setPhase("error");
+      addLog(`Errore: ${msg}`);
+    }
+  };
+
+  /* ── Validation ────────────────────────────── */
+
+  const runValidation = async () => {
+    setPhase("validating");
+    addLog("Invio validazione al backend...");
+
+    try {
       const { data, error: invokeErr } = await supabase.functions.invoke("demographic-import", {
         body: {
           action: "validate",
-          records: parsed,
-          format: isGeoJson ? "geojson" : "csv",
+          records: rawData,
+          format: fileFormat === "geojson" ? "geojson" : "csv",
+          fieldMapping: Object.keys(fieldMapping).length > 0 ? fieldMapping : undefined,
+          defaults: Object.fromEntries(
+            Object.entries(defaults).filter(([, v]) => v !== "")
+              .map(([k, v]) => [k, v === "true" ? true : v === "false" ? false : v])
+          ),
         },
       });
 
@@ -128,7 +226,7 @@ const AdminDemographicImport = () => {
 
       setValidation(data as ValidationResult);
       setPhase("preview");
-      addLog(`Validazione: ${data.validCount} validi, ${data.invalidCount} scartati`);
+      addLog(`Validazione: ${data.validCount} validi, ${data.invalidCount} scartati, ${data.distinctComuni ?? "?"} comuni`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
@@ -136,6 +234,8 @@ const AdminDemographicImport = () => {
       addLog(`Errore: ${msg}`);
     }
   };
+
+  /* ── Import ────────────────────────────────── */
 
   const handleImport = async () => {
     if (!rawData) return;
@@ -149,6 +249,11 @@ const AdminDemographicImport = () => {
           records: rawData,
           format: fileFormat === "geojson" ? "geojson" : "csv",
           batchId: crypto.randomUUID(),
+          fieldMapping: Object.keys(fieldMapping).length > 0 ? fieldMapping : undefined,
+          defaults: Object.fromEntries(
+            Object.entries(defaults).filter(([, v]) => v !== "")
+              .map(([k, v]) => [k, v === "true" ? true : v === "false" ? false : v])
+          ),
         },
       });
 
@@ -156,7 +261,7 @@ const AdminDemographicImport = () => {
 
       setImportResult(data as ImportResult);
       setPhase("done");
-      addLog(`Import completato: ${data.insertedOrUpdated} record inseriti/aggiornati (batch: ${data.batchId})`);
+      addLog(`Import completato: ${data.insertedOrUpdated} inseriti/aggiornati, ${data.duplicatesInBatch ?? 0} duplicati rimossi (batch: ${data.batchId})`);
 
       if (data.errors?.length) {
         data.errors.forEach((e: string) => addLog(`⚠ ${e}`));
@@ -168,6 +273,8 @@ const AdminDemographicImport = () => {
       addLog(`Errore import: ${msg}`);
     }
   };
+
+  /* ── Batches ───────────────────────────────── */
 
   const loadBatches = async () => {
     try {
@@ -195,14 +302,45 @@ const AdminDemographicImport = () => {
     }
   };
 
+  /* ── Stats ─────────────────────────────────── */
+
+  const loadStats = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("demographic-import", {
+        body: { action: "stats" },
+      });
+      if (error) throw error;
+      setStats(data as StatsResult);
+      addLog(`Stats: ${data.totalRecords} record, ${data.distinctComuni} comuni`);
+    } catch (err) {
+      addLog(`Errore stats: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  /* ── Reset ─────────────────────────────────── */
+
   const reset = () => {
     setPhase("upload");
     setFileName("");
     setRawData(null);
+    setSourceColumns([]);
+    setFieldMapping({});
     setValidation(null);
     setImportResult(null);
     setError("");
     if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const updateMapping = (sourceCol: string, targetCol: string) => {
+    setFieldMapping(prev => {
+      const next = { ...prev };
+      if (targetCol === "__ignore__") {
+        delete next[sourceCol];
+      } else {
+        next[sourceCol] = targetCol;
+      }
+      return next;
+    });
   };
 
   return (
@@ -221,7 +359,7 @@ const AdminDemographicImport = () => {
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Import Dati Demografici Sub-Comunali</h1>
-          <p className="text-sm text-muted-foreground mt-1">Carica dataset GeoJSON o CSV per popolare la tabella demographic_zones</p>
+          <p className="text-sm text-muted-foreground mt-1">Carica dataset GeoJSON o CSV per popolare demographic_zones</p>
         </div>
 
         {/* Upload */}
@@ -250,6 +388,107 @@ const AdminDemographicImport = () => {
           </Card>
         )}
 
+        {/* Field Mapping */}
+        {phase === "mapping" && sourceColumns.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Settings2 className="h-4 w-4 text-muted-foreground" />
+                Mapping campi — {fileName}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <p className="text-xs text-muted-foreground">Associa le colonne sorgente ai campi target di demographic_zones. Le colonne con nome identico sono mappate automaticamente.</p>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {sourceColumns.map(col => (
+                  <div key={col} className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-foreground min-w-[120px] truncate" title={col}>{col}</span>
+                    <span className="text-xs text-muted-foreground">→</span>
+                    <Select value={fieldMapping[col] ?? "__ignore__"} onValueChange={v => updateMapping(col, v)}>
+                      <SelectTrigger className="h-8 text-xs flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__ignore__">— ignora —</SelectItem>
+                        {TARGET_FIELDS.map(t => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+
+              {/* Defaults */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Valori predefiniti (applicati se non presenti nel file)</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">coverage_level</Label>
+                    <Select value={defaults.coverage_level} onValueChange={v => setDefaults(p => ({ ...p, coverage_level: v }))}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["sezione_censimento", "area_subcomunale", "microzona", "quartiere", "zona", "comune"].map(v => (
+                          <SelectItem key={v} value={v}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">data_quality</Label>
+                    <Select value={defaults.data_quality} onValueChange={v => setDefaults(p => ({ ...p, data_quality: v }))}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="alto">alto</SelectItem>
+                        <SelectItem value="standard">standard</SelectItem>
+                        <SelectItem value="basso">basso</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">source_label</Label>
+                    <Input className="h-8 text-xs" value={defaults.source_label} onChange={e => setDefaults(p => ({ ...p, source_label: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">source_type</Label>
+                    <Select value={defaults.source_type} onValueChange={v => setDefaults(p => ({ ...p, source_type: v }))}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="official">official</SelectItem>
+                        <SelectItem value="elaborated">elaborated</SelectItem>
+                        <SelectItem value="estimate">estimate</SelectItem>
+                        <SelectItem value="community">community</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">anno_rilevazione</Label>
+                    <Input className="h-8 text-xs" placeholder="es. 2021" value={defaults.anno_rilevazione ?? ""} onChange={e => setDefaults(p => ({ ...p, anno_rilevazione: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">is_official</Label>
+                    <Select value={defaults.is_official} onValueChange={v => setDefaults(p => ({ ...p, is_official: v }))}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">Sì (ufficiale)</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button onClick={runValidation} className="min-h-[44px]">
+                  <CheckCircle2 className="h-4 w-4 mr-2" />Valida con questo mapping
+                </Button>
+                <Button variant="outline" onClick={reset} className="min-h-[44px]">Annulla</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Validating */}
         {phase === "validating" && (
           <Card>
@@ -271,19 +510,44 @@ const AdminDemographicImport = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
+                {/* Summary grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                  <div className="rounded-lg border border-border/60 p-3">
                     <p className="text-2xl font-bold text-foreground">{validation.totalRecords}</p>
                     <p className="text-xs text-muted-foreground">Totali</p>
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-emerald-500">{validation.validCount}</p>
-                    <p className="text-xs text-muted-foreground">Validi</p>
+                  <div className="rounded-lg border border-border/60 p-3">
+                    <p className="text-2xl font-bold text-emerald-600">{validation.validCount}</p>
+                    <p className="text-xs text-muted-foreground">Validi (insert/update)</p>
                   </div>
-                  <div>
+                  <div className="rounded-lg border border-border/60 p-3">
                     <p className="text-2xl font-bold text-destructive">{validation.invalidCount}</p>
                     <p className="text-xs text-muted-foreground">Scartati</p>
                   </div>
+                  <div className="rounded-lg border border-border/60 p-3">
+                    <p className="text-2xl font-bold text-foreground">{validation.distinctComuni ?? "?"}</p>
+                    <p className="text-xs text-muted-foreground">Comuni distinti</p>
+                  </div>
+                </div>
+
+                {/* Metadata badges */}
+                <div className="flex flex-wrap gap-2">
+                  {validation.coverageLevels?.map(c => (
+                    <Badge key={c} variant="secondary" className="text-[10px]">coverage: {c}</Badge>
+                  ))}
+                  {validation.anniRilevazione?.map(a => (
+                    <Badge key={a} variant="outline" className="text-[10px]">anno: {a}</Badge>
+                  ))}
+                  {validation.withPolygon != null && (
+                    <Badge variant="outline" className="text-[10px]">
+                      {validation.withPolygon}/{validation.validCount} con poligono
+                    </Badge>
+                  )}
+                  {validation.withZonaOmi != null && (
+                    <Badge variant="outline" className="text-[10px]">
+                      {validation.withZonaOmi} con zona_omi
+                    </Badge>
+                  )}
                 </div>
 
                 {/* Preview table */}
@@ -297,18 +561,25 @@ const AdminDemographicImport = () => {
                             <TableHead className="text-xs">Zona</TableHead>
                             <TableHead className="text-xs">Tipo</TableHead>
                             <TableHead className="text-xs">Comune</TableHead>
+                            <TableHead className="text-xs">Coverage</TableHead>
+                            <TableHead className="text-xs">Anno</TableHead>
                             <TableHead className="text-xs">Pop.</TableHead>
-                            <TableHead className="text-xs">Poligono</TableHead>
+                            <TableHead className="text-xs">Geom</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {validation.preview.map((r, i) => (
                             <TableRow key={i}>
-                              <TableCell className="text-xs font-medium">{r.zona_label}</TableCell>
+                              <TableCell className="text-xs font-medium max-w-[160px] truncate">{r.zona_label}</TableCell>
                               <TableCell><Badge variant="secondary" className="text-[10px]">{r.zona_type}</Badge></TableCell>
                               <TableCell className="text-xs">{r.codice_comune_catastale}</TableCell>
+                              <TableCell className="text-xs">{r.coverage_level ?? "—"}</TableCell>
+                              <TableCell className="text-xs">{r.anno_rilevazione ?? "—"}</TableCell>
                               <TableCell className="text-xs">{r.popolazione ?? "—"}</TableCell>
-                              <TableCell>{r.hasPolygon ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> : <span className="text-[10px] text-muted-foreground">No</span>}</TableCell>
+                              <TableCell className="text-xs">
+                                {r.hasPolygon ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" /> : "—"}
+                                {r.hasZonaOmi && <span className="ml-1 text-[10px] text-primary">OMI</span>}
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -320,7 +591,7 @@ const AdminDemographicImport = () => {
                 {/* Invalid details */}
                 {validation.invalidDetails.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-destructive uppercase tracking-wider mb-2">Record scartati</p>
+                    <p className="text-xs font-medium text-destructive uppercase tracking-wider mb-2">Record scartati ({validation.invalidCount})</p>
                     <div className="space-y-1 max-h-48 overflow-y-auto">
                       {validation.invalidDetails.map((inv, i) => (
                         <div key={i} className="flex items-start gap-2 text-xs">
@@ -336,6 +607,7 @@ const AdminDemographicImport = () => {
                   <Button onClick={handleImport} disabled={validation.validCount === 0} className="min-h-[44px]">
                     <Upload className="h-4 w-4 mr-2" />Importa {validation.validCount} record
                   </Button>
+                  <Button variant="outline" onClick={() => setPhase("mapping")} className="min-h-[44px]">Modifica mapping</Button>
                   <Button variant="outline" onClick={reset} className="min-h-[44px]">Annulla</Button>
                 </div>
               </CardContent>
@@ -361,16 +633,20 @@ const AdminDemographicImport = () => {
                 <CheckCircle2 className="h-12 w-12 text-emerald-500" />
                 <p className="text-lg font-bold text-foreground">Import completato</p>
               </div>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="rounded-lg border border-border/60 p-3">
                   <p className="text-2xl font-bold text-foreground">{importResult.insertedOrUpdated}</p>
                   <p className="text-xs text-muted-foreground">Inseriti/Aggiornati</p>
                 </div>
-                <div>
+                <div className="rounded-lg border border-border/60 p-3">
                   <p className="text-2xl font-bold text-muted-foreground">{importResult.invalidCount}</p>
                   <p className="text-xs text-muted-foreground">Scartati</p>
                 </div>
-                <div>
+                <div className="rounded-lg border border-border/60 p-3">
+                  <p className="text-2xl font-bold text-muted-foreground">{importResult.duplicatesInBatch ?? 0}</p>
+                  <p className="text-xs text-muted-foreground">Duplicati rimossi</p>
+                </div>
+                <div className="rounded-lg border border-border/60 p-3">
                   <p className="text-sm font-mono text-muted-foreground break-all">{importResult.batchId.slice(0, 8)}...</p>
                   <p className="text-xs text-muted-foreground">Batch ID</p>
                 </div>
@@ -384,6 +660,105 @@ const AdminDemographicImport = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Stats */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Database className="h-4 w-4 text-muted-foreground" />
+                Statistiche demographic_zones
+              </CardTitle>
+              <Button variant="outline" size="sm" onClick={loadStats}>Aggiorna</Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!stats ? (
+              <p className="text-sm text-muted-foreground">Clicca "Aggiorna" per caricare le statistiche</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                  <div className="rounded-lg border border-border/60 p-3">
+                    <p className="text-2xl font-bold text-foreground">{stats.totalRecords}</p>
+                    <p className="text-xs text-muted-foreground">Record totali</p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 p-3">
+                    <p className="text-2xl font-bold text-foreground">{stats.distinctComuni}</p>
+                    <p className="text-xs text-muted-foreground">Comuni coperti</p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 p-3">
+                    <p className="text-2xl font-bold text-foreground">{stats.withPolygonPct}%</p>
+                    <p className="text-xs text-muted-foreground">Con geometria</p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 p-3">
+                    <p className="text-2xl font-bold text-foreground">{stats.matchableViaZonaOmi}</p>
+                    <p className="text-xs text-muted-foreground">Match via zona_omi</p>
+                  </div>
+                </div>
+
+                {/* Breakdowns */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {Object.keys(stats.coverageBreakdown).length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Per coverage_level</p>
+                      <div className="space-y-1">
+                        {Object.entries(stats.coverageBreakdown).map(([k, v]) => (
+                          <div key={k} className="flex justify-between text-xs">
+                            <span className="text-foreground">{k}</span>
+                            <span className="font-mono text-muted-foreground">{v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {Object.keys(stats.annoBreakdown).length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Per anno</p>
+                      <div className="space-y-1">
+                        {Object.entries(stats.annoBreakdown).map(([k, v]) => (
+                          <div key={k} className="flex justify-between text-xs">
+                            <span className="text-foreground">{k}</span>
+                            <span className="font-mono text-muted-foreground">{v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {Object.keys(stats.sourceBreakdown).length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Per fonte</p>
+                      <div className="space-y-1">
+                        {Object.entries(stats.sourceBreakdown).map(([k, v]) => (
+                          <div key={k} className="flex justify-between text-xs">
+                            <span className="text-foreground truncate max-w-[180px]">{k}</span>
+                            <span className="font-mono text-muted-foreground">{v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Ufficialità</p>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-foreground flex items-center gap-1">
+                          <Badge variant="default" className="text-[9px] h-4">ufficiale</Badge>
+                        </span>
+                        <span className="font-mono text-muted-foreground">{stats.officialBreakdown.official}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-foreground flex items-center gap-1">
+                          <Badge variant="secondary" className="text-[9px] h-4">non ufficiale</Badge>
+                        </span>
+                        <span className="font-mono text-muted-foreground">{stats.officialBreakdown.nonOfficial}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Batch management */}
         <Card>
@@ -405,7 +780,11 @@ const AdminDemographicImport = () => {
                   <div key={b.batchId} className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
                     <div className="space-y-0.5 min-w-0 flex-1">
                       <p className="text-xs font-mono text-foreground">{b.batchId.slice(0, 12)}...</p>
-                      <p className="text-[10px] text-muted-foreground">{b.recordCount} record · {b.comuniCount} comuni · {b.sources.join(", ")}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {b.recordCount} record · {b.comuniCount} comuni · {b.sources.join(", ")}
+                        {b.coverageLevels?.length ? ` · ${b.coverageLevels.join(", ")}` : ""}
+                        {b.anni?.length ? ` · ${b.anni.join(", ")}` : ""}
+                      </p>
                     </div>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={() => rollbackBatch(b.batchId)}>
                       <Trash2 className="h-4 w-4" />
