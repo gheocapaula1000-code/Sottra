@@ -180,12 +180,98 @@ async function queryIstatSdmx(istatCode: string, comuneLabel: string): Promise<I
       sourceLabel: "ISTAT — Popolazione residente al 1° gennaio",
       sourceFreshness: period ?? undefined,
       sourceCoverageLevel: "comune",
+      geoLevel: "comune",
+      geoLabel: comuneLabel ? `Comune di ${comuneLabel}` : undefined,
       licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
     };
   } catch (e) {
     log("istat exception", String(e));
     return unavailableIstat("provider_unavailable") as IstatResult;
   }
+}
+
+/* ══════════════════════════════════════════════════════
+   SUB-MUNICIPAL DEMOGRAPHICS — from demographic_zones table
+   Checks for sub-municipal data first, falls back to ISTAT municipal
+   ══════════════════════════════════════════════════════ */
+
+async function querySubMunicipalDemographics(
+  lat: number,
+  lng: number,
+  cadastralCode: string | null,
+  zonaOmi: string | null,
+  supabase: ReturnType<typeof createClient>,
+): Promise<IstatResult | null> {
+  if (!cadastralCode) return null;
+
+  try {
+    // Strategy 1: If we have a matched OMI zone, try direct join via zona_omi
+    if (zonaOmi) {
+      const { data: zoneData, error } = await supabase
+        .from("demographic_zones")
+        .select("*")
+        .eq("codice_comune_catastale", cadastralCode)
+        .eq("zona_omi", zonaOmi)
+        .order("anno_rilevazione", { ascending: false })
+        .limit(1);
+
+      if (!error && zoneData && zoneData.length > 0) {
+        const z = zoneData[0];
+        log("demographic_zones", `OMI join match: zone=${z.zona_label}, type=${z.zona_type}`);
+        return mapDemographicZoneToResult(z);
+      }
+    }
+
+    // Strategy 2: Point-in-polygon on demographic zone polygons
+    const { data: polyData, error: polyError } = await supabase
+      .from("demographic_zones")
+      .select("*")
+      .eq("codice_comune_catastale", cadastralCode)
+      .not("polygon_coords", "is", null)
+      .order("anno_rilevazione", { ascending: false });
+
+    if (!polyError && polyData && polyData.length > 0) {
+      for (const zone of polyData) {
+        const coords = zone.polygon_coords as number[][][];
+        if (coords && pointInMultiPolygon(lat, lng, coords)) {
+          log("demographic_zones", `polygon match: zone=${zone.zona_label}, type=${zone.zona_type}`);
+          return mapDemographicZoneToResult(zone);
+        }
+      }
+      log("demographic_zones", `${polyData.length} zones checked, no polygon match`);
+    }
+
+    return null;
+  } catch (e) {
+    log("demographic_zones exception", String(e));
+    return null;
+  }
+}
+
+function mapDemographicZoneToResult(z: Record<string, unknown>): IstatResult {
+  const zonaType = String(z.zona_type ?? "quartiere");
+  const geoLevel = zonaType === "microzona_omi" ? "microzona"
+    : zonaType === "sezione_censuaria" ? "microzona"
+    : zonaType === "quartiere" ? "quartiere"
+    : zonaType === "circoscrizione" ? "quartiere"
+    : "zona";
+
+  return {
+    popolazione: typeof z.popolazione === "number" ? z.popolazione : null,
+    nucleiFamiliari: typeof z.nuclei_familiari === "number" ? z.nuclei_familiari : null,
+    densita: typeof z.densita === "number" ? z.densita : null,
+    indiceVecchiaia: typeof z.indice_vecchiaia === "number" ? z.indice_vecchiaia : null,
+    percentualeStranieri: typeof z.percentuale_stranieri === "number" ? z.percentuale_stranieri : null,
+    comuneLabel: typeof z.comune_label === "string" ? z.comune_label : null,
+    annoRilevazione: typeof z.anno_rilevazione === "string" ? z.anno_rilevazione : null,
+    sourceType: String(z.source_type ?? "official"),
+    sourceProvider: "istat",
+    sourceLabel: typeof z.source_label === "string" ? z.source_label : "ISTAT Censimento",
+    sourceCoverageLevel: zonaType === "microzona_omi" ? "zone_omi" : "quartiere",
+    geoLevel,
+    geoLabel: typeof z.zona_label === "string" ? z.zona_label : undefined,
+    licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
+  };
 }
 
 /* ══════════════════════════════════════════════════════
