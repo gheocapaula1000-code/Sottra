@@ -4,7 +4,8 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { TrialExpiredScreen } from "@/components/TrialExpiredScreen";
 import { lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 
@@ -18,17 +19,29 @@ const Loader = () => (
  * Retry UI shown when the first bootstrap of check-subscription fails
  * due to a transient error. Never shows TrialExpiredScreen in this state.
  */
-const BootFailedRetry = ({ onRetry, retrying }: { onRetry: () => void; retrying: boolean }) => (
-  <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
-    <p className="text-muted-foreground">
-      Impossibile verificare lo stato del tuo account. Potrebbe essere un problema temporaneo.
-    </p>
-    <Button onClick={onRetry} disabled={retrying} variant="outline" className="gap-2">
-      <RefreshCw className={`h-4 w-4 ${retrying ? "animate-spin" : ""}`} />
-      {retrying ? "Riprovo…" : "Riprova"}
-    </Button>
-  </div>
-);
+const BootFailedRetry = ({ onRetry, retrying }: { onRetry: () => void; retrying: boolean }) => {
+  const handleSignOut = async () => {
+    await supabase.auth.signOut({ scope: "local" });
+  };
+
+  return (
+    <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+      <p className="text-muted-foreground">
+        Impossibile verificare lo stato del tuo account. Potrebbe essere un problema temporaneo.
+      </p>
+      <div className="flex gap-3">
+        <Button onClick={onRetry} disabled={retrying} variant="outline" className="gap-2">
+          <RefreshCw className={`h-4 w-4 ${retrying ? "animate-spin" : ""}`} />
+          {retrying ? "Riprovo…" : "Riprova"}
+        </Button>
+        <Button onClick={handleSignOut} variant="ghost" className="gap-2">
+          <LogOut className="h-4 w-4" />
+          Esci e rientra
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 /**
  * Unified gate for /app — single loading state, no flicker.
