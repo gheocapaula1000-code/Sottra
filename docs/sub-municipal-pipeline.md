@@ -16,6 +16,7 @@ Coordinate (lat, lng)
     ├─> querySubMunicipalDemographics()
     │     ├─ Strategy 1: JOIN via zona_omi (se OMI ha trovato la zona)
     │     ├─ Strategy 2: Point-in-polygon su polygon_coords
+    │     ├─ Selezione miglior record: anno > is_official > data_quality > metriche
     │     └─ Se match → return sub-municipal data (geoLevel: microzona/quartiere)
     │
     └─> queryIstatSdmx() → fallback comunale (geoLevel: comune)
@@ -26,22 +27,39 @@ Coordinate (lat, lng)
 Dopo che OMI e ISTAT terminano in parallelo, se ISTAT è comunale e OMI ha trovato una zona,
 si ritenta `querySubMunicipalDemographics` con il `zona_omi` trovato da OMI.
 
+### Selezione miglior record (selectBestRecord)
+
+Quando esistono più record candidati per la stessa zona:
+
+1. **Anno più recente** (`anno_rilevazione` DESC)
+2. **Fonte ufficiale** (`is_official = true` prioritaria)
+3. **Qualità dato** (`alto > standard > basso`)
+4. **Più metriche** (record con più campi compilati)
+
+Il metodo di match (`matchMethod`) e la confidence (`matchConfidence`) sono propagati
+fino alla UI per totale trasparenza.
+
 ## Tabella `demographic_zones`
 
 | Colonna | Tipo | Descrizione |
 |---------|------|-------------|
 | codice_comune_catastale | text | Codice Belfiore |
-| zona_key | text | Chiave univoca zona |
+| zona_key | text | Chiave univoca zona (UNIQUE con codice_comune) |
 | zona_label | text | Nome leggibile |
-| zona_type | text | microzona_omi, quartiere, sezione_censuaria, circoscrizione |
+| zona_type | text | microzona_omi, quartiere, sezione_censuaria, circoscrizione, zona_statistica |
 | zona_omi | text? | Link a zona OMI |
 | polygon_coords | jsonb? | Poligono per point-in-polygon |
-| centroid_lat/lng | numeric? | Centroide per lookup rapido |
+| centroid_lat/lng | numeric? | Centroide (auto-calcolato se mancante) |
 | popolazione, densita, eta_media, ... | numeric? | Metriche demografiche |
-| coverage_level | text | zona, quartiere, comune |
-| data_quality | text | standard, alto, basso |
+| coverage_level | text | zona, quartiere, comune, microzona |
+| data_quality | text | alto, standard, basso |
 | is_official | boolean | Se fonte istituzionale |
 | source_label, source_type | text | Metadati fonte |
+| import_batch_id | text? | ID batch per rollback |
+
+### Vincolo univoco
+
+`UNIQUE (zona_key, codice_comune_catastale)` — garantisce idempotenza degli import.
 
 ## Priorità di scelta del dato
 
@@ -52,20 +70,39 @@ si ritenta `querySubMunicipalDemographics` con il `zona_omi` trovato da OMI.
 
 ## Import dei dati reali
 
+### Flusso admin
+
+Pagina admin `/admin/demographic-import` con:
+- Upload GeoJSON o CSV
+- Validazione server-side (campi, tipi, geometrie)
+- Anteprima record validi/scartati
+- Import batch con ID univoco
+- Rollback per batch recenti
+- Auto-calcolo centroide se mancante
+
+### Edge Function `demographic-import`
+
+Actions disponibili:
+- `validate` — validazione senza scrittura
+- `import` — upsert idempotente in chunk da 500
+- `rollback` — elimina un batch per import_batch_id
+- `list-batches` — lista batch importati
+- `stats` — conteggio record con filtri
+
 ### Fonti utilizzabili
 - ISTAT Censimento Permanente (sezioni censuarie con geometrie)
 - Dataset comunali aperti (es. Padova Open Data)
 - Dati Agenzia delle Entrate georeferenziati
 
 ### Formato supportato
-- **GeoJSON** con proprietà demografiche
-- **CSV** con codice zona + metriche (richiede geometrie separate)
+- **GeoJSON** FeatureCollection con proprietà demografiche
+- **CSV** con codice zona + metriche (campi obbligatori in header)
 
 ### Cosa serve per attivare
 1. Scaricare shapefile/GeoJSON sezioni censuarie ISTAT
 2. Convertire in GeoJSON se necessario
 3. Effettuare join con metriche demografiche
-4. Caricare nella tabella `demographic_zones` via admin
+4. Caricare nella tabella `demographic_zones` via pagina admin
 
 ## Indice di Vicinato
 

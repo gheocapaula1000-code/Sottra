@@ -156,6 +156,17 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
 
+            {/* Demographic zones import */}
+            <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/admin/demographic-import")}>
+              <CardContent className="py-8 text-center space-y-2">
+                <Users className="h-6 w-6 mx-auto text-primary" />
+                <p className="text-sm font-medium text-foreground">Import Dati Demografici Sub-Comunali</p>
+                <p className="text-xs text-muted-foreground">
+                  Carica GeoJSON o CSV per popolare demographic_zones con dati reali di zona
+                </p>
+              </CardContent>
+            </Card>
+
             {/* Future blocks placeholder */}
             <Card className="border-dashed">
               <CardContent className="py-8 text-center">

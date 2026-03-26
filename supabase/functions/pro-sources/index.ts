@@ -215,12 +215,13 @@ async function querySubMunicipalDemographics(
         .eq("codice_comune_catastale", cadastralCode)
         .eq("zona_omi", zonaOmi)
         .order("anno_rilevazione", { ascending: false })
-        .limit(1);
+        .order("is_official", { ascending: false })
+        .limit(10);
 
       if (!error && zoneData && zoneData.length > 0) {
-        const z = zoneData[0];
-        log("demographic_zones", `OMI join match: zone=${z.zona_label}, type=${z.zona_type}`);
-        return mapDemographicZoneToResult(z);
+        const best = selectBestRecord(zoneData, "zona_omi");
+        log("demographic_zones", `OMI join match: zone=${best.zona_label}, type=${best.zona_type}, matchMethod=zona_omi`);
+        return mapDemographicZoneToResult(best, "zona_omi");
       }
     }
 
@@ -233,12 +234,17 @@ async function querySubMunicipalDemographics(
       .order("anno_rilevazione", { ascending: false });
 
     if (!polyError && polyData && polyData.length > 0) {
+      const matchingZones: Record<string, unknown>[] = [];
       for (const zone of polyData) {
         const coords = zone.polygon_coords as number[][][];
         if (coords && pointInMultiPolygon(lat, lng, coords)) {
-          log("demographic_zones", `polygon match: zone=${zone.zona_label}, type=${zone.zona_type}`);
-          return mapDemographicZoneToResult(zone);
+          matchingZones.push(zone);
         }
+      }
+      if (matchingZones.length > 0) {
+        const best = selectBestRecord(matchingZones, "point_in_polygon");
+        log("demographic_zones", `polygon match: zone=${best.zona_label}, type=${best.zona_type}, matchMethod=point_in_polygon, candidates=${matchingZones.length}`);
+        return mapDemographicZoneToResult(best, "point_in_polygon");
       }
       log("demographic_zones", `${polyData.length} zones checked, no polygon match`);
     }
@@ -250,17 +256,60 @@ async function querySubMunicipalDemographics(
   }
 }
 
-function mapDemographicZoneToResult(z: Record<string, unknown>): IstatResult {
+/** Select the best record among multiple candidates with explicit priority rules */
+function selectBestRecord(candidates: Record<string, unknown>[], method: string): Record<string, unknown> {
+  if (candidates.length === 1) return candidates[0];
+
+  const QUALITY_ORDER: Record<string, number> = { alto: 3, standard: 2, basso: 1 };
+
+  // Sort: most recent anno > is_official > higher data_quality > has more metrics
+  const sorted = [...candidates].sort((a, b) => {
+    // 1. Most recent anno_rilevazione
+    const annoA = String(a.anno_rilevazione ?? "0");
+    const annoB = String(b.anno_rilevazione ?? "0");
+    if (annoA !== annoB) return annoB.localeCompare(annoA);
+
+    // 2. is_official = true wins
+    const offA = a.is_official === true ? 1 : 0;
+    const offB = b.is_official === true ? 1 : 0;
+    if (offA !== offB) return offB - offA;
+
+    // 3. Higher data_quality
+    const qA = QUALITY_ORDER[String(a.data_quality ?? "standard")] ?? 2;
+    const qB = QUALITY_ORDER[String(b.data_quality ?? "standard")] ?? 2;
+    if (qA !== qB) return qB - qA;
+
+    // 4. More metrics available
+    const metricsCount = (r: Record<string, unknown>) => {
+      let c = 0;
+      for (const k of ["popolazione", "densita", "eta_media", "nuclei_familiari", "percentuale_stranieri"]) {
+        if (typeof r[k] === "number") c++;
+      }
+      return c;
+    };
+    return metricsCount(b) - metricsCount(a);
+  });
+
+  log("selectBestRecord", `${candidates.length} candidates, selected anno=${sorted[0].anno_rilevazione}, official=${sorted[0].is_official}, quality=${sorted[0].data_quality}, method=${method}`);
+  return sorted[0];
+}
+
+function mapDemographicZoneToResult(z: Record<string, unknown>, matchMethod: string): IstatResult {
   const zonaType = String(z.zona_type ?? "quartiere");
   const geoLevel = zonaType === "microzona_omi" ? "microzona"
     : zonaType === "sezione_censuaria" ? "microzona"
     : zonaType === "quartiere" ? "quartiere"
     : zonaType === "circoscrizione" ? "quartiere"
+    : zonaType === "zona_statistica" ? "quartiere"
     : "zona";
 
   const coverageLevel = typeof z.coverage_level === "string" ? z.coverage_level : undefined;
   const isOfficial = typeof z.is_official === "boolean" ? z.is_official : true;
   const dataQuality = typeof z.data_quality === "string" ? z.data_quality : "standard";
+
+  const confidence = matchMethod === "zona_omi"
+    ? (dataQuality === "alto" ? 0.97 : dataQuality === "standard" ? 0.90 : 0.75)
+    : (dataQuality === "alto" ? 0.92 : dataQuality === "standard" ? 0.85 : 0.70);
 
   return {
     popolazione: typeof z.popolazione === "number" ? z.popolazione : null,
@@ -278,9 +327,8 @@ function mapDemographicZoneToResult(z: Record<string, unknown>): IstatResult {
     geoLevel,
     geoLabel: typeof z.zona_label === "string" ? z.zona_label : undefined,
     licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
-    // Extra sub-municipal metadata
-    matchMethod: "sub_municipal_zone",
-    matchConfidence: dataQuality === "alto" ? 0.95 : dataQuality === "standard" ? 0.85 : 0.7,
+    matchMethod,
+    matchConfidence: confidence,
   } as IstatResult;
 }
 
