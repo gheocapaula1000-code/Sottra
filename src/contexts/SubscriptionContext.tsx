@@ -272,7 +272,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setBillingReady(parsed.billingActive);
     } catch (e) {
       console.error("[Subscription] unexpected error (non-fatal):", e);
-      handleTransientError();
+      handleTransientError("UNEXPECTED_ERROR");
     }
   }, [session, authLoading, resetToDefaults, setResolved, handleTransientError]);
 
