@@ -575,6 +575,7 @@ const AdminDemographicImport = () => {
                             <TableHead className="text-xs">Comune</TableHead>
                             <TableHead className="text-xs">Coverage</TableHead>
                             <TableHead className="text-xs">Anno</TableHead>
+                            <TableHead className="text-xs">Fonte</TableHead>
                             <TableHead className="text-xs">Pop.</TableHead>
                             <TableHead className="text-xs">Geom</TableHead>
                           </TableRow>
@@ -582,11 +583,15 @@ const AdminDemographicImport = () => {
                         <TableBody>
                           {validation.preview.map((r, i) => (
                             <TableRow key={i}>
-                              <TableCell className="text-xs font-medium max-w-[160px] truncate">{r.zona_label}</TableCell>
+                              <TableCell className="text-xs font-medium max-w-[140px] truncate">{r.zona_label}</TableCell>
                               <TableCell><Badge variant="secondary" className="text-[10px]">{r.zona_type}</Badge></TableCell>
                               <TableCell className="text-xs">{r.codice_comune_catastale}</TableCell>
                               <TableCell className="text-xs">{r.coverage_level ?? "—"}</TableCell>
-                              <TableCell className="text-xs">{r.anno_rilevazione ?? "—"}</TableCell>
+                              <TableCell className="text-xs">{r.anno_rilevazione && r.anno_rilevazione !== "0000" ? r.anno_rilevazione : "—"}</TableCell>
+                              <TableCell className="text-xs">
+                                <span className="truncate max-w-[80px] inline-block">{r.source_label ?? "—"}</span>
+                                {r.is_official && <Badge variant="default" className="text-[9px] h-4 ml-1">uff.</Badge>}
+                              </TableCell>
                               <TableCell className="text-xs">{r.popolazione ?? "—"}</TableCell>
                               <TableCell className="text-xs">
                                 {r.hasPolygon ? <CheckCircle2 className="h-3.5 w-3.5 text-primary inline" /> : "—"}
