@@ -88,18 +88,17 @@ const BootFailedRetry = ({
     }
   };
 
-  const label = errorCode ? DIAGNOSTIC_LABELS[errorCode] ?? errorCode : null;
+  const displayCode = errorCode || "UNKNOWN_BOOT_FAILURE";
+  const label = DIAGNOSTIC_LABELS[displayCode] ?? displayCode;
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
       <p className="text-muted-foreground">
         Impossibile verificare lo stato del tuo account. Potrebbe essere un problema temporaneo.
       </p>
-      {label && (
-        <p className="rounded-md bg-muted px-3 py-1.5 font-mono text-xs text-muted-foreground">
-          {errorCode}: {label}
-        </p>
-      )}
+      <p className="rounded-md bg-muted px-3 py-1.5 font-mono text-xs text-muted-foreground">
+        {displayCode}: {label}
+      </p>
       <div className="flex flex-wrap justify-center gap-3">
         <Button onClick={onRetry} disabled={retrying} variant="outline" className="gap-2">
           <RefreshCw className={`h-4 w-4 ${retrying ? "animate-spin" : ""}`} />
