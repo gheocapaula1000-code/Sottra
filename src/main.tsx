@@ -5,7 +5,7 @@ import "./index.css";
 import { isChunkLoadError, recoverFromChunkError, markBootSuccess } from "./lib/chunkErrorRecovery";
 
 /**
- * CSP-safe fallback UI using DOM API only — no innerHTML, no inline handlers.
+ * CSP-safe fallback UI using DOM API only — no direct HTML injection, no inline handlers.
  */
 function buildFallbackUI(title: string, body: string): HTMLDivElement {
   const wrap = document.createElement("div");
