@@ -12,12 +12,17 @@
  * Until the first successful check-subscription response, billing defaults
  * to NOT ready — no broken CTAs will ever appear.
  *
- * On transient errors (including first-boot failures), billing readiness
- * is set to false to avoid showing payment CTAs backed by a potentially
- * unavailable Stripe configuration. The SubscriptionContext handles this
- * by calling setBillingReady(false) in all error/failure branches, and
- * setting bootFailed=true on first-boot errors so the gate shows retry UI
- * instead of the paywall.
+ * Transient error handling:
+ *   - First-boot errors (no prior state): billingReady is set to false,
+ *     bootFailed=true → gate shows retry UI, never paywall.
+ *   - Subsequent transient errors (prior valid state exists): billingReady
+ *     is PRESERVED so portal CTAs remain visible for users with a known
+ *     billing relationship (active, trialing, past_due). State is marked
+ *     stale=true.
+ *
+ * Hard-disabled billing (billing_active=false from a successful response):
+ *   - billingReady is set to false — CTAs are hidden because the backend
+ *     confirmed Stripe is not configured.
  */
 
 /** Runtime billing-ready flag — set by SubscriptionContext after check-subscription responds. */

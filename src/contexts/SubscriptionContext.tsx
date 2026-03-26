@@ -138,18 +138,20 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   /**
    * Handle transient errors during check-subscription.
    * - If we already have a valid state (hasEverCheckedRef), keep it and mark stale.
+   *   billingReady is PRESERVED so portal CTAs remain visible for past_due users.
    * - If this is the FIRST boot attempt, do NOT resolve access (no paywall).
    *   Instead set bootFailed=true so the gate can show retry UI.
+   *   billingReady is set to false because no valid state exists yet.
    */
   const handleTransientError = useCallback(() => {
-    setBillingReady(false);
     if (hasEverCheckedRef.current) {
-      // We have previous valid state — keep it, mark stale
+      // We have previous valid state — keep it AND keep billingReady as-is
       setStale(true);
       setResolved(true);
       setLoading(false);
     } else {
-      // First boot: do NOT resolve access — show retry, not paywall
+      // First boot: no prior state — safe to clear billingReady
+      setBillingReady(false);
       setBootFailed(true);
       setLoading(false);
       // accessResolved stays false, checked stays false
