@@ -133,6 +133,7 @@ serve(async (req) => {
     let userEmail = "—";
     let ownerMatch = false;
     let adminMatch = false;
+    let bypassMatch = false;
 
     try {
       const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
@@ -142,6 +143,7 @@ serve(async (req) => {
       if (userData?.user?.email) {
         userEmail = maskEmail(userData.user.email);
         ownerMatch = emailInEnvList(userData.user.email, "ADMIN_BOOTSTRAP_EMAILS");
+        bypassMatch = emailInEnvList(userData.user.email, "COMMERCIAL_BYPASS_EMAILS");
 
         try {
           const { data: roleData } = await serviceClient
@@ -163,6 +165,7 @@ serve(async (req) => {
       billing_configured: isBillingActive(),
       owner_match: ownerMatch,
       admin_match: adminMatch || ownerMatch,
+      bypass_match: bypassMatch,
       origin_allowed: isOriginAllowed(req),
     });
   }

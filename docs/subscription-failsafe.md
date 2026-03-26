@@ -4,6 +4,21 @@
 
 Stripe is treated as an **optional enhancement**. The app must never crash, hang, or show broken UI if Stripe is not configured or unreachable.
 
+## Access Matrix (Definitive)
+
+Sottra implements a three-tier access model with strict separation between admin, bypass, and standard access:
+
+| Account | Owner | Admin | Bypass Access | Admin/Diagnostica | Notes |
+|---|---|---|---|---|---|
+| `gheocapaula1000@gmail.com` | ✓ | ✓ | ✓ | ✓ | Unique owner/admin via `ADMIN_BOOTSTRAP_EMAILS` |
+| `matteo.ippolito@gmail.com` | ✗ | ✗ | ✓ | ✗ | Commercial bypass via `COMMERCIAL_BYPASS_EMAILS` — unlimited free access, no admin |
+| `massimilianogalli75@gmail.com` | ✗ | ✗ | ✗ | ✗ | Standard user — no special privileges |
+
+**Key rules:**
+- `ADMIN_BOOTSTRAP_EMAILS` and `COMMERCIAL_BYPASS_EMAILS` are **separate** env vars — never reused for both purposes
+- Commercial bypass grants `subscribed: true` but **never** `is_admin` or `is_owner`
+- Email normalization (`trim().toLowerCase()`) is applied consistently everywhere
+
 ## Admin Bootstrap (ADMIN_BOOTSTRAP_EMAILS)
 
 The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) provides a **break-glass mechanism** for permanent owner/admin access:
@@ -17,8 +32,18 @@ The `ADMIN_BOOTSTRAP_EMAILS` secret (comma-separated emails, server-side only) p
 3. These accounts bypass all trial limits, plan restrictions, and billing gates
 4. **No client-side exposure** — the allowlist is never sent to the frontend
 
-### Current bootstrap accounts
-- `gheocapaula1000@gmail.com`
+## Commercial Bypass (COMMERCIAL_BYPASS_EMAILS)
+
+The `COMMERCIAL_BYPASS_EMAILS` secret grants full user-facing access without admin privileges:
+
+1. Matching users get `subscribed: true`, `is_admin: false`, `is_owner: false`
+2. They bypass trial, paywall, and subscription gates
+3. They **cannot** access admin panels or diagnostics
+4. Email normalization is applied identically
+
+### Current accounts
+- Owner/Admin: `gheocapaula1000@gmail.com`
+- Commercial Bypass: `matteo.ippolito@gmail.com`
 
 ## Error Classification
 
@@ -62,6 +87,7 @@ The retry UI includes a "Verifica accesso" button that calls the `diagnostics` e
 - `billing_configured` — Whether all Stripe secrets are set
 - `owner_match` — Whether the email matches `ADMIN_BOOTSTRAP_EMAILS`
 - `admin_match` — Whether the user has admin role
+- `bypass_match` — Whether the email matches `COMMERCIAL_BYPASS_EMAILS`
 - `check_reachable` — Whether the function is reachable
 - `check_code` — The diagnostic code from the check
 

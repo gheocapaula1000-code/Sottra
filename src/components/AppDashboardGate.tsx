@@ -36,6 +36,7 @@ interface SelfTestResult {
   billing_configured: boolean;
   owner_match: boolean;
   admin_match: boolean;
+  bypass_match: boolean;
   origin_allowed: boolean;
 }
 
@@ -77,6 +78,7 @@ const BootFailedRetry = ({
         billing_configured: false,
         owner_match: false,
         admin_match: false,
+        bypass_match: false,
         origin_allowed: false,
       });
     } finally {
@@ -147,6 +149,12 @@ const BootFailedRetry = ({
               <dt>Admin</dt>
               <dd className={selfTest.admin_match ? "text-green-600" : "text-muted-foreground"}>
                 {selfTest.admin_match ? "✓ sì" : "— no"}
+              </dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Bypass accesso</dt>
+              <dd className={selfTest.bypass_match ? "text-green-600" : "text-muted-foreground"}>
+                {selfTest.bypass_match ? "✓ sì" : "— no"}
               </dd>
             </div>
             <div className="flex justify-between">
