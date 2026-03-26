@@ -23,4 +23,13 @@ describe("ErrorBoundary component", () => {
   it("supports custom fallback prop", () => {
     expect(source).toContain("fallback");
   });
+
+  it("detects chunk load errors for recovery", () => {
+    expect(source).toContain("isChunkLoadError");
+    expect(source).toContain("recoverFromChunkError");
+  });
+
+  it("shows spinner during chunk recovery", () => {
+    expect(source).toContain("recovering");
+  });
 });

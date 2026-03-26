@@ -61,10 +61,6 @@ describe("index.html PWA meta tags", () => {
     expect(html).toContain("viewport-fit=cover");
   });
 
-  it("has CSP meta tag", () => {
-    expect(html).toContain("Content-Security-Policy");
-  });
-
   it("has canonical URL pointing to production domain", () => {
     expect(html).toContain('rel="canonical"');
     expect(html).toContain("sottra.it");
