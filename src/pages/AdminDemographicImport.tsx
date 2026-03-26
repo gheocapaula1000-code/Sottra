@@ -534,6 +534,12 @@ const AdminDemographicImport = () => {
                     <p className="text-2xl font-bold text-foreground">{validation.distinctComuni ?? "?"}</p>
                     <p className="text-xs text-muted-foreground">Comuni distinti</p>
                   </div>
+                  {(validation.duplicatesInBatch ?? 0) > 0 && (
+                    <div className="rounded-lg border border-border/60 p-3">
+                      <p className="text-2xl font-bold text-muted-foreground">{validation.duplicatesInBatch}</p>
+                      <p className="text-xs text-muted-foreground">Duplicati intra-batch</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Metadata badges */}
