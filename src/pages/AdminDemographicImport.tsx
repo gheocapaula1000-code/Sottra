@@ -517,7 +517,7 @@ const AdminDemographicImport = () => {
                     <p className="text-xs text-muted-foreground">Totali</p>
                   </div>
                   <div className="rounded-lg border border-border/60 p-3">
-                    <p className="text-2xl font-bold text-emerald-600">{validation.validCount}</p>
+                    <p className="text-2xl font-bold text-primary">{validation.validCount}</p>
                     <p className="text-xs text-muted-foreground">Validi (insert/update)</p>
                   </div>
                   <div className="rounded-lg border border-border/60 p-3">
