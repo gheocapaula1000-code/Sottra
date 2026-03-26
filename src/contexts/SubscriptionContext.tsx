@@ -264,6 +264,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setChecked(true);
       setStale(false);
       setBootFailed(false);
+      setLastErrorCode(null);
       setResolved(true);
       setLoading(false);
       hasEverCheckedRef.current = true;
