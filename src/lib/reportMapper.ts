@@ -116,16 +116,22 @@ export function resolveGeoContext(result: ScanResult): GeoContext {
     });
   }
 
-  // ISTAT = always municipal
-  if (istat?.comuneLabel) {
+  // ISTAT — may be sub-municipal if demographic_zones data is available
+  if (istat?.comuneLabel || istat?.geoLabel) {
+    const istatGeoLevel: ReportGeoLevel =
+      istat.geoLevel === "microzona" ? "microzona_omi" :
+      istat.geoLevel === "quartiere" ? "quartiere" :
+      istat.geoLevel === "zona" ? "zona_specifica" :
+      "comune";
+    const isSubMunicipal = istatGeoLevel !== "comune";
     candidates.push({
-      data: { label: `Comune di ${istat.comuneLabel}` },
+      data: { label: istat.geoLabel ?? `Comune di ${istat.comuneLabel}` },
       tier: "ufficiale",
-      geoLevel: "comune",
-      geoLabel: `Comune di ${istat.comuneLabel}`,
+      geoLevel: istatGeoLevel,
+      geoLabel: istat.geoLabel ?? `Comune di ${istat.comuneLabel}`,
       provider: "istat",
       isOfficial: true,
-      confidence: 0.9,
+      confidence: isSubMunicipal ? 0.92 : 0.9,
     });
   }
 
