@@ -120,7 +120,7 @@ describe("Geographic transparency — no false zone localization", () => {
 
   it("non-municipal data must NOT show municipal warning", () => {
     const geoLevel: GeoLevel = "quartiere";
-    const bannerText = geoLevel === "comune"
+    const bannerText = (geoLevel as GeoLevel) === "comune"
       ? "Dato riferito all'intero comune"
       : null;
     expect(bannerText).toBeNull();
