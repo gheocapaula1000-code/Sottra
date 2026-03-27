@@ -188,6 +188,46 @@ const AdminDataBackbone = () => {
               </CardContent>
             </Card>
 
+            {/* Territorial Backbone Overview */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Globe className="h-4 w-4" /> Backbone Territoriale Nazionale
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 md:grid-cols-4">
+                  {[
+                    { label: "Comuni", key: "comune", icon: "🏘️", desc: "Livello comunale" },
+                    { label: "Località", key: "localita", icon: "📍", desc: "Località ufficiali ISTAT" },
+                    { label: "ASC", key: "sub_comunale", icon: "🗺️", desc: "Aree sub-comunali" },
+                    { label: "Piloti statistici", key: "pilot", icon: "📊", desc: "Con dati R03/censimento" },
+                  ].map(tier => {
+                    const matching = entries.filter(e => {
+                      if (tier.key === "pilot") return e.dataset_status === "pilot";
+                      return e.geographic_level_supported === tier.key || e.geographic_level_supported === `${tier.key}_omi`;
+                    });
+                    const active = matching.filter(e => e.dataset_status === "active" || e.dataset_status === "pilot");
+                    return (
+                      <div key={tier.key} className="rounded border p-2.5 space-y-1">
+                        <p className="text-xs font-semibold text-foreground">{tier.icon} {tier.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{tier.desc}</p>
+                        <Badge variant="outline" className={`text-[10px] px-1 py-0 ${active.length > 0 ? "bg-emerald-500/10 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                          {active.length} fonti attive
+                        </Badge>
+                        <p className="text-[10px] text-muted-foreground">
+                          {matching.reduce((sum, e) => sum + (e.record_count || 0), 0).toLocaleString("it-IT")} record totali
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2 italic">
+                  Gerarchia: Sub-comunale → Località → Comune → Macrozona → Nazionale. Il report usa sempre il livello più preciso disponibile.
+                </p>
+              </CardContent>
+            </Card>
+
             {/* Macrozone Overview */}
             <Card>
               <CardHeader className="pb-2">

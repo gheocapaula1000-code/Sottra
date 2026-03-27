@@ -123,6 +123,7 @@ export function resolveGeoContext(result: ScanResult): GeoContext {
       istat.geoLevel === "microzona" ? "microzona_omi" :
       istat.geoLevel === "quartiere" ? "quartiere" :
       istat.geoLevel === "zona" ? "zona_specifica" :
+      istat.geoLevel === "localita" ? "localita" :
       "comune";
     const isSubMunicipal = istatGeoLevel !== "comune";
     candidates.push({
