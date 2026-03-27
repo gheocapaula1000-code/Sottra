@@ -147,6 +147,11 @@ function parseSubMunicipalMatch(raw: unknown): SubMunicipalMatchData | null {
     eta_media: typeof d.eta_media === "number" ? d.eta_media : null,
     superficie_kmq: typeof d.superficie_kmq === "number" ? d.superficie_kmq : null,
     note: typeof d.note === "string" ? d.note : undefined,
+    // ── Località fields — preserve when backend provides them ──
+    localita_name: typeof d.localita_name === "string" ? d.localita_name : null,
+    localita_type: typeof d.localita_type === "string" ? d.localita_type : null,
+    localita_code: typeof d.localita_code === "string" ? d.localita_code : null,
+    // ── R03 Lombardia pilot enrichment ──
     r03_enriched: d.r03_enriched === true,
     r03_coverage: typeof d.r03_coverage === "string" ? d.r03_coverage : undefined,
     r03_population: typeof d.r03_population === "number" ? d.r03_population : null,
