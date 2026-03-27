@@ -57,7 +57,11 @@ const AdminDataBackbone = () => {
   const { signOut } = useAuth();
   const [entries, setEntries] = useState<DataSourceEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [backboneCounts, setBackboneCounts] = useState<{ comuni: number; localita: number; asc: number; regioni: string[] } | null>(null);
+  const [backboneCounts, setBackboneCounts] = useState<{
+    comuni: number; localita: number; asc: number;
+    localitaWithCentroid: number; localitaWithoutCentroid: number;
+    regioni: string[]; backboneStatus: "vuoto" | "parziale" | "pronto";
+  } | null>(null);
 
   const loadRegistry = useCallback(async () => {
     setLoading(true);
@@ -72,19 +76,27 @@ const AdminDataBackbone = () => {
 
     // Load real counts from territorial_registry
     try {
-      const [comuniRes, locRes, regioniRes] = await Promise.all([
+      const [comuniRes, locRes, locCentroidRes, regioniRes] = await Promise.all([
         supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "comune"),
         supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "localita"),
+        supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "localita").not("centroid_lat", "is", null),
         supabase.from("territorial_registry" as any).select("regione_name").eq("geographic_level", "comune"),
       ]);
       const regioni = new Set<string>();
       if (regioniRes.data) (regioniRes.data as any[]).forEach((r: any) => { if (r.regione_name) regioni.add(r.regione_name); });
       const ascRes = await supabase.from("sub_municipal_areas_2021").select("id", { count: "exact", head: true });
+      const totalLoc = locRes.count ?? 0;
+      const locWithCentroid = locCentroidRes.count ?? 0;
+      const comuni = comuniRes.count ?? 0;
+      const backboneStatus = comuni >= 7000 ? "pronto" as const : comuni > 0 ? "parziale" as const : "vuoto" as const;
       setBackboneCounts({
-        comuni: comuniRes.count ?? 0,
-        localita: locRes.count ?? 0,
+        comuni,
+        localita: totalLoc,
         asc: ascRes.count ?? 0,
+        localitaWithCentroid: locWithCentroid,
+        localitaWithoutCentroid: totalLoc - locWithCentroid,
         regioni: [...regioni].sort(),
+        backboneStatus,
       });
     } catch { /* ignore */ }
 
@@ -96,8 +108,13 @@ const AdminDataBackbone = () => {
   const syncRegistryFromData = async () => {
     toast.info("Sincronizzazione registro con dati reali...");
     try {
-      // Check actual record counts from key tables
-      const checks = await Promise.all([
+      // Explicit source_key → query mapping to avoid fragile index-based bugs
+      const sourceKeys = [
+        "omi_quotazioni", "omi_polygons", "omi_zone",
+        "istat_comuni_nazionale", "istat_localita_2021",
+        "r03_asc_aggregates", "asc_2021", "r03_lombardia_2021", "demographic_zones",
+      ];
+      const queries = [
         supabase.from("omi_quotazioni").select("id", { count: "exact", head: true }),
         supabase.from("omi_polygons").select("id", { count: "exact", head: true }),
         supabase.from("omi_zone").select("id", { count: "exact", head: true }),
@@ -107,25 +124,20 @@ const AdminDataBackbone = () => {
         supabase.from("sub_municipal_areas_2021").select("id", { count: "exact", head: true }),
         supabase.from("census_sections_r03_2021").select("id", { count: "exact", head: true }),
         supabase.from("demographic_zones").select("id", { count: "exact", head: true }),
-      ]);
+      ];
+      const results = await Promise.all(queries);
 
-      const counts: Record<string, number> = {
-        istat_comuni_nazionale: checks[0].count ?? 0,
-        istat_localita_2021: checks[1].count ?? 0,
-        omi_quotazioni: checks[2].count ?? 0,
-        omi_polygons: checks[3].count ?? 0,
-        omi_zone: checks[4].count ?? 0,
-        r03_asc_aggregates: checks[5].count ?? 0,
-        asc_2021: checks[6].count ?? 0,
-        r03_lombardia_2021: checks[7].count ?? 0,
-        demographic_zones: checks[8].count ?? 0,
-      };
+      const counts: Record<string, number> = {};
+      sourceKeys.forEach((key, i) => {
+        counts[key] = (results[i] as any).count ?? 0;
+      });
 
       // Update registry entries based on real counts
+      const PILOT_KEYS = new Set(["asc_2021", "r03_lombardia_2021", "r03_asc_aggregates"]);
       for (const [sourceKey, count] of Object.entries(counts)) {
         const coverage = count > 0 ? "available" : "unavailable";
         const status = count > 0
-          ? (sourceKey === "asc_2021" || sourceKey === "r03_lombardia_2021" || sourceKey === "r03_asc_aggregates" ? "pilot" : "active")
+          ? (PILOT_KEYS.has(sourceKey) ? "pilot" : "active")
           : entries.find(e => e.source_key === sourceKey)?.dataset_status ?? "inactive";
 
         await supabase
@@ -220,7 +232,19 @@ const AdminDataBackbone = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-3 md:grid-cols-4">
+                {/* Backbone status badge */}
+                {backboneCounts && (
+                  <div className="mb-3">
+                    <Badge variant="outline" className={`text-xs px-2 py-0.5 ${
+                      backboneCounts.backboneStatus === "pronto" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" :
+                      backboneCounts.backboneStatus === "parziale" ? "bg-amber-500/10 text-amber-700 dark:text-amber-300" :
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      Backbone: {backboneCounts.backboneStatus === "pronto" ? "Pronto" : backboneCounts.backboneStatus === "parziale" ? "Parziale" : "Vuoto"}
+                    </Badge>
+                  </div>
+                )}
+                <div className="grid gap-3 md:grid-cols-5">
                   <div className="rounded border p-2.5 space-y-1">
                     <p className="text-xs font-semibold text-foreground">🏘️ Comuni</p>
                     <p className="text-xl font-bold">{backboneCounts?.comuni?.toLocaleString("it-IT") ?? "—"}</p>
@@ -232,8 +256,13 @@ const AdminDataBackbone = () => {
                     <p className="text-xs font-semibold text-foreground">📍 Località</p>
                     <p className="text-xl font-bold">{backboneCounts?.localita?.toLocaleString("it-IT") ?? "—"}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {backboneCounts && backboneCounts.localita > 0 ? "Località ufficiali ISTAT" : "Non ancora importate"}
+                      {backboneCounts && backboneCounts.localita > 0
+                        ? `${backboneCounts.localitaWithCentroid.toLocaleString("it-IT")} con centroidi`
+                        : "Non ancora importate"}
                     </p>
+                    {backboneCounts && backboneCounts.localitaWithoutCentroid > 0 && (
+                      <p className="text-[10px] text-amber-600">{backboneCounts.localitaWithoutCentroid.toLocaleString("it-IT")} senza centroidi</p>
+                    )}
                   </div>
                   <div className="rounded border p-2.5 space-y-1">
                     <p className="text-xs font-semibold text-foreground">🗺️ ASC</p>
@@ -246,6 +275,13 @@ const AdminDataBackbone = () => {
                       {entries.filter(e => e.dataset_status === "pilot").length}
                     </p>
                     <p className="text-[10px] text-muted-foreground">Con dati R03/censimento</p>
+                  </div>
+                  <div className="rounded border p-2.5 space-y-1">
+                    <p className="text-xs font-semibold text-foreground">🌍 Regioni</p>
+                    <p className="text-xl font-bold">{backboneCounts?.regioni?.length ?? 0}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {backboneCounts && backboneCounts.regioni.length >= 20 ? "Copertura completa" : "Copertura parziale"}
+                    </p>
                   </div>
                 </div>
                 {backboneCounts && backboneCounts.regioni.length > 0 && (

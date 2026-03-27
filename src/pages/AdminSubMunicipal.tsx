@@ -50,6 +50,7 @@ const DATASET_TYPES: Record<string, { label: string; description: string; accept
 
 const STATUS_COLORS: Record<string, string> = {
   uploaded: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  validated: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
   validating: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   ready_to_import: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
   importing: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
@@ -147,6 +148,18 @@ const AdminSubMunicipal = () => {
       toast.error("Errore upload");
     }
     setUploading(null);
+  };
+
+  const validateJob = async (jobId: string) => {
+    setProcessing(jobId);
+    try {
+      const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "validate-csv", jobId } });
+      if (error) { toast.error(`Errore validazione: ${error.message}`); }
+      else if (data?.error) { toast.error(data.error); }
+      else { toast.success("Validazione completata — controlla i risultati prima di importare"); }
+      await loadJobs();
+    } catch { toast.error("Errore validazione"); }
+    setProcessing(null);
   };
 
   const processJob = async (jobId: string) => {
@@ -311,13 +324,48 @@ const AdminSubMunicipal = () => {
                       {Array.isArray(job.warnings) && job.warnings.length > 0 && (
                         <div className="mt-1 text-xs text-amber-600">{job.warnings.map((w, i) => <span key={i} className="block">{String(w)}</span>)}</div>
                       )}
+                      {/* Validation results */}
+                      {job.status === "validated" && job.validation_result && (
+                        <div className="mt-2 p-2 rounded bg-muted/50 text-xs space-y-1">
+                          <p className="font-medium text-foreground">Risultato validazione:</p>
+                          <p>Righe totali: {(job.validation_result as any).totalRows ?? "—"}</p>
+                          {(job.validation_result as any).comuni && (
+                            <>
+                              <p className="text-emerald-600">Valide: {(job.validation_result as any).comuni.valid}</p>
+                              {(job.validation_result as any).comuni.noIstat > 0 && <p className="text-destructive">Senza codice ISTAT: {(job.validation_result as any).comuni.noIstat}</p>}
+                              {(job.validation_result as any).comuni.noName > 0 && <p className="text-destructive">Senza nome: {(job.validation_result as any).comuni.noName}</p>}
+                              <p>Con coordinate: {(job.validation_result as any).comuni.withCoords} — Senza: {(job.validation_result as any).comuni.withoutCoords}</p>
+                              {(job.validation_result as any).comuni.noRegione > 0 && <p className="text-amber-600">Senza regione: {(job.validation_result as any).comuni.noRegione}</p>}
+                              <p>Regioni trovate ({(job.validation_result as any).comuni.regioniCount}): {(job.validation_result as any).comuni.regioni?.join(", ")}</p>
+                            </>
+                          )}
+                          {(job.validation_result as any).localita && (
+                            <>
+                              <p className="text-emerald-600">Valide: {(job.validation_result as any).localita.valid}</p>
+                              {(job.validation_result as any).localita.noIstat > 0 && <p className="text-destructive">Senza codice ISTAT comune: {(job.validation_result as any).localita.noIstat}</p>}
+                              {(job.validation_result as any).localita.noLoc > 0 && <p className="text-destructive">Senza codice/nome località: {(job.validation_result as any).localita.noLoc}</p>}
+                              <p>Con centroidi: {(job.validation_result as any).localita.withCoords} — Senza: {(job.validation_result as any).localita.withoutCoords}</p>
+                              <p>Comuni distinti: {(job.validation_result as any).localita.comuni}</p>
+                              <p>Regioni ({(job.validation_result as any).localita.regioniCount}): {(job.validation_result as any).localita.regioni?.join(", ")}</p>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {(job.status === "uploaded") && (
-                      <Button size="sm" className="h-7 text-xs" onClick={() => processJob(job.id)} disabled={processing !== null}>
-                        {processing === job.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                        Importa
-                      </Button>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      {(job.status === "uploaded") && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => validateJob(job.id)} disabled={processing !== null}>
+                          {processing === job.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                          Valida
+                        </Button>
+                      )}
+                      {(job.status === "uploaded" || job.status === "validated") && (
+                        <Button size="sm" className="h-7 text-xs" onClick={() => processJob(job.id)} disabled={processing !== null}>
+                          {processing === job.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                          Importa
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

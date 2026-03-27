@@ -381,6 +381,70 @@ serve(async (req) => {
     const body = await req.json();
     const { action } = body as { action: string };
 
+    /* ── ACTION: validate-csv (dry-run) ── */
+    if (action === "validate-csv") {
+      const { jobId } = body as { jobId: string };
+      if (!jobId) return json({ error: "jobId required" }, 200);
+
+      const { data: job, error: jobErr } = await admin.from("territorial_dataset_jobs").select("*").eq("id", jobId).single();
+      if (jobErr || !job) return json({ error: "Job not found" }, 200);
+
+      const { data: fileData, error: dlErr } = await admin.storage.from("territorial-datasets").download(job.file_path);
+      if (dlErr || !fileData) return json({ error: "File download failed" }, 200);
+
+      const csvText = await fileData.text();
+      const records = parseCsv(csvText);
+      if (records.length === 0) return json({ error: "CSV vuoto" }, 200);
+
+      const headers = Object.keys(records[0]);
+      const dt = job.dataset_type as string;
+      const validation: Record<string, unknown> = { totalRows: records.length, headers, sampleRows: records.slice(0, 3) };
+
+      if (dt === "COMUNI_ITALIA") {
+        let valid = 0, noIstat = 0, noName = 0, withCoords = 0, noRegione = 0;
+        const regioni = new Set<string>();
+        for (const r of records) {
+          const code = r["PRO_COM_T"] || r["PRO_COM"] || r["CODICE_COMUNE"] || r["COD_COM"] || "";
+          const name = r["DEN_COM"] || r["DENOMINAZIONE"] || r["COMUNE"] || "";
+          if (!code) { noIstat++; continue; }
+          if (!name) { noName++; continue; }
+          valid++;
+          if (r["LAT"] && r["LNG"] || r["LON"]) withCoords++;
+          const reg = r["DEN_REG"] || r["REGIONE"] || "";
+          if (reg) regioni.add(reg); else noRegione++;
+        }
+        validation.comuni = { valid, noIstat, noName, withCoords, withoutCoords: valid - withCoords, noRegione, regioni: [...regioni].sort(), regioniCount: regioni.size };
+      } else if (dt === "LOCALITA_ISTAT") {
+        let valid = 0, noIstat = 0, noLoc = 0, withCoords = 0, noComune = 0;
+        const comuni = new Set<string>(), regioni = new Set<string>();
+        const byType: Record<string, number> = {};
+        for (const r of records) {
+          const code = r["PRO_COM_T"] || r["PRO_COM"] || r["CODICE_COMUNE"] || "";
+          const locCode = r["COD_LOC"] || r["CODICE_LOCALITA"] || r["LOC"] || "";
+          const locName = r["DEN_LOC"] || r["DENOMINAZIONE_LOC"] || r["LOCALITA"] || "";
+          if (!code) { noIstat++; continue; }
+          if (!locCode && !locName) { noLoc++; continue; }
+          valid++;
+          if (r["LAT"] && (r["LNG"] || r["LON"])) withCoords++;
+          if (r["DEN_COM"] || r["COMUNE"]) comuni.add(code); else noComune++;
+          const reg = r["DEN_REG"] || "";
+          if (reg) regioni.add(reg);
+          const tp = r["TIPO_LOC"] || r["TIPO"] || "sconosciuto";
+          byType[tp] = (byType[tp] || 0) + 1;
+        }
+        validation.localita = { valid, noIstat, noLoc, withCoords, withoutCoords: valid - withCoords, noComune, comuni: comuni.size, regioni: [...regioni].sort(), regioniCount: regioni.size, byType };
+      }
+
+      // Save validation result to job
+      await admin.from("territorial_dataset_jobs").update({
+        status: "validated",
+        records_total: records.length,
+        validation_result: validation,
+      }).eq("id", jobId);
+
+      return json({ ok: true, validation });
+    }
+
     /* ── ACTION: process-csv ── */
     if (action === "process-csv") {
       const { jobId } = body as { jobId: string };
