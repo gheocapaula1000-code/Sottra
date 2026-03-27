@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AppHeader from "@/components/AppHeader";
 
-import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft, Activity, Database, Map } from "lucide-react";
+import { Users, ShieldCheck, ScanLine, Clock, ArrowLeft, Activity, Database, Map, Layers, Shield } from "lucide-react";
 
 interface AdminStats {
   total_users: number;
@@ -163,6 +163,28 @@ const AdminDashboard = () => {
                 <p className="text-sm font-medium text-foreground">Import Dati Demografici Sub-Comunali</p>
                 <p className="text-xs text-muted-foreground">
                   Carica GeoJSON o CSV per popolare demographic_zones con dati reali di zona
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Sub-municipal */}
+            <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/admin/sub-municipal")}>
+              <CardContent className="py-8 text-center space-y-2">
+                <Layers className="h-6 w-6 mx-auto text-primary" />
+                <p className="text-sm font-medium text-foreground">Dataset Territoriali</p>
+                <p className="text-xs text-muted-foreground">
+                  Upload e import ASC / R03 — console pilota Lombardia
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Data Backbone */}
+            <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/admin/data-backbone")}>
+              <CardContent className="py-8 text-center space-y-2">
+                <Shield className="h-6 w-6 mx-auto text-primary" />
+                <p className="text-sm font-medium text-foreground">Data Backbone</p>
+                <p className="text-xs text-muted-foreground">
+                  Stato vero dei dati — registro fonti, copertura, policy esposizione
                 </p>
               </CardContent>
             </Card>

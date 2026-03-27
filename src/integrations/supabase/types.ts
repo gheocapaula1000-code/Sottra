@@ -119,6 +119,96 @@ export type Database = {
         }
         Relationships: []
       }
+      data_source_registry: {
+        Row: {
+          coverage_comuni: number | null
+          coverage_regioni: number | null
+          created_at: string
+          current_coverage_status: string
+          dataset_status: string
+          geographic_level_supported: string
+          geographic_scope: string
+          id: string
+          ingestion_mode: string
+          last_import_job_id: string | null
+          last_imported_at: string | null
+          last_validated_at: string | null
+          metadata_json: Json | null
+          notes: string | null
+          officiality_level: string
+          provider_label: string
+          record_count: number | null
+          refresh_mode: string
+          regions_supported: string[] | null
+          report_sections_supported: string[] | null
+          source_family: string
+          source_key: string
+          source_label: string
+          source_type: string
+          source_version: string | null
+          source_year: number | null
+          updated_at: string
+        }
+        Insert: {
+          coverage_comuni?: number | null
+          coverage_regioni?: number | null
+          created_at?: string
+          current_coverage_status?: string
+          dataset_status?: string
+          geographic_level_supported?: string
+          geographic_scope?: string
+          id?: string
+          ingestion_mode?: string
+          last_import_job_id?: string | null
+          last_imported_at?: string | null
+          last_validated_at?: string | null
+          metadata_json?: Json | null
+          notes?: string | null
+          officiality_level?: string
+          provider_label?: string
+          record_count?: number | null
+          refresh_mode?: string
+          regions_supported?: string[] | null
+          report_sections_supported?: string[] | null
+          source_family?: string
+          source_key: string
+          source_label?: string
+          source_type?: string
+          source_version?: string | null
+          source_year?: number | null
+          updated_at?: string
+        }
+        Update: {
+          coverage_comuni?: number | null
+          coverage_regioni?: number | null
+          created_at?: string
+          current_coverage_status?: string
+          dataset_status?: string
+          geographic_level_supported?: string
+          geographic_scope?: string
+          id?: string
+          ingestion_mode?: string
+          last_import_job_id?: string | null
+          last_imported_at?: string | null
+          last_validated_at?: string | null
+          metadata_json?: Json | null
+          notes?: string | null
+          officiality_level?: string
+          provider_label?: string
+          record_count?: number | null
+          refresh_mode?: string
+          regions_supported?: string[] | null
+          report_sections_supported?: string[] | null
+          source_family?: string
+          source_key?: string
+          source_label?: string
+          source_type?: string
+          source_version?: string | null
+          source_year?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       demographic_zones: {
         Row: {
           anno_rilevazione: string
