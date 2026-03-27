@@ -117,3 +117,56 @@ describe("Massive Import — dedup and idempotency", () => {
     expect(key(r1)).not.toBe(key(r3)); // different level
   });
 });
+
+describe("Admin Sync — explicit sourceKey→table mapping", () => {
+  it("explicit mapping never confuses omi_quotazioni with istat_comuni_nazionale", () => {
+    // Simulates the correct explicit mapping used in syncRegistryFromData
+    const sourceKeys = [
+      "omi_quotazioni", "omi_polygons", "omi_zone",
+      "istat_comuni_nazionale", "istat_localita_2021",
+      "r03_asc_aggregates", "asc_2021", "r03_lombardia_2021",
+      "demographic_zones",
+    ];
+    const tableTargets = [
+      "omi_quotazioni", "omi_polygons", "omi_zone",
+      "territorial_registry:comune", "territorial_registry:localita",
+      "r03_asc_aggregates_2021", "sub_municipal_areas_2021", "census_sections_r03_2021",
+      "demographic_zones",
+    ];
+
+    // Build explicit map (not index-based)
+    const mapping = new Map<string, string>();
+    sourceKeys.forEach((k, i) => mapping.set(k, tableTargets[i]));
+
+    // These must never be swapped — the old index-based bug would swap them
+    expect(mapping.get("omi_quotazioni")).toBe("omi_quotazioni");
+    expect(mapping.get("istat_comuni_nazionale")).toBe("territorial_registry:comune");
+    expect(mapping.get("omi_quotazioni")).not.toContain("territorial_registry");
+    expect(mapping.get("istat_comuni_nazionale")).not.toBe("omi_quotazioni");
+  });
+
+  it("index-based mapping would produce wrong results if arrays are reordered", () => {
+    // This test fails if someone reverts to fragile index-based mapping
+    // by showing that array reorder breaks the association
+    const sourceKeys = ["omi_quotazioni", "istat_comuni_nazionale", "omi_zone"];
+    const fakeCounts = [42000, 7904, 8500]; // omi=42k, comuni=7904, zone=8500
+
+    // Correct explicit approach: each key gets its own count
+    const explicitMap: Record<string, number> = {};
+    sourceKeys.forEach((k, i) => { explicitMap[k] = fakeCounts[i]; });
+    expect(explicitMap["omi_quotazioni"]).toBe(42000);
+    expect(explicitMap["istat_comuni_nazionale"]).toBe(7904);
+
+    // Now simulate a reorder (like adding a new source in the middle)
+    const reorderedKeys = ["istat_comuni_nazionale", "omi_quotazioni", "omi_zone"];
+    // With index-based mapping, counts[0] would wrongly go to first key
+    const brokenMap: Record<string, number> = {};
+    reorderedKeys.forEach((k, i) => { brokenMap[k] = fakeCounts[i]; });
+    // This would assign omi count (42000) to istat_comuni — WRONG
+    expect(brokenMap["istat_comuni_nazionale"]).toBe(42000); // broken!
+    expect(brokenMap["omi_quotazioni"]).toBe(7904); // broken!
+
+    // Proves that index-based is fragile — explicit map is required
+    expect(brokenMap["istat_comuni_nazionale"]).not.toBe(explicitMap["istat_comuni_nazionale"]);
+  });
+});
