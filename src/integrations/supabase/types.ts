@@ -434,6 +434,84 @@ export type Database = {
         }
         Relationships: []
       }
+      r03_asc_aggregates_2021: {
+        Row: {
+          asc_code: string
+          asc_level: number
+          asc_name: string | null
+          buildings_2021: number | null
+          comune_istat_code: string
+          comune_name: string
+          coverage_status: string
+          created_at: string | null
+          density_pop_per_kmq: number | null
+          derivation_notes: string | null
+          dwellings_2021: number | null
+          families_2021: number | null
+          id: string
+          import_batch_id: string | null
+          occupied_dwellings_2021: number | null
+          population_2021: number | null
+          residential_buildings_2021: number | null
+          sections_count: number
+          sections_with_data: number
+          source_dataset: string
+          source_year: number
+          superficie_kmq: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          asc_code: string
+          asc_level: number
+          asc_name?: string | null
+          buildings_2021?: number | null
+          comune_istat_code: string
+          comune_name?: string
+          coverage_status?: string
+          created_at?: string | null
+          density_pop_per_kmq?: number | null
+          derivation_notes?: string | null
+          dwellings_2021?: number | null
+          families_2021?: number | null
+          id?: string
+          import_batch_id?: string | null
+          occupied_dwellings_2021?: number | null
+          population_2021?: number | null
+          residential_buildings_2021?: number | null
+          sections_count?: number
+          sections_with_data?: number
+          source_dataset?: string
+          source_year?: number
+          superficie_kmq?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          asc_code?: string
+          asc_level?: number
+          asc_name?: string | null
+          buildings_2021?: number | null
+          comune_istat_code?: string
+          comune_name?: string
+          coverage_status?: string
+          created_at?: string | null
+          density_pop_per_kmq?: number | null
+          derivation_notes?: string | null
+          dwellings_2021?: number | null
+          families_2021?: number | null
+          id?: string
+          import_batch_id?: string | null
+          occupied_dwellings_2021?: number | null
+          population_2021?: number | null
+          residential_buildings_2021?: number | null
+          sections_count?: number
+          sections_with_data?: number
+          source_dataset?: string
+          source_year?: number
+          superficie_kmq?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       safety_zones: {
         Row: {
           anno_rilevazione: string | null
