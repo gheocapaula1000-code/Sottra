@@ -931,10 +931,21 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
   const _market = sectionData<MarketContextData>(result, "marketContext");
 
   const geo = resolveGeoContext(result);
+  const territorialResolution = resolveTerritorialContext(result);
   const items: PrioritaCriticaItem[] = [];
 
-  // Municipal-only or macrozone data warning
-  if (geo.geoLevel === "macrozona") {
+  // Territorial resolution warning — identified vs data level mismatch
+  if (territorialResolution.territorial_warning) {
+    items.push({
+      testo: territorialResolution.territorial_warning,
+      categoria: "copertura_parziale",
+      sourceType: "territorial_verified",
+      availabilityStatus: "partial",
+      nota: territorialResolution.fallback_reason ?? "Il dato disponibile ha granularità inferiore alla posizione identificata",
+    });
+  }
+  // Municipal-only or macrozone data warning (only if no territorial_warning already covers it)
+  else if (geo.geoLevel === "macrozona") {
     items.push({
       testo: geo.geoLabel
         ? `Alcuni dati si riferiscono al quadro macroterritoriale (${geo.geoLabel}), non alla zona specifica`
