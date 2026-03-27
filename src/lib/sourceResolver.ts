@@ -162,7 +162,9 @@ const GEO_RANK: Record<ReportGeoLevel, number> = {
   zona_specifica: 1,
   quartiere: 2,
   comune: 3,
-  non_determinato: 4,
+  macrozona: 4,
+  nazionale: 5,
+  non_determinato: 6,
 };
 
 /**
