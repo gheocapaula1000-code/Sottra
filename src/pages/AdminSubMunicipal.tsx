@@ -399,9 +399,45 @@ const AdminSubMunicipal = () => {
           </h2>
         </div>
 
+        {/* Inline error for jobs */}
+        {jobsError && (
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-start gap-2 text-sm text-destructive">
+                <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{jobsError}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Debug panel */}
+        {debugTrace && (
+          <Card className="border-muted bg-muted/20">
+            <CardContent className="pt-3 pb-3">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Debug — Ultimo tentativo ({debugTrace.timestamp})</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <span>Dataset: <strong className="text-foreground">{debugTrace.datasetType ?? "—"}</strong></span>
+                <span>Upload: <strong className={debugTrace.uploadOk ? "text-emerald-600" : debugTrace.uploadOk === false ? "text-destructive" : "text-foreground"}>
+                  {debugTrace.uploadOk === true ? "OK" : debugTrace.uploadOk === false ? "FAIL" : "—"}
+                </strong></span>
+                <span>Job insert: <strong className={debugTrace.insertJobOk ? "text-emerald-600" : debugTrace.insertJobOk === false ? "text-destructive" : "text-foreground"}>
+                  {debugTrace.insertJobOk === true ? "OK" : debugTrace.insertJobOk === false ? "FAIL" : "—"}
+                </strong></span>
+                <span>List-jobs: <strong className={debugTrace.listJobsOk ? "text-emerald-600" : debugTrace.listJobsOk === false ? "text-destructive" : "text-foreground"}>
+                  {debugTrace.listJobsOk === true ? "OK" : debugTrace.listJobsOk === false ? "FAIL" : "—"}
+                </strong></span>
+                {debugTrace.jobId && <span className="col-span-2">Job ID: <strong className="text-foreground font-mono">{debugTrace.jobId}</strong></span>}
+                {debugTrace.filePath && <span className="col-span-2 truncate">Path: <strong className="text-foreground font-mono">{debugTrace.filePath}</strong></span>}
+                {debugTrace.lastError && <span className="col-span-4 text-destructive">Errore: {debugTrace.lastError}</span>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {jobsLoading && jobs.length === 0 ? (
           <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-        ) : jobs.length === 0 ? (
+        ) : jobs.length === 0 && !jobsError ? (
           <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">Nessun job di import</CardContent></Card>
         ) : (
           <div className="space-y-2">
