@@ -530,4 +530,54 @@ Il dataset R03_21 reale non è ancora stato importato.
 1. Caricare dataset reali ASC_21 + R03_21 via console admin
 2. Verificare coerenza su comuni pilota (Milano, Brescia)
 3. Estendere ad altre regioni se validazione positiva
-4. Collegare aggregazione sezioni→ASC per vista statistica
+
+## Fase 4 — Pilota Lombardia chiuso lato report pubblico
+
+### Obiettivo
+
+Completare il pilota Lombardia trasformando R03 in un arricchimento pubblico reale e verificabile nel report utente. La logica è: sezioni censuarie R03 vengono aggregate per area sub-comunale (ASC), e il report mostra i dati aggregati solo quando tutte le condizioni di gating sono soddisfatte.
+
+### Aggregazione R03 → ASC
+
+Una nuova tabella `r03_asc_aggregates_2021` contiene gli aggregati per area ASC:
+- Popolazione, famiglie, abitazioni, edifici (sommati dalle sezioni)
+- Densità abitativa (calcolata solo se superficie disponibile dal layer ASC)
+- Coverage status: `available` (≥80% sezioni con dato), `partial`, `unavailable`
+- Derivation notes che documentano sezioni mancanti o mismatch
+
+L'aggregazione è lanciabile da admin (`/admin/sub-municipal`) e produce un batch idempotente con upsert su `(source_dataset, asc_level, asc_code)`.
+
+### Arricchimento nel report pubblico
+
+Il report mostra dati R03 in ProfiloArea **solo** quando:
+1. `subMunicipalMatch.matched = true` (match poligonale)
+2. `r03_enriched = true` (aggregato R03 trovato)
+3. `r03_coverage = "available"` o `"partial"`
+4. `r03_population > 0`
+
+Indicatori mostrati (se disponibili):
+- Residenti area sub-comunale
+- Densità ab/km²
+- Nuclei familiari
+- Abitazioni
+- Nota pilota Lombardia con indicazione copertura
+
+### Gating territoriale
+
+- Fuori Lombardia: comportamento invariato (solo micro-info ASC se presente)
+- Lombardia senza aggregato: nessun blocco statistico R03
+- Lombardia con aggregato partial: dati etichettati come parziali
+- Lombardia con aggregato available: blocco prudente completo
+
+### Cosa NON viene mostrato
+
+- Dati sub-comunali fuori Lombardia
+- Statistiche nazionali inventate
+- Indicatori senza base numerica reale
+- Claim di copertura oltre il perimetro del pilota
+
+### Prossimi step
+
+1. Caricare dataset reali e lanciare aggregazione
+2. Verificare report su comuni pilota
+3. Valutare estensione ad altre regioni con lo stesso modello
