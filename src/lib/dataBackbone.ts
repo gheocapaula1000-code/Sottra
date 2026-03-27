@@ -479,6 +479,7 @@ export function sourceGeoLevelLabel(entry: DataSourceEntry): string {
     microzona_omi: "Microzona OMI",
     sezione_censuaria: "Sezione censuaria",
     sub_comunale: "Sub-comunale",
+    localita: "Località",
     comune: "Comunale",
     provincia: "Provinciale",
     regionale: "Regionale",

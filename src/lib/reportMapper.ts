@@ -242,6 +242,17 @@ export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: 
     );
   }
 
+  // Locality info: show when resolved, even without ASC match
+  if (ascMatch?.localita_name && !data.tipologiaEdificio) {
+    data.tipologiaEdificio = field(
+      ascMatch.localita_name,
+      "Località ISTAT",
+      "official_data",
+      "available",
+      `Località ${ascMatch.localita_type === "capoluogo" ? "capoluogo" : "ufficiale"} — ${ascMatch.comune_name ?? ""}`,
+    );
+  }
+
   const hasContent = Object.values(data).some(f => f && typeof f === "object" && "availabilityStatus" in f);
   return hasContent ? data : null;
 }
