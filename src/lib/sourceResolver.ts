@@ -154,6 +154,30 @@ export function mapCoverageLevelToGeoLevel(coverage?: CoverageLevel): ReportGeoL
   }
 }
 
+/** Maps a string geo level to ReportGeoLevel */
+export function normalizeGeoLevel(level?: string | null): ReportGeoLevel {
+  switch (level) {
+    case "microzona_omi":
+    case "microzona":
+      return "microzona_omi";
+    case "zona_specifica":
+    case "zona":
+      return "zona_specifica";
+    case "quartiere":
+      return "quartiere";
+    case "localita":
+      return "localita";
+    case "comune":
+      return "comune";
+    case "macrozona":
+      return "macrozona";
+    case "nazionale":
+      return "nazionale";
+    default:
+      return "non_determinato";
+  }
+}
+
 /** Label for macrozone-level geo contexts */
 export function geoLevelDisplayLabel(level: ReportGeoLevel): string {
   switch (level) {
