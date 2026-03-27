@@ -27,7 +27,37 @@ Tabella centrale che cataloga tutte le fonti dati di Sottra.
 
 ### 2. Backbone Territoriale Nazionale
 
-Il backbone territoriale è costruito su una gerarchia ufficiale a 4 livelli principali:
+Il backbone territoriale è costruito su una gerarchia ufficiale a 7 livelli:
+
+1. **Microzona OMI** — match poligonale con perimetri Agenzia delle Entrate
+2. **Zona specifica** — ASC/R03 con arricchimento statistico (es. Lombardia)
+3. **Quartiere** — ASC senza R03, o demographic_zones sub-comunali
+4. **Località** — località ufficiali ISTAT collegate al comune
+5. **Comune** — livello base nazionale sempre disponibile
+6. **Macrozona** — fallback a 5 aree (Nord-Ovest, Nord-Est, Centro, Sud, Isole)
+7. **Nazionale** — ultimo fallback
+
+### 3. Risoluzione Territoriale (TerritorialResolution)
+
+Il sistema distingue sempre tra:
+- **Livello identificato** (`identified_geo_level`): dove si trova il punto
+- **Livello del dato** (`data_coverage_level`): a quale granularità il dato è disponibile
+
+Esempio: posizione identificata in una località, ma dato disponibile solo a livello comunale.
+In questo caso il report mostra il dato con avviso esplicito.
+
+Questo impedisce overclaim: il report non finge mai precisione sub-comunale se il dato è comunale.
+
+### 4. Priorità tra fonti
+
+Ordine di priorità per identificazione: OMI polygon > ASC polygon > Località > Comune
+Ordine per dati: R03/ASC enriched > OMI quotazioni > ISTAT comunale
+
+Regole:
+- OMI resta prioritario per dati immobiliari/economici
+- Lombardia conserva la maggiore ricchezza sub-comunale
+- Una fonte regionale copre SOLO le regioni dichiarate (nessuna promozione a macrozona)
+- Una fonte macrozonale copre tutte le regioni della macrozona dichiarata
 
 | Livello | Descrizione | Stato |
 |---------|-------------|-------|

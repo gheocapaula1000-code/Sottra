@@ -27,8 +27,10 @@ import type {
 import {
   resolveBestSource, mapCoverageLevelToGeoLevel,
   formatResolutionTrace, resolutionSummary,
+  resolveTerritorialContext,
   type SourceCandidate,
 } from "@/lib/sourceResolver";
+import type { TerritorialResolution } from "@/types/report";
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
@@ -525,7 +527,8 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
   const ascMatch = sectionData<SubMunicipalMatchData>(result, "subMunicipalMatch");
 
   const geo = resolveGeoContext(result);
-  const data: ProfiloAreaData = { geo };
+  const territorialResolution = resolveTerritorialContext(result);
+  const data: ProfiloAreaData = { geo, territorialResolution };
 
   // Lombardia pilot enrichment: show R03 aggregated data at ASC level
   // Only when ASC match is reliable AND R03 enrichment is present
@@ -793,7 +796,8 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
   if (!opportunity && !convergenza) return null;
 
   const geo = resolveGeoContext(result);
-  const data: SintesiFinaleData = { geo };
+  const territorialResolution = resolveTerritorialContext(result);
+  const data: SintesiFinaleData = { geo, territorialResolution };
 
   const isMunicipal = geo.geoLevel === "comune" || geo.geoLevel === "non_determinato";
 
@@ -927,10 +931,21 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
   const _market = sectionData<MarketContextData>(result, "marketContext");
 
   const geo = resolveGeoContext(result);
+  const territorialResolution = resolveTerritorialContext(result);
   const items: PrioritaCriticaItem[] = [];
 
-  // Municipal-only or macrozone data warning
-  if (geo.geoLevel === "macrozona") {
+  // Territorial resolution warning — identified vs data level mismatch
+  if (territorialResolution.territorial_warning) {
+    items.push({
+      testo: territorialResolution.territorial_warning,
+      categoria: "copertura_parziale",
+      sourceType: "territorial_verified",
+      availabilityStatus: "partial",
+      nota: territorialResolution.fallback_reason ?? "Il dato disponibile ha granularità inferiore alla posizione identificata",
+    });
+  }
+  // Municipal-only or macrozone data warning (only if no territorial_warning already covers it)
+  else if (geo.geoLevel === "macrozona") {
     items.push({
       testo: geo.geoLabel
         ? `Alcuni dati si riferiscono al quadro macroterritoriale (${geo.geoLabel}), non alla zona specifica`
