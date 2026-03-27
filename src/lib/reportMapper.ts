@@ -27,8 +27,10 @@ import type {
 import {
   resolveBestSource, mapCoverageLevelToGeoLevel,
   formatResolutionTrace, resolutionSummary,
+  resolveTerritorialContext,
   type SourceCandidate,
 } from "@/lib/sourceResolver";
+import type { TerritorialResolution } from "@/types/report";
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
