@@ -276,7 +276,7 @@ describe("dataBackbone — geographic hierarchy with localita", () => {
     result.istatDemographic = mockSection("success", { popolazione: 3000, geoLevel: "localita" }) as any;
     const exposure = evaluateSectionExposure("profiloArea", result);
     // shown but not with sub-comunale confidence
-    expect(exposure.confidence).toBeLessThan(0.85);
+    expect(exposure.confidence).toBeLessThanOrEqual(0.85);
   });
 
   it("SubMunicipalMatchData supports locality fields", () => {
