@@ -144,7 +144,7 @@ describe("dataBackbone — evaluateSubMunicipalGate", () => {
 describe("dataBackbone — buildReportExposureMap", () => {
   it("builds map for all sections", () => {
     const result = emptyScanResult();
-    result.identify = mockSection("success", { address: "Via Test", buildingId: "1", confidence: 0.9 });
+    result.identify = mockSection("success", { address: "Via Test", buildingId: "1", confidence: 0.9 }) as any;
     const map = buildReportExposureMap(result);
     expect(Object.keys(map)).toHaveLength(8);
     expect(map.profiloRapido.decision).toBe("shown");
