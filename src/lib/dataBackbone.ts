@@ -10,6 +10,7 @@
 
 import type { ScanResult, SubMunicipalMatchData } from "@/types";
 import type { ReportGeoLevel, AvailabilityStatus, ReportSourceType } from "@/types/report";
+import { getMacrozoneByRegionCode, type MacrozoneMatch } from "@/lib/macrozoneRegistry";
 
 /* ── Source Registry Types ─────────────────────────────── */
 
@@ -75,45 +76,62 @@ interface SectionRequirement {
   requiredModules: (keyof ScanResult)[];
   /** At least one of these modules */
   anyModules?: (keyof ScanResult)[];
+  /** Whether this section can use macrozone-level data as fallback */
+  allowsMacrozoneFallback?: boolean;
 }
 
 const SECTION_REQUIREMENTS: Record<ReportSectionKey, SectionRequirement> = {
   profiloRapido: {
     requiredSources: [],
     requiredModules: ["identify"],
+    allowsMacrozoneFallback: false,
   },
   immobileFacciata: {
     requiredSources: [],
     requiredModules: ["identify"],
+    allowsMacrozoneFallback: false,
   },
   contestoVicinato: {
     requiredSources: [],
     requiredModules: ["poiEnrichment"],
+    allowsMacrozoneFallback: false,
   },
   posizionamentoCommerciale: {
     requiredSources: [],
     anyModules: ["pricing", "omiZone"],
     requiredModules: [],
+    allowsMacrozoneFallback: false,
   },
   profiloArea: {
     requiredSources: [],
     anyModules: ["poiEnrichment", "rischioZona", "istatDemographic"],
     requiredModules: [],
+    allowsMacrozoneFallback: true,
   },
   scenarioTemporale: {
     requiredSources: [],
     requiredModules: ["timeView"],
+    allowsMacrozoneFallback: false,
   },
   sintesiFinale: {
     requiredSources: [],
     anyModules: ["opportunity", "convergenzaTerritoriale"],
     requiredModules: [],
+    allowsMacrozoneFallback: true,
   },
   prioritaCriticita: {
     requiredSources: [],
     requiredModules: ["identify"],
+    allowsMacrozoneFallback: false,
   },
 };
+
+/**
+ * Returns whether a section supports macrozone fallback.
+ */
+export function sectionAllowsMacrozone(key: ReportSectionKey): boolean {
+  return SECTION_REQUIREMENTS[key]?.allowsMacrozoneFallback ?? false;
+}
 
 /* ── Exposure Policy Engine ────────────────────────────── */
 
@@ -169,19 +187,46 @@ export function evaluateSectionExposure(
   // Determine geographic level and source type based on section
   const geoLevel = inferSectionGeoLevel(sectionKey, result);
   const isMunicipal = geoLevel === "comune" || geoLevel === "non_determinato";
+  const isMacrozone = geoLevel === "macrozona";
 
   // Section-specific exposure refinements
-  const decision: DisplayDecision = isMunicipal && sectionKey === "profiloArea" ? "reduced" : "shown";
+  let decision: DisplayDecision;
+  if (isMacrozone && sectionKey === "profiloArea") {
+    decision = "reduced";
+  } else if (isMunicipal && sectionKey === "profiloArea") {
+    decision = "reduced";
+  } else {
+    decision = "shown";
+  }
+
   const sourceType = inferPrimarySectionSourceType(sectionKey);
+
+  let reason: string;
+  let confidence: number;
+  let coverageStatus: AvailabilityStatus;
+
+  if (isMacrozone) {
+    reason = "macrozone_level_only";
+    confidence = 0.4;
+    coverageStatus = "partial";
+  } else if (isMunicipal) {
+    reason = "municipal_level_only";
+    confidence = 0.6;
+    coverageStatus = "partial";
+  } else {
+    reason = "all_requirements_met";
+    confidence = 0.85;
+    coverageStatus = "available";
+  }
 
   return {
     decision,
-    reason: decision === "reduced" ? "municipal_level_only" : "all_requirements_met",
+    reason,
     source_key: inferPrimarySourceKey(sectionKey),
     geographic_level: geoLevel,
-    coverage_status: isMunicipal ? "partial" : "available",
+    coverage_status: coverageStatus,
     source_type: sourceType,
-    confidence: isMunicipal ? 0.6 : 0.85,
+    confidence,
   };
 }
 
@@ -246,11 +291,13 @@ export interface SubMunicipalGateResult {
   reason: string;
   region: string | null;
   coverageStatus: AvailabilityStatus;
+  macrozone?: MacrozoneMatch | null;
 }
 
 /**
  * Data-driven gating for sub-municipal enrichment.
  * Replaces hardcoded "if Lombardia" checks with registry-driven logic.
+ * Now also resolves macrozone for geo-context.
  */
 export function evaluateSubMunicipalGate(
   ascMatch: SubMunicipalMatchData | null,
@@ -262,6 +309,7 @@ export function evaluateSubMunicipalGate(
     reason: "no_match",
     region: null,
     coverageStatus: "unavailable",
+    macrozone: null,
   };
 
   if (!ascMatch || !ascMatch.matched) return noShow;
@@ -285,6 +333,12 @@ export function evaluateSubMunicipalGate(
   }
   if (!region && showR03) region = "Lombardia";
 
+  // Resolve macrozone if we have a region
+  let macrozone: MacrozoneMatch | null = null;
+  if (region) {
+    macrozone = getMacrozoneByRegionName(region);
+  }
+
   return {
     showR03Block: showR03,
     showAscBlock: showAsc,
@@ -293,6 +347,7 @@ export function evaluateSubMunicipalGate(
     coverageStatus: showR03
       ? (r03Coverage === "available" ? "available" : "partial")
       : showAsc ? "available" : "unavailable",
+    macrozone,
   };
 }
 
@@ -334,22 +389,25 @@ export function summarizeRegistry(entries: DataSourceEntry[]): {
   byFamily: Record<string, number>;
   byStatus: Record<string, number>;
   byCoverage: Record<string, number>;
+  byGeoScope: Record<string, number>;
 } {
   const byFamily: Record<string, number> = {};
   const byStatus: Record<string, number> = {};
   const byCoverage: Record<string, number> = {};
+  const byGeoScope: Record<string, number> = {};
   let active = 0, pilot = 0, inactive = 0;
 
   for (const e of entries) {
     byFamily[e.source_family] = (byFamily[e.source_family] || 0) + 1;
     byStatus[e.dataset_status] = (byStatus[e.dataset_status] || 0) + 1;
     byCoverage[e.current_coverage_status] = (byCoverage[e.current_coverage_status] || 0) + 1;
+    byGeoScope[e.geographic_scope] = (byGeoScope[e.geographic_scope] || 0) + 1;
     if (e.dataset_status === "active") active++;
     else if (e.dataset_status === "pilot") pilot++;
     else inactive++;
   }
 
-  return { total: entries.length, active, pilot, inactive, byFamily, byStatus, byCoverage };
+  return { total: entries.length, active, pilot, inactive, byFamily, byStatus, byCoverage, byGeoScope };
 }
 
 /**
@@ -367,4 +425,44 @@ export function getSourceSections(entry: DataSourceEntry): ReportSectionKey[] {
   return entry.report_sections_supported.filter(
     s => SECTION_REQUIREMENTS[s as ReportSectionKey] != null
   ) as ReportSectionKey[];
+}
+
+/**
+ * Checks if a source covers a specific macrozone.
+ * A national source covers all macrozones.
+ * A regional source covers only the macrozone(s) that contain its regions.
+ */
+export function sourceCoversRegion(entry: DataSourceEntry, regionCode: string): boolean {
+  if (entry.geographic_scope === "nazionale") return true;
+  if (!entry.regions_supported?.length) return false;
+  // Check if any of the source's regions match
+  for (const r of entry.regions_supported) {
+    const mzSource = getMacrozoneByRegionName(r);
+    const mzTarget = getMacrozoneByRegionCode(regionCode);
+    if (mzSource && mzTarget && mzSource.macrozone_code === mzTarget.macrozone_code) return true;
+    // Direct region name/code match
+    if (r.toLowerCase() === regionCode.toLowerCase()) return true;
+    const mzByCode = getMacrozoneByRegionCode(r);
+    if (mzByCode && mzTarget && mzByCode.macrozone_code === mzTarget.macrozone_code) return true;
+  }
+  return false;
+}
+
+/**
+ * Returns the geographic level label for a source entry.
+ */
+export function sourceGeoLevelLabel(entry: DataSourceEntry): string {
+  const labels: Record<string, string> = {
+    zona_omi: "Zona OMI",
+    microzona_omi: "Microzona OMI",
+    sezione_censuaria: "Sezione censuaria",
+    sub_comunale: "Sub-comunale",
+    comune: "Comunale",
+    provincia: "Provinciale",
+    regionale: "Regionale",
+    macrozonale: "Macrozona",
+    nazionale: "Nazionale",
+    coordinate: "Coordinate",
+  };
+  return labels[entry.geographic_level_supported] ?? entry.geographic_level_supported;
 }
