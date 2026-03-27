@@ -309,10 +309,9 @@ Tabella dedicata, separata da `demographic_zones`, per i dati ASC/sezioni ISTAT 
 
 ### Cosa NON è ancora attivo
 
-- Nessun dato sub-comunale mostrato nel report pubblico da questa tabella
+- Nessun dato demografico sub-comunale mostrato nel report pubblico da questa tabella
 - Nessun import automatico eseguito
-- Nessun collegamento a `demographic_zones` o al resolver `selectBestRecord`
-- Il motore pubblico di Sottra continua a usare solo `demographic_zones` + ISTAT SDMX
+- Il motore pubblico di Sottra continua a usare `demographic_zones` + ISTAT SDMX per la demografia
 
 ### Prossimi step per attivazione
 
@@ -320,5 +319,56 @@ Tabella dedicata, separata da `demographic_zones`, per i dati ASC/sezioni ISTAT 
 2. Convertire shapefile in GeoJSON (`ogr2ogr` o equivalente)
 3. Eseguire l'import nella nuova tabella via importer
 4. Validare copertura e qualità geometrica
-5. Collegare `findSubMunicipalArea()` al resolver del report (con flag progressivo)
-6. Attivare nel motore pubblico solo dopo validazione completa
+5. Attivare nel motore pubblico la parte demografica solo dopo validazione completa
+
+---
+
+## Fase 1 leggera — ASC come layer territoriale interno
+
+### Cosa è stato attivato
+
+Il layer `sub_municipal_areas_2021` è ora **collegato** al resolver territoriale `pro-sources` in modo non invasivo:
+
+1. **pro-sources**: dopo OMI e ISTAT, esegue un lookup ASC con pre-filtro centroide (±0.5°) e point-in-polygon
+2. **Output**: restituisce un campo `subMunicipalMatch` nella risposta, con shape tipizzata:
+   - `available`: dataset presente nell'area
+   - `matched`: punto ricade in un poligono ASC
+   - `coverage_status`: "available" | "partial" | "unavailable"
+   - `level`, `code`, `name`, `type`, `comune_code`, `comune_name`
+   - `match_method`: "polygon"
+   - `note`: descrizione tecnica del risultato
+3. **Report pubblico (ProfiloRapido)**: mostra una micro-info "Area sub-comunale ISTAT" **solo quando** il match è affidabile (matched=true, coverage_status=available)
+4. **Nessuna nuova sezione pesante** nel report utente
+5. **Nessuna demografia sub-comunale** mostrata da questa tabella (resta da `demographic_zones`)
+
+### Comportamento safe-by-default
+
+| Stato tabella ASC | Comportamento pro-sources | Report pubblico |
+|---|---|---|
+| Vuota / no data | `subMunicipalMatch: {available: false, ...}` | Invariato |
+| Dati presenti, no polygon match | `{available: true, matched: false, coverage_status: "partial"}` | Invariato |
+| Dati presenti, polygon match | `{available: true, matched: true, coverage_status: "available", ...}` | Micro-info ASC in ProfiloRapido |
+
+### Diagnostica admin
+
+La pagina `/admin/sub-municipal` mostra:
+- **Stato wiring**: se il layer è collegato e attivo
+- **Badge stato**: pro-sources collegato/bypass, point-in-polygon attivo/pronto, report micro-info/invariato
+- **Statistiche**: record totali, copertura geometrica, distribuzione per dataset/livello/regione
+- **Test point-in-polygon**: inserisci lat/lng e verifica match ASC in tempo reale
+
+### Perché questa fase è volutamente prudente
+
+- Il layer ASC è un **arricchimento parallelo**, non una sostituzione di OMI o ISTAT
+- Se la tabella è vuota → zero impatto sul comportamento esistente
+- Se il match non è affidabile → nulla viene mostrato all'utente
+- La micro-info è etichettata come "Dato ISTAT 2021 — match poligonale" per totale trasparenza
+- Nessuna dipendenza hard che faccia fallire il resolver se ASC manca
+
+### Prossimo step: pilota Lombardia con R03
+
+Il dataset `R03_21` (sezioni censuarie Lombardia) potrà diventare il primo banco prova per:
+- Verificare coerenza ASC/sezioni
+- Testare aggregazione statistica da sezioni a ASC
+- Validare point-in-polygon su geometrie reali
+- Preparare il terreno per il collegamento demografico sub-comunale

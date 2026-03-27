@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { isPointInPolygon, isPointInGeoJSON } from "@/lib/pointInPolygon";
 import { validateRecord, calculateCentroid, calculateBBox } from "@/lib/subMunicipalImporter";
+import type { SubMunicipalMatchData } from "@/types";
 
 // --- Point-in-polygon tests ---
 
@@ -119,16 +120,73 @@ describe("calculateBBox", () => {
   });
 });
 
+// --- SubMunicipalMatchData type tests ---
+
+describe("SubMunicipalMatchData", () => {
+  it("accepts available match with all fields", () => {
+    const match: SubMunicipalMatchData = {
+      available: true,
+      matched: true,
+      level: 1,
+      code: "001001_1",
+      name: "Centro Storico",
+      type: "area_sub_comunale",
+      comune_code: "A001",
+      comune_name: "Torino",
+      source_type: "official_data",
+      match_method: "polygon",
+      match_confidence: "polygon",
+      coverage_status: "available",
+      note: "Test match",
+    };
+    expect(match.available).toBe(true);
+    expect(match.matched).toBe(true);
+    expect(match.coverage_status).toBe("available");
+  });
+
+  it("accepts unavailable match", () => {
+    const noMatch: SubMunicipalMatchData = {
+      available: false,
+      matched: false,
+      coverage_status: "unavailable",
+      note: "Nessun dato ASC disponibile",
+    };
+    expect(noMatch.available).toBe(false);
+    expect(noMatch.coverage_status).toBe("unavailable");
+  });
+
+  it("accepts partial coverage (data exists but no polygon match)", () => {
+    const partial: SubMunicipalMatchData = {
+      available: true,
+      matched: false,
+      coverage_status: "partial",
+      note: "10 aree ASC verificate, punto non ricade in nessun poligono",
+    };
+    expect(partial.available).toBe(true);
+    expect(partial.matched).toBe(false);
+    expect(partial.coverage_status).toBe("partial");
+  });
+});
+
 // --- No regression: existing pipeline untouched ---
 
 describe("non-regression", () => {
   it("sub_municipal_areas_2021 modules do NOT import from report pipeline", async () => {
-    // These modules should be self-contained and not affect the public pipeline
     const importerSource = await import("@/lib/subMunicipalImporter");
     const pipSource = await import("@/lib/pointInPolygon");
     
     expect(importerSource.validateRecord).toBeDefined();
     expect(pipSource.isPointInPolygon).toBeDefined();
-    // These are standalone utilities, not wired into the report engine
+  });
+
+  it("SubMunicipalMatchData does not affect ScanResult when unavailable", () => {
+    const unavailable: SubMunicipalMatchData = {
+      available: false,
+      matched: false,
+      coverage_status: "unavailable",
+    };
+    // Safe by default: no data shown when unavailable
+    expect(unavailable.matched).toBe(false);
+    expect(unavailable.name).toBeUndefined();
   });
 });

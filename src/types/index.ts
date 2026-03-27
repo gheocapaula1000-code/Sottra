@@ -393,6 +393,8 @@ export interface ScanResult {
   poiEnrichment: SectionState<PoiEnrichmentData>;
   omiZone: SectionState<OmiZoneData>;
   istatDemographic: SectionState<IstatDemographicData>;
+  /** Sub-municipal ASC layer — internal enrichment, not a full section */
+  subMunicipalMatch: SectionState<SubMunicipalMatchData>;
   /* ── New report engine sections (Phase 1 — framework only) ── */
   profiloRapido: SectionState<import("@/types/report").ProfiloRapidoData>;
   immobileFacciata: SectionState<import("@/types/report").ImmobileFacciataData>;
@@ -402,6 +404,28 @@ export interface ScanResult {
   scenarioTemporale: SectionState<import("@/types/report").ScenarioTemporaleData>;
   sintesiFinale: SectionState<import("@/types/report").SintesiFinaleData>;
   prioritaCriticita: SectionState<import("@/types/report").PrioritaCriticitaData>;
+}
+
+/** Sub-municipal ASC match result from pro-sources */
+export interface SubMunicipalMatchData {
+  available: boolean;
+  matched: boolean;
+  level?: number | null;
+  code?: string;
+  name?: string;
+  type?: string;
+  comune_code?: string | null;
+  comune_name?: string;
+  source_dataset?: string;
+  source_type?: string;
+  match_method?: string;
+  match_confidence?: string;
+  coverage_status: "available" | "partial" | "unavailable";
+  popolazione?: number | null;
+  densita?: number | null;
+  eta_media?: number | null;
+  superficie_kmq?: number | null;
+  note?: string;
 }
 
 /** Errore restituito da coreRequest */

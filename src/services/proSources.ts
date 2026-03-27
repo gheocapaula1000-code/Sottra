@@ -1,10 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { PoiEnrichmentData, OmiZoneData, IstatDemographicData } from "@/types";
+import type { PoiEnrichmentData, OmiZoneData, IstatDemographicData, SubMunicipalMatchData } from "@/types";
 
 interface ProSourcesResult {
   poi: PoiEnrichmentData | null;
   omi: OmiZoneData | null;
   istat: IstatDemographicData | null;
+  subMunicipalMatch: SubMunicipalMatchData | null;
 }
 
 /**
@@ -17,7 +18,7 @@ export async function fetchProSources(
   modules: string[] = ["poi", "omi", "istat"],
   radius = 800,
 ): Promise<ProSourcesResult> {
-  const defaults: ProSourcesResult = { poi: null, omi: null, istat: null };
+  const defaults: ProSourcesResult = { poi: null, omi: null, istat: null, subMunicipalMatch: null };
 
   try {
     const { data, error } = await supabase.functions.invoke("pro-sources", {
@@ -40,6 +41,7 @@ export async function fetchProSources(
       poi: parsePoiResult(results.poi),
       omi: parseOmiResult(results.omi),
       istat: parseIstatResult(results.istat),
+      subMunicipalMatch: parseSubMunicipalMatch(data.subMunicipalMatch),
     };
   } catch (e) {
     console.warn("[ProSources] exception:", e);
@@ -112,5 +114,30 @@ function parseIstatResult(raw: unknown): IstatDemographicData | null {
     sourceLabel: typeof d.sourceLabel === "string" ? d.sourceLabel : "ISTAT",
     sourcePeriod: typeof d.annoRilevazione === "string" ? d.annoRilevazione : undefined,
     sourceCoverageLevel: typeof d.sourceCoverageLevel === "string" ? d.sourceCoverageLevel as IstatDemographicData["sourceCoverageLevel"] : undefined,
+  };
+}
+
+function parseSubMunicipalMatch(raw: unknown): SubMunicipalMatchData | null {
+  if (!raw || typeof raw !== "object") return null;
+  const d = raw as Record<string, unknown>;
+  return {
+    available: d.available === true,
+    matched: d.matched === true,
+    level: typeof d.level === "number" ? d.level : null,
+    code: typeof d.code === "string" ? d.code : undefined,
+    name: typeof d.name === "string" ? d.name : undefined,
+    type: typeof d.type === "string" ? d.type : undefined,
+    comune_code: typeof d.comune_code === "string" ? d.comune_code : null,
+    comune_name: typeof d.comune_name === "string" ? d.comune_name : undefined,
+    source_dataset: typeof d.source_dataset === "string" ? d.source_dataset : undefined,
+    source_type: typeof d.source_type === "string" ? d.source_type : undefined,
+    match_method: typeof d.match_method === "string" ? d.match_method : undefined,
+    match_confidence: typeof d.match_confidence === "string" ? d.match_confidence : undefined,
+    coverage_status: (d.coverage_status === "available" || d.coverage_status === "partial") ? d.coverage_status : "unavailable",
+    popolazione: typeof d.popolazione === "number" ? d.popolazione : null,
+    densita: typeof d.densita === "number" ? d.densita : null,
+    eta_media: typeof d.eta_media === "number" ? d.eta_media : null,
+    superficie_kmq: typeof d.superficie_kmq === "number" ? d.superficie_kmq : null,
+    note: typeof d.note === "string" ? d.note : undefined,
   };
 }

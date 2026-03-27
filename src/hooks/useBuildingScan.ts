@@ -16,6 +16,7 @@ const MODULES: (keyof ScanResult)[] = [
   "infrastrutture", "rischioZona", "trendDemografico",
   "sviluppoArea", "convergenzaTerritoriale",
   "poiEnrichment", "omiZone", "istatDemographic",
+  "subMunicipalMatch",
   // Report engine sections — populated by MAP_REPORT action after data modules complete
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
@@ -191,11 +192,17 @@ export function useBuildingScan() {
             data: proData.istat,
             message: proData.istat ? null : "Dati ISTAT non disponibili",
           });
+          set("subMunicipalMatch", {
+            status: proData.subMunicipalMatch ? "success" : "idle",
+            data: proData.subMunicipalMatch,
+            message: null,
+          });
         }).catch((e) => {
           console.error("[SCAN] pro-sources failed:", e);
           set("poiEnrichment", { status: "error", data: null, message: "Servizio non disponibile" });
           set("omiZone", { status: "error", data: null, message: "Servizio non disponibile" });
           set("istatDemographic", { status: "error", data: null, message: "Servizio non disponibile" });
+          set("subMunicipalMatch", { status: "idle", data: null, message: null });
         }),
       ]);
 

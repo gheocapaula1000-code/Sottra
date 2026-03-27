@@ -929,9 +929,85 @@ serve(async (req) => {
       }
     }
 
+    // ── Sub-Municipal ASC layer (non-invasive enrichment) ──
+    // Safe: if table is empty or query fails, subMunicipalMatch is null
+    let subMunicipalMatch: Record<string, unknown> | null = null;
+    try {
+      const { data: ascData, error: ascError } = await supabaseAdmin
+        .from("sub_municipal_areas_2021")
+        .select("asc_level, area_code, area_name, area_type, comune_catastale_code, comune_name, source_dataset, polygon_coords, popolazione, densita, eta_media, superficie_kmq")
+        .not("polygon_coords", "is", null)
+        .gte("centroid_lat", lat - 0.5)
+        .lte("centroid_lat", lat + 0.5)
+        .gte("centroid_lng", lng - 0.5)
+        .lte("centroid_lng", lng + 0.5)
+        .limit(200);
+
+      if (!ascError && ascData && ascData.length > 0) {
+        for (const row of ascData) {
+          const geom = row.polygon_coords as { type?: string; coordinates?: unknown } | null;
+          if (!geom?.type || !geom?.coordinates) continue;
+
+          let matched = false;
+          if (geom.type === "Polygon") {
+            const rings = geom.coordinates as number[][][];
+            if (rings[0]) matched = pointInPolygon(lat, lng, rings[0]);
+          } else if (geom.type === "MultiPolygon") {
+            const polys = geom.coordinates as number[][][][];
+            matched = polys.some((rings) => rings[0] && pointInPolygon(lat, lng, rings[0]));
+          }
+
+          if (matched) {
+            subMunicipalMatch = {
+              available: true,
+              matched: true,
+              level: row.asc_level,
+              code: row.area_code,
+              name: row.area_name,
+              type: row.area_type,
+              comune_code: row.comune_catastale_code,
+              comune_name: row.comune_name,
+              source_dataset: row.source_dataset,
+              source_type: "official_data",
+              match_method: "polygon",
+              match_confidence: "polygon",
+              coverage_status: "available",
+              popolazione: row.popolazione,
+              densita: row.densita,
+              eta_media: row.eta_media,
+              superficie_kmq: row.superficie_kmq,
+              note: `Area sub-comunale ISTAT 2021 — livello ${row.asc_level ?? "n/a"}`,
+            };
+            log("asc match", `area=${row.area_name}, code=${row.area_code}, level=${row.asc_level}`);
+            break;
+          }
+        }
+        if (!subMunicipalMatch) {
+          subMunicipalMatch = {
+            available: true, matched: false,
+            coverage_status: "partial",
+            note: `${ascData.length} aree ASC verificate, punto non ricade in nessun poligono`,
+          };
+          log("asc", `${ascData.length} areas checked, no polygon match`);
+        }
+      } else {
+        // Table empty or no data in range
+        subMunicipalMatch = {
+          available: false, matched: false,
+          coverage_status: "unavailable",
+          note: ascError ? `Errore query ASC: ${ascError.message}` : "Nessun dato ASC disponibile in quest'area",
+        };
+        log("asc", ascError ? `error: ${ascError.message}` : "no ASC data in range");
+      }
+    } catch (ascErr) {
+      log("asc exception (non-fatal)", String(ascErr));
+      subMunicipalMatch = { available: false, matched: false, coverage_status: "unavailable", note: "Errore interno ASC" };
+    }
+
     return json({
       ok: true,
       data: results,
+      subMunicipalMatch,
       geoIdentity: geoId ? {
         comuneLabel: geoId.comuneLabel,
         provinciaLabel: geoId.provinciaLabel,
