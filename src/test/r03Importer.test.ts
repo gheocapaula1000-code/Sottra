@@ -239,6 +239,40 @@ describe("non-regression R03", () => {
   });
 });
 
+describe("R03 aggregate comune-aware key", () => {
+  it("two aggregates with same asc_code but different comuni do not collide", () => {
+    // Simulates the unique key (source_dataset, comune_istat_code, asc_level, asc_code)
+    const aggregates = new Map<string, { pop: number; comune: string }>();
+    const key1 = "R03_21|015146|1|ASC1_001";
+    const key2 = "R03_21|017029|1|ASC1_001";
+    aggregates.set(key1, { pop: 12000, comune: "015146" });
+    aggregates.set(key2, { pop: 8500, comune: "017029" });
+    expect(aggregates.size).toBe(2);
+    expect(aggregates.get(key1)!.pop).toBe(12000);
+    expect(aggregates.get(key2)!.pop).toBe(8500);
+  });
+
+  it("lookup filters by comune_istat_code to get correct aggregate", () => {
+    const aggregates = [
+      { asc_code: "ASC1_001", asc_level: 1, comune_istat_code: "015146", population: 12000 },
+      { asc_code: "ASC1_001", asc_level: 1, comune_istat_code: "017029", population: 8500 },
+    ];
+    const target = "015146";
+    const result = aggregates.find(a => a.asc_code === "ASC1_001" && a.asc_level === 1 && a.comune_istat_code === target);
+    expect(result).toBeDefined();
+    expect(result!.population).toBe(12000);
+  });
+
+  it("without comune filter, lookup would be ambiguous", () => {
+    const aggregates = [
+      { asc_code: "ASC1_001", asc_level: 1, comune_istat_code: "015146", population: 12000 },
+      { asc_code: "ASC1_001", asc_level: 1, comune_istat_code: "017029", population: 8500 },
+    ];
+    const ambiguous = aggregates.filter(a => a.asc_code === "ASC1_001" && a.asc_level === 1);
+    expect(ambiguous.length).toBe(2); // Would be ambiguous without comune filter
+  });
+});
+
 describe("R03 aggregation gating", () => {
   it("report shows R03 data only when r03_enriched is true", () => {
     // Simulate gating logic

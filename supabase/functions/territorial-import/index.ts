@@ -425,7 +425,7 @@ serve(async (req) => {
       for (let i = 0; i < rows.length; i += CHUNK) {
         const chunk = rows.slice(i, i + CHUNK);
         const { error, count } = await admin.from("r03_asc_aggregates_2021")
-          .upsert(chunk, { onConflict: "source_dataset,asc_level,asc_code" })
+          .upsert(chunk, { onConflict: "source_dataset,comune_istat_code,asc_level,asc_code" })
           .select("id");
         if (error) errors.push(error.message);
         else imported += count ?? chunk.length;

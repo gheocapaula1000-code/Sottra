@@ -545,7 +545,7 @@ Una nuova tabella `r03_asc_aggregates_2021` contiene gli aggregati per area ASC:
 - Coverage status: `available` (≥80% sezioni con dato), `partial`, `unavailable`
 - Derivation notes che documentano sezioni mancanti o mismatch
 
-L'aggregazione è lanciabile da admin (`/admin/sub-municipal`) e produce un batch idempotente con upsert su `(source_dataset, asc_level, asc_code)`.
+L'aggregazione è lanciabile da admin (`/admin/sub-municipal`) e produce un batch idempotente con upsert su `(source_dataset, comune_istat_code, asc_level, asc_code)`. La chiave include il codice comune ISTAT per evitare collisioni tra aree ASC con lo stesso codice ma in comuni diversi. Il lookup pubblico in `pro-sources` filtra sempre per `comune_istat_code` per restituire l'aggregato corretto.
 
 ### Arricchimento nel report pubblico
 

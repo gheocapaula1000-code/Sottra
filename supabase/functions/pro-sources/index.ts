@@ -982,12 +982,36 @@ serve(async (req) => {
 
             // ── R03 Lombardia Pilot: enrich with aggregated census data ──
             try {
-              const { data: aggData, error: aggErr } = await supabaseAdmin
+              // Resolve comune_istat_code for the matched ASC area
+              let comuneIstatForR03: string | null = null;
+              if (row.comune_catastale_code) {
+                // Lookup istat code from omi_zone or omi_quotazioni via cadastral code
+                const { data: omiRef } = await supabaseAdmin
+                  .from("omi_zone")
+                  .select("codice_comune_istat")
+                  .eq("codice_comune_catastale", row.comune_catastale_code)
+                  .not("codice_comune_istat", "is", null)
+                  .limit(1)
+                  .maybeSingle();
+                comuneIstatForR03 = omiRef?.codice_comune_istat ?? null;
+              }
+              // Also try geoId if available
+              if (!comuneIstatForR03 && geoId?.istatCode) {
+                comuneIstatForR03 = geoId.istatCode;
+              }
+
+              // Build query with comune_istat_code filter for correct lookup
+              let aggQuery = supabaseAdmin
                 .from("r03_asc_aggregates_2021")
-                .select("population_2021, families_2021, dwellings_2021, occupied_dwellings_2021, buildings_2021, residential_buildings_2021, density_pop_per_kmq, coverage_status, sections_count, sections_with_data, asc_name, superficie_kmq")
+                .select("population_2021, families_2021, dwellings_2021, occupied_dwellings_2021, buildings_2021, residential_buildings_2021, density_pop_per_kmq, coverage_status, sections_count, sections_with_data, asc_name, superficie_kmq, comune_istat_code")
                 .eq("asc_code", row.area_code)
-                .eq("asc_level", row.asc_level ?? 0)
-                .maybeSingle();
+                .eq("asc_level", row.asc_level ?? 0);
+
+              if (comuneIstatForR03) {
+                aggQuery = aggQuery.eq("comune_istat_code", comuneIstatForR03);
+              }
+
+              const { data: aggData, error: aggErr } = await aggQuery.maybeSingle();
 
               if (!aggErr && aggData) {
                 subMunicipalMatch.r03_enriched = true;
