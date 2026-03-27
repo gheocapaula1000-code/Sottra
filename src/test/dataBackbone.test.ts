@@ -90,7 +90,7 @@ describe("dataBackbone — evaluateSectionExposure", () => {
 
   it("reduces profiloArea when only municipal data", () => {
     const result = emptyScanResult();
-    result.istatDemographic = mockSection("success", { popolazione: 50000, geoLevel: "comune" });
+    result.istatDemographic = mockSection("success", { popolazione: 50000, geoLevel: "comune" }) as any;
     const exposure = evaluateSectionExposure("profiloArea", result);
     expect(exposure.decision).toBe("reduced");
     expect(exposure.reason).toBe("municipal_level_only");
