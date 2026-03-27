@@ -10,7 +10,7 @@
 
 import type { ScanResult, SubMunicipalMatchData } from "@/types";
 import type { ReportGeoLevel, AvailabilityStatus, ReportSourceType } from "@/types/report";
-import { getMacrozoneByRegionCode, type MacrozoneMatch } from "@/lib/macrozoneRegistry";
+import { getMacrozoneByRegionCode, getMacrozoneByRegionName, type MacrozoneMatch } from "@/lib/macrozoneRegistry";
 
 /* ── Source Registry Types ─────────────────────────────── */
 
