@@ -47,6 +47,7 @@ const FAMILY_LABELS: Record<string, string> = {
   convergenza: "Convergenza",
   opportunita: "Opportunità",
   previsione: "Previsione",
+  macrozone: "Macrozone",
 };
 
 const AdminDataBackbone = () => {
