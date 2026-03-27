@@ -70,7 +70,7 @@ describe("dataBackbone — evaluateSectionExposure", () => {
 
   it("shows section when required module is available", () => {
     const result = emptyScanResult();
-    result.identify = mockSection("success", { address: "Via Test", buildingId: "1", confidence: 0.9 });
+    result.identify = mockSection("success", { address: "Via Test", buildingId: "1", confidence: 0.9 }) as any;
     const exposure = evaluateSectionExposure("profiloRapido", result);
     expect(exposure.decision).toBe("shown");
   });
