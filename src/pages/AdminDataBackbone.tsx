@@ -254,8 +254,8 @@ const AdminDataBackbone = () => {
                             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                               <span className="font-mono">{entry.source_key}</span>
                               <span>{entry.provider_label}</span>
-                              <span>{entry.geographic_scope === "nazionale" ? "🇮🇹 Nazionale" : entry.geographic_scope === "regionale" ? `📍 ${entry.regions_supported?.join(", ") || "Regionale"}` : entry.geographic_scope}</span>
-                              <span>Livello: {entry.geographic_level_supported}</span>
+                              <span>{entry.geographic_scope === "nazionale" ? "🇮🇹 Nazionale" : entry.geographic_scope === "regionale" ? `📍 ${entry.regions_supported?.join(", ") || "Regionale"}` : entry.geographic_scope === "macrozonale" ? "🗺️ Macrozona" : entry.geographic_scope}</span>
+                              <span>Livello: {sourceGeoLevelLabel(entry)}</span>
                               {entry.record_count > 0 && <span className="text-emerald-600">{entry.record_count.toLocaleString("it-IT")} record</span>}
                               {entry.source_year && <span>Anno: {entry.source_year}</span>}
                             </div>
