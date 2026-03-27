@@ -373,9 +373,10 @@ serve(async (req) => {
     const { data: u, error: ue } = await supabase.auth.getUser(token);
     if (ue || !u?.user) return json({ error: "Auth failed" }, 200);
 
-    // Admin check
+    // Admin OR Owner check
     const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id).eq("role", "admin").maybeSingle();
-    if (!roleData) return json({ error: "Admin required" }, 200);
+    const { data: ownerData } = await supabase.from("owner_access").select("id").eq("user_id", u.user.id).maybeSingle();
+    if (!roleData && !ownerData) return json({ error: "Admin or owner required" }, 200);
 
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
     const body = await req.json();

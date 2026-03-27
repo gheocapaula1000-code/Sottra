@@ -220,3 +220,60 @@ describe("territorial_dataset_jobs — DB ↔ App coherence", () => {
     expect(DB_ALLOWED_DATASET_TYPES).toContain("LOCALITA_ISTAT");
   });
 });
+
+describe("Admin Upload Flow — error surfacing and rollback", () => {
+  it("loadJobs must not silently ignore errors", () => {
+    // The old code had: catch { /* ignore */ }
+    // Verify the current source does NOT have silent catch in loadJobs
+    const fs = require("fs");
+    const src = fs.readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
+    // Extract the loadJobs function body
+    const loadJobsMatch = src.match(/const loadJobs = async[^]*?setJobsLoading\(false\);\s*\};/);
+    expect(loadJobsMatch).toBeTruthy();
+    const loadJobsBody = loadJobsMatch![0];
+    // Must NOT contain empty catch
+    expect(loadJobsBody).not.toMatch(/catch\s*\{\s*\/\*\s*ignore\s*\*\/\s*\}/);
+    // Must contain toast.error or setJobsError
+    expect(loadJobsBody).toContain("setJobsError");
+    expect(loadJobsBody).toContain("toast.error");
+  });
+
+  it("handleUpload has storage rollback on job insert failure", () => {
+    const fs = require("fs");
+    const src = fs.readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
+    const uploadMatch = src.match(/const handleUpload = async[^]*?setUploading\(null\);\s*\};/);
+    expect(uploadMatch).toBeTruthy();
+    const body = uploadMatch![0];
+    // Must contain rollback (storage remove) after job insert failure
+    expect(body).toContain(".remove([path])");
+    // Must show specific RLS error message
+    expect(body).toContain("row-level security");
+  });
+
+  it("edge function allows owner in addition to admin", () => {
+    const fs = require("fs");
+    const src = fs.readFileSync("supabase/functions/territorial-import/index.ts", "utf-8");
+    expect(src).toContain("owner_access");
+    expect(src).toContain("Admin or owner required");
+    // Must NOT have the old admin-only check
+    expect(src).not.toMatch(/if \(!roleData\) return json\(\{ error: "Admin required"/);
+  });
+
+  it("debug trace state tracks all phases", () => {
+    const fs = require("fs");
+    const src = fs.readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
+    // Verify debug trace captures upload, insert, and list phases
+    expect(src).toContain("trace.uploadOk");
+    expect(src).toContain("trace.insertJobOk");
+    expect(src).toContain("trace.listJobsOk");
+    expect(src).toContain("trace.jobId");
+    expect(src).toContain("debugTrace");
+  });
+
+  it("jobsError state is displayed inline above job list", () => {
+    const fs = require("fs");
+    const src = fs.readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
+    expect(src).toContain("jobsError");
+    expect(src).toContain("border-destructive");
+  });
+});

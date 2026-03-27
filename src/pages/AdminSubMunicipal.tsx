@@ -75,8 +75,24 @@ const AdminSubMunicipal = () => {
   // Upload/jobs state
   const [jobs, setJobs] = useState<DatasetJob[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobsError, setJobsError] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
+
+  // Debug trace for last operation
+  const [debugTrace, setDebugTrace] = useState<{
+    datasetType?: string;
+    filePath?: string;
+    uploadOk?: boolean;
+    uploadError?: string;
+    insertJobOk?: boolean;
+    insertJobError?: string;
+    jobId?: string;
+    listJobsOk?: boolean;
+    listJobsError?: string;
+    lastError?: string;
+    timestamp?: string;
+  } | null>(null);
 
   // Aggregation state
   const [aggStats, setAggStats] = useState<{ aggregates: number; stats: any; sample: any[] } | null>(null);
@@ -115,38 +131,123 @@ const AdminSubMunicipal = () => {
 
   const loadJobs = async () => {
     setJobsLoading(true);
+    setJobsError(null);
     try {
       const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "list-jobs" } });
-      if (!error && data?.jobs) setJobs(data.jobs);
-    } catch { /* ignore */ }
+      if (error) {
+        const msg = `Errore caricamento jobs: ${error.message}`;
+        setJobsError(msg);
+        toast.error(msg);
+      } else if (data?.error) {
+        const msg = data.error.includes("Admin") || data.error.includes("owner")
+          ? `Permessi insufficienti per list-jobs: ${data.error}`
+          : `Errore list-jobs: ${data.error}`;
+        setJobsError(msg);
+        toast.error(msg);
+      } else if (data?.jobs) {
+        setJobs(data.jobs);
+      } else {
+        setJobsError("Risposta list-jobs inattesa (nessun array jobs)");
+      }
+    } catch (e: any) {
+      const msg = `Errore rete list-jobs: ${e?.message ?? "sconosciuto"}`;
+      setJobsError(msg);
+      toast.error(msg);
+    }
     setJobsLoading(false);
   };
 
   const handleUpload = async (datasetType: string, file: File) => {
     setUploading(datasetType);
-    try {
-      const path = `imports/${datasetType}/${Date.now()}_${file.name}`;
-      const { error: upErr } = await supabase.storage.from("territorial-datasets").upload(path, file);
-      if (upErr) { toast.error(`Upload fallito: ${upErr.message}`); setUploading(null); return; }
+    const trace: typeof debugTrace = { datasetType, timestamp: new Date().toISOString() };
+    setDebugTrace(trace);
 
-      // Create job record
+    // Phase 1: Storage upload
+    const path = `imports/${datasetType}/${Date.now()}_${file.name}`;
+    trace.filePath = path;
+    try {
+      const { error: upErr } = await supabase.storage.from("territorial-datasets").upload(path, file);
+      if (upErr) {
+        const msg = upErr.message.includes("policy")
+          ? `Upload storage negato da policy RLS: ${upErr.message}`
+          : upErr.message.includes("bucket")
+          ? `Bucket 'territorial-datasets' non trovato o non accessibile`
+          : `Upload storage fallito: ${upErr.message}`;
+        trace.uploadOk = false;
+        trace.uploadError = msg;
+        trace.lastError = msg;
+        setDebugTrace({ ...trace });
+        toast.error(msg);
+        setUploading(null);
+        return;
+      }
+      trace.uploadOk = true;
+    } catch (e: any) {
+      trace.uploadOk = false;
+      trace.uploadError = e?.message ?? "Errore rete";
+      trace.lastError = trace.uploadError;
+      setDebugTrace({ ...trace });
+      toast.error(`Errore rete upload: ${trace.uploadError}`);
+      setUploading(null);
+      return;
+    }
+
+    // Phase 2: Insert job record
+    try {
       const { data: session } = await supabase.auth.getSession();
       const userId = session?.session?.user?.id;
 
-      const { error: jobErr } = await supabase.from("territorial_dataset_jobs" as any).insert({
+      const { data: insertData, error: jobErr } = await supabase.from("territorial_dataset_jobs" as any).insert({
         dataset_type: datasetType,
         file_path: path,
         file_name: file.name,
         file_size_bytes: file.size,
         created_by: userId,
-      } as any);
+      } as any).select("id").single();
 
-      if (jobErr) { toast.error(`Errore creazione job: ${jobErr.message}`); setUploading(null); return; }
-      toast.success(`File caricato: ${file.name}`);
-      await loadJobs();
-    } catch (e) {
-      toast.error("Errore upload");
+      if (jobErr) {
+        const msg = jobErr.message.includes("row-level security")
+          ? `Creazione job negata da RLS — verifica permessi admin/owner: ${jobErr.message}`
+          : `Creazione job fallita: ${jobErr.message}`;
+        trace.insertJobOk = false;
+        trace.insertJobError = msg;
+        trace.lastError = msg;
+        setDebugTrace({ ...trace });
+        toast.error(msg);
+
+        // Rollback: delete uploaded file
+        toast.info("Rollback: rimozione file dallo storage...");
+        await supabase.storage.from("territorial-datasets").remove([path]);
+
+        setUploading(null);
+        return;
+      }
+
+      trace.insertJobOk = true;
+      trace.jobId = (insertData as any)?.id ?? "unknown";
+    } catch (e: any) {
+      trace.insertJobOk = false;
+      trace.insertJobError = e?.message ?? "Errore rete";
+      trace.lastError = trace.insertJobError;
+      setDebugTrace({ ...trace });
+      toast.error(`Errore rete creazione job: ${trace.insertJobError}`);
+      // Rollback
+      await supabase.storage.from("territorial-datasets").remove([path]);
+      setUploading(null);
+      return;
     }
+
+    // Phase 3: Reload jobs
+    toast.success(`File caricato: ${file.name} — Job ID: ${trace.jobId}`);
+    try {
+      await loadJobs();
+      trace.listJobsOk = true;
+    } catch {
+      trace.listJobsOk = false;
+      trace.listJobsError = "Reload lista jobs fallito dopo insert";
+      toast.warning(`Job creato (${trace.jobId}) ma lista non aggiornata — prova Aggiorna`);
+    }
+    setDebugTrace({ ...trace });
     setUploading(null);
   };
 
@@ -154,11 +255,17 @@ const AdminSubMunicipal = () => {
     setProcessing(jobId);
     try {
       const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "validate-csv", jobId } });
-      if (error) { toast.error(`Errore validazione: ${error.message}`); }
-      else if (data?.error) { toast.error(data.error); }
-      else { toast.success("Validazione completata — controlla i risultati prima di importare"); }
+      if (error) {
+        const msg = error.message.includes("Failed to") ? "Edge function non raggiungibile — controlla la connessione" : `Errore validazione: ${error.message}`;
+        toast.error(msg);
+      } else if (data?.error) {
+        const msg = data.error.includes("Admin") || data.error.includes("owner") ? `Permessi insufficienti per validate: ${data.error}` : data.error;
+        toast.error(msg);
+      } else {
+        toast.success("Validazione completata — controlla i risultati prima di importare");
+      }
       await loadJobs();
-    } catch { toast.error("Errore validazione"); }
+    } catch (e: any) { toast.error(`Errore rete validazione: ${e?.message ?? "sconosciuto"}`); }
     setProcessing(null);
   };
 
@@ -166,12 +273,18 @@ const AdminSubMunicipal = () => {
     setProcessing(jobId);
     try {
       const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "process-csv", jobId } });
-      if (error) { toast.error(`Errore processing: ${error.message}`); }
-      else if (data?.error) { toast.error(data.error); }
-      else { toast.success(`Import completato: ${data?.imported ?? 0} record importati`); }
+      if (error) {
+        const msg = error.message.includes("Failed to") ? "Edge function non raggiungibile — controlla la connessione" : `Errore import: ${error.message}`;
+        toast.error(msg);
+      } else if (data?.error) {
+        const msg = data.error.includes("Admin") || data.error.includes("owner") ? `Permessi insufficienti per import: ${data.error}` : data.error;
+        toast.error(msg);
+      } else {
+        toast.success(`Import completato: ${data?.imported ?? 0} record importati`);
+      }
       await loadJobs();
       refreshAll();
-    } catch { toast.error("Errore processing"); }
+    } catch (e: any) { toast.error(`Errore rete import: ${e?.message ?? "sconosciuto"}`); }
     setProcessing(null);
   };
 
@@ -298,9 +411,45 @@ const AdminSubMunicipal = () => {
           </h2>
         </div>
 
+        {/* Inline error for jobs */}
+        {jobsError && (
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-start gap-2 text-sm text-destructive">
+                <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{jobsError}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Debug panel */}
+        {debugTrace && (
+          <Card className="border-muted bg-muted/20">
+            <CardContent className="pt-3 pb-3">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Debug — Ultimo tentativo ({debugTrace.timestamp})</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <span>Dataset: <strong className="text-foreground">{debugTrace.datasetType ?? "—"}</strong></span>
+                <span>Upload: <strong className={debugTrace.uploadOk ? "text-emerald-600" : debugTrace.uploadOk === false ? "text-destructive" : "text-foreground"}>
+                  {debugTrace.uploadOk === true ? "OK" : debugTrace.uploadOk === false ? "FAIL" : "—"}
+                </strong></span>
+                <span>Job insert: <strong className={debugTrace.insertJobOk ? "text-emerald-600" : debugTrace.insertJobOk === false ? "text-destructive" : "text-foreground"}>
+                  {debugTrace.insertJobOk === true ? "OK" : debugTrace.insertJobOk === false ? "FAIL" : "—"}
+                </strong></span>
+                <span>List-jobs: <strong className={debugTrace.listJobsOk ? "text-emerald-600" : debugTrace.listJobsOk === false ? "text-destructive" : "text-foreground"}>
+                  {debugTrace.listJobsOk === true ? "OK" : debugTrace.listJobsOk === false ? "FAIL" : "—"}
+                </strong></span>
+                {debugTrace.jobId && <span className="col-span-2">Job ID: <strong className="text-foreground font-mono">{debugTrace.jobId}</strong></span>}
+                {debugTrace.filePath && <span className="col-span-2 truncate">Path: <strong className="text-foreground font-mono">{debugTrace.filePath}</strong></span>}
+                {debugTrace.lastError && <span className="col-span-4 text-destructive">Errore: {debugTrace.lastError}</span>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {jobsLoading && jobs.length === 0 ? (
           <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-        ) : jobs.length === 0 ? (
+        ) : jobs.length === 0 && !jobsError ? (
           <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">Nessun job di import</CardContent></Card>
         ) : (
           <div className="space-y-2">
