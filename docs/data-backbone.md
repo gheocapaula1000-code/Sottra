@@ -91,6 +91,20 @@ La macrozona viene usata **solo** quando:
 - Se la sezione non lo consente (es. profiloRapido, immobileFacciata) → mai
 - Se il dato macrozonale non è disponibile → unavailable, niente fallback finto
 
+### Distinzione critica: regionale vs macrozonale
+
+Una fonte con `geographic_scope = "regionale"` copre **solo** le regioni esplicitamente dichiarate in `regions_supported`.
+Non viene mai promossa automaticamente a coprire l'intera macrozona di appartenenza.
+
+Esempio: una fonte che dichiara `regions_supported: ["Veneto"]` con scope `regionale`:
+- ✅ copre Veneto (codice 05)
+- ❌ NON copre Emilia-Romagna (codice 08), anche se entrambe sono nel Nord-Est
+
+Una fonte con `geographic_scope = "macrozonale"` copre tutte le regioni della macrozona
+a cui appartengono le regioni dichiarate.
+
+Questo impedisce di sovrastimare la copertura reale e di mostrare dati fuori perimetro.
+
 ### Come viene assegnato un comune alla macrozona
 
 Via `getMacrozoneByRegionCode(codiceRegione)` — mapping deterministico ISTAT.
