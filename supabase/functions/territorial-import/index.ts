@@ -311,6 +311,10 @@ serve(async (req) => {
       } else if (job.dataset_type.startsWith("R03_CSV_ASC")) {
         // ASC mapping CSVs: just store them, they're used during SEZ import
         result = { imported: records.length, errors: [], warnings: [`File mapping ${job.dataset_type} registrato. Verrà usato durante l'import di SEZ_R03_21.csv.`] };
+      } else if (job.dataset_type === "COMUNI_ITALIA") {
+        result = await importComuniItalia(records, batchId, admin);
+      } else if (job.dataset_type === "LOCALITA_ISTAT") {
+        result = await importLocalitaIstat(records, batchId, admin);
       } else {
         await admin.from("territorial_dataset_jobs").update({ status: "failed", error_log: [{ reason: `Tipo dataset non supportato: ${job.dataset_type}` }] }).eq("id", jobId);
         return json({ error: "Unsupported dataset type" }, 200);
