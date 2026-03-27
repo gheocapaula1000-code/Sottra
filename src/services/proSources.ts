@@ -82,10 +82,18 @@ function parseOmiResult(raw: unknown): OmiZoneData | null {
     semestre: typeof d.semestre === "string" ? d.semestre : null,
     tipologia: typeof d.tipologia === "string" ? d.tipologia : null,
     statoConservazione: typeof d.statoConservazione === "string" ? d.statoConservazione : null,
+    // ── Critical territorial fields from backend — DO NOT DROP ──
+    polygonMatch: d.polygonMatch === true,
+    omiGeoLevel: (typeof d.omiGeoLevel === "string" ? d.omiGeoLevel : undefined) as OmiZoneData["omiGeoLevel"],
+    matchMethod: typeof d.matchMethod === "string" ? d.matchMethod : undefined,
+    matchConfidence: typeof d.matchConfidence === "number" ? d.matchConfidence : undefined,
     sourceType: (d.sourceType as OmiZoneData["sourceType"]) ?? "official",
     sourceProvider: "omi",
     sourceLabel: typeof d.sourceLabel === "string" ? d.sourceLabel : "OMI / Agenzia delle Entrate",
     sourcePeriod: typeof d.semestre === "string" ? d.semestre : undefined,
+    sourceFreshness: typeof d.sourceFreshness === "string" ? d.sourceFreshness : undefined,
+    sourceCoverageLevel: (typeof d.sourceCoverageLevel === "string" ? d.sourceCoverageLevel : undefined) as OmiZoneData["sourceCoverageLevel"],
+    licensingNote: typeof d.licensingNote === "string" ? d.licensingNote : undefined,
   };
 }
 
@@ -139,6 +147,11 @@ function parseSubMunicipalMatch(raw: unknown): SubMunicipalMatchData | null {
     eta_media: typeof d.eta_media === "number" ? d.eta_media : null,
     superficie_kmq: typeof d.superficie_kmq === "number" ? d.superficie_kmq : null,
     note: typeof d.note === "string" ? d.note : undefined,
+    // ── Località fields — preserve when backend provides them ──
+    localita_name: typeof d.localita_name === "string" ? d.localita_name : null,
+    localita_type: typeof d.localita_type === "string" ? d.localita_type : null,
+    localita_code: typeof d.localita_code === "string" ? d.localita_code : null,
+    // ── R03 Lombardia pilot enrichment ──
     r03_enriched: d.r03_enriched === true,
     r03_coverage: typeof d.r03_coverage === "string" ? d.r03_coverage : undefined,
     r03_population: typeof d.r03_population === "number" ? d.r03_population : null,

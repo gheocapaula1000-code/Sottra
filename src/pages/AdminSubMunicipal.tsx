@@ -40,6 +40,8 @@ interface DatasetJob {
 }
 
 const DATASET_TYPES: Record<string, { label: string; description: string; accept: string }> = {
+  COMUNI_ITALIA: { label: "Comuni Italia", description: "CSV anagrafe comuni ISTAT (PRO_COM_T, DEN_COM, COD_PRO, DEN_PRO, COD_REG, DEN_REG...)", accept: ".csv" },
+  LOCALITA_ISTAT: { label: "Località ISTAT", description: "CSV località abitate ISTAT (PRO_COM_T, COD_LOC, DEN_LOC, TIPO_LOC...)", accept: ".csv" },
   ASC_2021: { label: "ASC 2021 Nazionale", description: "CSV con aree sub-comunali ISTAT 2021 (COD_ASC, DEN_ASC, PRO_COM_T, POP_RES...)", accept: ".csv" },
   R03_CSV_ASC1: { label: "R03 — ASC1 Mapping", description: "ASC1_R03_21.csv — mapping sezioni → ASC livello 1", accept: ".csv" },
   R03_CSV_ASC2: { label: "R03 — ASC2 Mapping", description: "ASC2_R03_21.csv — mapping sezioni → ASC livello 2", accept: ".csv" },
