@@ -208,42 +208,49 @@ const AdminDataBackbone = () => {
               </CardContent>
             </Card>
 
-            {/* Territorial Backbone Overview */}
+            {/* Territorial Backbone Overview — Real Counts */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Globe className="h-4 w-4" /> Backbone Territoriale Nazionale
+                  <Globe className="h-4 w-4" /> Backbone Territoriale Nazionale — Stato Reale
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3 md:grid-cols-4">
-                  {[
-                    { label: "Comuni", key: "comune", icon: "🏘️", desc: "Livello comunale" },
-                    { label: "Località", key: "localita", icon: "📍", desc: "Località ufficiali ISTAT" },
-                    { label: "ASC", key: "sub_comunale", icon: "🗺️", desc: "Aree sub-comunali" },
-                    { label: "Piloti statistici", key: "pilot", icon: "📊", desc: "Con dati R03/censimento" },
-                  ].map(tier => {
-                    const matching = entries.filter(e => {
-                      if (tier.key === "pilot") return e.dataset_status === "pilot";
-                      return e.geographic_level_supported === tier.key || e.geographic_level_supported === `${tier.key}_omi`;
-                    });
-                    const active = matching.filter(e => e.dataset_status === "active" || e.dataset_status === "pilot");
-                    return (
-                      <div key={tier.key} className="rounded border p-2.5 space-y-1">
-                        <p className="text-xs font-semibold text-foreground">{tier.icon} {tier.label}</p>
-                        <p className="text-[10px] text-muted-foreground">{tier.desc}</p>
-                        <Badge variant="outline" className={`text-[10px] px-1 py-0 ${active.length > 0 ? "bg-emerald-500/10 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
-                          {active.length} fonti attive
-                        </Badge>
-                        <p className="text-[10px] text-muted-foreground">
-                          {matching.reduce((sum, e) => sum + (e.record_count || 0), 0).toLocaleString("it-IT")} record totali
-                        </p>
-                      </div>
-                    );
-                  })}
+                  <div className="rounded border p-2.5 space-y-1">
+                    <p className="text-xs font-semibold text-foreground">🏘️ Comuni</p>
+                    <p className="text-xl font-bold">{backboneCounts?.comuni?.toLocaleString("it-IT") ?? "—"}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {backboneCounts && backboneCounts.comuni > 0 ? `${backboneCounts.regioni.length} regioni` : "Non ancora importati"}
+                    </p>
+                  </div>
+                  <div className="rounded border p-2.5 space-y-1">
+                    <p className="text-xs font-semibold text-foreground">📍 Località</p>
+                    <p className="text-xl font-bold">{backboneCounts?.localita?.toLocaleString("it-IT") ?? "—"}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {backboneCounts && backboneCounts.localita > 0 ? "Località ufficiali ISTAT" : "Non ancora importate"}
+                    </p>
+                  </div>
+                  <div className="rounded border p-2.5 space-y-1">
+                    <p className="text-xs font-semibold text-foreground">🗺️ ASC</p>
+                    <p className="text-xl font-bold">{backboneCounts?.asc?.toLocaleString("it-IT") ?? "—"}</p>
+                    <p className="text-[10px] text-muted-foreground">Aree sub-comunali 2021</p>
+                  </div>
+                  <div className="rounded border p-2.5 space-y-1">
+                    <p className="text-xs font-semibold text-foreground">📊 Piloti</p>
+                    <p className="text-xl font-bold">
+                      {entries.filter(e => e.dataset_status === "pilot").length}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Con dati R03/censimento</p>
+                  </div>
                 </div>
+                {backboneCounts && backboneCounts.regioni.length > 0 && (
+                  <div className="mt-2 text-[10px] text-muted-foreground">
+                    <span className="font-medium">Regioni con comuni:</span> {backboneCounts.regioni.join(", ")}
+                  </div>
+                )}
                 <p className="text-[10px] text-muted-foreground mt-2 italic">
-                  Gerarchia: Sub-comunale → Località → Comune → Macrozona → Nazionale. Il report usa sempre il livello più preciso disponibile.
+                  Gerarchia: Microzona OMI → ASC → Località → Comune → Macrozona → Nazionale. Il report usa il livello più preciso disponibile.
                 </p>
               </CardContent>
             </Card>
