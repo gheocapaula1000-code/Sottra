@@ -367,8 +367,119 @@ La pagina `/admin/sub-municipal` mostra:
 
 ### Prossimo step: pilota Lombardia con R03
 
-Il dataset `R03_21` (sezioni censuarie Lombardia) potrà diventare il primo banco prova per:
-- Verificare coerenza ASC/sezioni
-- Testare aggregazione statistica da sezioni a ASC
-- Validare point-in-polygon su geometrie reali
-- Preparare il terreno per il collegamento demografico sub-comunale
+→ Vedi sezione "Fase 2 pilota Lombardia R03" di seguito.
+
+---
+
+## Fase 2 pilota Lombardia R03 — Validazione ASC ↔ Sezioni censuarie
+
+### Obiettivo
+
+Usare il dataset ISTAT R03_21 (sezioni censuarie Lombardia 2021) come banco prova tecnico per:
+- Validare la coerenza tra codici sezione e codici ASC
+- Verificare se le sezioni si aggregano correttamente verso ASC1 / ASC2
+- Preparare il terreno per arricchimento statistico sub-comunale prudente
+
+### Cosa NON fa questa fase
+
+- Non attiva dati demografici sub-comunali nel report pubblico
+- Non estende il pilota a livello nazionale
+- Non mostra popolazione/famiglie/abitazioni agli utenti
+- Non introduce dati mock o derivati
+
+### Nuova tabella `census_sections_r03_2021`
+
+Tabella dedicata, separata da `sub_municipal_areas_2021` e `demographic_zones`.
+
+| Colonna | Tipo | Descrizione |
+|---------|------|-------------|
+| id | uuid | PK |
+| source_dataset | text | 'R03_21' |
+| source_year | integer | 2021 |
+| section_code | text | Codice sezione ISTAT (UNIQUE con source_dataset) |
+| comune_istat_code | text | PRO_COM_T |
+| comune_catastale_code | text | Codice Belfiore (se disponibile) |
+| comune_name | text | Denominazione comune |
+| provincia_code | text | COD_PRO |
+| asc1_code | text | Codice ASC livello 1 (da ASC1_R03_21.csv) |
+| asc2_code | text | Codice ASC livello 2 (da ASC2_R03_21.csv) |
+| asc3_code | text | Codice ASC livello 3 (se presente) |
+| population_2021 | integer | P1 — popolazione residente |
+| males_2021 | integer | P2 — maschi |
+| females_2021 | integer | P3 — femmine |
+| families_2021 | integer | P14/ST1 — nuclei familiari |
+| dwellings_2021 | integer | A1 — abitazioni totali |
+| occupied_dwellings_2021 | integer | A2 — abitazioni occupate |
+| buildings_2021 | integer | E3 — edifici totali |
+| residential_buildings_2021 | integer | E1 — edifici residenziali |
+| superficie_kmq | numeric | Superficie |
+| centroid_lat/lng | numeric | Centroide |
+| polygon_coords | jsonb | Geometria GeoJSON |
+| metadata_json | jsonb | Attributi extra |
+| import_batch_id | text | ID batch per rollback |
+
+**Chiave univoca:** `UNIQUE (source_dataset, section_code)`
+
+### File CSV attesi dal pacchetto R03_21
+
+| File | Contenuto | Colonne chiave |
+|------|-----------|----------------|
+| `SEZ_R03_21.csv` | Sezioni con variabili demografiche | SEZ2021, PRO_COM_T, COD_PRO, P1, P2, P14, A2, E3 |
+| `ASC1_R03_21.csv` | Mapping sezioni → ASC livello 1 | SEZ2021, COD_ASC, PRO_COM_T |
+| `ASC2_R03_21.csv` | Mapping sezioni → ASC livello 2 | SEZ2021, COD_ASC, PRO_COM_T |
+| Shapefile (.shp) | Geometrie sezioni | Geometria poligonale |
+
+### Importer R03
+
+File: `src/lib/r03Importer.ts`
+
+Funzionalità:
+- `parseCsvToRecords()` — parser CSV robusto (`;`/`,`, BOM, quoted fields)
+- `mapSezCsvRow()` — mappa colonne ISTAT reali ai campi del record
+- `buildAscMappings()` — costruisce mapping sezioni → codici ASC da ASC1/ASC2 CSV
+- `validateR03Record()` — validazione con bounds Lombardia
+- `importR03Sections()` — upsert idempotente in chunk da 500
+- `fetchR03Stats()` — statistiche import
+- `validateAscSectionCoherence()` — confronto codici ASC tra sezioni e layer ASC
+
+### Validazione ASC ↔ Sezioni
+
+Il modulo `validateAscSectionCoherence()` confronta:
+- Codici ASC presenti nei record R03 (asc1_code, asc2_code)
+- Codici ASC presenti nel layer `sub_municipal_areas_2021` (area_code)
+
+Output:
+- Percentuale di match tra i due insiemi
+- Codici presenti solo nelle sezioni (non nel layer)
+- Codici presenti solo nel layer (non referenziati da sezioni)
+- Warning su mismatch e copertura
+- Conteggio sezioni con ASC1 / ASC2 / ASC3
+
+### Diagnostica admin
+
+La pagina `/admin/sub-municipal` include:
+- Badge stato R03: caricato / non disponibile
+- Statistiche R03: sezioni, comuni, popolazione, geometrie, codici ASC
+- Pulsante "Esegui validazione" ASC ↔ sezioni
+- Risultati validazione con mismatch dettagliati
+- Test point-in-polygon ASC
+
+### Stato attuale
+
+L'importer e il validatore sono **pronti ma non eseguiti** (ready but not executed).
+Il dataset R03_21 reale non è ancora stato importato.
+
+### Cosa serve per completare il pilota
+
+1. Rendere disponibili i file R03_21 (upload o storage bucket)
+2. Importare SEZ_R03_21.csv + ASC1/ASC2 CSV via importer
+3. Opzionale: convertire shapefile in GeoJSON e importare geometrie
+4. Eseguire validazione ASC ↔ sezioni
+5. Verificare coerenza codici su comuni pilota (es. Milano, Brescia)
+
+### Prossimo step dopo il pilota
+
+Se la validazione conferma coerenza ASC ↔ sezioni:
+- Aggregare dati demografici da sezioni a ASC per costruire prima vista statistica
+- Decidere se estendere ad altre regioni
+- Eventualmente collegare al motore pubblico in modo prudente

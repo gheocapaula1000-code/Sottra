@@ -14,6 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      census_sections_r03_2021: {
+        Row: {
+          asc1_code: string | null
+          asc2_code: string | null
+          asc3_code: string | null
+          bbox: Json | null
+          buildings_2021: number | null
+          centroid_lat: number | null
+          centroid_lng: number | null
+          comune_catastale_code: string | null
+          comune_istat_code: string | null
+          comune_name: string
+          created_at: string | null
+          dwellings_2021: number | null
+          families_2021: number | null
+          females_2021: number | null
+          id: string
+          import_batch_id: string | null
+          imported_at: string | null
+          males_2021: number | null
+          metadata_json: Json | null
+          occupied_dwellings_2021: number | null
+          polygon_coords: Json | null
+          population_2021: number | null
+          provincia_code: string | null
+          provincia_name: string | null
+          regione_code: string | null
+          regione_name: string | null
+          residential_buildings_2021: number | null
+          section_code: string
+          source_dataset: string
+          source_label: string
+          source_year: number
+          superficie_kmq: number | null
+        }
+        Insert: {
+          asc1_code?: string | null
+          asc2_code?: string | null
+          asc3_code?: string | null
+          bbox?: Json | null
+          buildings_2021?: number | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
+          comune_catastale_code?: string | null
+          comune_istat_code?: string | null
+          comune_name?: string
+          created_at?: string | null
+          dwellings_2021?: number | null
+          families_2021?: number | null
+          females_2021?: number | null
+          id?: string
+          import_batch_id?: string | null
+          imported_at?: string | null
+          males_2021?: number | null
+          metadata_json?: Json | null
+          occupied_dwellings_2021?: number | null
+          polygon_coords?: Json | null
+          population_2021?: number | null
+          provincia_code?: string | null
+          provincia_name?: string | null
+          regione_code?: string | null
+          regione_name?: string | null
+          residential_buildings_2021?: number | null
+          section_code: string
+          source_dataset?: string
+          source_label?: string
+          source_year?: number
+          superficie_kmq?: number | null
+        }
+        Update: {
+          asc1_code?: string | null
+          asc2_code?: string | null
+          asc3_code?: string | null
+          bbox?: Json | null
+          buildings_2021?: number | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
+          comune_catastale_code?: string | null
+          comune_istat_code?: string | null
+          comune_name?: string
+          created_at?: string | null
+          dwellings_2021?: number | null
+          families_2021?: number | null
+          females_2021?: number | null
+          id?: string
+          import_batch_id?: string | null
+          imported_at?: string | null
+          males_2021?: number | null
+          metadata_json?: Json | null
+          occupied_dwellings_2021?: number | null
+          polygon_coords?: Json | null
+          population_2021?: number | null
+          provincia_code?: string | null
+          provincia_name?: string | null
+          regione_code?: string | null
+          regione_name?: string | null
+          residential_buildings_2021?: number | null
+          section_code?: string
+          source_dataset?: string
+          source_label?: string
+          source_year?: number
+          superficie_kmq?: number | null
+        }
+        Relationships: []
+      }
       demographic_zones: {
         Row: {
           anno_rilevazione: string
