@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import AppHeader from "@/components/AppHeader";
-import { ArrowLeft, Database, MapPin, Layers, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Database, MapPin, Layers, AlertTriangle, CheckCircle2, XCircle, Search } from "lucide-react";
 import { fetchSubMunicipalStats } from "@/lib/subMunicipalImporter";
+import { findSubMunicipalArea, type SubMunicipalMatch } from "@/lib/pointInPolygon";
 
 type Stats = NonNullable<Awaited<ReturnType<typeof fetchSubMunicipalStats>>>;
 
@@ -15,12 +17,35 @@ const AdminSubMunicipal = () => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Test tool state
+  const [testLat, setTestLat] = useState("45.4064");
+  const [testLng, setTestLng] = useState("11.8768");
+  const [testResult, setTestResult] = useState<SubMunicipalMatch | null | "no_match" | "error">(null);
+  const [testing, setTesting] = useState(false);
+
   useEffect(() => {
     fetchSubMunicipalStats().then((s) => {
       setStats(s);
       setLoading(false);
     });
   }, []);
+
+  const runTest = async () => {
+    const lat = parseFloat(testLat);
+    const lng = parseFloat(testLng);
+    if (isNaN(lat) || isNaN(lng)) return;
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const match = await findSubMunicipalArea(lat, lng);
+      setTestResult(match ?? "no_match");
+    } catch {
+      setTestResult("error");
+    }
+    setTesting(false);
+  };
+
+  const isLayerActive = stats && stats.totalRecords > 0 && stats.withGeometry > 0;
 
   return (
     <div className="min-h-svh bg-background">
@@ -33,17 +58,35 @@ const AdminSubMunicipal = () => {
           <h1 className="text-xl font-bold text-foreground">Aree Sub-Comunali 2021 — Admin</h1>
         </div>
 
-        {/* Status banner */}
-        <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
+        {/* Wiring status */}
+        <Card className={isLayerActive ? "border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20"}>
           <CardContent className="pt-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
-              <div className="text-sm text-amber-800 dark:text-amber-200">
-                <p className="font-medium">Modulo preparatorio — nessun dato ancora caricato</p>
-                <p className="mt-1 text-amber-700 dark:text-amber-300">
-                  Questa vista diventerà operativa dopo l'import dei dataset ISTAT ASC_21 e R03_21.
-                  Il motore pubblico di Sottra non utilizza ancora questa tabella.
+              {isLayerActive ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+              )}
+              <div className="text-sm">
+                <p className={`font-medium ${isLayerActive ? "text-emerald-800 dark:text-emerald-200" : "text-amber-800 dark:text-amber-200"}`}>
+                  {isLayerActive ? "Layer ASC attivo — collegato al resolver territoriale" : "Layer ASC non attivo — nessun dato caricato"}
                 </p>
+                <p className={`mt-1 ${isLayerActive ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
+                  {isLayerActive
+                    ? "Il resolver pro-sources include il match ASC in ogni scansione. Il report mostra la micro-info solo quando il match poligonale è affidabile."
+                    : "Il motore pubblico di Sottra continua a funzionare normalmente senza ASC. Caricare i dataset ISTAT per attivare."}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                  <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${isLayerActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+                    <Database className="h-3 w-3" /> pro-sources: {isLayerActive ? "collegato" : "bypass"}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${isLayerActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+                    <MapPin className="h-3 w-3" /> point-in-polygon: {isLayerActive ? "attivo" : "pronto"}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${isLayerActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+                    <Layers className="h-3 w-3" /> report pubblico: {isLayerActive ? "micro-info ASC" : "invariato"}
+                  </span>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -67,12 +110,6 @@ const AdminSubMunicipal = () => {
                 <ul className="list-disc pl-5 space-y-1">
                   <li><strong>ASC_21</strong> — Aree Sub Comunali nazionali (3 livelli: Liv1, Liv2, Liv3)</li>
                   <li><strong>R03_21</strong> — Sezioni censuarie Lombardia (shapefile + tabelle CSV)</li>
-                </ul>
-                <p className="font-medium text-foreground mt-4">Campi attesi nei dataset:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>PRO_COM_T, COD_REG, COD_PRO, DEN_PROV, DEN_REG, DEN_COM</li>
-                  <li>COD_ASC / SEZ2011 (codice area), DEN_ASC (denominazione)</li>
-                  <li>POP_RES, geometry (poligoni)</li>
                 </ul>
               </div>
             </CardContent>
@@ -156,6 +193,54 @@ const AdminSubMunicipal = () => {
             )}
           </div>
         )}
+
+        {/* Test tool — always visible */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Search className="h-4 w-4" /> Test Point-in-Polygon ASC
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground">Latitudine</label>
+                <Input value={testLat} onChange={e => setTestLat(e.target.value)} placeholder="45.4064" className="h-8 text-sm" />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground">Longitudine</label>
+                <Input value={testLng} onChange={e => setTestLng(e.target.value)} placeholder="11.8768" className="h-8 text-sm" />
+              </div>
+              <Button size="sm" onClick={runTest} disabled={testing} className="h-8">
+                {testing ? "..." : "Test"}
+              </Button>
+            </div>
+            {testResult === "no_match" && (
+              <div className="flex items-center gap-2 text-sm text-amber-600">
+                <XCircle className="h-4 w-4" />
+                <span>Nessun match ASC per queste coordinate{stats?.totalRecords === 0 ? " (tabella vuota)" : ""}</span>
+              </div>
+            )}
+            {testResult === "error" && (
+              <div className="flex items-center gap-2 text-sm text-destructive">
+                <XCircle className="h-4 w-4" />
+                <span>Errore durante il test</span>
+              </div>
+            )}
+            {testResult && testResult !== "no_match" && testResult !== "error" && (
+              <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 space-y-1 text-sm">
+                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-medium">
+                  <CheckCircle2 className="h-4 w-4" /> Match trovato
+                </div>
+                <p className="text-foreground"><strong>Area:</strong> {testResult.area_name}</p>
+                <p className="text-muted-foreground"><strong>Codice:</strong> {testResult.area_code} · <strong>Tipo:</strong> {testResult.area_type}</p>
+                <p className="text-muted-foreground"><strong>Comune:</strong> {testResult.comune_name} · <strong>Livello:</strong> {testResult.asc_level ?? "n/a"}</p>
+                <p className="text-muted-foreground"><strong>Dataset:</strong> {testResult.source_dataset} · <strong>Metodo:</strong> {testResult.match_method}</p>
+                {testResult.popolazione != null && <p className="text-muted-foreground"><strong>Popolazione:</strong> {testResult.popolazione.toLocaleString("it-IT")}</p>}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
