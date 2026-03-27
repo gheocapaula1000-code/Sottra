@@ -193,6 +193,8 @@ export interface SintesiFinaleData extends SourceMetadata {
   coperturaAnalisi?: ReportField<string>;
   /** Geographic resolution of the data used in this section */
   geo?: GeoContext;
+  /** Full territorial resolution with identified vs data level */
+  territorialResolution?: TerritorialResolution;
 }
 
 /* ── Section L: Priorità / Criticità ────────────────────── */
