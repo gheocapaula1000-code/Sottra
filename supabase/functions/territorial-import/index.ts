@@ -335,6 +335,137 @@ serve(async (req) => {
       return json({ ok: true, imported: result.imported, errors: result.errors.length, batchId, validation });
     }
 
+    /* ── ACTION: aggregate-r03 ── */
+    if (action === "aggregate-r03") {
+      log("aggregate-r03", "starting R03→ASC aggregation");
+      const batchId = `agg_r03_${Date.now()}`;
+
+      // Fetch all R03 sections with ASC codes
+      const { data: sections, error: secErr } = await admin.from("census_sections_r03_2021")
+        .select("section_code, comune_istat_code, comune_name, asc1_code, asc2_code, asc3_code, population_2021, families_2021, dwellings_2021, occupied_dwellings_2021, buildings_2021, residential_buildings_2021");
+      if (secErr || !sections || sections.length === 0) {
+        return json({ ok: false, error: "No R03 sections found", detail: secErr?.message });
+      }
+
+      // Fetch ASC layer names for enrichment (scoped to R03 comuni)
+      const r03Comuni = new Set((sections as any[]).map((s: any) => s.comune_istat_code).filter(Boolean));
+      const { data: ascAreas } = await admin.from("sub_municipal_areas_2021")
+        .select("area_code, asc_level, area_name, comune_istat_code, superficie_kmq");
+
+      const ascNames = new Map<string, { name: string; superficie_kmq: number | null }>();
+      if (ascAreas) {
+        for (const a of ascAreas as any[]) {
+          if (a.comune_istat_code && r03Comuni.has(a.comune_istat_code)) {
+            ascNames.set(`${a.asc_level}_${a.area_code}`, { name: a.area_name, superficie_kmq: a.superficie_kmq });
+          }
+        }
+      }
+
+      // Aggregate by ASC level + code
+      type AggKey = string;
+      interface AggBucket {
+        comune_istat_code: string; comune_name: string;
+        asc_level: number; asc_code: string;
+        pop: number; fam: number; dwell: number; occ_dwell: number; build: number; res_build: number;
+        count: number; with_data: number;
+      }
+      const buckets = new Map<AggKey, AggBucket>();
+
+      for (const s of sections as any[]) {
+        for (const [lvl, field] of [[1, "asc1_code"], [2, "asc2_code"], [3, "asc3_code"]] as [number, string][]) {
+          const code = s[field];
+          if (!code) continue;
+          const key = `${lvl}_${code}_${s.comune_istat_code}`;
+          const b = buckets.get(key) || {
+            comune_istat_code: s.comune_istat_code || "", comune_name: s.comune_name || "",
+            asc_level: lvl, asc_code: code,
+            pop: 0, fam: 0, dwell: 0, occ_dwell: 0, build: 0, res_build: 0,
+            count: 0, with_data: 0,
+          };
+          b.count++;
+          if (s.population_2021 != null) { b.pop += s.population_2021; b.with_data++; }
+          if (s.families_2021 != null) b.fam += s.families_2021;
+          if (s.dwellings_2021 != null) b.dwell += s.dwellings_2021;
+          if (s.occupied_dwellings_2021 != null) b.occ_dwell += s.occupied_dwellings_2021;
+          if (s.buildings_2021 != null) b.build += s.buildings_2021;
+          if (s.residential_buildings_2021 != null) b.res_build += s.residential_buildings_2021;
+          buckets.set(key, b);
+        }
+      }
+
+      // Build rows
+      const rows = [...buckets.values()].map(b => {
+        const ascInfo = ascNames.get(`${b.asc_level}_${b.asc_code}`);
+        const coverageRatio = b.count > 0 ? b.with_data / b.count : 0;
+        const coverage = coverageRatio >= 0.8 ? "available" : coverageRatio > 0 ? "partial" : "unavailable";
+        const sup = ascInfo?.superficie_kmq ?? null;
+        const density = (sup && sup > 0 && b.pop > 0) ? Math.round(b.pop / sup) : null;
+        const notes: string[] = [];
+        if (coverageRatio < 1) notes.push(`${b.with_data}/${b.count} sezioni con dato popolazione`);
+        if (!ascInfo) notes.push("Nome ASC non trovato nel layer");
+
+        return {
+          source_dataset: "R03_21", source_year: 2021,
+          comune_istat_code: b.comune_istat_code, comune_name: b.comune_name,
+          asc_level: b.asc_level, asc_code: b.asc_code,
+          asc_name: ascInfo?.name || null,
+          population_2021: b.pop || null, families_2021: b.fam || null,
+          dwellings_2021: b.dwell || null, occupied_dwellings_2021: b.occ_dwell || null,
+          buildings_2021: b.build || null, residential_buildings_2021: b.res_build || null,
+          sections_count: b.count, sections_with_data: b.with_data,
+          superficie_kmq: sup, density_pop_per_kmq: density,
+          coverage_status: coverage, derivation_notes: notes.join("; ") || null,
+          import_batch_id: batchId,
+        };
+      });
+
+      // Upsert in chunks
+      let imported = 0;
+      const errors: string[] = [];
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK);
+        const { error, count } = await admin.from("r03_asc_aggregates_2021")
+          .upsert(chunk, { onConflict: "source_dataset,asc_level,asc_code" })
+          .select("id");
+        if (error) errors.push(error.message);
+        else imported += count ?? chunk.length;
+      }
+
+      const comuni = new Set(rows.map(r => r.comune_istat_code));
+      const byLevel: Record<number, number> = {};
+      for (const r of rows) byLevel[r.asc_level] = (byLevel[r.asc_level] || 0) + 1;
+
+      return json({
+        ok: true, imported, total: rows.length, errors,
+        stats: { comuni: comuni.size, byLevel, batchId },
+      });
+    }
+
+    /* ── ACTION: get-aggregation-stats ── */
+    if (action === "get-aggregation-stats") {
+      const { data, error } = await admin.from("r03_asc_aggregates_2021")
+        .select("asc_level, asc_code, asc_name, comune_istat_code, comune_name, coverage_status, population_2021, sections_count, sections_with_data, density_pop_per_kmq");
+      if (error) return json({ error: error.message }, 200);
+      if (!data || data.length === 0) return json({ ok: true, aggregates: 0, stats: null });
+
+      const byLevel: Record<number, number> = {};
+      const comuni = new Set<string>();
+      let available = 0, partial = 0, unavailable = 0;
+      for (const r of data as any[]) {
+        byLevel[r.asc_level] = (byLevel[r.asc_level] || 0) + 1;
+        if (r.comune_istat_code) comuni.add(r.comune_istat_code);
+        if (r.coverage_status === "available") available++;
+        else if (r.coverage_status === "partial") partial++;
+        else unavailable++;
+      }
+
+      return json({
+        ok: true, aggregates: data.length,
+        stats: { byLevel, comuni: comuni.size, available, partial, unavailable },
+        sample: (data as any[]).slice(0, 5),
+      });
+    }
+
     /* ── ACTION: get-stats ── */
     if (action === "get-stats") {
       const validation = await validatePostImport("ASC_2021", admin);
