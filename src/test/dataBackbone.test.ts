@@ -104,6 +104,25 @@ describe("dataBackbone — evaluateSectionExposure", () => {
     const exposure = evaluateSectionExposure("profiloArea", result);
     expect(exposure.decision).toBe("shown");
   });
+
+  it("shows profiloArea when locality data is available", () => {
+    const result = emptyScanResult();
+    result.istatDemographic = mockSection("success", { popolazione: 5000, geoLevel: "localita" }) as any;
+    const exposure = evaluateSectionExposure("profiloArea", result);
+    expect(exposure.decision).toBe("shown");
+  });
+
+  it("infers localita geoLevel when subMunicipalMatch has localita_name", () => {
+    const result = emptyScanResult();
+    result.poiEnrichment = mockSection("success", { totalPois: 5, categories: [] }) as any;
+    result.subMunicipalMatch = mockSection("success", {
+      available: true, matched: true, name: "Centro", coverage_status: "available",
+      localita_name: "Borgo Sud",
+    }) as any;
+    const exposure = evaluateSectionExposure("profiloArea", result);
+    expect(exposure.geographic_level).toBe("localita");
+    expect(exposure.decision).toBe("shown");
+  });
 });
 
 describe("dataBackbone — evaluateSubMunicipalGate", () => {
@@ -207,11 +226,8 @@ describe("dataBackbone — macrozone support", () => {
       geographic_scope: "regionale",
       regions_supported: ["Lombardia"],
     });
-    // Lombardia is code 03 → must match
     expect(sourceCoversRegion(regional, "03")).toBe(true);
-    // Piemonte is code 01 → same macrozone (Nord-Ovest) but NOT declared → must NOT match
     expect(sourceCoversRegion(regional, "01")).toBe(false);
-    // Sicilia is code 19 → different macrozone → must NOT match
     expect(sourceCoversRegion(regional, "19")).toBe(false);
   });
 
@@ -220,9 +236,7 @@ describe("dataBackbone — macrozone support", () => {
       geographic_scope: "regionale",
       regions_supported: ["Veneto"],
     });
-    // Veneto is code 05
     expect(sourceCoversRegion(veneto, "05")).toBe(true);
-    // Emilia-Romagna is code 08 → same macrozone (Nord-Est) but NOT declared
     expect(sourceCoversRegion(veneto, "08")).toBe(false);
   });
 
@@ -231,11 +245,8 @@ describe("dataBackbone — macrozone support", () => {
       geographic_scope: "macrozonale",
       regions_supported: ["Veneto"],
     });
-    // Veneto code 05 → Nord-Est
     expect(sourceCoversRegion(nordEst, "05")).toBe(true);
-    // Emilia-Romagna code 08 → also Nord-Est → covered by macrozonale
     expect(sourceCoversRegion(nordEst, "08")).toBe(true);
-    // Lombardia code 03 → Nord-Ovest → NOT covered
     expect(sourceCoversRegion(nordEst, "03")).toBe(false);
   });
 
@@ -247,6 +258,36 @@ describe("dataBackbone — macrozone support", () => {
     const gate = evaluateSubMunicipalGate(match);
     expect(gate.macrozone).not.toBeNull();
     expect(gate.macrozone?.macrozone_label).toBe("Nord-Ovest");
+  });
+});
+
+describe("dataBackbone — geographic hierarchy with localita", () => {
+  it("localita level is between quartiere and comune in geo ranking", () => {
+    const result = emptyScanResult();
+    result.istatDemographic = mockSection("success", { popolazione: 3000, geoLevel: "localita", geoLabel: "Borgo Antico" }) as any;
+    const exposure = evaluateSectionExposure("profiloArea", result);
+    // localita is finer than comune → should be shown, not reduced
+    expect(exposure.decision).toBe("shown");
+  });
+
+  it("does not promote localita to sub-comunale precision", () => {
+    const result = emptyScanResult();
+    // Only localita available, no ASC/R03
+    result.istatDemographic = mockSection("success", { popolazione: 3000, geoLevel: "localita" }) as any;
+    const exposure = evaluateSectionExposure("profiloArea", result);
+    // shown but not with sub-comunale confidence
+    expect(exposure.confidence).toBeLessThan(0.85);
+  });
+
+  it("SubMunicipalMatchData supports locality fields", () => {
+    const match: SubMunicipalMatchData = {
+      available: true, matched: false, coverage_status: "unavailable",
+      localita_name: "Borgo Vecchio",
+      localita_type: "capoluogo",
+      localita_code: "001001",
+    };
+    expect(match.localita_name).toBe("Borgo Vecchio");
+    expect(match.localita_type).toBe("capoluogo");
   });
 });
 
@@ -262,5 +303,17 @@ describe("dataBackbone — no regression", () => {
   it("does not crash with null/undefined ascMatch", () => {
     expect(() => evaluateSubMunicipalGate(null)).not.toThrow();
     expect(() => evaluateSubMunicipalGate(undefined as any)).not.toThrow();
+  });
+
+  it("Lombardia pilot still works with R03 enrichment", () => {
+    const result = emptyScanResult();
+    result.istatDemographic = mockSection("success", { popolazione: 5000, geoLevel: "microzona" }) as any;
+    result.subMunicipalMatch = mockSection("success", {
+      available: true, matched: true, name: "Centro", coverage_status: "available",
+      r03_enriched: true, r03_coverage: "available", r03_population: 5000,
+    }) as any;
+    const gate = evaluateSubMunicipalGate(result.subMunicipalMatch.data as SubMunicipalMatchData);
+    expect(gate.showR03Block).toBe(true);
+    expect(gate.region).toBe("Lombardia");
   });
 });
