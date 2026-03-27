@@ -56,6 +56,119 @@ function intSafe(v: string | undefined): number | null {
 
 const CHUNK = 500;
 
+/* ── COMUNI_ITALIA import ── */
+
+async function importComuniItalia(
+  rows: Record<string, string>[],
+  batchId: string,
+  admin: ReturnType<typeof createClient>,
+) {
+  let imported = 0;
+  const errors: { idx: number; reason: string }[] = [];
+  const warnings: string[] = [];
+
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const dbRows = chunk.map((r, j) => {
+      // Support multiple ISTAT CSV column conventions
+      const istatCode = r["PRO_COM_T"] || r["PRO_COM"] || r["CODICE_COMUNE"] || r["COD_COM"] || "";
+      const comuneName = r["DEN_COM"] || r["DENOMINAZIONE"] || r["COMUNE"] || "";
+      if (!istatCode) { errors.push({ idx: i + j, reason: "Codice ISTAT comune mancante" }); return null; }
+      if (!comuneName) { errors.push({ idx: i + j, reason: "Nome comune mancante" }); return null; }
+      return {
+        comune_istat_code: istatCode,
+        comune_name: comuneName,
+        provincia_code: r["COD_PRO"] || r["COD_PROV"] || null,
+        provincia_name: r["DEN_PRO"] || r["DEN_PROV"] || r["PROVINCIA"] || null,
+        regione_code: r["COD_REG"] || null,
+        regione_name: r["DEN_REG"] || r["REGIONE"] || null,
+        geographic_level: "comune",
+        source_key: "istat_comuni",
+        source_label: "ISTAT — Anagrafe Comuni",
+        source_year: intSafe(r["ANNO"]) || 2024,
+        dataset_status: "active",
+        coverage_status: "available",
+        centroid_lat: r["LAT"] ? parseFloat(r["LAT"]) || null : null,
+        centroid_lng: r["LNG"] || r["LON"] ? parseFloat(r["LNG"] || r["LON"]) || null : null,
+        metadata_json: {},
+        import_batch_id: batchId,
+      };
+    }).filter(Boolean);
+
+    if (dbRows.length === 0) continue;
+    const { error, count } = await admin.from("territorial_registry")
+      .upsert(dbRows as any[], { onConflict: "comune_istat_code,geographic_level,COALESCE(localita_code, ''),COALESCE(asc_code, '')" })
+      .select("id");
+    if (error) {
+      // Fallback: try individual inserts for better error reporting
+      log("comuni upsert error", error.message);
+      dbRows.forEach((_, j) => errors.push({ idx: i + j, reason: error.message }));
+    } else {
+      imported += count ?? dbRows.length;
+    }
+  }
+
+  return { imported, errors, warnings };
+}
+
+/* ── LOCALITA_ISTAT import ── */
+
+async function importLocalitaIstat(
+  rows: Record<string, string>[],
+  batchId: string,
+  admin: ReturnType<typeof createClient>,
+) {
+  let imported = 0;
+  const errors: { idx: number; reason: string }[] = [];
+  const warnings: string[] = [];
+
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const dbRows = chunk.map((r, j) => {
+      const istatCode = r["PRO_COM_T"] || r["PRO_COM"] || r["CODICE_COMUNE"] || "";
+      const locCode = r["COD_LOC"] || r["CODICE_LOCALITA"] || r["LOC"] || "";
+      const locName = r["DEN_LOC"] || r["DENOMINAZIONE_LOC"] || r["LOCALITA"] || "";
+      if (!istatCode) { errors.push({ idx: i + j, reason: "Codice ISTAT comune mancante" }); return null; }
+      if (!locCode && !locName) { errors.push({ idx: i + j, reason: "Codice o nome località mancante" }); return null; }
+      const locType = r["TIPO_LOC"] || r["TIPO"] || (r["CAPOLUOGO"] === "1" ? "capoluogo" : "localita");
+      return {
+        comune_istat_code: istatCode,
+        comune_name: r["DEN_COM"] || r["COMUNE"] || "",
+        provincia_code: r["COD_PRO"] || null,
+        provincia_name: r["DEN_PRO"] || r["DEN_PROV"] || null,
+        regione_code: r["COD_REG"] || null,
+        regione_name: r["DEN_REG"] || null,
+        localita_code: locCode || locName, // fallback to name if no code
+        localita_name: locName || locCode,
+        localita_type: locType,
+        geographic_level: "localita",
+        source_key: "istat_localita",
+        source_label: "ISTAT — Località abitate",
+        source_year: intSafe(r["ANNO"]) || 2021,
+        dataset_status: "active",
+        coverage_status: "available",
+        centroid_lat: r["LAT"] ? parseFloat(r["LAT"]) || null : null,
+        centroid_lng: r["LNG"] || r["LON"] ? parseFloat(r["LNG"] || r["LON"]) || null : null,
+        metadata_json: {},
+        import_batch_id: batchId,
+      };
+    }).filter(Boolean);
+
+    if (dbRows.length === 0) continue;
+    const { error, count } = await admin.from("territorial_registry")
+      .upsert(dbRows as any[], { onConflict: "comune_istat_code,geographic_level,COALESCE(localita_code, ''),COALESCE(asc_code, '')" })
+      .select("id");
+    if (error) {
+      log("localita upsert error", error.message);
+      dbRows.forEach((_, j) => errors.push({ idx: i + j, reason: error.message }));
+    } else {
+      imported += count ?? dbRows.length;
+    }
+  }
+
+  return { imported, errors, warnings };
+}
+
 async function importR03Sez(
   rows: Record<string, string>[],
   ascMappings: Map<string, { asc1: string | null; asc2: string | null; asc3: string | null }>,
