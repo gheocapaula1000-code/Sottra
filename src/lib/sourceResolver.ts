@@ -402,3 +402,152 @@ export function resolutionSummary(resolved: ResolvedSource): string {
           : "";
   return `${resolved.sourceLabel}${geoNote} — ${resolved.isOfficial ? "ufficiale" : "non ufficiale"}`;
 }
+
+/* ── Territorial Resolution Builder ──────────────────── */
+
+import type { TerritorialResolution } from "@/types/report";
+import type { ScanResult, SubMunicipalMatchData, OmiZoneData, IstatDemographicData } from "@/types";
+
+/**
+ * Builds a unified TerritorialResolution from a ScanResult.
+ * Distinguishes between *identified* geographic level (where we know the point is)
+ * and *data coverage* level (what data we actually have).
+ *
+ * Priority for identification: OMI polygon > ASC polygon > locality > comune
+ * Priority for data: R03/ASC enriched > OMI quotazioni > ISTAT comunale
+ */
+export function resolveTerritorialContext(result: ScanResult): TerritorialResolution {
+  const omi = result.omiZone?.status === "success" ? result.omiZone.data as OmiZoneData | null : null;
+  const istat = result.istatDemographic?.status === "success" ? result.istatDemographic.data as IstatDemographicData | null : null;
+  const ascMatch = result.subMunicipalMatch?.status === "success" ? result.subMunicipalMatch.data as SubMunicipalMatchData | null : null;
+
+  // ── Determine IDENTIFIED level (best location precision) ──
+  let identified_geo_level: ReportGeoLevel = "non_determinato";
+  let identified_label: string | undefined;
+  let match_method: string | undefined;
+  let match_confidence: number | undefined;
+
+  // OMI polygon match = finest identification
+  if (omi?.polygonMatch && omi.zonaOmiLabel) {
+    identified_geo_level = omi.omiGeoLevel ?? "microzona_omi";
+    identified_label = `Zona OMI ${omi.zonaOmiLabel}`;
+    match_method = omi.matchMethod ?? "polygon";
+    match_confidence = omi.matchConfidence ?? 0.95;
+  }
+  // ASC polygon match
+  else if (ascMatch?.matched && ascMatch.coverage_status === "available" && ascMatch.name) {
+    identified_geo_level = "zona_specifica";
+    identified_label = `${ascMatch.name} (ASC)`;
+    match_method = ascMatch.match_method ?? "polygon";
+    match_confidence = parseFloat(ascMatch.match_confidence ?? "0.85");
+  }
+  // Locality resolved
+  else if (ascMatch?.localita_name) {
+    identified_geo_level = "localita";
+    identified_label = ascMatch.localita_name;
+    match_method = "localita_match";
+    match_confidence = 0.8;
+  }
+  // ISTAT sub-municipal
+  else if (istat?.geoLevel && istat.geoLevel !== "comune" && istat.geoLevel !== "stimato") {
+    const mapped: ReportGeoLevel =
+      istat.geoLevel === "microzona" ? "microzona_omi" :
+      istat.geoLevel === "quartiere" ? "quartiere" :
+      istat.geoLevel === "zona" ? "zona_specifica" :
+      istat.geoLevel === "localita" ? "localita" : "comune";
+    identified_geo_level = mapped;
+    identified_label = istat.geoLabel ?? undefined;
+    match_method = istat.matchMethod ?? "istat_lookup";
+    match_confidence = istat.matchConfidence ?? 0.85;
+  }
+  // OMI catastale fallback (still identifies the comune)
+  else if (omi?.comuneLabel) {
+    identified_geo_level = "comune";
+    identified_label = `Comune di ${omi.comuneLabel}`;
+    match_method = omi.matchMethod ?? "catastale_fallback";
+    match_confidence = omi.matchConfidence ?? 0.7;
+  }
+  // ISTAT comunale
+  else if (istat?.comuneLabel) {
+    identified_geo_level = "comune";
+    identified_label = `Comune di ${istat.comuneLabel}`;
+    match_method = "istat_sdmx";
+    match_confidence = 0.9;
+  }
+
+  // ── Determine DATA COVERAGE level (what data we actually have) ──
+  let data_coverage_level: ReportGeoLevel = "non_determinato";
+  let data_coverage_label: string | undefined;
+  let source_label: string | undefined;
+  let fallback_reason: string | undefined;
+
+  // R03 enriched ASC = sub-comunale data
+  if (ascMatch?.r03_enriched && ascMatch.r03_population != null && ascMatch.r03_population > 0) {
+    data_coverage_level = "zona_specifica";
+    data_coverage_label = ascMatch.name ?? "Area sub-comunale";
+    source_label = "ISTAT Censimento 2021 — Pilota Lombardia R03";
+  }
+  // OMI with quotazioni = zone-level economic data
+  else if (omi?.quotazioneMinResidenziale != null && omi.polygonMatch) {
+    data_coverage_level = "microzona_omi";
+    data_coverage_label = omi.zonaOmiLabel ?? undefined;
+    source_label = "OMI / Agenzia delle Entrate";
+  }
+  // ASC with own population data (non-R03)
+  else if (ascMatch?.matched && ascMatch.popolazione != null && ascMatch.popolazione > 0) {
+    data_coverage_level = "quartiere";
+    data_coverage_label = ascMatch.name ?? "Area sub-comunale";
+    source_label = "ISTAT Censimento 2021";
+  }
+  // ISTAT sub-municipal demographic data
+  else if (istat?.geoLevel && istat.geoLevel !== "comune" && istat.geoLevel !== "stimato" && istat.popolazione != null) {
+    const mapped: ReportGeoLevel =
+      istat.geoLevel === "microzona" ? "microzona_omi" :
+      istat.geoLevel === "quartiere" ? "quartiere" :
+      istat.geoLevel === "localita" ? "localita" : "zona_specifica";
+    data_coverage_level = mapped;
+    data_coverage_label = istat.geoLabel ?? undefined;
+    source_label = istat.sourceLabel ?? "ISTAT";
+  }
+  // OMI municipal fallback
+  else if (omi?.quotazioneMinResidenziale != null) {
+    data_coverage_level = "comune";
+    data_coverage_label = omi.comuneLabel ? `Comune di ${omi.comuneLabel}` : undefined;
+    source_label = "OMI / Agenzia delle Entrate";
+    fallback_reason = "Solo dati comunali OMI disponibili";
+  }
+  // ISTAT municipal
+  else if (istat?.popolazione != null) {
+    data_coverage_level = "comune";
+    data_coverage_label = istat.comuneLabel ? `Comune di ${istat.comuneLabel}` : undefined;
+    source_label = istat.sourceLabel ?? "ISTAT";
+    fallback_reason = "Dato disponibile solo a livello comunale";
+  }
+
+  // ── Build territorial warning if identified > data ──
+  const GEO_RANK_LOCAL: Record<ReportGeoLevel, number> = {
+    microzona_omi: 0, zona_specifica: 1, quartiere: 2, localita: 3,
+    comune: 4, macrozona: 5, nazionale: 6, non_determinato: 7,
+  };
+
+  let territorial_warning: string | undefined;
+  if (identified_geo_level !== "non_determinato" && data_coverage_level !== "non_determinato") {
+    if (GEO_RANK_LOCAL[identified_geo_level] < GEO_RANK_LOCAL[data_coverage_level]) {
+      const identLabel = geoLevelDisplayLabel(identified_geo_level);
+      const dataLabel = geoLevelDisplayLabel(data_coverage_level);
+      territorial_warning = `Posizione identificata a livello ${identLabel}, dato disponibile a livello ${dataLabel}`;
+    }
+  }
+
+  return {
+    identified_geo_level,
+    identified_label,
+    data_coverage_level,
+    data_coverage_label,
+    match_method,
+    match_confidence,
+    source_label,
+    fallback_reason,
+    territorial_warning,
+  };
+}

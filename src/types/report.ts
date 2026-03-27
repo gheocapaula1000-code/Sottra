@@ -115,6 +115,35 @@ export interface GeoContext {
   geoLabel?: string;
 }
 
+/* ── Territorial Resolution — identified vs data level ──── */
+
+/**
+ * Distinguishes between the geographic level at which the location was
+ * *identified* and the level at which *data* is actually available.
+ *
+ * Example: locality identified, but data only at municipal level.
+ */
+export interface TerritorialResolution {
+  /** Best geographic level at which the *location* was identified */
+  identified_geo_level: ReportGeoLevel;
+  /** Label for the identified geographic area */
+  identified_label?: string;
+  /** Geographic level at which the *data* is actually available */
+  data_coverage_level: ReportGeoLevel;
+  /** Label for the data coverage area */
+  data_coverage_label?: string;
+  /** Method used for the match (e.g. polygon, catastale_fallback, nominatim) */
+  match_method?: string;
+  /** Confidence of the match [0-1] */
+  match_confidence?: number;
+  /** Source label for the data */
+  source_label?: string;
+  /** Why a fallback was used, if applicable */
+  fallback_reason?: string;
+  /** Warning for the user, if any */
+  territorial_warning?: string;
+}
+
 /* ── Section H: Profilo Area ────────────────────────────── */
 
 export interface ProfiloAreaData extends SourceMetadata {
