@@ -131,10 +131,29 @@ const AdminSubMunicipal = () => {
 
   const loadJobs = async () => {
     setJobsLoading(true);
+    setJobsError(null);
     try {
       const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "list-jobs" } });
-      if (!error && data?.jobs) setJobs(data.jobs);
-    } catch { /* ignore */ }
+      if (error) {
+        const msg = `Errore caricamento jobs: ${error.message}`;
+        setJobsError(msg);
+        toast.error(msg);
+      } else if (data?.error) {
+        const msg = data.error.includes("Admin") || data.error.includes("owner")
+          ? `Permessi insufficienti per list-jobs: ${data.error}`
+          : `Errore list-jobs: ${data.error}`;
+        setJobsError(msg);
+        toast.error(msg);
+      } else if (data?.jobs) {
+        setJobs(data.jobs);
+      } else {
+        setJobsError("Risposta list-jobs inattesa (nessun array jobs)");
+      }
+    } catch (e: any) {
+      const msg = `Errore rete list-jobs: ${e?.message ?? "sconosciuto"}`;
+      setJobsError(msg);
+      toast.error(msg);
+    }
     setJobsLoading(false);
   };
 
