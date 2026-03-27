@@ -409,7 +409,7 @@ serve(async (req) => {
           if (!code) { noIstat++; continue; }
           if (!name) { noName++; continue; }
           valid++;
-          if (r["LAT"] && r["LNG"] || r["LON"]) withCoords++;
+          if (r["LAT"] && (r["LNG"] || r["LON"])) withCoords++;
           const reg = r["DEN_REG"] || r["REGIONE"] || "";
           if (reg) regioni.add(reg); else noRegione++;
         }

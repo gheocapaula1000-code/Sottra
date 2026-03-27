@@ -359,7 +359,7 @@ const AdminSubMunicipal = () => {
                           Valida
                         </Button>
                       )}
-                      {(job.status === "uploaded" || job.status === "validated") && (
+                      {job.status === "validated" && (
                         <Button size="sm" className="h-7 text-xs" onClick={() => processJob(job.id)} disabled={processing !== null}>
                           {processing === job.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                           Importa
