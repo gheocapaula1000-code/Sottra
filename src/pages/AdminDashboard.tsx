@@ -167,6 +167,28 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
 
+            {/* Sub-municipal */}
+            <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/admin/sub-municipal")}>
+              <CardContent className="py-8 text-center space-y-2">
+                <Layers className="h-6 w-6 mx-auto text-primary" />
+                <p className="text-sm font-medium text-foreground">Dataset Territoriali</p>
+                <p className="text-xs text-muted-foreground">
+                  Upload e import ASC / R03 — console pilota Lombardia
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Data Backbone */}
+            <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/admin/data-backbone")}>
+              <CardContent className="py-8 text-center space-y-2">
+                <Shield className="h-6 w-6 mx-auto text-primary" />
+                <p className="text-sm font-medium text-foreground">Data Backbone</p>
+                <p className="text-xs text-muted-foreground">
+                  Stato vero dei dati — registro fonti, copertura, policy esposizione
+                </p>
+              </CardContent>
+            </Card>
+
             {/* Future blocks placeholder */}
             <Card className="border-dashed">
               <CardContent className="py-8 text-center">
