@@ -154,6 +154,19 @@ export function mapCoverageLevelToGeoLevel(coverage?: CoverageLevel): ReportGeoL
   }
 }
 
+/** Label for macrozone-level geo contexts */
+export function geoLevelDisplayLabel(level: ReportGeoLevel): string {
+  switch (level) {
+    case "microzona_omi": return "Microzona OMI";
+    case "zona_specifica": return "Zona specifica";
+    case "quartiere": return "Quartiere";
+    case "comune": return "Comune";
+    case "macrozona": return "Macrozona";
+    case "nazionale": return "Nazionale";
+    case "non_determinato": return "Non determinato";
+  }
+}
+
 /* ── Geo-Level Compatibility ─────────────────────────────── */
 
 /** Ordered geo levels from finest to coarsest */
