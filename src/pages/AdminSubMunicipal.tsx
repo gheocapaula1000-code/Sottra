@@ -75,8 +75,24 @@ const AdminSubMunicipal = () => {
   // Upload/jobs state
   const [jobs, setJobs] = useState<DatasetJob[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobsError, setJobsError] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
+
+  // Debug trace for last operation
+  const [debugTrace, setDebugTrace] = useState<{
+    datasetType?: string;
+    filePath?: string;
+    uploadOk?: boolean;
+    uploadError?: string;
+    insertJobOk?: boolean;
+    insertJobError?: string;
+    jobId?: string;
+    listJobsOk?: boolean;
+    listJobsError?: string;
+    lastError?: string;
+    timestamp?: string;
+  } | null>(null);
 
   // Aggregation state
   const [aggStats, setAggStats] = useState<{ aggregates: number; stats: any; sample: any[] } | null>(null);
