@@ -393,6 +393,8 @@ export interface ScanResult {
   poiEnrichment: SectionState<PoiEnrichmentData>;
   omiZone: SectionState<OmiZoneData>;
   istatDemographic: SectionState<IstatDemographicData>;
+  /** Sub-municipal ASC layer — internal enrichment, not a full section */
+  subMunicipalMatch: SectionState<SubMunicipalMatchData>;
   /* ── New report engine sections (Phase 1 — framework only) ── */
   profiloRapido: SectionState<import("@/types/report").ProfiloRapidoData>;
   immobileFacciata: SectionState<import("@/types/report").ImmobileFacciataData>;

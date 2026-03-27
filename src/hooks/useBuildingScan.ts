@@ -192,11 +192,17 @@ export function useBuildingScan() {
             data: proData.istat,
             message: proData.istat ? null : "Dati ISTAT non disponibili",
           });
+          set("subMunicipalMatch", {
+            status: proData.subMunicipalMatch ? "success" : "idle",
+            data: proData.subMunicipalMatch,
+            message: null,
+          });
         }).catch((e) => {
           console.error("[SCAN] pro-sources failed:", e);
           set("poiEnrichment", { status: "error", data: null, message: "Servizio non disponibile" });
           set("omiZone", { status: "error", data: null, message: "Servizio non disponibile" });
           set("istatDemographic", { status: "error", data: null, message: "Servizio non disponibile" });
+          set("subMunicipalMatch", { status: "idle", data: null, message: null });
         }),
       ]);
 
