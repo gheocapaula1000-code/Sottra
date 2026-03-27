@@ -104,6 +104,8 @@ const AdminDataBackbone = () => {
         supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "comune"),
         supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "localita"),
         supabase.from("r03_asc_aggregates_2021").select("id", { count: "exact", head: true }),
+        supabase.from("sub_municipal_areas_2021").select("id", { count: "exact", head: true }),
+        supabase.from("census_sections_r03_2021").select("id", { count: "exact", head: true }),
         supabase.from("demographic_zones").select("id", { count: "exact", head: true }),
       ]);
 
