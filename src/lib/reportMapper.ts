@@ -44,7 +44,7 @@ function field<T>(
 
 function sectionData<T>(result: ScanResult, key: keyof ScanResult): T | null {
   const s = result[key];
-  if (s.status !== "success" || !s.data) return null;
+  if (!s || s.status !== "success" || !s.data) return null;
   return s.data as T;
 }
 
