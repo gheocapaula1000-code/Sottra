@@ -142,6 +142,7 @@ async function importLocalitaIstat(
         localita_code: locCode || locName, // fallback to name if no code
         localita_name: locName || locCode,
         localita_type: locType,
+        asc_code: "",
         geographic_level: "localita",
         source_key: "istat_localita",
         source_label: "ISTAT — Località abitate",
@@ -157,7 +158,7 @@ async function importLocalitaIstat(
 
     if (dbRows.length === 0) continue;
     const { error, count } = await admin.from("territorial_registry")
-      .upsert(dbRows as any[], { onConflict: "comune_istat_code,geographic_level,COALESCE(localita_code, ''),COALESCE(asc_code, '')" })
+      .upsert(dbRows as any[], { onConflict: "comune_istat_code,geographic_level,localita_code,asc_code" })
       .select("id");
     if (error) {
       log("localita upsert error", error.message);
