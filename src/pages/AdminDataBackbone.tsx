@@ -76,19 +76,27 @@ const AdminDataBackbone = () => {
 
     // Load real counts from territorial_registry
     try {
-      const [comuniRes, locRes, regioniRes] = await Promise.all([
+      const [comuniRes, locRes, locCentroidRes, regioniRes] = await Promise.all([
         supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "comune"),
         supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "localita"),
+        supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "localita").not("centroid_lat", "is", null),
         supabase.from("territorial_registry" as any).select("regione_name").eq("geographic_level", "comune"),
       ]);
       const regioni = new Set<string>();
       if (regioniRes.data) (regioniRes.data as any[]).forEach((r: any) => { if (r.regione_name) regioni.add(r.regione_name); });
       const ascRes = await supabase.from("sub_municipal_areas_2021").select("id", { count: "exact", head: true });
+      const totalLoc = locRes.count ?? 0;
+      const locWithCentroid = locCentroidRes.count ?? 0;
+      const comuni = comuniRes.count ?? 0;
+      const backboneStatus = comuni >= 7000 ? "pronto" as const : comuni > 0 ? "parziale" as const : "vuoto" as const;
       setBackboneCounts({
-        comuni: comuniRes.count ?? 0,
-        localita: locRes.count ?? 0,
+        comuni,
+        localita: totalLoc,
         asc: ascRes.count ?? 0,
+        localitaWithCentroid: locWithCentroid,
+        localitaWithoutCentroid: totalLoc - locWithCentroid,
         regioni: [...regioni].sort(),
+        backboneStatus,
       });
     } catch { /* ignore */ }
 
