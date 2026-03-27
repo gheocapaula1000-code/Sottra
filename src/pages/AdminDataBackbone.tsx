@@ -48,6 +48,8 @@ const FAMILY_LABELS: Record<string, string> = {
   opportunita: "Opportunità",
   previsione: "Previsione",
   macrozone: "Macrozone",
+  backbone_territoriale: "Backbone Territoriale",
+  localita: "Località",
 };
 
 const AdminDataBackbone = () => {
