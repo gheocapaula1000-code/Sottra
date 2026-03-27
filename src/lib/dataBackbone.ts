@@ -188,6 +188,7 @@ export function evaluateSectionExposure(
   const geoLevel = inferSectionGeoLevel(sectionKey, result);
   const isMunicipal = geoLevel === "comune" || geoLevel === "non_determinato";
   const isMacrozone = geoLevel === "macrozona";
+  const isLocalita = geoLevel === "localita";
 
   // Section-specific exposure refinements
   let decision: DisplayDecision;
@@ -195,6 +196,9 @@ export function evaluateSectionExposure(
     decision = "reduced";
   } else if (isMunicipal && sectionKey === "profiloArea") {
     decision = "reduced";
+  } else if (isLocalita && sectionKey === "profiloArea") {
+    // Località is better than comune but not as precise as sub-comunale
+    decision = "shown";
   } else {
     decision = "shown";
   }
