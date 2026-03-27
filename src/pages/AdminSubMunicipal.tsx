@@ -247,12 +247,10 @@ const AdminSubMunicipal = () => {
 
     // Phase 3: Reload jobs
     toast.success(`File caricato: ${file.name} — Job ID: ${trace.jobId}`);
-    try {
-      await loadJobs();
-      trace.listJobsOk = true;
-    } catch {
-      trace.listJobsOk = false;
-      trace.listJobsError = "Reload lista jobs fallito dopo insert";
+    const listResult = await loadJobs();
+    trace.listJobsOk = listResult.ok;
+    if (!listResult.ok) {
+      trace.listJobsError = listResult.error ?? "Reload lista jobs fallito dopo insert";
       toast.warning(`Job creato (${trace.jobId}) ma lista non aggiornata — prova Aggiorna`);
     }
     setDebugTrace({ ...trace });
