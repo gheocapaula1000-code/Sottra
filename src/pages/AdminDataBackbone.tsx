@@ -57,6 +57,7 @@ const AdminDataBackbone = () => {
   const { signOut } = useAuth();
   const [entries, setEntries] = useState<DataSourceEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [backboneCounts, setBackboneCounts] = useState<{ comuni: number; localita: number; asc: number; regioni: string[] } | null>(null);
 
   const loadRegistry = useCallback(async () => {
     setLoading(true);
@@ -68,6 +69,25 @@ const AdminDataBackbone = () => {
         .order("source_key", { ascending: true });
       if (!error && data) setEntries(data as unknown as DataSourceEntry[]);
     } catch { /* ignore */ }
+
+    // Load real counts from territorial_registry
+    try {
+      const [comuniRes, locRes, regioniRes] = await Promise.all([
+        supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "comune"),
+        supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "localita"),
+        supabase.from("territorial_registry" as any).select("regione_name").eq("geographic_level", "comune"),
+      ]);
+      const regioni = new Set<string>();
+      if (regioniRes.data) (regioniRes.data as any[]).forEach((r: any) => { if (r.regione_name) regioni.add(r.regione_name); });
+      const ascRes = await supabase.from("sub_municipal_areas_2021").select("id", { count: "exact", head: true });
+      setBackboneCounts({
+        comuni: comuniRes.count ?? 0,
+        localita: locRes.count ?? 0,
+        asc: ascRes.count ?? 0,
+        regioni: [...regioni].sort(),
+      });
+    } catch { /* ignore */ }
+
     setLoading(false);
   }, []);
 
@@ -81,20 +101,24 @@ const AdminDataBackbone = () => {
         supabase.from("omi_quotazioni").select("id", { count: "exact", head: true }),
         supabase.from("omi_polygons").select("id", { count: "exact", head: true }),
         supabase.from("omi_zone").select("id", { count: "exact", head: true }),
+        supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "comune"),
+        supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "localita"),
+        supabase.from("r03_asc_aggregates_2021").select("id", { count: "exact", head: true }),
         supabase.from("sub_municipal_areas_2021").select("id", { count: "exact", head: true }),
         supabase.from("census_sections_r03_2021").select("id", { count: "exact", head: true }),
-        supabase.from("r03_asc_aggregates_2021").select("id", { count: "exact", head: true }),
         supabase.from("demographic_zones").select("id", { count: "exact", head: true }),
       ]);
 
       const counts: Record<string, number> = {
-        omi_quotazioni: checks[0].count ?? 0,
-        omi_polygons: checks[1].count ?? 0,
-        omi_zone: checks[2].count ?? 0,
-        asc_2021: checks[3].count ?? 0,
-        r03_lombardia_2021: checks[4].count ?? 0,
+        istat_comuni_nazionale: checks[0].count ?? 0,
+        istat_localita_2021: checks[1].count ?? 0,
+        omi_quotazioni: checks[2].count ?? 0,
+        omi_polygons: checks[3].count ?? 0,
+        omi_zone: checks[4].count ?? 0,
         r03_asc_aggregates: checks[5].count ?? 0,
-        demographic_zones: checks[6].count ?? 0,
+        asc_2021: checks[6].count ?? 0,
+        r03_lombardia_2021: checks[7].count ?? 0,
+        demographic_zones: checks[8].count ?? 0,
       };
 
       // Update registry entries based on real counts
@@ -188,42 +212,49 @@ const AdminDataBackbone = () => {
               </CardContent>
             </Card>
 
-            {/* Territorial Backbone Overview */}
+            {/* Territorial Backbone Overview — Real Counts */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Globe className="h-4 w-4" /> Backbone Territoriale Nazionale
+                  <Globe className="h-4 w-4" /> Backbone Territoriale Nazionale — Stato Reale
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3 md:grid-cols-4">
-                  {[
-                    { label: "Comuni", key: "comune", icon: "🏘️", desc: "Livello comunale" },
-                    { label: "Località", key: "localita", icon: "📍", desc: "Località ufficiali ISTAT" },
-                    { label: "ASC", key: "sub_comunale", icon: "🗺️", desc: "Aree sub-comunali" },
-                    { label: "Piloti statistici", key: "pilot", icon: "📊", desc: "Con dati R03/censimento" },
-                  ].map(tier => {
-                    const matching = entries.filter(e => {
-                      if (tier.key === "pilot") return e.dataset_status === "pilot";
-                      return e.geographic_level_supported === tier.key || e.geographic_level_supported === `${tier.key}_omi`;
-                    });
-                    const active = matching.filter(e => e.dataset_status === "active" || e.dataset_status === "pilot");
-                    return (
-                      <div key={tier.key} className="rounded border p-2.5 space-y-1">
-                        <p className="text-xs font-semibold text-foreground">{tier.icon} {tier.label}</p>
-                        <p className="text-[10px] text-muted-foreground">{tier.desc}</p>
-                        <Badge variant="outline" className={`text-[10px] px-1 py-0 ${active.length > 0 ? "bg-emerald-500/10 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
-                          {active.length} fonti attive
-                        </Badge>
-                        <p className="text-[10px] text-muted-foreground">
-                          {matching.reduce((sum, e) => sum + (e.record_count || 0), 0).toLocaleString("it-IT")} record totali
-                        </p>
-                      </div>
-                    );
-                  })}
+                  <div className="rounded border p-2.5 space-y-1">
+                    <p className="text-xs font-semibold text-foreground">🏘️ Comuni</p>
+                    <p className="text-xl font-bold">{backboneCounts?.comuni?.toLocaleString("it-IT") ?? "—"}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {backboneCounts && backboneCounts.comuni > 0 ? `${backboneCounts.regioni.length} regioni` : "Non ancora importati"}
+                    </p>
+                  </div>
+                  <div className="rounded border p-2.5 space-y-1">
+                    <p className="text-xs font-semibold text-foreground">📍 Località</p>
+                    <p className="text-xl font-bold">{backboneCounts?.localita?.toLocaleString("it-IT") ?? "—"}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {backboneCounts && backboneCounts.localita > 0 ? "Località ufficiali ISTAT" : "Non ancora importate"}
+                    </p>
+                  </div>
+                  <div className="rounded border p-2.5 space-y-1">
+                    <p className="text-xs font-semibold text-foreground">🗺️ ASC</p>
+                    <p className="text-xl font-bold">{backboneCounts?.asc?.toLocaleString("it-IT") ?? "—"}</p>
+                    <p className="text-[10px] text-muted-foreground">Aree sub-comunali 2021</p>
+                  </div>
+                  <div className="rounded border p-2.5 space-y-1">
+                    <p className="text-xs font-semibold text-foreground">📊 Piloti</p>
+                    <p className="text-xl font-bold">
+                      {entries.filter(e => e.dataset_status === "pilot").length}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Con dati R03/censimento</p>
+                  </div>
                 </div>
+                {backboneCounts && backboneCounts.regioni.length > 0 && (
+                  <div className="mt-2 text-[10px] text-muted-foreground">
+                    <span className="font-medium">Regioni con comuni:</span> {backboneCounts.regioni.join(", ")}
+                  </div>
+                )}
                 <p className="text-[10px] text-muted-foreground mt-2 italic">
-                  Gerarchia: Sub-comunale → Località → Comune → Macrozona → Nazionale. Il report usa sempre il livello più preciso disponibile.
+                  Gerarchia: Microzona OMI → ASC → Località → Comune → Macrozona → Nazionale. Il report usa il livello più preciso disponibile.
                 </p>
               </CardContent>
             </Card>

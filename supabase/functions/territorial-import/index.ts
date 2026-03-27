@@ -91,16 +91,17 @@ async function importComuniItalia(
         centroid_lat: r["LAT"] ? parseFloat(r["LAT"]) || null : null,
         centroid_lng: r["LNG"] || r["LON"] ? parseFloat(r["LNG"] || r["LON"]) || null : null,
         metadata_json: {},
+        localita_code: "",
+        asc_code: "",
         import_batch_id: batchId,
       };
     }).filter(Boolean);
 
     if (dbRows.length === 0) continue;
     const { error, count } = await admin.from("territorial_registry")
-      .upsert(dbRows as any[], { onConflict: "comune_istat_code,geographic_level,COALESCE(localita_code, ''),COALESCE(asc_code, '')" })
+      .upsert(dbRows as any[], { onConflict: "comune_istat_code,geographic_level,localita_code,asc_code" })
       .select("id");
     if (error) {
-      // Fallback: try individual inserts for better error reporting
       log("comuni upsert error", error.message);
       dbRows.forEach((_, j) => errors.push({ idx: i + j, reason: error.message }));
     } else {
@@ -141,6 +142,7 @@ async function importLocalitaIstat(
         localita_code: locCode || locName, // fallback to name if no code
         localita_name: locName || locCode,
         localita_type: locType,
+        asc_code: "",
         geographic_level: "localita",
         source_key: "istat_localita",
         source_label: "ISTAT — Località abitate",
@@ -156,7 +158,7 @@ async function importLocalitaIstat(
 
     if (dbRows.length === 0) continue;
     const { error, count } = await admin.from("territorial_registry")
-      .upsert(dbRows as any[], { onConflict: "comune_istat_code,geographic_level,COALESCE(localita_code, ''),COALESCE(asc_code, '')" })
+      .upsert(dbRows as any[], { onConflict: "comune_istat_code,geographic_level,localita_code,asc_code" })
       .select("id");
     if (error) {
       log("localita upsert error", error.message);

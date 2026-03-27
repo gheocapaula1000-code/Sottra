@@ -946,7 +946,7 @@ serve(async (req) => {
     try {
       const { data: ascData, error: ascError } = await supabaseAdmin
         .from("sub_municipal_areas_2021")
-        .select("asc_level, area_code, area_name, area_type, comune_catastale_code, comune_name, source_dataset, polygon_coords, popolazione, densita, eta_media, superficie_kmq")
+        .select("asc_level, area_code, area_name, area_type, comune_catastale_code, comune_istat_code, comune_name, source_dataset, polygon_coords, popolazione, densita, eta_media, superficie_kmq")
         .not("polygon_coords", "is", null)
         .gte("centroid_lat", lat - 0.5)
         .lte("centroid_lat", lat + 0.5)
@@ -993,10 +993,8 @@ serve(async (req) => {
 
             // ── R03 Lombardia Pilot: enrich with aggregated census data ──
             try {
-              // Resolve comune_istat_code for the matched ASC area
-              let comuneIstatForR03: string | null = null;
-              if (row.comune_catastale_code) {
-                // Lookup istat code from omi_zone or omi_quotazioni via cadastral code
+              let comuneIstatForR03: string | null = (row as any).comune_istat_code ?? null;
+              if (!comuneIstatForR03 && row.comune_catastale_code) {
                 const { data: omiRef } = await supabaseAdmin
                   .from("omi_zone")
                   .select("codice_comune_istat")
@@ -1006,12 +1004,10 @@ serve(async (req) => {
                   .maybeSingle();
                 comuneIstatForR03 = omiRef?.codice_comune_istat ?? null;
               }
-              // Also try geoId if available
               if (!comuneIstatForR03 && geoId?.istatCode) {
                 comuneIstatForR03 = geoId.istatCode;
               }
 
-              // Build query with comune_istat_code filter for correct lookup
               let aggQuery = supabaseAdmin
                 .from("r03_asc_aggregates_2021")
                 .select("population_2021, families_2021, dwellings_2021, occupied_dwellings_2021, buildings_2021, residential_buildings_2021, density_pop_per_kmq, coverage_status, sections_count, sections_with_data, asc_name, superficie_kmq, comune_istat_code")
@@ -1057,7 +1053,6 @@ serve(async (req) => {
           log("asc", `${ascData.length} areas checked, no polygon match`);
         }
       } else {
-        // Table empty or no data in range
         subMunicipalMatch = {
           available: false, matched: false,
           coverage_status: "unavailable",
@@ -1068,6 +1063,44 @@ serve(async (req) => {
     } catch (ascErr) {
       log("asc exception (non-fatal)", String(ascErr));
       subMunicipalMatch = { available: false, matched: false, coverage_status: "unavailable", note: "Errore interno ASC" };
+    }
+
+    // ── Località enrichment from territorial_registry ──
+    // If we have a comune istat code, try to find matching località
+    if (geoId?.istatCode && subMunicipalMatch) {
+      try {
+        const { data: locData, error: locErr } = await supabaseAdmin
+          .from("territorial_registry")
+          .select("localita_code, localita_name, localita_type, centroid_lat, centroid_lng")
+          .eq("comune_istat_code", geoId.istatCode)
+          .eq("geographic_level", "localita")
+          .not("localita_code", "eq", "")
+          .limit(200);
+
+        if (!locErr && locData && locData.length > 0) {
+          // If we have centroids, find the nearest località
+          let bestLoc: typeof locData[0] | null = null;
+          let bestDist = Infinity;
+          for (const loc of locData) {
+            if (loc.centroid_lat != null && loc.centroid_lng != null) {
+              const d = haversine(lat, lng, Number(loc.centroid_lat), Number(loc.centroid_lng));
+              if (d < bestDist) { bestDist = d; bestLoc = loc; }
+            }
+          }
+          // Only assign if within 3km (reasonable for a località)
+          if (bestLoc && bestDist < 3000) {
+            subMunicipalMatch.localita_name = bestLoc.localita_name;
+            subMunicipalMatch.localita_type = bestLoc.localita_type;
+            subMunicipalMatch.localita_code = bestLoc.localita_code;
+            log("localita match", `name=${bestLoc.localita_name}, dist=${Math.round(bestDist)}m`);
+          } else if (locData.length > 0 && !bestLoc) {
+            // No centroids available, just note that località exist but can't match
+            log("localita", `${locData.length} località found for comune but no centroids for matching`);
+          }
+        }
+      } catch (locErr) {
+        log("localita lookup error (non-fatal)", String(locErr));
+      }
     }
 
     return json({

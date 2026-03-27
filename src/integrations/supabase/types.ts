@@ -919,7 +919,7 @@ export type Database = {
       }
       territorial_registry: {
         Row: {
-          asc_code: string | null
+          asc_code: string
           asc_level: number | null
           asc_name: string | null
           asc_type: string | null
@@ -933,7 +933,7 @@ export type Database = {
           geographic_level: string
           id: string
           import_batch_id: string | null
-          localita_code: string | null
+          localita_code: string
           localita_name: string | null
           localita_type: string | null
           metadata_json: Json | null
@@ -947,7 +947,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          asc_code?: string | null
+          asc_code?: string
           asc_level?: number | null
           asc_name?: string | null
           asc_type?: string | null
@@ -961,7 +961,7 @@ export type Database = {
           geographic_level?: string
           id?: string
           import_batch_id?: string | null
-          localita_code?: string | null
+          localita_code?: string
           localita_name?: string | null
           localita_type?: string | null
           metadata_json?: Json | null
@@ -975,7 +975,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          asc_code?: string | null
+          asc_code?: string
           asc_level?: number | null
           asc_name?: string | null
           asc_type?: string | null
@@ -989,7 +989,7 @@ export type Database = {
           geographic_level?: string
           id?: string
           import_batch_id?: string | null
-          localita_code?: string | null
+          localita_code?: string
           localita_name?: string | null
           localita_type?: string | null
           metadata_json?: Json | null
