@@ -18,7 +18,7 @@ export async function fetchProSources(
   modules: string[] = ["poi", "omi", "istat"],
   radius = 800,
 ): Promise<ProSourcesResult> {
-  const defaults: ProSourcesResult = { poi: null, omi: null, istat: null };
+  const defaults: ProSourcesResult = { poi: null, omi: null, istat: null, subMunicipalMatch: null };
 
   try {
     const { data, error } = await supabase.functions.invoke("pro-sources", {
