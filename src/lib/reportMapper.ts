@@ -123,6 +123,7 @@ export function resolveGeoContext(result: ScanResult): GeoContext {
       istat.geoLevel === "microzona" ? "microzona_omi" :
       istat.geoLevel === "quartiere" ? "quartiere" :
       istat.geoLevel === "zona" ? "zona_specifica" :
+      istat.geoLevel === "localita" ? "localita" :
       "comune";
     const isSubMunicipal = istatGeoLevel !== "comune";
     candidates.push({
@@ -239,6 +240,17 @@ export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: 
       "official_data",
       "available",
       `Dato ISTAT 2021 — match poligonale${ascMatch.level != null ? ` — livello ${ascMatch.level}` : ""}`,
+    );
+  }
+
+  // Locality info: show when resolved, even without ASC match
+  if (ascMatch?.localita_name && !data.tipologiaEdificio) {
+    data.tipologiaEdificio = field(
+      ascMatch.localita_name,
+      "Località ISTAT",
+      "official_data",
+      "available",
+      `Località ${ascMatch.localita_type === "capoluogo" ? "capoluogo" : "ufficiale"} — ${ascMatch.comune_name ?? ""}`,
     );
   }
 

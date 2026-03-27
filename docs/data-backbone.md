@@ -18,14 +18,47 @@ Tabella centrale che cataloga tutte le fonti dati di Sottra.
 | `source_type` | Tipo (official, territorial_verified, elaborated, forecast_scenario) |
 | `source_family` | Famiglia logica (valori_immobiliari, demografia, servizi, rischio...) |
 | `dataset_status` | Stato operativo: `active` / `pilot` / `inactive` / `deprecated` |
-| `geographic_level_supported` | Livello geo supportato (zona_omi, comune, quartiere, coordinate) |
+| `geographic_level_supported` | Livello geo supportato (zona_omi, localita, comune, quartiere, coordinate) |
 | `geographic_scope` | Ambito: `nazionale` / `regionale` / `macrozonale` / `parziale` |
 | `regions_supported` | Array di regioni coperte (per fonti regionali) |
 | `report_sections_supported` | Sezioni del report che questa fonte alimenta |
 | `current_coverage_status` | `available` / `partial` / `unavailable` |
 | `record_count` | Numero record reali nel DB |
 
-### 2. Macrozone Nazionali (`src/lib/macrozoneRegistry.ts`)
+### 2. Backbone Territoriale Nazionale
+
+Il backbone territoriale è costruito su una gerarchia ufficiale a 4 livelli principali:
+
+| Livello | Descrizione | Stato |
+|---------|-------------|-------|
+| **Sub-comunale (ASC)** | Aree Sub Comunali ISTAT 2021 | Pilota Lombardia, predisposto nazionale |
+| **Località** | Località ufficiali ISTAT | Predisposto, non ancora importato |
+| **Comune** | Anagrafe comuni ISTAT | Predisposto, OMI già attivo a livello comunale |
+| **Macrozona** | 5 aree (Nord-Ovest, Nord-Est, Centro, Sud, Isole) | Attivo come fallback |
+
+#### Differenza tra Comune, Località, ASC e Pilota Statistico
+
+- **Comune**: unità amministrativa base. Sempre disponibile come fallback.
+- **Località**: suddivisione ufficiale ISTAT del comune (frazioni, borgate, nuclei). Più precisa del comune ma meno dell'ASC. Non ancora attiva come fonte dati.
+- **ASC (Area Sub-Comunale)**: layer poligonale ISTAT per la suddivisione censuaria. Disponibile come layer territoriale.
+- **Pilota statistico**: ASC + sezioni censuarie (R03) con dati demografici aggregati. Attivo solo in Lombardia.
+
+#### Cosa viene mostrato nel report e con quale priorità
+
+```
+Sub-comunale R03 (se pilota attivo)
+  → ASC layer (se match poligonale)
+    → Località ISTAT (se disponibile)
+      → Comune (fallback)
+        → Macrozona (solo per sezioni abilitate)
+```
+
+#### Cosa NON è ancora supportato
+
+- **Vie/civici**: il livello stradale/civico (ANNSCU, SNC) non è attivo. Il modello è predisposto
+  per accoglierlo in futuro, ma non viene né dichiarato né esposto nel report attuale.
+
+### 3. Macrozone Nazionali (`src/lib/macrozoneRegistry.ts`)
 
 Registro centrale delle 5 macrozone italiane con mapping canonico regioni→macrozona.
 
@@ -37,19 +70,17 @@ Registro centrale delle 5 macrozone italiane con mapping canonico regioni→macr
 | **Sud** | Abruzzo, Molise, Campania, Puglia, Basilicata, Calabria |
 | **Isole** | Sicilia, Sardegna |
 
-Il mapping è centralizzato e non duplicato — tutti i moduli importano da `macrozoneRegistry.ts`.
+### 4. Gerarchia Geografica
 
-### 3. Gerarchia Geografica
-
-Il sistema distingue 7 livelli ordinati dal più preciso al più grossolano:
+Il sistema distingue 8 livelli ordinati dal più preciso al più grossolano:
 
 ```
-sub_comunale > comunale > provinciale > regionale > macrozonale > nazionale > non_determinato
+sub_comunale > zona_specifica > quartiere > localita > comunale > macrozonale > nazionale > non_determinato
 ```
 
-Il report usa sempre il livello migliore disponibile. La macrozona è un **fallback**, non il pilastro principale.
+Il report usa sempre il livello migliore disponibile.
 
-### 4. Exposure Policy Engine (`src/lib/dataBackbone.ts`)
+### 5. Exposure Policy Engine (`src/lib/dataBackbone.ts`)
 
 Modulo TypeScript che valuta, per ogni sezione del report, se deve comparire.
 
@@ -61,130 +92,48 @@ const decision = evaluateSectionExposure("profiloArea", scanResult, registry);
 Regole:
 - **hidden**: requisiti minimi non soddisfatti (moduli mancanti)
 - **reduced**: dati disponibili solo a livello comunale o macrozonale (label prudenti)
-- **shown**: dati reali a livello sub-comunale o zone specifiche
+- **shown**: dati reali a livello sub-comunale, località o zone specifiche
 
-Ogni sezione dichiara `allowsMacrozoneFallback` — solo le sezioni abilitate possono usare dati macrozonali.
-
-### 5. Sub-Municipal Gate (`evaluateSubMunicipalGate`)
+### 6. Sub-Municipal Gate (`evaluateSubMunicipalGate`)
 
 Gating data-driven per l'arricchimento sub-comunale:
-- Nessun hardcode "if Lombardia"
 - Basato su dati effettivamente presenti nel match ASC + R03
 - Se R03 non è importato → nessun blocco statistico
-- Se R03 è presente ma coverage parziale → etichettato chiaramente
-- Ora risolve anche la macrozona di appartenenza per contesto
+- Supporta anche località come livello intermedio
 
-## Come funzionano le macrozone
+## Distinzione critica: regionale vs macrozonale
 
-### Quando il report usa la macrozona
-
-La macrozona viene usata **solo** quando:
-1. Non esiste un livello più fine per quel blocco/dato
-2. La sezione del report consente il fallback macrozonale (`allowsMacrozoneFallback = true`)
-3. La fonte è reale e supportata nel backbone
-4. Il dato è chiaramente etichettato come "macrozonale"
-
-### Quando NON si usa la macrozona
-
-- Se esiste un dato sub-comunale → usa quello
-- Se esiste un dato comunale → usa quello
-- Se la sezione non lo consente (es. profiloRapido, immobileFacciata) → mai
-- Se il dato macrozonale non è disponibile → unavailable, niente fallback finto
-
-### Distinzione critica: regionale vs macrozonale
-
-Una fonte con `geographic_scope = "regionale"` copre **solo** le regioni esplicitamente dichiarate in `regions_supported`.
-Non viene mai promossa automaticamente a coprire l'intera macrozona di appartenenza.
-
-Esempio: una fonte che dichiara `regions_supported: ["Veneto"]` con scope `regionale`:
-- ✅ copre Veneto (codice 05)
-- ❌ NON copre Emilia-Romagna (codice 08), anche se entrambe sono nel Nord-Est
+Una fonte con `geographic_scope = "regionale"` copre **solo** le regioni esplicitamente dichiarate.
+Non viene mai promossa a coprire l'intera macrozona di appartenenza.
 
 Una fonte con `geographic_scope = "macrozonale"` copre tutte le regioni della macrozona
 a cui appartengono le regioni dichiarate.
 
-Questo impedisce di sovrastimare la copertura reale e di mostrare dati fuori perimetro.
-
-### Come viene assegnato un comune alla macrozona
-
-Via `getMacrozoneByRegionCode(codiceRegione)` — mapping deterministico ISTAT.
-Il codice regione è un campo standard nei dataset territoriali italiani.
-
-### Perché la macrozona non sostituisce i livelli più fini
-
-La gerarchia è rigida: `isGeoLevelAtLeast("macrozonale", "comunale")` → `false`.
-Un dato macrozonale non può mai "vincere" su un dato comunale nel resolver.
-
-## Come si aggiorna il registro
-
-### Import manuali (admin)
-Dopo ogni import via console admin:
-1. L'edge function `territorial-import` aggiorna i conteggi
-2. L'admin può cliccare "Sincronizza" nella pagina Data Backbone
-3. Il sistema verifica i conteggi reali nelle tabelle e aggiorna il registro
-
-### API live (OMI, ISTAT, POI)
-Le fonti live (SDMX, Overpass, Core) sono sempre `active` + `available` per design.
-Il registro le cataloga per completezza ma non le gating — sono sempre disponibili.
-
 ## Come si aggiungono nuove fonti
 
 1. Inserire un record in `data_source_registry` con `dataset_status = "inactive"`
-2. Specificare `regions_supported` e `report_sections_supported`
-3. Specificare `geographic_scope` (nazionale, regionale, macrozonale)
-4. Implementare l'importer e il parsing
+2. Specificare `geographic_level_supported` (localita, comune, sub_comunale, etc.)
+3. Specificare `geographic_scope` e `regions_supported`
+4. Implementare l'importer
 5. Dopo il primo import validato, aggiornare `dataset_status` a `pilot` o `active`
-6. Il motore di esposizione lo includerà automaticamente dove supportato
 
-### Aggiungere fonti macrozonali future
+## Come estendere il sistema senza rifare l'architettura
 
-Il sistema è pronto per:
-- Fonte disponibile solo per una macrozona → `geographic_scope = "macrozonale"`, `regions_supported = ["Lombardia", ...]`
-- Fonte nazionale con breakdown macrozonale → `geographic_scope = "nazionale"`, livello `macrozonale`
-- Futura estensione da macrozona → regione → comune quando i dati arrivano
-- Nessuna riscrittura architetturale necessaria
-
-## Come si decide se una sezione compare
-
-```
-Sezione → SECTION_REQUIREMENTS → moduli ScanResult richiesti
-   ↓
-evaluateSectionExposure()
-   ↓
-Controlla requiredModules + anyModules
-   ↓
-Inferisce geoLevel dalla sorgente primaria
-   ↓
-Se sub-comunale → "shown"
-Se comunale → "reduced" (label prudenti)
-Se macrozonale → "reduced" (label macrozona)
-Se mancante → "hidden"
-```
+- **Nuova regione ASC**: importare shapefile + aggiornare registry → il resolver lo troverà automaticamente
+- **Località ISTAT**: importare dataset località → il report le userà come livello intermedio
+- **Vie/civici (futuro)**: aggiungere livello `via_civico` nella gerarchia → il resolver lo preferirà sugli altri
+- **Nuova fonte macrozonale**: registrare con `geographic_scope = "macrozonale"` → il backbone la gestirà
 
 ## Console Admin "Stato Vero dei Dati"
 
 La pagina `/admin/data-backbone` mostra:
-- Tutte le fonti registrate con stato, copertura, livello geografico
-- Copertura per macrozona (quante fonti attive per ciascuna delle 5 aree)
-- Relazione fonte → sezioni report
-- Timestamp ultimo import e validazione
-- Possibilità di sincronizzare conteggi reali
+- **Backbone Territoriale**: panoramica dei 4 livelli (comuni, località, ASC, piloti) con conteggi
+- **Copertura Macrozone**: fonti attive per ciascuna delle 5 aree
+- **Registro Fonti**: dettaglio completo di ogni fonte con stato e sezioni alimentate
 
 ## Cosa resta fuori scope oggi
 
-- Rollout nazionale automatico (richiede dataset reali per ogni regione)
-- Fonti macrozonali reali (il modello è pronto, le fonti vanno ancora reperite)
-- Aggiornamento automatico del registro da import job (oggi è sync manuale admin)
-- Coverage per singolo comune (oggi è a livello di dataset)
-- Gating granulare per singolo campo del report (oggi è per sezione)
-
-## Relazione con il report pubblico
-
-Il Data Backbone non cambia il contenuto del report — rafforza la governance.
-Le sezioni continuano a usare `reportMapper.ts` per il contenuto effettivo.
-Il backbone aggiunge:
-- Tracciabilità di perché una sezione compare
-- Diagnostica admin su stato reale dei dati
-- Gerarchia geografica rigida che evita overclaim
-- Supporto macrozone per estensione nazionale futura
-- Base per estensione futura senza riscritture
+- Dataset località ISTAT (il binario è pronto, il dataset va ancora importato)
+- Anagrafe completa comuni (usa OMI/ISTAT come fonti indirette)
+- Livello vie/civici (predisposto nei tipi, non attivo)
+- Rollout nazionale R03/ASC statistico (solo Lombardia pilota)

@@ -188,6 +188,7 @@ export function evaluateSectionExposure(
   const geoLevel = inferSectionGeoLevel(sectionKey, result);
   const isMunicipal = geoLevel === "comune" || geoLevel === "non_determinato";
   const isMacrozone = geoLevel === "macrozona";
+  const isLocalita = geoLevel === "localita";
 
   // Section-specific exposure refinements
   let decision: DisplayDecision;
@@ -195,6 +196,9 @@ export function evaluateSectionExposure(
     decision = "reduced";
   } else if (isMunicipal && sectionKey === "profiloArea") {
     decision = "reduced";
+  } else if (isLocalita && sectionKey === "profiloArea") {
+    // Località is better than comune but not as precise as sub-comunale
+    decision = "shown";
   } else {
     decision = "shown";
   }
@@ -244,12 +248,21 @@ function inferSectionGeoLevel(sectionKey: ReportSectionKey, result: ScanResult):
 
   // ISTAT-based
   if (sectionKey === "profiloArea") {
+    // Check for sub-municipal match first
+    const ascMatch = result.subMunicipalMatch;
+    if (ascMatch?.status === "success" && ascMatch.data?.matched && ascMatch.data.coverage_status === "available") {
+      if (ascMatch.data.r03_enriched) return "zona_specifica"; // R03 enriched = sub-comunale
+      if (ascMatch.data.localita_name) return "localita";
+      return "quartiere"; // ASC match without R03
+    }
+
     const istat = result.istatDemographic;
     if (istat?.status === "success" && istat.data?.geoLevel) {
       const gl = istat.data.geoLevel;
       if (gl === "microzona") return "microzona_omi";
       if (gl === "quartiere") return "quartiere";
       if (gl === "zona") return "zona_specifica";
+      if (gl === "localita") return "localita";
     }
     return "comune";
   }
@@ -475,6 +488,7 @@ export function sourceGeoLevelLabel(entry: DataSourceEntry): string {
     microzona_omi: "Microzona OMI",
     sezione_censuaria: "Sezione censuaria",
     sub_comunale: "Sub-comunale",
+    localita: "Località",
     comune: "Comunale",
     provincia: "Provinciale",
     regionale: "Regionale",

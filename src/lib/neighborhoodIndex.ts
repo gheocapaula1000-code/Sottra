@@ -271,7 +271,7 @@ function scoreToBand(score: number): NeighborhoodIndex["band"] {
 /* ── Finest geo level from dimensions ────────────────── */
 
 const GEO_RANK: Record<GeoLevel, number> = {
-  microzona: 0, quartiere: 1, zona: 2, comune: 3, area_vasta: 4, stimato: 5,
+  microzona: 0, quartiere: 1, zona: 2, localita: 3, comune: 4, area_vasta: 5, stimato: 6,
 };
 
 function finestGeoLevel(dimensions: SubDimension[]): GeoLevel | null {

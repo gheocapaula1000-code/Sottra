@@ -156,6 +156,7 @@ export function getRegionCodesForMacrozone(code: MacrozoneCode): string[] {
  */
 export type ExtendedGeoLevel =
   | "sub_comunale"   // ASC, sezione censuaria
+  | "localita"       // ISTAT locality
   | "comunale"       // comune
   | "provinciale"    // provincia
   | "regionale"      // regione
@@ -165,11 +166,12 @@ export type ExtendedGeoLevel =
 
 const EXTENDED_GEO_RANK: Record<ExtendedGeoLevel, number> = {
   sub_comunale: 0,
-  comunale: 1,
-  provinciale: 2,
-  regionale: 3,
-  macrozonale: 4,
-  nazionale: 5,
+  localita: 1,
+  comunale: 2,
+  provinciale: 3,
+  regionale: 4,
+  macrozonale: 5,
+  nazionale: 6,
   non_determinato: 99,
 };
 
@@ -193,6 +195,7 @@ export function finerGeoLevel(a: ExtendedGeoLevel, b: ExtendedGeoLevel): Extende
 export function extendedGeoLevelLabel(level: ExtendedGeoLevel): string {
   switch (level) {
     case "sub_comunale": return "Sub-comunale";
+    case "localita": return "Località";
     case "comunale": return "Comunale";
     case "provinciale": return "Provinciale";
     case "regionale": return "Regionale";

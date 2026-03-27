@@ -107,8 +107,8 @@ export interface PosizionamentoCommercialeData extends SourceMetadata {
 /* ── Geo-level metadata for territorial sections ───────── */
 
 export type ReportGeoLevel =
-  | "microzona_omi" | "zona_specifica" | "quartiere" | "comune"
-  | "macrozona" | "nazionale" | "non_determinato";
+  | "microzona_omi" | "zona_specifica" | "quartiere" | "localita"
+  | "comune" | "macrozona" | "nazionale" | "non_determinato";
 
 export interface GeoContext {
   geoLevel: ReportGeoLevel;
