@@ -426,6 +426,10 @@ export interface SubMunicipalMatchData {
   eta_media?: number | null;
   superficie_kmq?: number | null;
   note?: string;
+  /** Locality info if resolved */
+  localita_name?: string | null;
+  localita_type?: string | null;
+  localita_code?: string | null;
   /** R03 Lombardia pilot enrichment */
   r03_enriched?: boolean;
   r03_coverage?: string;
