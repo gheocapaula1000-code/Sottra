@@ -50,6 +50,7 @@ const DATASET_TYPES: Record<string, { label: string; description: string; accept
 
 const STATUS_COLORS: Record<string, string> = {
   uploaded: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  validated: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
   validating: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   ready_to_import: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
   importing: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
