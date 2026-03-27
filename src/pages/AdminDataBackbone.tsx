@@ -334,16 +334,26 @@ const AdminDataBackbone = () => {
               })}
             </div>
 
-            {/* Report Exposure Legend */}
+            {/* Territorial Hierarchy Legend */}
             <Card className="bg-muted/30">
               <CardContent className="pt-4">
-                <p className="text-xs font-medium text-foreground mb-2">Legenda esposizione report</p>
+                <p className="text-xs font-medium text-foreground mb-2">Gerarchia territoriale e risoluzione dati</p>
                 <div className="grid gap-1 text-xs text-muted-foreground">
                   <p><Shield className="h-3 w-3 inline mr-1 text-emerald-600" /> Bordo verde = fonte attiva nel report pubblico</p>
-                  <p><CheckCircle2 className="h-3 w-3 inline mr-1 text-emerald-600" /> Attivo = fonte operativa e pubblicabile</p>
-                  <p><Activity className="h-3 w-3 inline mr-1 text-blue-600" /> Pilota = fonte in fase sperimentale (solo aree coperte)</p>
-                  <p><XCircle className="h-3 w-3 inline mr-1 text-muted-foreground" /> Inattivo = predisposto ma non ancora caricato/validato</p>
-                  <p><AlertTriangle className="h-3 w-3 inline mr-1 text-amber-600" /> Parziale = disponibile ma con copertura incompleta</p>
+                  <p>📊 <strong>Logica di priorità:</strong> Microzona OMI → ASC/R03 → Località → Comune → Macrozona → Nazionale</p>
+                  <p>🔍 <strong>Livello identificato vs dato:</strong> Il sistema distingue sempre dove si trova il punto (identificato) dal livello del dato disponibile</p>
+                  <p>⚠️ Se il dato è meno preciso della posizione identificata, il report lo dichiara esplicitamente</p>
+                  <p>🚫 Nessun dato viene mai promosso a un livello più fine di quello reale</p>
+                </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-7">
+                  {["Microzona OMI", "Zona specifica", "Quartiere", "Località", "Comune", "Macrozona", "Nazionale"].map((level, i) => (
+                    <div key={level} className="text-center">
+                      <div className={`text-[10px] font-mono rounded px-1 py-0.5 ${i < 4 ? "bg-emerald-500/10 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                        {level}
+                      </div>
+                      {i < 6 && <span className="text-[10px] text-muted-foreground">→</span>}
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
