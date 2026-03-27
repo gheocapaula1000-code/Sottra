@@ -917,6 +917,93 @@ export type Database = {
         }
         Relationships: []
       }
+      territorial_registry: {
+        Row: {
+          asc_code: string | null
+          asc_level: number | null
+          asc_name: string | null
+          asc_type: string | null
+          centroid_lat: number | null
+          centroid_lng: number | null
+          comune_istat_code: string
+          comune_name: string
+          coverage_status: string
+          created_at: string | null
+          dataset_status: string
+          geographic_level: string
+          id: string
+          import_batch_id: string | null
+          localita_code: string | null
+          localita_name: string | null
+          localita_type: string | null
+          metadata_json: Json | null
+          provincia_code: string | null
+          provincia_name: string | null
+          regione_code: string | null
+          regione_name: string | null
+          source_key: string
+          source_label: string
+          source_year: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          asc_code?: string | null
+          asc_level?: number | null
+          asc_name?: string | null
+          asc_type?: string | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
+          comune_istat_code: string
+          comune_name?: string
+          coverage_status?: string
+          created_at?: string | null
+          dataset_status?: string
+          geographic_level?: string
+          id?: string
+          import_batch_id?: string | null
+          localita_code?: string | null
+          localita_name?: string | null
+          localita_type?: string | null
+          metadata_json?: Json | null
+          provincia_code?: string | null
+          provincia_name?: string | null
+          regione_code?: string | null
+          regione_name?: string | null
+          source_key?: string
+          source_label?: string
+          source_year?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          asc_code?: string | null
+          asc_level?: number | null
+          asc_name?: string | null
+          asc_type?: string | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
+          comune_istat_code?: string
+          comune_name?: string
+          coverage_status?: string
+          created_at?: string | null
+          dataset_status?: string
+          geographic_level?: string
+          id?: string
+          import_batch_id?: string | null
+          localita_code?: string | null
+          localita_name?: string | null
+          localita_type?: string | null
+          metadata_json?: Json | null
+          provincia_code?: string | null
+          provincia_name?: string | null
+          regione_code?: string | null
+          regione_name?: string | null
+          source_key?: string
+          source_label?: string
+          source_year?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
