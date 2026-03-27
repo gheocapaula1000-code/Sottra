@@ -150,6 +150,18 @@ const AdminSubMunicipal = () => {
     setUploading(null);
   };
 
+  const validateJob = async (jobId: string) => {
+    setProcessing(jobId);
+    try {
+      const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "validate-csv", jobId } });
+      if (error) { toast.error(`Errore validazione: ${error.message}`); }
+      else if (data?.error) { toast.error(data.error); }
+      else { toast.success("Validazione completata — controlla i risultati prima di importare"); }
+      await loadJobs();
+    } catch { toast.error("Errore validazione"); }
+    setProcessing(null);
+  };
+
   const processJob = async (jobId: string) => {
     setProcessing(jobId);
     try {
