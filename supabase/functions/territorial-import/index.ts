@@ -315,6 +315,35 @@ async function validatePostImport(datasetType: string, admin: ReturnType<typeof 
     }
   }
 
+  if (datasetType === "COMUNI_ITALIA") {
+    const { data, error } = await admin.from("territorial_registry")
+      .select("comune_istat_code, regione_name")
+      .eq("geographic_level", "comune");
+    if (!error && data) {
+      const regioni = new Set<string>();
+      for (const r of data as any[]) { if (r.regione_name) regioni.add(r.regione_name); }
+      result.comuni = { total: data.length, regioni: regioni.size, regioniList: [...regioni].sort() };
+    }
+  }
+
+  if (datasetType === "LOCALITA_ISTAT") {
+    const { data, error } = await admin.from("territorial_registry")
+      .select("comune_istat_code, localita_code, localita_type, regione_name")
+      .eq("geographic_level", "localita");
+    if (!error && data) {
+      const comuni = new Set<string>();
+      const regioni = new Set<string>();
+      const byType: Record<string, number> = {};
+      for (const r of data as any[]) {
+        if (r.comune_istat_code) comuni.add(r.comune_istat_code);
+        if (r.regione_name) regioni.add(r.regione_name);
+        const t = r.localita_type || "sconosciuto";
+        byType[t] = (byType[t] || 0) + 1;
+      }
+      result.localita = { total: data.length, comuni: comuni.size, regioni: regioni.size, byType };
+    }
+  }
+
   return result;
 }
 
