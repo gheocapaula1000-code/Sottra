@@ -195,6 +195,7 @@ export function finerGeoLevel(a: ExtendedGeoLevel, b: ExtendedGeoLevel): Extende
 export function extendedGeoLevelLabel(level: ExtendedGeoLevel): string {
   switch (level) {
     case "sub_comunale": return "Sub-comunale";
+    case "localita": return "Località";
     case "comunale": return "Comunale";
     case "provinciale": return "Provinciale";
     case "regionale": return "Regionale";

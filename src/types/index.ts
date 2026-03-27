@@ -200,7 +200,7 @@ export interface RischioZonaData extends SourceMetadata {
 }
 
 /** Livello geografico del dato territoriale */
-export type GeoLevel = "microzona" | "quartiere" | "zona" | "comune" | "area_vasta" | "stimato";
+export type GeoLevel = "microzona" | "quartiere" | "zona" | "localita" | "comune" | "area_vasta" | "stimato";
 
 /** Trend demografico */
 export interface TrendDemograficoData extends SourceMetadata {
