@@ -6,6 +6,8 @@ import {
   summarizeRegistry,
   isSourcePublishable,
   getSourceSections,
+  sectionAllowsMacrozone,
+  sourceCoversRegion,
   type DataSourceEntry,
   type ReportSectionKey,
 } from "@/lib/dataBackbone";
@@ -129,6 +131,7 @@ describe("dataBackbone — evaluateSubMunicipalGate", () => {
     expect(gate.showR03Block).toBe(true);
     expect(gate.showAscBlock).toBe(true);
     expect(gate.region).toBe("Lombardia");
+    expect(gate.macrozone?.macrozone_code).toBe("nord_ovest");
   });
 
   it("does not show R03 when population is null", () => {
@@ -153,17 +156,19 @@ describe("dataBackbone — buildReportExposureMap", () => {
 });
 
 describe("dataBackbone — registry helpers", () => {
-  it("summarizes registry correctly", () => {
+  it("summarizes registry correctly with byGeoScope", () => {
     const entries = [
-      mockRegistryEntry({ dataset_status: "active", source_family: "valori" }),
-      mockRegistryEntry({ dataset_status: "pilot", source_family: "demo", source_key: "k2" }),
-      mockRegistryEntry({ dataset_status: "inactive", source_family: "valori", source_key: "k3" }),
+      mockRegistryEntry({ dataset_status: "active", source_family: "valori", geographic_scope: "nazionale" }),
+      mockRegistryEntry({ dataset_status: "pilot", source_family: "demo", source_key: "k2", geographic_scope: "regionale" }),
+      mockRegistryEntry({ dataset_status: "inactive", source_family: "valori", source_key: "k3", geographic_scope: "nazionale" }),
     ];
     const summary = summarizeRegistry(entries);
     expect(summary.total).toBe(3);
     expect(summary.active).toBe(1);
     expect(summary.pilot).toBe(1);
     expect(summary.inactive).toBe(1);
+    expect(summary.byGeoScope["nazionale"]).toBe(2);
+    expect(summary.byGeoScope["regionale"]).toBe(1);
   });
 
   it("isSourcePublishable works", () => {
@@ -177,6 +182,45 @@ describe("dataBackbone — registry helpers", () => {
     const sections = getSourceSections(entry);
     expect(sections).toContain("profiloRapido");
     expect(sections).not.toContain("invalidSection");
+  });
+});
+
+describe("dataBackbone — macrozone support", () => {
+  it("sectionAllowsMacrozone is true for profiloArea", () => {
+    expect(sectionAllowsMacrozone("profiloArea")).toBe(true);
+    expect(sectionAllowsMacrozone("sintesiFinale")).toBe(true);
+  });
+
+  it("sectionAllowsMacrozone is false for profiloRapido", () => {
+    expect(sectionAllowsMacrozone("profiloRapido")).toBe(false);
+    expect(sectionAllowsMacrozone("immobileFacciata")).toBe(false);
+  });
+
+  it("sourceCoversRegion correctly for national source", () => {
+    const national = mockRegistryEntry({ geographic_scope: "nazionale" });
+    expect(sourceCoversRegion(national, "03")).toBe(true);
+    expect(sourceCoversRegion(national, "19")).toBe(true);
+  });
+
+  it("sourceCoversRegion correctly for regional source", () => {
+    const regional = mockRegistryEntry({
+      geographic_scope: "regionale",
+      regions_supported: ["Lombardia"],
+    });
+    // Lombardia is in Nord-Ovest (code 03)
+    expect(sourceCoversRegion(regional, "03")).toBe(true);
+    // Sicilia is code 19 → Isole, not covered
+    expect(sourceCoversRegion(regional, "19")).toBe(false);
+  });
+
+  it("evaluateSubMunicipalGate resolves macrozone", () => {
+    const match: SubMunicipalMatchData = {
+      available: true, matched: true, name: "Centro", coverage_status: "available",
+      r03_enriched: true, r03_coverage: "available", r03_population: 5000,
+    };
+    const gate = evaluateSubMunicipalGate(match);
+    expect(gate.macrozone).not.toBeNull();
+    expect(gate.macrozone?.macrozone_label).toBe("Nord-Ovest");
   });
 });
 
