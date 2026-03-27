@@ -9,6 +9,7 @@
  */
 
 import type { ScanResult } from "@/types";
+import type { SubMunicipalMatchData } from "@/types";
 import type {
   ReportField, ProfiloRapidoData, ImmobileFacciataData,
   ContestoVicinatoData, PosizionamentoCommercialeData,
