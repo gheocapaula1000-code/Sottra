@@ -248,12 +248,21 @@ function inferSectionGeoLevel(sectionKey: ReportSectionKey, result: ScanResult):
 
   // ISTAT-based
   if (sectionKey === "profiloArea") {
+    // Check for sub-municipal match first
+    const ascMatch = result.subMunicipalMatch;
+    if (ascMatch?.status === "success" && ascMatch.data?.matched && ascMatch.data.coverage_status === "available") {
+      if (ascMatch.data.r03_enriched) return "zona_specifica"; // R03 enriched = sub-comunale
+      if (ascMatch.data.localita_name) return "localita";
+      return "quartiere"; // ASC match without R03
+    }
+
     const istat = result.istatDemographic;
     if (istat?.status === "success" && istat.data?.geoLevel) {
       const gl = istat.data.geoLevel;
       if (gl === "microzona") return "microzona_omi";
       if (gl === "quartiere") return "quartiere";
       if (gl === "zona") return "zona_specifica";
+      if (gl === "localita") return "localita";
     }
     return "comune";
   }
