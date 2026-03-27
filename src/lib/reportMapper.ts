@@ -191,6 +191,7 @@ export function computeModuleCoverage(result: ScanResult): { available: number; 
 export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: number | null): ProfiloRapidoData | null {
   const identify = sectionData<IdentifyResult>(result, "identify");
   const omi = sectionData<OmiZoneData>(result, "omiZone");
+  const ascMatch = sectionData<SubMunicipalMatchData>(result, "subMunicipalMatch");
 
   if (!identify) return null;
 
@@ -220,6 +221,24 @@ export function buildProfiloRapido(result: ScanResult, lat: number | null, lng: 
       "official_data",
       isZoneLevel && !isFallback ? "available" : "partial",
       note,
+    );
+  }
+
+  // Micro-info ASC: show only when match is reliable (polygon match)
+  if (ascMatch?.matched && ascMatch.coverage_status === "available" && ascMatch.name) {
+    // Add as a lightweight territorial enrichment — NOT demographics
+    const typeLabels: Record<string, string> = {
+      area_sub_comunale: "Area sub-comunale",
+      sezione_censuaria: "Sezione censuaria",
+      localita: "Località",
+    };
+    const typeLabel = typeLabels[ascMatch.type ?? ""] ?? ascMatch.type ?? "Area";
+    data.tipologiaEdificio = field(
+      `${ascMatch.name} (${typeLabel})`,
+      "Area sub-comunale ISTAT",
+      "official_data",
+      "available",
+      `Dato ISTAT 2021 — match poligonale${ascMatch.level != null ? ` — livello ${ascMatch.level}` : ""}`,
     );
   }
 
