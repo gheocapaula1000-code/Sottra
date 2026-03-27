@@ -160,6 +160,7 @@ export function geoLevelDisplayLabel(level: ReportGeoLevel): string {
     case "microzona_omi": return "Microzona OMI";
     case "zona_specifica": return "Zona specifica";
     case "quartiere": return "Quartiere";
+    case "localita": return "Località";
     case "comune": return "Comune";
     case "macrozona": return "Macrozona";
     case "nazionale": return "Nazionale";
