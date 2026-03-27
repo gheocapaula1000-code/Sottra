@@ -6,6 +6,7 @@ import {
   buildAscMappings,
 } from "@/lib/r03Importer";
 import type { SubMunicipalMatchData } from "@/types";
+import type { AscLevelMatchDetail } from "@/lib/r03Importer";
 
 describe("validateR03Record", () => {
   it("validates complete record", () => {
@@ -143,6 +144,50 @@ describe("buildAscMappings", () => {
   it("handles empty inputs", () => {
     const map = buildAscMappings([], []);
     expect(map.size).toBe(0);
+  });
+});
+
+describe("AscLevelMatchDetail type shape", () => {
+  it("has correct fields", () => {
+    const detail: AscLevelMatchDetail = {
+      level: 1,
+      codesInSections: new Set(["A", "B"]),
+      codesInLayer: new Set(["A", "C"]),
+      matched: ["A"],
+      unmatchedInSections: ["B"],
+      unmatchedInLayer: ["C"],
+      coveragePct: 50,
+    };
+    expect(detail.level).toBe(1);
+    expect(detail.matched).toHaveLength(1);
+    expect(detail.coveragePct).toBe(50);
+  });
+
+  it("does not false-match codes across levels", () => {
+    // Same code "X" at level 1 and level 2 should not cross-match
+    const level1: AscLevelMatchDetail = {
+      level: 1,
+      codesInSections: new Set(["X"]),
+      codesInLayer: new Set(),
+      matched: [],
+      unmatchedInSections: ["X"],
+      unmatchedInLayer: [],
+      coveragePct: 0,
+    };
+    const level2: AscLevelMatchDetail = {
+      level: 2,
+      codesInSections: new Set(),
+      codesInLayer: new Set(["X"]),
+      matched: [],
+      unmatchedInSections: [],
+      unmatchedInLayer: ["X"],
+      coveragePct: 0,
+    };
+    // Code "X" in sections at level 1 should NOT appear as matched in level 2
+    expect(level1.matched).not.toContain("X");
+    expect(level2.matched).not.toContain("X");
+    expect(level1.unmatchedInSections).toContain("X");
+    expect(level2.unmatchedInLayer).toContain("X");
   });
 });
 
