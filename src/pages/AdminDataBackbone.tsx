@@ -186,6 +186,39 @@ const AdminDataBackbone = () => {
               </CardContent>
             </Card>
 
+            {/* Macrozone Overview */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Layers className="h-4 w-4" /> Copertura Macrozone Italia
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2 md:grid-cols-5">
+                  {MACROZONE_DEFINITIONS.map(mz => {
+                    // Check if any source covers this macrozone
+                    const coveringSources = entries.filter(e => {
+                      if (e.geographic_scope === "nazionale" && (e.dataset_status === "active" || e.dataset_status === "pilot")) return true;
+                      if (e.regions_supported?.some(r => mz.regioni.some(mr => mr.nome_regione.toLowerCase() === r.toLowerCase()))) return true;
+                      return false;
+                    });
+                    const activeSources = coveringSources.filter(e => e.dataset_status === "active" || e.dataset_status === "pilot");
+                    return (
+                      <div key={mz.code} className="rounded border p-2 space-y-1">
+                        <p className="text-xs font-semibold text-foreground">{mz.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{mz.regioni.map(r => r.nome_regione).join(", ")}</p>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" className={`text-[10px] px-1 py-0 ${activeSources.length > 0 ? "bg-emerald-500/10 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                            {activeSources.length} fonti attive
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Source Registry Table */}
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
