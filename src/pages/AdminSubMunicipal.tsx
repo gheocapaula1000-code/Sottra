@@ -255,11 +255,17 @@ const AdminSubMunicipal = () => {
     setProcessing(jobId);
     try {
       const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "validate-csv", jobId } });
-      if (error) { toast.error(`Errore validazione: ${error.message}`); }
-      else if (data?.error) { toast.error(data.error); }
-      else { toast.success("Validazione completata — controlla i risultati prima di importare"); }
+      if (error) {
+        const msg = error.message.includes("Failed to") ? "Edge function non raggiungibile — controlla la connessione" : `Errore validazione: ${error.message}`;
+        toast.error(msg);
+      } else if (data?.error) {
+        const msg = data.error.includes("Admin") || data.error.includes("owner") ? `Permessi insufficienti per validate: ${data.error}` : data.error;
+        toast.error(msg);
+      } else {
+        toast.success("Validazione completata — controlla i risultati prima di importare");
+      }
       await loadJobs();
-    } catch { toast.error("Errore validazione"); }
+    } catch (e: any) { toast.error(`Errore rete validazione: ${e?.message ?? "sconosciuto"}`); }
     setProcessing(null);
   };
 
@@ -267,12 +273,18 @@ const AdminSubMunicipal = () => {
     setProcessing(jobId);
     try {
       const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "process-csv", jobId } });
-      if (error) { toast.error(`Errore processing: ${error.message}`); }
-      else if (data?.error) { toast.error(data.error); }
-      else { toast.success(`Import completato: ${data?.imported ?? 0} record importati`); }
+      if (error) {
+        const msg = error.message.includes("Failed to") ? "Edge function non raggiungibile — controlla la connessione" : `Errore import: ${error.message}`;
+        toast.error(msg);
+      } else if (data?.error) {
+        const msg = data.error.includes("Admin") || data.error.includes("owner") ? `Permessi insufficienti per import: ${data.error}` : data.error;
+        toast.error(msg);
+      } else {
+        toast.success(`Import completato: ${data?.imported ?? 0} record importati`);
+      }
       await loadJobs();
       refreshAll();
-    } catch { toast.error("Errore processing"); }
+    } catch (e: any) { toast.error(`Errore rete import: ${e?.message ?? "sconosciuto"}`); }
     setProcessing(null);
   };
 
