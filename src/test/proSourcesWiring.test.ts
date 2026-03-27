@@ -142,7 +142,6 @@ describe("Territorial resolution with OMI polygon data", () => {
   it("OMI polygon match results in microzona_omi identified level", async () => {
     // Import the resolver
     const { resolveTerritorialContext } = await import("@/lib/sourceResolver");
-    const { default: _ } = await import("@/types");
 
     // Build a minimal ScanResult with OMI polygon match
     const mockResult = {
