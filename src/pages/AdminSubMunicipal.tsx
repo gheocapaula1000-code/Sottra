@@ -398,6 +398,55 @@ const AdminSubMunicipal = () => {
           </div>
         )}
 
+        {/* ═══ R03→ASC AGGREGATION ═══ */}
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" /> Aggregazione R03 → ASC
+          </h2>
+          <p className="text-xs text-muted-foreground">Aggrega sezioni censuarie R03 verso aree sub-comunali ASC per il report pubblico</p>
+        </div>
+
+        <Card>
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                {aggLoading ? (
+                  <p className="text-xs text-muted-foreground">Caricamento...</p>
+                ) : aggStats && aggStats.aggregates > 0 ? (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">{aggStats.aggregates} aggregati generati</p>
+                    {aggStats.stats && (
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        <span>{aggStats.stats.comuni} comuni</span>
+                        <span>disponibili: {aggStats.stats.available}</span>
+                        <span>parziali: {aggStats.stats.partial}</span>
+                        {aggStats.stats.byLevel && Object.entries(aggStats.stats.byLevel).map(([k, v]) => (
+                          <span key={k}>ASC{k}: {String(v)}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nessun aggregato. Importa prima le sezioni R03 e poi lancia l'aggregazione.</p>
+                )}
+              </div>
+              <Button size="sm" className="h-8" onClick={runAggregation} disabled={aggregating || !isR03Present}>
+                {aggregating ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Aggregazione...</> : "Genera aggregati"}
+              </Button>
+            </div>
+            {aggStats && aggStats.sample && aggStats.sample.length > 0 && (
+              <div className="rounded border p-2 text-xs space-y-1">
+                <p className="font-medium text-foreground">Esempi aggregati:</p>
+                {aggStats.sample.map((s: any, i: number) => (
+                  <div key={i} className="text-muted-foreground">
+                    ASC{s.asc_level} {s.asc_code} ({s.asc_name ?? "n/a"}) — {s.comune_name} — pop: {s.population_2021?.toLocaleString("it-IT") ?? "n/d"} — {s.coverage_status}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* ═══ VALIDATION ═══ */}
         <Card>
           <CardHeader className="pb-2">
