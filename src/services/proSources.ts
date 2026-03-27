@@ -82,10 +82,18 @@ function parseOmiResult(raw: unknown): OmiZoneData | null {
     semestre: typeof d.semestre === "string" ? d.semestre : null,
     tipologia: typeof d.tipologia === "string" ? d.tipologia : null,
     statoConservazione: typeof d.statoConservazione === "string" ? d.statoConservazione : null,
+    // ── Critical territorial fields from backend — DO NOT DROP ──
+    polygonMatch: d.polygonMatch === true,
+    omiGeoLevel: (typeof d.omiGeoLevel === "string" ? d.omiGeoLevel : undefined) as OmiZoneData["omiGeoLevel"],
+    matchMethod: typeof d.matchMethod === "string" ? d.matchMethod : undefined,
+    matchConfidence: typeof d.matchConfidence === "number" ? d.matchConfidence : undefined,
     sourceType: (d.sourceType as OmiZoneData["sourceType"]) ?? "official",
     sourceProvider: "omi",
     sourceLabel: typeof d.sourceLabel === "string" ? d.sourceLabel : "OMI / Agenzia delle Entrate",
     sourcePeriod: typeof d.semestre === "string" ? d.semestre : undefined,
+    sourceFreshness: typeof d.sourceFreshness === "string" ? d.sourceFreshness : undefined,
+    sourceCoverageLevel: (typeof d.sourceCoverageLevel === "string" ? d.sourceCoverageLevel : undefined) as OmiZoneData["sourceCoverageLevel"],
+    licensingNote: typeof d.licensingNote === "string" ? d.licensingNote : undefined,
   };
 }
 
