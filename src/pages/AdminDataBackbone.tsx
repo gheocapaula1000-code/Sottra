@@ -232,7 +232,19 @@ const AdminDataBackbone = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-3 md:grid-cols-4">
+                {/* Backbone status badge */}
+                {backboneCounts && (
+                  <div className="mb-3">
+                    <Badge variant="outline" className={`text-xs px-2 py-0.5 ${
+                      backboneCounts.backboneStatus === "pronto" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" :
+                      backboneCounts.backboneStatus === "parziale" ? "bg-amber-500/10 text-amber-700 dark:text-amber-300" :
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      Backbone: {backboneCounts.backboneStatus === "pronto" ? "Pronto" : backboneCounts.backboneStatus === "parziale" ? "Parziale" : "Vuoto"}
+                    </Badge>
+                  </div>
+                )}
+                <div className="grid gap-3 md:grid-cols-5">
                   <div className="rounded border p-2.5 space-y-1">
                     <p className="text-xs font-semibold text-foreground">🏘️ Comuni</p>
                     <p className="text-xl font-bold">{backboneCounts?.comuni?.toLocaleString("it-IT") ?? "—"}</p>
@@ -244,8 +256,13 @@ const AdminDataBackbone = () => {
                     <p className="text-xs font-semibold text-foreground">📍 Località</p>
                     <p className="text-xl font-bold">{backboneCounts?.localita?.toLocaleString("it-IT") ?? "—"}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {backboneCounts && backboneCounts.localita > 0 ? "Località ufficiali ISTAT" : "Non ancora importate"}
+                      {backboneCounts && backboneCounts.localita > 0
+                        ? `${backboneCounts.localitaWithCentroid.toLocaleString("it-IT")} con centroidi`
+                        : "Non ancora importate"}
                     </p>
+                    {backboneCounts && backboneCounts.localitaWithoutCentroid > 0 && (
+                      <p className="text-[10px] text-amber-600">{backboneCounts.localitaWithoutCentroid.toLocaleString("it-IT")} senza centroidi</p>
+                    )}
                   </div>
                   <div className="rounded border p-2.5 space-y-1">
                     <p className="text-xs font-semibold text-foreground">🗺️ ASC</p>
@@ -258,6 +275,13 @@ const AdminDataBackbone = () => {
                       {entries.filter(e => e.dataset_status === "pilot").length}
                     </p>
                     <p className="text-[10px] text-muted-foreground">Con dati R03/censimento</p>
+                  </div>
+                  <div className="rounded border p-2.5 space-y-1">
+                    <p className="text-xs font-semibold text-foreground">🌍 Regioni</p>
+                    <p className="text-xl font-bold">{backboneCounts?.regioni?.length ?? 0}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {backboneCounts && backboneCounts.regioni.length >= 20 ? "Copertura completa" : "Copertura parziale"}
+                    </p>
                   </div>
                 </div>
                 {backboneCounts && backboneCounts.regioni.length > 0 && (
