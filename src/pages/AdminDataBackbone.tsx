@@ -110,13 +110,15 @@ const AdminDataBackbone = () => {
       ]);
 
       const counts: Record<string, number> = {
-        omi_quotazioni: checks[0].count ?? 0,
-        omi_polygons: checks[1].count ?? 0,
-        omi_zone: checks[2].count ?? 0,
-        asc_2021: checks[3].count ?? 0,
-        r03_lombardia_2021: checks[4].count ?? 0,
+        istat_comuni_nazionale: checks[0].count ?? 0,
+        istat_localita_2021: checks[1].count ?? 0,
+        omi_quotazioni: checks[2].count ?? 0,
+        omi_polygons: checks[3].count ?? 0,
+        omi_zone: checks[4].count ?? 0,
         r03_asc_aggregates: checks[5].count ?? 0,
-        demographic_zones: checks[6].count ?? 0,
+        asc_2021: checks[6].count ?? 0,
+        r03_lombardia_2021: checks[7].count ?? 0,
+        demographic_zones: checks[8].count ?? 0,
       };
 
       // Update registry entries based on real counts
