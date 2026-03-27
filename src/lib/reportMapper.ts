@@ -515,9 +515,65 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
   const geo = resolveGeoContext(result);
   const data: ProfiloAreaData = { geo };
 
-  // Lombardia pilot enrichment: show R03 population data at ASC level
-  // Only when ASC match is reliable AND we're in Lombardia (regione_code=03 implied by ASC match from R03)
-  if (ascMatch?.matched && ascMatch.coverage_status === "available" && ascMatch.popolazione != null && ascMatch.popolazione > 0) {
+  // Lombardia pilot enrichment: show R03 aggregated data at ASC level
+  // Only when ASC match is reliable AND R03 enrichment is present
+  const isR03Enriched = ascMatch?.matched && ascMatch.r03_enriched === true;
+  const r03Coverage = ascMatch?.r03_coverage;
+  const r03Available = isR03Enriched && (r03Coverage === "available" || r03Coverage === "partial");
+
+  if (r03Available && ascMatch.r03_population != null && ascMatch.r03_population > 0) {
+    const areaName = ascMatch.name ?? "Area";
+    const coverageNote = r03Coverage === "partial" ? " — copertura parziale" : "";
+    const sectionsNote = ascMatch.r03_sections_count
+      ? ` (${ascMatch.r03_sections_with_data ?? ascMatch.r03_sections_count}/${ascMatch.r03_sections_count} sezioni)`
+      : "";
+
+    data.contestoSubComunale = field(
+      `${areaName} — ${ascMatch.r03_population.toLocaleString("it-IT")} residenti`,
+      "Contesto sub-comunale ISTAT 2021",
+      "official_data",
+      r03Coverage === "available" ? "available" : "partial",
+      `Censimento ISTAT 2021 — Pilota Lombardia R03${sectionsNote}${coverageNote}`,
+    );
+
+    if (ascMatch.r03_density != null && ascMatch.r03_density > 0) {
+      data.densitaSubComunale = field(
+        `${ascMatch.r03_density.toLocaleString("it-IT", { maximumFractionDigits: 0 })} ab/km²`,
+        "Densità area sub-comunale",
+        "official_data",
+        r03Coverage === "available" ? "available" : "partial",
+        "Dato ISTAT 2021 — aggregato da sezioni censuarie R03",
+      );
+    }
+
+    if (ascMatch.r03_families != null && ascMatch.r03_families > 0) {
+      data.famiglieSubComunale = field(
+        `${ascMatch.r03_families.toLocaleString("it-IT")} nuclei familiari`,
+        "Famiglie area sub-comunale",
+        "official_data",
+        r03Coverage === "available" ? "available" : "partial",
+        "Dato ISTAT 2021 — Pilota Lombardia R03",
+      );
+    }
+
+    if (ascMatch.r03_dwellings != null && ascMatch.r03_dwellings > 0) {
+      data.abitazioniSubComunale = field(
+        `${ascMatch.r03_dwellings.toLocaleString("it-IT")} abitazioni`,
+        "Abitazioni area sub-comunale",
+        "official_data",
+        r03Coverage === "available" ? "available" : "partial",
+        "Dato ISTAT 2021 — Pilota Lombardia R03",
+      );
+    }
+
+    data.notaPilotaLombardia = field(
+      "Dato sub-comunale disponibile grazie al pilota territoriale Lombardia (Censimento ISTAT 2021). Copertura limitata all'area del pilota.",
+      "Nota pilota territoriale",
+      "official_data",
+      "available",
+    );
+  } else if (ascMatch?.matched && ascMatch.coverage_status === "available" && ascMatch.popolazione != null && ascMatch.popolazione > 0 && !isR03Enriched) {
+    // Fallback: ASC layer has its own population data (non-R03)
     data.contestoSubComunale = field(
       `${ascMatch.name ?? "Area"} — ${ascMatch.popolazione.toLocaleString("it-IT")} residenti`,
       "Contesto sub-comunale ISTAT",
