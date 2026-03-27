@@ -16,7 +16,9 @@ import {
   summarizeRegistry,
   isSourcePublishable,
   getSourceSections,
+  sourceGeoLevelLabel,
 } from "@/lib/dataBackbone";
+import { MACROZONE_DEFINITIONS } from "@/lib/macrozoneRegistry";
 
 const STATUS_BADGE: Record<string, { label: string; className: string; icon: typeof CheckCircle2 }> = {
   active: { label: "Attivo", className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300", icon: CheckCircle2 },
