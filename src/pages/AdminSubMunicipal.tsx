@@ -5,17 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import AppHeader from "@/components/AppHeader";
-import { ArrowLeft, Database, MapPin, Layers, AlertTriangle, CheckCircle2, XCircle, Search } from "lucide-react";
+import { ArrowLeft, Database, MapPin, Layers, AlertTriangle, CheckCircle2, XCircle, Search, BarChart3, GitCompare } from "lucide-react";
 import { fetchSubMunicipalStats } from "@/lib/subMunicipalImporter";
 import { findSubMunicipalArea, type SubMunicipalMatch } from "@/lib/pointInPolygon";
+import { fetchR03Stats, validateAscSectionCoherence, type AscValidationReport } from "@/lib/r03Importer";
 
 type Stats = NonNullable<Awaited<ReturnType<typeof fetchSubMunicipalStats>>>;
+type R03Stats = NonNullable<Awaited<ReturnType<typeof fetchR03Stats>>>;
 
 const AdminSubMunicipal = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // R03 state
+  const [r03Stats, setR03Stats] = useState<R03Stats | null>(null);
+  const [r03Loading, setR03Loading] = useState(true);
+  const [ascValidation, setAscValidation] = useState<AscValidationReport | null>(null);
+  const [validating, setValidating] = useState(false);
 
   // Test tool state
   const [testLat, setTestLat] = useState("45.4064");
@@ -27,6 +35,10 @@ const AdminSubMunicipal = () => {
     fetchSubMunicipalStats().then((s) => {
       setStats(s);
       setLoading(false);
+    });
+    fetchR03Stats().then((s) => {
+      setR03Stats(s);
+      setR03Loading(false);
     });
   }, []);
 
@@ -45,7 +57,20 @@ const AdminSubMunicipal = () => {
     setTesting(false);
   };
 
+  const runAscValidation = async () => {
+    setValidating(true);
+    setAscValidation(null);
+    try {
+      const result = await validateAscSectionCoherence();
+      setAscValidation(result);
+    } catch {
+      setAscValidation(null);
+    }
+    setValidating(false);
+  };
+
   const isLayerActive = stats && stats.totalRecords > 0 && stats.withGeometry > 0;
+  const isR03Present = r03Stats && r03Stats.totalSections > 0;
 
   return (
     <div className="min-h-svh bg-background">
@@ -73,18 +98,18 @@ const AdminSubMunicipal = () => {
                 </p>
                 <p className={`mt-1 ${isLayerActive ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
                   {isLayerActive
-                    ? "Il resolver pro-sources include il match ASC in ogni scansione. Il report mostra la micro-info solo quando il match poligonale è affidabile."
-                    : "Il motore pubblico di Sottra continua a funzionare normalmente senza ASC. Caricare i dataset ISTAT per attivare."}
+                    ? "Il resolver pro-sources include il match ASC in ogni scansione."
+                    : "Il motore pubblico continua a funzionare normalmente senza ASC."}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
                   <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${isLayerActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
                     <Database className="h-3 w-3" /> pro-sources: {isLayerActive ? "collegato" : "bypass"}
                   </span>
                   <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${isLayerActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
-                    <MapPin className="h-3 w-3" /> point-in-polygon: {isLayerActive ? "attivo" : "pronto"}
+                    <MapPin className="h-3 w-3" /> PIP: {isLayerActive ? "attivo" : "pronto"}
                   </span>
-                  <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${isLayerActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
-                    <Layers className="h-3 w-3" /> report pubblico: {isLayerActive ? "micro-info ASC" : "invariato"}
+                  <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${isR03Present ? "bg-blue-500/10 text-blue-700 dark:text-blue-300" : "bg-muted text-muted-foreground"}`}>
+                    <BarChart3 className="h-3 w-3" /> R03 Lombardia: {isR03Present ? "caricato" : "non disponibile"}
                   </span>
                 </div>
               </div>
@@ -92,6 +117,7 @@ const AdminSubMunicipal = () => {
           </CardContent>
         </Card>
 
+        {/* ASC Stats */}
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
@@ -100,18 +126,10 @@ const AdminSubMunicipal = () => {
           <Card>
             <CardContent className="py-12 text-center">
               <Database className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h2 className="text-lg font-semibold text-foreground mb-2">Nessun dato caricato</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Nessun dato ASC caricato</h2>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 La tabella <code>sub_municipal_areas_2021</code> è vuota.
-                Per popolarla servono i dataset reali ISTAT (ASC_21, R03_21).
               </p>
-              <div className="mt-6 text-left max-w-lg mx-auto space-y-2 text-sm text-muted-foreground">
-                <p className="font-medium text-foreground">Dataset attesi:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li><strong>ASC_21</strong> — Aree Sub Comunali nazionali (3 livelli: Liv1, Liv2, Liv3)</li>
-                  <li><strong>R03_21</strong> — Sezioni censuarie Lombardia (shapefile + tabelle CSV)</li>
-                </ul>
-              </div>
             </CardContent>
           </Card>
         ) : (
@@ -119,17 +137,14 @@ const AdminSubMunicipal = () => {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Database className="h-4 w-4" /> Record Totali
+                  <Database className="h-4 w-4" /> Record ASC Totali
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">{stats.totalRecords.toLocaleString("it-IT")}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stats.comuniDistinti} comuni distinti
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">{stats.comuniDistinti} comuni distinti</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -140,7 +155,7 @@ const AdminSubMunicipal = () => {
                 <p className="text-2xl font-bold">
                   {stats.withGeometry.toLocaleString("it-IT")}
                   <span className="text-sm font-normal text-muted-foreground ml-1">
-                    ({Math.round((stats.withGeometry / stats.totalRecords) * 100)}%)
+                    ({stats.totalRecords > 0 ? Math.round((stats.withGeometry / stats.totalRecords) * 100) : 0}%)
                   </span>
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -148,7 +163,6 @@ const AdminSubMunicipal = () => {
                 </p>
               </CardContent>
             </Card>
-
             <Card className="md:col-span-2">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -172,7 +186,6 @@ const AdminSubMunicipal = () => {
                 </div>
               </CardContent>
             </Card>
-
             {Object.keys(stats.byRegione).length > 0 && (
               <Card className="md:col-span-2">
                 <CardHeader className="pb-2">
@@ -194,7 +207,186 @@ const AdminSubMunicipal = () => {
           </div>
         )}
 
-        {/* Test tool — always visible */}
+        {/* R03 Lombardia Pilot Section */}
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" /> Pilota R03 — Sezioni Censuarie Lombardia
+          </h2>
+          <p className="text-xs text-muted-foreground">Dataset pilota per validazione ASC ↔ sezioni di censimento 2021</p>
+        </div>
+
+        {r03Loading ? (
+          <div className="flex justify-center py-6">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
+          </div>
+        ) : !r03Stats || r03Stats.totalSections === 0 ? (
+          <Card className="border-muted">
+            <CardContent className="py-8 text-center">
+              <Database className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <h3 className="text-base font-semibold text-foreground mb-1">Dataset R03 non importato</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                La tabella <code>census_sections_r03_2021</code> è vuota. Per popolarla serve il dataset ISTAT R03_21 (sezioni censuarie Lombardia 2021).
+              </p>
+              <div className="mt-4 text-left max-w-lg mx-auto space-y-1 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground">File attesi dal pacchetto R03_21:</p>
+                <ul className="list-disc pl-5 space-y-0.5">
+                  <li><strong>SEZ_R03_21.csv</strong> — sezioni con variabili P1 (pop), P14 (famiglie), A2 (abitazioni), E3 (edifici)</li>
+                  <li><strong>ASC1_R03_21.csv</strong> — mapping sezioni → ASC livello 1</li>
+                  <li><strong>ASC2_R03_21.csv</strong> — mapping sezioni → ASC livello 2</li>
+                  <li><strong>Shapefile (.shp/.dbf/.prj)</strong> — geometrie sezioni</li>
+                </ul>
+                <p className="mt-2 text-foreground font-medium">Stato: <span className="text-amber-600">ready but not executed</span></p>
+                <p>L'importer è pronto. Manca il caricamento del dataset reale.</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Database className="h-4 w-4" /> Sezioni Caricate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{r03Stats.totalSections.toLocaleString("it-IT")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{r03Stats.comuniDistinti} comuni coperti</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Layers className="h-4 w-4" /> Codici ASC
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1 text-sm">
+                  <p className="text-muted-foreground">ASC1: <span className="font-medium text-foreground">{r03Stats.asc1Distinti}</span> distinti ({r03Stats.sectionsWithAsc1} sezioni)</p>
+                  <p className="text-muted-foreground">ASC2: <span className="font-medium text-foreground">{r03Stats.asc2Distinti}</span> distinti ({r03Stats.sectionsWithAsc2} sezioni)</p>
+                  {r03Stats.asc3Distinti > 0 && <p className="text-muted-foreground">ASC3: <span className="font-medium text-foreground">{r03Stats.asc3Distinti}</span> distinti</p>}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Popolazione</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{r03Stats.totalPopulation.toLocaleString("it-IT")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{r03Stats.withPopulation} sezioni con dato popolazione</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Geometrie</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Con geometria: <span className="font-medium text-foreground">{r03Stats.withGeometry}</span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Con centroide: <span className="font-medium text-foreground">{r03Stats.withCentroid}</span>
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* ASC ↔ Sections Validation */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <GitCompare className="h-4 w-4" /> Validazione ASC ↔ Sezioni R03
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Confronta i codici ASC presenti nelle sezioni R03 con quelli nel layer ASC (<code>sub_municipal_areas_2021</code>).
+            </p>
+            <Button size="sm" onClick={runAscValidation} disabled={validating} className="h-8">
+              {validating ? "Validazione in corso..." : "Esegui validazione"}
+            </Button>
+
+            {ascValidation && (
+              <div className="mt-3 space-y-3">
+                {ascValidation.warnings.length > 0 && (
+                  <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 space-y-1">
+                    {ascValidation.warnings.map((w, i) => (
+                      <div key={i} className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                        <span>{w}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Sezioni totali</p>
+                    <p className="font-bold text-foreground">{ascValidation.totalSections.toLocaleString("it-IT")}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Comuni coperti</p>
+                    <p className="font-bold text-foreground">{ascValidation.comuniCovered}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Match codici ASC</p>
+                    <p className={`font-bold ${ascValidation.matchPercentage > 50 ? "text-emerald-600" : ascValidation.matchPercentage > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
+                      {ascValidation.matchPercentage.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Codici ASC in sezioni</p>
+                    <p className="font-bold text-foreground">{ascValidation.ascCodesInSections.size}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Codici ASC nel layer</p>
+                    <p className="font-bold text-foreground">{ascValidation.ascCodesInLayer.size}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Codici matchati</p>
+                    <p className="font-bold text-foreground">{ascValidation.matchedCodes.length}</p>
+                  </div>
+                </div>
+
+                {ascValidation.unmatchedInSections.length > 0 && (
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                      {ascValidation.unmatchedInSections.length} codici ASC in sezioni non nel layer (mostra primi 20)
+                    </summary>
+                    <pre className="mt-1 bg-muted/50 rounded p-2 overflow-x-auto text-muted-foreground">
+                      {ascValidation.unmatchedInSections.slice(0, 20).join(", ")}
+                    </pre>
+                  </details>
+                )}
+
+                {ascValidation.unmatchedInLayer.length > 0 && (
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                      {ascValidation.unmatchedInLayer.length} codici ASC nel layer non referenziati da R03 (mostra primi 20)
+                    </summary>
+                    <pre className="mt-1 bg-muted/50 rounded p-2 overflow-x-auto text-muted-foreground">
+                      {ascValidation.unmatchedInLayer.slice(0, 20).join(", ")}
+                    </pre>
+                  </details>
+                )}
+
+                <div className="flex items-center gap-2 text-sm">
+                  <p className="text-muted-foreground">Sezioni con ASC1:</p>
+                  <span className="font-medium text-foreground">{ascValidation.sectionsWithAsc1}</span>
+                  <span className="text-muted-foreground mx-1">|</span>
+                  <p className="text-muted-foreground">ASC2:</p>
+                  <span className="font-medium text-foreground">{ascValidation.sectionsWithAsc2}</span>
+                  <span className="text-muted-foreground mx-1">|</span>
+                  <p className="text-muted-foreground">ASC3:</p>
+                  <span className="font-medium text-foreground">{ascValidation.sectionsWithAsc3}</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Test tool */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -218,7 +410,7 @@ const AdminSubMunicipal = () => {
             {testResult === "no_match" && (
               <div className="flex items-center gap-2 text-sm text-amber-600">
                 <XCircle className="h-4 w-4" />
-                <span>Nessun match ASC per queste coordinate{stats?.totalRecords === 0 ? " (tabella vuota)" : ""}</span>
+                <span>Nessun match ASC{stats?.totalRecords === 0 ? " (tabella vuota)" : ""}</span>
               </div>
             )}
             {testResult === "error" && (
