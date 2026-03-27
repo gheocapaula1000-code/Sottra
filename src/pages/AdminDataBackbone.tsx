@@ -109,23 +109,27 @@ const AdminDataBackbone = () => {
     toast.info("Sincronizzazione registro con dati reali...");
     try {
       // Explicit source_key → query mapping to avoid fragile index-based bugs
-      const sourceQueries: { source_key: string; query: Promise<{ count: number | null }> }[] = [
-        { source_key: "omi_quotazioni", query: supabase.from("omi_quotazioni").select("id", { count: "exact", head: true }) },
-        { source_key: "omi_polygons", query: supabase.from("omi_polygons").select("id", { count: "exact", head: true }) },
-        { source_key: "omi_zone", query: supabase.from("omi_zone").select("id", { count: "exact", head: true }) },
-        { source_key: "istat_comuni_nazionale", query: supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "comune") },
-        { source_key: "istat_localita_2021", query: supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "localita") },
-        { source_key: "r03_asc_aggregates", query: supabase.from("r03_asc_aggregates_2021").select("id", { count: "exact", head: true }) },
-        { source_key: "asc_2021", query: supabase.from("sub_municipal_areas_2021").select("id", { count: "exact", head: true }) },
-        { source_key: "r03_lombardia_2021", query: supabase.from("census_sections_r03_2021").select("id", { count: "exact", head: true }) },
-        { source_key: "demographic_zones", query: supabase.from("demographic_zones").select("id", { count: "exact", head: true }) },
+      const sourceKeys = [
+        "omi_quotazioni", "omi_polygons", "omi_zone",
+        "istat_comuni_nazionale", "istat_localita_2021",
+        "r03_asc_aggregates", "asc_2021", "r03_lombardia_2021", "demographic_zones",
       ];
-
-      const results = await Promise.all(sourceQueries.map(sq => sq.query));
+      const queries = [
+        supabase.from("omi_quotazioni").select("id", { count: "exact", head: true }),
+        supabase.from("omi_polygons").select("id", { count: "exact", head: true }),
+        supabase.from("omi_zone").select("id", { count: "exact", head: true }),
+        supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "comune"),
+        supabase.from("territorial_registry" as any).select("id", { count: "exact", head: true }).eq("geographic_level", "localita"),
+        supabase.from("r03_asc_aggregates_2021").select("id", { count: "exact", head: true }),
+        supabase.from("sub_municipal_areas_2021").select("id", { count: "exact", head: true }),
+        supabase.from("census_sections_r03_2021").select("id", { count: "exact", head: true }),
+        supabase.from("demographic_zones").select("id", { count: "exact", head: true }),
+      ];
+      const results = await Promise.all(queries);
 
       const counts: Record<string, number> = {};
-      sourceQueries.forEach((sq, i) => {
-        counts[sq.source_key] = results[i].count ?? 0;
+      sourceKeys.forEach((key, i) => {
+        counts[key] = (results[i] as any).count ?? 0;
       });
 
       // Update registry entries based on real counts
