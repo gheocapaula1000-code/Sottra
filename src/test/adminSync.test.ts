@@ -228,7 +228,7 @@ describe("Admin Upload Flow — error surfacing and rollback", () => {
     const fs = require("fs");
     const src = fs.readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
     // Extract the loadJobs function body
-    const loadJobsMatch = src.match(/const loadJobs = async[^]*?setJobsLoading\(false\);\s*\};/);
+    const loadJobsMatch = src.match(/const loadJobs = async[^]*?setJobsLoading\(false\);\s*(?:return result;\s*)\};/);
     expect(loadJobsMatch).toBeTruthy();
     const loadJobsBody = loadJobsMatch![0];
     // Must NOT contain empty catch
