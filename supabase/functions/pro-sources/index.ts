@@ -979,6 +979,37 @@ serve(async (req) => {
               note: `Area sub-comunale ISTAT 2021 — livello ${row.asc_level ?? "n/a"}`,
             };
             log("asc match", `area=${row.area_name}, code=${row.area_code}, level=${row.asc_level}`);
+
+            // ── R03 Lombardia Pilot: enrich with aggregated census data ──
+            try {
+              const { data: aggData, error: aggErr } = await supabaseAdmin
+                .from("r03_asc_aggregates_2021")
+                .select("population_2021, families_2021, dwellings_2021, occupied_dwellings_2021, buildings_2021, residential_buildings_2021, density_pop_per_kmq, coverage_status, sections_count, sections_with_data, asc_name, superficie_kmq")
+                .eq("asc_code", row.area_code)
+                .eq("asc_level", row.asc_level ?? 0)
+                .maybeSingle();
+
+              if (!aggErr && aggData) {
+                subMunicipalMatch.r03_enriched = true;
+                subMunicipalMatch.r03_coverage = aggData.coverage_status;
+                subMunicipalMatch.r03_population = aggData.population_2021;
+                subMunicipalMatch.r03_families = aggData.families_2021;
+                subMunicipalMatch.r03_dwellings = aggData.dwellings_2021;
+                subMunicipalMatch.r03_buildings = aggData.buildings_2021;
+                subMunicipalMatch.r03_density = aggData.density_pop_per_kmq;
+                subMunicipalMatch.r03_sections_count = aggData.sections_count;
+                subMunicipalMatch.r03_sections_with_data = aggData.sections_with_data;
+                if (aggData.asc_name && !subMunicipalMatch.name) subMunicipalMatch.name = aggData.asc_name;
+                if (aggData.superficie_kmq) subMunicipalMatch.superficie_kmq = aggData.superficie_kmq;
+                if (aggData.density_pop_per_kmq) subMunicipalMatch.densita = aggData.density_pop_per_kmq;
+                if (aggData.population_2021) subMunicipalMatch.popolazione = aggData.population_2021;
+                subMunicipalMatch.note = `Pilota Lombardia R03 — ${aggData.sections_count} sezioni censuarie aggregate`;
+                log("r03 enrich", `asc=${row.area_code} pop=${aggData.population_2021} cov=${aggData.coverage_status}`);
+              }
+            } catch (r03Err) {
+              log("r03 enrich error (non-fatal)", String(r03Err));
+            }
+
             break;
           }
         }
