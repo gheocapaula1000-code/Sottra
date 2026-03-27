@@ -320,66 +320,77 @@ const AdminSubMunicipal = () => {
                   </div>
                 )}
 
+                <div className="rounded-lg bg-muted/30 border p-3 text-xs text-muted-foreground">
+                  <p>Perimetro validazione: <strong className="text-foreground">solo comuni presenti in R03</strong> ({ascValidation.r03ComuniCovered} comuni). Il layer ASC nazionale è filtrato a questo scope.</p>
+                </div>
+
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                   <div>
                     <p className="text-muted-foreground">Sezioni totali</p>
                     <p className="font-bold text-foreground">{ascValidation.totalSections.toLocaleString("it-IT")}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Comuni coperti</p>
-                    <p className="font-bold text-foreground">{ascValidation.comuniCovered}</p>
+                    <p className="text-muted-foreground">Comuni R03</p>
+                    <p className="font-bold text-foreground">{ascValidation.r03ComuniCovered}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Match codici ASC</p>
-                    <p className={`font-bold ${ascValidation.matchPercentage > 50 ? "text-emerald-600" : ascValidation.matchPercentage > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
-                      {ascValidation.matchPercentage.toFixed(1)}%
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Codici ASC in sezioni</p>
-                    <p className="font-bold text-foreground">{ascValidation.ascCodesInSections.size}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Codici ASC nel layer</p>
-                    <p className="font-bold text-foreground">{ascValidation.ascCodesInLayer.size}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Codici matchati</p>
-                    <p className="font-bold text-foreground">{ascValidation.matchedCodes.length}</p>
+                    <p className="text-muted-foreground">Sezioni senza ASC</p>
+                    <p className="font-bold text-foreground">{ascValidation.sectionsWithoutAscPct.toFixed(1)}%</p>
                   </div>
                 </div>
 
-                {ascValidation.unmatchedInSections.length > 0 && (
-                  <details className="text-xs">
-                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                      {ascValidation.unmatchedInSections.length} codici ASC in sezioni non nel layer (mostra primi 20)
-                    </summary>
-                    <pre className="mt-1 bg-muted/50 rounded p-2 overflow-x-auto text-muted-foreground">
-                      {ascValidation.unmatchedInSections.slice(0, 20).join(", ")}
-                    </pre>
-                  </details>
-                )}
-
-                {ascValidation.unmatchedInLayer.length > 0 && (
-                  <details className="text-xs">
-                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                      {ascValidation.unmatchedInLayer.length} codici ASC nel layer non referenziati da R03 (mostra primi 20)
-                    </summary>
-                    <pre className="mt-1 bg-muted/50 rounded p-2 overflow-x-auto text-muted-foreground">
-                      {ascValidation.unmatchedInLayer.slice(0, 20).join(", ")}
-                    </pre>
-                  </details>
-                )}
-
-                <div className="flex items-center gap-2 text-sm">
-                  <p className="text-muted-foreground">Sezioni con ASC1:</p>
-                  <span className="font-medium text-foreground">{ascValidation.sectionsWithAsc1}</span>
-                  <span className="text-muted-foreground mx-1">|</span>
-                  <p className="text-muted-foreground">ASC2:</p>
-                  <span className="font-medium text-foreground">{ascValidation.sectionsWithAsc2}</span>
-                  <span className="text-muted-foreground mx-1">|</span>
-                  <p className="text-muted-foreground">ASC3:</p>
-                  <span className="font-medium text-foreground">{ascValidation.sectionsWithAsc3}</span>
+                {/* Per-level detail */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-foreground">Match per livello ASC (scoped a R03)</p>
+                  {[
+                    { label: "ASC1", detail: ascValidation.asc1, count: ascValidation.sectionsWithAsc1, pct: ascValidation.sectionsWithAsc1Pct },
+                    { label: "ASC2", detail: ascValidation.asc2, count: ascValidation.sectionsWithAsc2, pct: ascValidation.sectionsWithAsc2Pct },
+                    { label: "ASC3", detail: ascValidation.asc3, count: ascValidation.sectionsWithAsc3, pct: 0 },
+                  ].filter(l => l.detail.codesInSections.size > 0 || l.detail.codesInLayer.size > 0).map(({ label, detail, count, pct }) => (
+                    <div key={label} className="rounded border p-2 text-xs space-y-1">
+                      <p className="font-medium text-foreground">{label}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div>
+                          <p className="text-muted-foreground">In sezioni</p>
+                          <p className="font-semibold text-foreground">{detail.codesInSections.size}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Nel layer (scope)</p>
+                          <p className="font-semibold text-foreground">{detail.codesInLayer.size}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Matchati</p>
+                          <p className={`font-semibold ${detail.coveragePct > 50 ? "text-emerald-600" : detail.coveragePct > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
+                            {detail.matched.length} ({detail.coveragePct.toFixed(1)}%)
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Sezioni con {label}</p>
+                          <p className="font-semibold text-foreground">{count} ({pct.toFixed(1)}%)</p>
+                        </div>
+                      </div>
+                      {detail.unmatchedInSections.length > 0 && (
+                        <details>
+                          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                            {detail.unmatchedInSections.length} codici in sezioni non nel layer
+                          </summary>
+                          <pre className="mt-1 bg-muted/50 rounded p-1 overflow-x-auto text-muted-foreground">
+                            {detail.unmatchedInSections.slice(0, 15).join(", ")}
+                          </pre>
+                        </details>
+                      )}
+                      {detail.unmatchedInLayer.length > 0 && (
+                        <details>
+                          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                            {detail.unmatchedInLayer.length} codici nel layer non in sezioni R03
+                          </summary>
+                          <pre className="mt-1 bg-muted/50 rounded p-1 overflow-x-auto text-muted-foreground">
+                            {detail.unmatchedInLayer.slice(0, 15).join(", ")}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

@@ -442,18 +442,22 @@ Funzionalità:
 - `fetchR03Stats()` — statistiche import
 - `validateAscSectionCoherence()` — confronto codici ASC tra sezioni e layer ASC
 
-### Validazione ASC ↔ Sezioni
+### Validazione ASC ↔ Sezioni (level-aware, scoped)
 
-Il modulo `validateAscSectionCoherence()` confronta:
-- Codici ASC presenti nei record R03 (asc1_code, asc2_code)
-- Codici ASC presenti nel layer `sub_municipal_areas_2021` (area_code)
+Il modulo `validateAscSectionCoherence()` confronta in modo **level-aware** e **scoped**:
 
-Output:
-- Percentuale di match tra i due insiemi
-- Codici presenti solo nelle sezioni (non nel layer)
-- Codici presenti solo nel layer (non referenziati da sezioni)
-- Warning su mismatch e copertura
-- Conteggio sezioni con ASC1 / ASC2 / ASC3
+- **Level-aware**: i codici `asc1_code` delle sezioni vengono confrontati solo con record ASC di `asc_level=1` nel layer, `asc2_code` solo con `asc_level=2`, ecc. Nessun falso match tra livelli diversi con codici uguali.
+- **Scoped a R03**: il layer ASC nazionale viene filtrato ai soli comuni presenti in `census_sections_r03_2021`. Le metriche non sono distorte da ASC di regioni non coperte dal pilota.
+
+Metriche esposte per livello (`AscLevelMatchDetail`):
+- `codesInSections` / `codesInLayer` — codici distinti per livello
+- `matched` / `unmatchedInSections` / `unmatchedInLayer` — matching bidirezionale
+- `coveragePct` — % di codici sezione che trovano corrispondenza nel layer (scoped)
+
+Metriche aggregate:
+- `sectionsWithAsc1Pct` / `sectionsWithAsc2Pct` — % sezioni con codice ASC
+- `sectionsWithoutAscPct` — % sezioni senza alcun codice ASC
+- `r03ComuniCovered` — numero comuni nel perimetro R03
 
 ### Diagnostica admin
 
