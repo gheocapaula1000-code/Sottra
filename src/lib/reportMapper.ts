@@ -527,7 +527,8 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
   const ascMatch = sectionData<SubMunicipalMatchData>(result, "subMunicipalMatch");
 
   const geo = resolveGeoContext(result);
-  const data: ProfiloAreaData = { geo };
+  const territorialResolution = resolveTerritorialContext(result);
+  const data: ProfiloAreaData = { geo, territorialResolution };
 
   // Lombardia pilot enrichment: show R03 aggregated data at ASC level
   // Only when ASC match is reliable AND R03 enrichment is present
