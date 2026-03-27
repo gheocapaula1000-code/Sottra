@@ -57,7 +57,11 @@ const AdminDataBackbone = () => {
   const { signOut } = useAuth();
   const [entries, setEntries] = useState<DataSourceEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [backboneCounts, setBackboneCounts] = useState<{ comuni: number; localita: number; asc: number; regioni: string[] } | null>(null);
+  const [backboneCounts, setBackboneCounts] = useState<{
+    comuni: number; localita: number; asc: number;
+    localitaWithCentroid: number; localitaWithoutCentroid: number;
+    regioni: string[]; backboneStatus: "vuoto" | "parziale" | "pronto";
+  } | null>(null);
 
   const loadRegistry = useCallback(async () => {
     setLoading(true);
