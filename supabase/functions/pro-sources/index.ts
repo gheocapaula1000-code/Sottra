@@ -518,6 +518,10 @@ async function queryOmiWithPolygons(
           sourceProvider: "omi",
           sourceLabel: "OMI / Agenzia delle Entrate",
           sourceCoverageLevel: "zone_omi",
+          polygonMatch: true,
+          omiGeoLevel: "microzona_omi",
+          matchMethod: "polygon",
+          matchConfidence: 0.95,
           availabilityReason: "zone_identified_no_quotazioni",
           licensingNote: "Dati OMI — Osservatorio del Mercato Immobiliare, Agenzia delle Entrate",
         };
