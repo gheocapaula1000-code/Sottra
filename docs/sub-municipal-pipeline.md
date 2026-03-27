@@ -473,17 +473,61 @@ La pagina `/admin/sub-municipal` include:
 L'importer e il validatore sono **pronti ma non eseguiti** (ready but not executed).
 Il dataset R03_21 reale non è ancora stato importato.
 
-### Cosa serve per completare il pilota
+---
 
-1. Rendere disponibili i file R03_21 (upload o storage bucket)
-2. Importare SEZ_R03_21.csv + ASC1/ASC2 CSV via importer
-3. Opzionale: convertire shapefile in GeoJSON e importare geometrie
-4. Eseguire validazione ASC ↔ sezioni
-5. Verificare coerenza codici su comuni pilota (es. Milano, Brescia)
+## Fase 3 operativa — upload admin, import reale e pilota Lombardia usabile
 
-### Prossimo step dopo il pilota
+### Cosa è stato implementato
 
-Se la validazione conferma coerenza ASC ↔ sezioni:
-- Aggregare dati demografici da sezioni a ASC per costruire prima vista statistica
-- Decidere se estendere ad altre regioni
-- Eventualmente collegare al motore pubblico in modo prudente
+1. **Storage bucket** `territorial-datasets` — bucket privato per upload admin di file CSV ISTAT
+2. **Tabella `territorial_dataset_jobs`** — tracking import con stati: uploaded → validating → importing → imported/failed
+3. **Edge function `territorial-import`** — processa CSV caricati, supporta:
+   - `ASC_2021` — aree sub-comunali nazionali → `sub_municipal_areas_2021`
+   - `R03_CSV_SEZ` — sezioni censuarie Lombardia → `census_sections_r03_2021`
+   - `R03_CSV_ASC1` / `R03_CSV_ASC2` — mapping sezioni→ASC (registrati per uso durante import SEZ)
+4. **Console admin `/admin/sub-municipal`** — interfaccia completa con:
+   - Upload file per tipo dataset
+   - Lista job con stato e azioni
+   - Stats ASC e R03 in tempo reale
+   - Validazione ASC↔sezioni
+   - Test point-in-polygon
+5. **Arricchimento report pubblico** — in `buildProfiloArea`, se ASC match affidabile con dati popolazione:
+   - Mostra "Contesto sub-comunale ISTAT" con popolazione
+   - Mostra "Densità area sub-comunale" se disponibile
+   - Solo dati reali, solo match poligonale, solo se coverage=available
+6. **Validazione automatica post-import** — eseguita dopo ogni import, risultati salvati nel job
+
+### Formati supportati
+
+| Tipo | File atteso | Colonne chiave |
+|------|-------------|----------------|
+| ASC_2021 | CSV aree sub-comunali | COD_ASC, DEN_ASC, PRO_COM_T, POP_RES, COD_REG |
+| R03_CSV_ASC1 | ASC1_R03_21.csv | SEZ2021, COD_ASC |
+| R03_CSV_ASC2 | ASC2_R03_21.csv | SEZ2021, COD_ASC |
+| R03_CSV_SEZ | SEZ_R03_21.csv | SEZ2021, PRO_COM_T, P1, P14, A2, E3 |
+
+### Ordine di import R03
+
+1. Caricare e importare ASC1 + ASC2 (registra i mapping)
+2. Caricare e importare SEZ (usa automaticamente i mapping ASC)
+3. Validare ASC↔sezioni dalla console
+
+### Feature gating
+
+- Arricchimento sub-comunale attivo solo se `subMunicipalMatch.matched=true`, `coverage_status=available`, e `popolazione > 0`
+- Se dataset assente → nessun impatto, comportamento OMI/ISTAT invariato
+- Nessun crash se pipeline incompleta
+
+### Cosa NON è ancora attivo
+
+- Nessuna estensione nazionale automatica
+- Nessun dato criminalità/safety_zones esposto
+- Nessuna demografia sub-comunale fuori pilota Lombardia
+- Nessun claim territoriale forte nel report
+
+### Prossimi step
+
+1. Caricare dataset reali ASC_21 + R03_21 via console admin
+2. Verificare coerenza su comuni pilota (Milano, Brescia)
+3. Estendere ad altre regioni se validazione positiva
+4. Collegare aggregazione sezioni→ASC per vista statistica

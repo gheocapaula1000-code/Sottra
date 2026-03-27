@@ -44,7 +44,7 @@ function field<T>(
 
 function sectionData<T>(result: ScanResult, key: keyof ScanResult): T | null {
   const s = result[key];
-  if (s.status !== "success" || !s.data) return null;
+  if (!s || s.status !== "success" || !s.data) return null;
   return s.data as T;
 }
 
@@ -510,9 +510,32 @@ export function buildProfiloArea(result: ScanResult): ProfiloAreaData | null {
   const poi = sectionData<PoiEnrichmentData>(result, "poiEnrichment");
   const rischio = sectionData<RischioZonaData>(result, "rischioZona");
   const istat = sectionData<IstatDemographicData>(result, "istatDemographic");
+  const ascMatch = sectionData<SubMunicipalMatchData>(result, "subMunicipalMatch");
 
   const geo = resolveGeoContext(result);
   const data: ProfiloAreaData = { geo };
+
+  // Lombardia pilot enrichment: show R03 population data at ASC level
+  // Only when ASC match is reliable AND we're in Lombardia (regione_code=03 implied by ASC match from R03)
+  if (ascMatch?.matched && ascMatch.coverage_status === "available" && ascMatch.popolazione != null && ascMatch.popolazione > 0) {
+    data.contestoSubComunale = field(
+      `${ascMatch.name ?? "Area"} — ${ascMatch.popolazione.toLocaleString("it-IT")} residenti`,
+      "Contesto sub-comunale ISTAT",
+      "official_data",
+      "available",
+      `Dato Censimento ISTAT 2021 — area ${ascMatch.type ?? "sub-comunale"}, match poligonale`,
+    );
+
+    if (ascMatch.densita != null && ascMatch.densita > 0) {
+      data.densitaSubComunale = field(
+        `${ascMatch.densita.toLocaleString("it-IT", { maximumFractionDigits: 0 })} ab/km²`,
+        "Densità area sub-comunale",
+        "official_data",
+        "available",
+        "Dato ISTAT 2021 — livello sub-comunale",
+      );
+    }
+  }
 
   // accessibilitaTrasporti — POI is always local (coordinate-based radius)
   if (poi) {

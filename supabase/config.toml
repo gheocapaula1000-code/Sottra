@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.demographic-import]
 verify_jwt = false
+
+[functions.territorial-import]
+verify_jwt = false

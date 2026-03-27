@@ -125,6 +125,9 @@ export interface ProfiloAreaData extends SourceMetadata {
   qualitaAmbientale?: ReportField<string>;
   sintesiArea?: ReportField<string>;
   noteArea?: ReportField<string>;
+  /** Sub-municipal enrichment from Lombardia R03 pilot */
+  contestoSubComunale?: ReportField<string>;
+  densitaSubComunale?: ReportField<string>;
   /** Geographic resolution of the data used in this section */
   geo?: GeoContext;
 }

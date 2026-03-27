@@ -680,6 +680,75 @@ export type Database = {
         }
         Relationships: []
       }
+      territorial_dataset_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          dataset_type: string
+          error_log: Json | null
+          file_name: string
+          file_path: string
+          file_size_bytes: number | null
+          id: string
+          import_batch_id: string | null
+          records_errors: number | null
+          records_imported: number | null
+          records_skipped: number | null
+          records_total: number | null
+          started_at: string | null
+          stats: Json | null
+          status: string
+          updated_at: string
+          validation_result: Json | null
+          warnings: Json | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          dataset_type: string
+          error_log?: Json | null
+          file_name: string
+          file_path: string
+          file_size_bytes?: number | null
+          id?: string
+          import_batch_id?: string | null
+          records_errors?: number | null
+          records_imported?: number | null
+          records_skipped?: number | null
+          records_total?: number | null
+          started_at?: string | null
+          stats?: Json | null
+          status?: string
+          updated_at?: string
+          validation_result?: Json | null
+          warnings?: Json | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          dataset_type?: string
+          error_log?: Json | null
+          file_name?: string
+          file_path?: string
+          file_size_bytes?: number | null
+          id?: string
+          import_batch_id?: string | null
+          records_errors?: number | null
+          records_imported?: number | null
+          records_skipped?: number | null
+          records_total?: number | null
+          started_at?: string | null
+          stats?: Json | null
+          status?: string
+          updated_at?: string
+          validation_result?: Json | null
+          warnings?: Json | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
