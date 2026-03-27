@@ -154,6 +154,19 @@ export function mapCoverageLevelToGeoLevel(coverage?: CoverageLevel): ReportGeoL
   }
 }
 
+/** Label for macrozone-level geo contexts */
+export function geoLevelDisplayLabel(level: ReportGeoLevel): string {
+  switch (level) {
+    case "microzona_omi": return "Microzona OMI";
+    case "zona_specifica": return "Zona specifica";
+    case "quartiere": return "Quartiere";
+    case "comune": return "Comune";
+    case "macrozona": return "Macrozona";
+    case "nazionale": return "Nazionale";
+    case "non_determinato": return "Non determinato";
+  }
+}
+
 /* ── Geo-Level Compatibility ─────────────────────────────── */
 
 /** Ordered geo levels from finest to coarsest */
@@ -162,7 +175,9 @@ const GEO_RANK: Record<ReportGeoLevel, number> = {
   zona_specifica: 1,
   quartiere: 2,
   comune: 3,
-  non_determinato: 4,
+  macrozona: 4,
+  nazionale: 5,
+  non_determinato: 6,
 };
 
 /**
@@ -376,8 +391,12 @@ export function resolutionSummary(resolved: ResolvedSource): string {
   if (resolved.tier === "unavailable") return "Nessuna fonte disponibile";
   const geoNote = resolved.geoLevel === "comune"
     ? " (livello comunale)"
-    : resolved.geoLevel === "non_determinato"
-      ? " (geo non determinato)"
-      : "";
+    : resolved.geoLevel === "macrozona"
+      ? " (livello macrozona)"
+      : resolved.geoLevel === "nazionale"
+        ? " (livello nazionale)"
+        : resolved.geoLevel === "non_determinato"
+          ? " (geo non determinato)"
+          : "";
   return `${resolved.sourceLabel}${geoNote} — ${resolved.isOfficial ? "ufficiale" : "non ufficiale"}`;
 }

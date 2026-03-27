@@ -917,8 +917,18 @@ export function buildPrioritaCriticita(result: ScanResult): PrioritaCriticitaDat
   const geo = resolveGeoContext(result);
   const items: PrioritaCriticaItem[] = [];
 
-  // Municipal-only data warning
-  if (geo.geoLevel === "comune") {
+  // Municipal-only or macrozone data warning
+  if (geo.geoLevel === "macrozona") {
+    items.push({
+      testo: geo.geoLabel
+        ? `Alcuni dati si riferiscono al quadro macroterritoriale (${geo.geoLabel}), non alla zona specifica`
+        : "Alcuni dati territoriali sono disponibili solo a livello di macrozona",
+      categoria: "copertura_parziale",
+      sourceType: "territorial_verified",
+      availabilityStatus: "partial",
+      nota: "Risoluzione geografica limitata alla macrozona di appartenenza",
+    });
+  } else if (geo.geoLevel === "comune") {
     items.push({
       testo: geo.geoLabel
         ? `Alcuni dati sono riferiti al ${geo.geoLabel} e non alla zona specifica dell'immobile`

@@ -16,7 +16,9 @@ import {
   summarizeRegistry,
   isSourcePublishable,
   getSourceSections,
+  sourceGeoLevelLabel,
 } from "@/lib/dataBackbone";
+import { MACROZONE_DEFINITIONS } from "@/lib/macrozoneRegistry";
 
 const STATUS_BADGE: Record<string, { label: string; className: string; icon: typeof CheckCircle2 }> = {
   active: { label: "Attivo", className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300", icon: CheckCircle2 },
@@ -45,6 +47,7 @@ const FAMILY_LABELS: Record<string, string> = {
   convergenza: "Convergenza",
   opportunita: "Opportunità",
   previsione: "Previsione",
+  macrozone: "Macrozone",
 };
 
 const AdminDataBackbone = () => {
@@ -183,6 +186,39 @@ const AdminDataBackbone = () => {
               </CardContent>
             </Card>
 
+            {/* Macrozone Overview */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Layers className="h-4 w-4" /> Copertura Macrozone Italia
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2 md:grid-cols-5">
+                  {MACROZONE_DEFINITIONS.map(mz => {
+                    // Check if any source covers this macrozone
+                    const coveringSources = entries.filter(e => {
+                      if (e.geographic_scope === "nazionale" && (e.dataset_status === "active" || e.dataset_status === "pilot")) return true;
+                      if (e.regions_supported?.some(r => mz.regioni.some(mr => mr.nome_regione.toLowerCase() === r.toLowerCase()))) return true;
+                      return false;
+                    });
+                    const activeSources = coveringSources.filter(e => e.dataset_status === "active" || e.dataset_status === "pilot");
+                    return (
+                      <div key={mz.code} className="rounded border p-2 space-y-1">
+                        <p className="text-xs font-semibold text-foreground">{mz.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{mz.regioni.map(r => r.nome_regione).join(", ")}</p>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" className={`text-[10px] px-1 py-0 ${activeSources.length > 0 ? "bg-emerald-500/10 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                            {activeSources.length} fonti attive
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Source Registry Table */}
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -218,8 +254,8 @@ const AdminDataBackbone = () => {
                             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                               <span className="font-mono">{entry.source_key}</span>
                               <span>{entry.provider_label}</span>
-                              <span>{entry.geographic_scope === "nazionale" ? "🇮🇹 Nazionale" : entry.geographic_scope === "regionale" ? `📍 ${entry.regions_supported?.join(", ") || "Regionale"}` : entry.geographic_scope}</span>
-                              <span>Livello: {entry.geographic_level_supported}</span>
+                              <span>{entry.geographic_scope === "nazionale" ? "🇮🇹 Nazionale" : entry.geographic_scope === "regionale" ? `📍 ${entry.regions_supported?.join(", ") || "Regionale"}` : entry.geographic_scope === "macrozonale" ? "🗺️ Macrozona" : entry.geographic_scope}</span>
+                              <span>Livello: {sourceGeoLevelLabel(entry)}</span>
                               {entry.record_count > 0 && <span className="text-emerald-600">{entry.record_count.toLocaleString("it-IT")} record</span>}
                               {entry.source_year && <span>Anno: {entry.source_year}</span>}
                             </div>
