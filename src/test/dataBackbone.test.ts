@@ -13,7 +13,7 @@ import type { ScanResult, SubMunicipalMatchData } from "@/types";
 
 /* ── Mock helpers ─────────────────────────────────────── */
 
-function mockSection(status: "success" | "error" | "idle", data: unknown = {}) {
+function mockSection<T>(status: "success" | "error" | "idle", data: T | null = null) {
   return { status, data, message: null };
 }
 
