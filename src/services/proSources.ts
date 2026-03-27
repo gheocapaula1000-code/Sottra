@@ -41,6 +41,7 @@ export async function fetchProSources(
       poi: parsePoiResult(results.poi),
       omi: parseOmiResult(results.omi),
       istat: parseIstatResult(results.istat),
+      subMunicipalMatch: parseSubMunicipalMatch(data.subMunicipalMatch),
     };
   } catch (e) {
     console.warn("[ProSources] exception:", e);

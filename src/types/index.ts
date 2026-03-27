@@ -404,6 +404,28 @@ export interface ScanResult {
   prioritaCriticita: SectionState<import("@/types/report").PrioritaCriticitaData>;
 }
 
+/** Sub-municipal ASC match result from pro-sources */
+export interface SubMunicipalMatchData {
+  available: boolean;
+  matched: boolean;
+  level?: number | null;
+  code?: string;
+  name?: string;
+  type?: string;
+  comune_code?: string | null;
+  comune_name?: string;
+  source_dataset?: string;
+  source_type?: string;
+  match_method?: string;
+  match_confidence?: string;
+  coverage_status: "available" | "partial" | "unavailable";
+  popolazione?: number | null;
+  densita?: number | null;
+  eta_media?: number | null;
+  superficie_kmq?: number | null;
+  note?: string;
+}
+
 /** Errore restituito da coreRequest */
 export interface CoreError {
   error: true;
