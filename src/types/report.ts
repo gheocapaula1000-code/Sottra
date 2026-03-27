@@ -163,6 +163,8 @@ export interface ProfiloAreaData extends SourceMetadata {
   notaPilotaLombardia?: ReportField<string>;
   /** Geographic resolution of the data used in this section */
   geo?: GeoContext;
+  /** Full territorial resolution with identified vs data level */
+  territorialResolution?: TerritorialResolution;
 }
 
 /* ── Section I: Scenario 5/10/20 anni ───────────────────── */
