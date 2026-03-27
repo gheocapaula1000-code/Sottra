@@ -16,6 +16,7 @@ const MODULES: (keyof ScanResult)[] = [
   "infrastrutture", "rischioZona", "trendDemografico",
   "sviluppoArea", "convergenzaTerritoriale",
   "poiEnrichment", "omiZone", "istatDemographic",
+  "subMunicipalMatch",
   // Report engine sections — populated by MAP_REPORT action after data modules complete
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
