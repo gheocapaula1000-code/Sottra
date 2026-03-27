@@ -387,18 +387,16 @@ export async function fetchR03Stats() {
 
 /**
  * Validate coherence between R03 census sections and ASC layer.
- * Compares asc_code values in census_sections_r03_2021 with area_code
- * values in sub_municipal_areas_2021.
+ * Level-aware: compares asc1_code with asc_level=1, asc2_code with asc_level=2, etc.
+ * Scoped: only considers ASC layer records whose comune_istat_code is in R03 comuni.
  */
 export async function validateAscSectionCoherence(): Promise<AscValidationReport | null> {
-  // Fetch ASC codes from sections
   const { data: sections, error: secErr } = await supabase
     .from("census_sections_r03_2021" as any)
     .select("section_code, comune_istat_code, asc1_code, asc2_code, asc3_code");
 
   if (secErr || !sections) return null;
 
-  // Fetch ASC codes from layer
   const { data: ascAreas, error: ascErr } = await supabase
     .from("sub_municipal_areas_2021")
     .select("area_code, asc_level, comune_istat_code");
@@ -408,42 +406,69 @@ export async function validateAscSectionCoherence(): Promise<AscValidationReport
   const sectionsList = sections as any[];
   const ascList = (ascAreas || []) as any[];
 
-  // Collect unique ASC codes from sections
-  const ascCodesInSections = new Set<string>();
+  // Collect R03 comuni
+  const r03Comuni = new Set<string>();
+  const asc1InSections = new Set<string>();
+  const asc2InSections = new Set<string>();
+  const asc3InSections = new Set<string>();
   let sectionsWithAsc1 = 0;
   let sectionsWithAsc2 = 0;
   let sectionsWithAsc3 = 0;
-  const comuniSet = new Set<string>();
 
   for (const s of sectionsList) {
-    if (s.comune_istat_code) comuniSet.add(s.comune_istat_code);
-    if (s.asc1_code) { ascCodesInSections.add(s.asc1_code); sectionsWithAsc1++; }
-    if (s.asc2_code) { ascCodesInSections.add(s.asc2_code); sectionsWithAsc2++; }
-    if (s.asc3_code) { ascCodesInSections.add(s.asc3_code); sectionsWithAsc3++; }
+    if (s.comune_istat_code) r03Comuni.add(s.comune_istat_code);
+    if (s.asc1_code) { asc1InSections.add(s.asc1_code); sectionsWithAsc1++; }
+    if (s.asc2_code) { asc2InSections.add(s.asc2_code); sectionsWithAsc2++; }
+    if (s.asc3_code) { asc3InSections.add(s.asc3_code); sectionsWithAsc3++; }
   }
 
-  // Collect unique ASC codes from layer
-  const ascCodesInLayer = new Set<string>();
+  // Scope ASC layer to R03 comuni only, split by level
+  const ascByLevel: Record<number, Set<string>> = { 1: new Set(), 2: new Set(), 3: new Set() };
   for (const a of ascList) {
-    if (a.area_code) ascCodesInLayer.add(a.area_code);
+    if (!a.area_code) continue;
+    // Scope: only consider ASC records in comuni that R03 covers
+    if (a.comune_istat_code && !r03Comuni.has(a.comune_istat_code)) continue;
+    const lvl = a.asc_level ?? 0;
+    if (lvl >= 1 && lvl <= 3) ascByLevel[lvl].add(a.area_code);
   }
 
-  // Match
-  const matchedCodes = [...ascCodesInSections].filter((c) => ascCodesInLayer.has(c));
-  const unmatchedInSections = [...ascCodesInSections].filter((c) => !ascCodesInLayer.has(c));
-  const unmatchedInLayer = [...ascCodesInLayer].filter((c) => !ascCodesInSections.has(c));
+  function buildLevelDetail(level: number, codesInSections: Set<string>): AscLevelMatchDetail {
+    const codesInLayer = ascByLevel[level] || new Set<string>();
+    const matched = [...codesInSections].filter(c => codesInLayer.has(c));
+    const unmatchedInSections = [...codesInSections].filter(c => !codesInLayer.has(c));
+    const unmatchedInLayer = [...codesInLayer].filter(c => !codesInSections.has(c));
+    const coveragePct = codesInSections.size > 0 ? (matched.length / codesInSections.size) * 100 : 0;
+    return { level, codesInSections, codesInLayer, matched, unmatchedInSections, unmatchedInLayer, coveragePct };
+  }
 
-  const totalUnique = new Set([...ascCodesInSections, ...ascCodesInLayer]).size;
-  const matchPercentage = totalUnique > 0 ? (matchedCodes.length / totalUnique) * 100 : 0;
+  const asc1 = buildLevelDetail(1, asc1InSections);
+  const asc2 = buildLevelDetail(2, asc2InSections);
+  const asc3 = buildLevelDetail(3, asc3InSections);
+
+  // Aggregate legacy compat
+  const allCodesInSections = new Set([...asc1InSections, ...asc2InSections, ...asc3InSections]);
+  const allCodesInLayer = new Set([...ascByLevel[1], ...ascByLevel[2], ...ascByLevel[3]]);
+  const allMatched = [...allCodesInSections].filter(c => allCodesInLayer.has(c));
+  const allUnmatchedInSections = [...allCodesInSections].filter(c => !allCodesInLayer.has(c));
+  const allUnmatchedInLayer = [...allCodesInLayer].filter(c => !allCodesInSections.has(c));
+  const totalUnique = new Set([...allCodesInSections, ...allCodesInLayer]).size;
+  const matchPercentage = totalUnique > 0 ? (allMatched.length / totalUnique) * 100 : 0;
+
+  const sectionsWithoutAny = sectionsList.filter((s: any) => !s.asc1_code && !s.asc2_code && !s.asc3_code).length;
 
   const warnings: string[] = [];
   if (ascList.length === 0) warnings.push("Layer ASC vuoto — nessun confronto possibile");
   if (sectionsList.length === 0) warnings.push("Nessuna sezione R03 caricata");
-  if (unmatchedInSections.length > 0) {
-    warnings.push(`${unmatchedInSections.length} codici ASC in sezioni non presenti nel layer ASC`);
+  const scopedAscCount = ascByLevel[1].size + ascByLevel[2].size + ascByLevel[3].size;
+  const totalAscCount = ascList.length;
+  if (totalAscCount > 0 && scopedAscCount === 0) {
+    warnings.push("Nessun record ASC nel layer corrisponde ai comuni R03 — scope vuoto");
   }
-  if (unmatchedInLayer.length > 0) {
-    warnings.push(`${unmatchedInLayer.length} codici ASC nel layer non referenziati da sezioni R03`);
+  if (asc1.unmatchedInSections.length > 0) {
+    warnings.push(`ASC1: ${asc1.unmatchedInSections.length} codici in sezioni non presenti nel layer (scope Lombardia)`);
+  }
+  if (asc2.unmatchedInSections.length > 0) {
+    warnings.push(`ASC2: ${asc2.unmatchedInSections.length} codici in sezioni non presenti nel layer (scope Lombardia)`);
   }
 
   return {
@@ -451,14 +476,23 @@ export async function validateAscSectionCoherence(): Promise<AscValidationReport
     sectionsWithAsc1,
     sectionsWithAsc2,
     sectionsWithAsc3,
-    ascCodesInSections,
-    ascCodesInLayer,
-    matchedCodes,
-    unmatchedInSections,
-    unmatchedInLayer,
-    matchPercentage,
-    comuniCovered: comuniSet.size,
+    asc1,
+    asc2,
+    asc3,
+    r03ComuniCovered: r03Comuni.size,
+    r03ComuniCodes: r03Comuni,
+    sectionsWithAsc1Pct: sectionsList.length > 0 ? (sectionsWithAsc1 / sectionsList.length) * 100 : 0,
+    sectionsWithAsc2Pct: sectionsList.length > 0 ? (sectionsWithAsc2 / sectionsList.length) * 100 : 0,
+    sectionsWithoutAscPct: sectionsList.length > 0 ? (sectionsWithoutAny / sectionsList.length) * 100 : 0,
     warnings,
+    // Legacy compat
+    ascCodesInSections: allCodesInSections,
+    ascCodesInLayer: allCodesInLayer,
+    matchedCodes: allMatched,
+    unmatchedInSections: allUnmatchedInSections,
+    unmatchedInLayer: allUnmatchedInLayer,
+    matchPercentage,
+    comuniCovered: r03Comuni.size,
   };
 }
 
