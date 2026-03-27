@@ -83,7 +83,7 @@ describe("dataBackbone — evaluateSectionExposure", () => {
 
   it("shows posizionamentoCommerciale when OMI is available", () => {
     const result = emptyScanResult();
-    result.omiZone = mockSection("success", { zonaOmiLabel: "B1", quotazioneMinResidenziale: 1500 });
+    result.omiZone = mockSection("success", { zonaOmiLabel: "B1", quotazioneMinResidenziale: 1500 }) as any;
     const exposure = evaluateSectionExposure("posizionamentoCommerciale", result);
     expect(exposure.decision).toBe("shown");
   });
