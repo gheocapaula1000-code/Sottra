@@ -426,6 +426,16 @@ export interface SubMunicipalMatchData {
   eta_media?: number | null;
   superficie_kmq?: number | null;
   note?: string;
+  /** R03 Lombardia pilot enrichment */
+  r03_enriched?: boolean;
+  r03_coverage?: string;
+  r03_population?: number | null;
+  r03_families?: number | null;
+  r03_dwellings?: number | null;
+  r03_buildings?: number | null;
+  r03_density?: number | null;
+  r03_sections_count?: number | null;
+  r03_sections_with_data?: number | null;
 }
 
 /** Errore restituito da coreRequest */
