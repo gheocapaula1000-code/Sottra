@@ -202,15 +202,41 @@ describe("dataBackbone — macrozone support", () => {
     expect(sourceCoversRegion(national, "19")).toBe(true);
   });
 
-  it("sourceCoversRegion correctly for regional source", () => {
+  it("regional source covers ONLY declared regions, not the whole macrozone", () => {
     const regional = mockRegistryEntry({
       geographic_scope: "regionale",
       regions_supported: ["Lombardia"],
     });
-    // Lombardia is in Nord-Ovest (code 03)
+    // Lombardia is code 03 → must match
     expect(sourceCoversRegion(regional, "03")).toBe(true);
-    // Sicilia is code 19 → Isole, not covered
+    // Piemonte is code 01 → same macrozone (Nord-Ovest) but NOT declared → must NOT match
+    expect(sourceCoversRegion(regional, "01")).toBe(false);
+    // Sicilia is code 19 → different macrozone → must NOT match
     expect(sourceCoversRegion(regional, "19")).toBe(false);
+  });
+
+  it("regional source Veneto does NOT cover Emilia-Romagna", () => {
+    const veneto = mockRegistryEntry({
+      geographic_scope: "regionale",
+      regions_supported: ["Veneto"],
+    });
+    // Veneto is code 05
+    expect(sourceCoversRegion(veneto, "05")).toBe(true);
+    // Emilia-Romagna is code 08 → same macrozone (Nord-Est) but NOT declared
+    expect(sourceCoversRegion(veneto, "08")).toBe(false);
+  });
+
+  it("macrozonale source covers all regions in the macrozone", () => {
+    const nordEst = mockRegistryEntry({
+      geographic_scope: "macrozonale",
+      regions_supported: ["Veneto"],
+    });
+    // Veneto code 05 → Nord-Est
+    expect(sourceCoversRegion(nordEst, "05")).toBe(true);
+    // Emilia-Romagna code 08 → also Nord-Est → covered by macrozonale
+    expect(sourceCoversRegion(nordEst, "08")).toBe(true);
+    // Lombardia code 03 → Nord-Ovest → NOT covered
+    expect(sourceCoversRegion(nordEst, "03")).toBe(false);
   });
 
   it("evaluateSubMunicipalGate resolves macrozone", () => {

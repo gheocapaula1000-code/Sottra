@@ -428,22 +428,40 @@ export function getSourceSections(entry: DataSourceEntry): ReportSectionKey[] {
 }
 
 /**
- * Checks if a source covers a specific macrozone.
- * A national source covers all macrozones.
- * A regional source covers only the macrozone(s) that contain its regions.
+ * Checks if a source covers a specific region (by ISTAT code or name).
+ *
+ * Rules:
+ * - nazionale  → covers everything
+ * - macrozonale → covers only regions inside the declared macrozone(s)
+ * - regionale  → covers ONLY the explicitly declared regions (no promotion)
+ * - other/partial → explicit match only
+ *
+ * IMPORTANT: a regional source must NOT be promoted to cover a whole macrozone.
  */
 export function sourceCoversRegion(entry: DataSourceEntry, regionCode: string): boolean {
   if (entry.geographic_scope === "nazionale") return true;
+
+  const target = getMacrozoneByRegionCode(regionCode);
+
+  if (entry.geographic_scope === "macrozonale") {
+    // Match if any declared region belongs to the same macrozone as the target
+    if (!entry.regions_supported?.length || !target) return false;
+    for (const r of entry.regions_supported) {
+      const mz = getMacrozoneByRegionName(r) ?? getMacrozoneByRegionCode(r);
+      if (mz && mz.macrozone_code === target.macrozone_code) return true;
+    }
+    return false;
+  }
+
+  // regionale or any other scope → strict match on declared regions only
   if (!entry.regions_supported?.length) return false;
-  // Check if any of the source's regions match
+  const normalizedTarget = regionCode.padStart(2, "0");
   for (const r of entry.regions_supported) {
-    const mzSource = getMacrozoneByRegionName(r);
-    const mzTarget = getMacrozoneByRegionCode(regionCode);
-    if (mzSource && mzTarget && mzSource.macrozone_code === mzTarget.macrozone_code) return true;
-    // Direct region name/code match
-    if (r.toLowerCase() === regionCode.toLowerCase()) return true;
-    const mzByCode = getMacrozoneByRegionCode(r);
-    if (mzByCode && mzTarget && mzByCode.macrozone_code === mzTarget.macrozone_code) return true;
+    // Match by name
+    const mzByName = getMacrozoneByRegionName(r);
+    if (mzByName && mzByName.regione_code === normalizedTarget) return true;
+    // Match by code
+    if (r.padStart(2, "0") === normalizedTarget) return true;
   }
   return false;
 }
