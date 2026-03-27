@@ -60,11 +60,34 @@ export interface AscSectionMapping {
   asc3_code: string | null;
 }
 
+/** Per-level ASC match detail */
+export interface AscLevelMatchDetail {
+  level: number;
+  codesInSections: Set<string>;
+  codesInLayer: Set<string>;
+  matched: string[];
+  unmatchedInSections: string[];
+  unmatchedInLayer: string[];
+  coveragePct: number;
+}
+
 export interface AscValidationReport {
   totalSections: number;
   sectionsWithAsc1: number;
   sectionsWithAsc2: number;
   sectionsWithAsc3: number;
+  /** Level-aware match details */
+  asc1: AscLevelMatchDetail;
+  asc2: AscLevelMatchDetail;
+  asc3: AscLevelMatchDetail;
+  /** Scoped metrics */
+  r03ComuniCovered: number;
+  r03ComuniCodes: Set<string>;
+  sectionsWithAsc1Pct: number;
+  sectionsWithAsc2Pct: number;
+  sectionsWithoutAscPct: number;
+  warnings: string[];
+  /** Legacy compat */
   ascCodesInSections: Set<string>;
   ascCodesInLayer: Set<string>;
   matchedCodes: string[];
@@ -72,7 +95,6 @@ export interface AscValidationReport {
   unmatchedInLayer: string[];
   matchPercentage: number;
   comuniCovered: number;
-  warnings: string[];
 }
 
 /* ------------------------------------------------------------------ */
