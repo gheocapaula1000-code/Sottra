@@ -207,4 +207,73 @@ describe("non-regression R03", () => {
     };
     expect(match.matched).toBe(false);
   });
+
+  it("SubMunicipalMatchData supports R03 enrichment fields", () => {
+    const match: SubMunicipalMatchData = {
+      available: true,
+      matched: true,
+      coverage_status: "available",
+      r03_enriched: true,
+      r03_coverage: "available",
+      r03_population: 12500,
+      r03_families: 5200,
+      r03_dwellings: 6100,
+      r03_buildings: 450,
+      r03_density: 3200,
+      r03_sections_count: 25,
+      r03_sections_with_data: 23,
+    };
+    expect(match.r03_enriched).toBe(true);
+    expect(match.r03_population).toBe(12500);
+    expect(match.r03_coverage).toBe("available");
+  });
+
+  it("R03 enrichment fields default to undefined when absent", () => {
+    const match: SubMunicipalMatchData = {
+      available: true,
+      matched: true,
+      coverage_status: "available",
+    };
+    expect(match.r03_enriched).toBeUndefined();
+    expect(match.r03_population).toBeUndefined();
+  });
+});
+
+describe("R03 aggregation gating", () => {
+  it("report shows R03 data only when r03_enriched is true", () => {
+    // Simulate gating logic
+    const withR03: SubMunicipalMatchData = {
+      available: true, matched: true, coverage_status: "available",
+      r03_enriched: true, r03_coverage: "available", r03_population: 8000,
+    };
+    const withoutR03: SubMunicipalMatchData = {
+      available: true, matched: true, coverage_status: "available",
+      popolazione: 5000,
+    };
+
+    const shouldShowR03 = (m: SubMunicipalMatchData) =>
+      m.matched && m.r03_enriched === true && (m.r03_coverage === "available" || m.r03_coverage === "partial") && (m.r03_population ?? 0) > 0;
+
+    expect(shouldShowR03(withR03)).toBe(true);
+    expect(shouldShowR03(withoutR03)).toBe(false);
+  });
+
+  it("partial R03 coverage is flagged correctly", () => {
+    const partial: SubMunicipalMatchData = {
+      available: true, matched: true, coverage_status: "available",
+      r03_enriched: true, r03_coverage: "partial", r03_population: 3000,
+      r03_sections_count: 10, r03_sections_with_data: 6,
+    };
+    expect(partial.r03_coverage).toBe("partial");
+    expect(partial.r03_sections_with_data! < partial.r03_sections_count!).toBe(true);
+  });
+
+  it("no crash when R03 fields are null", () => {
+    const noData: SubMunicipalMatchData = {
+      available: true, matched: true, coverage_status: "available",
+      r03_enriched: true, r03_coverage: "unavailable", r03_population: null,
+    };
+    const shouldShow = noData.r03_enriched && (noData.r03_population ?? 0) > 0;
+    expect(shouldShow).toBe(false);
+  });
 });
