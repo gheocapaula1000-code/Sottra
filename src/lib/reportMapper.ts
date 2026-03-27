@@ -796,7 +796,8 @@ export function buildSintesiFinale(result: ScanResult): SintesiFinaleData | null
   if (!opportunity && !convergenza) return null;
 
   const geo = resolveGeoContext(result);
-  const data: SintesiFinaleData = { geo };
+  const territorialResolution = resolveTerritorialContext(result);
+  const data: SintesiFinaleData = { geo, territorialResolution };
 
   const isMunicipal = geo.geoLevel === "comune" || geo.geoLevel === "non_determinato";
 
