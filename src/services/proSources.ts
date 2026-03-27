@@ -139,5 +139,14 @@ function parseSubMunicipalMatch(raw: unknown): SubMunicipalMatchData | null {
     eta_media: typeof d.eta_media === "number" ? d.eta_media : null,
     superficie_kmq: typeof d.superficie_kmq === "number" ? d.superficie_kmq : null,
     note: typeof d.note === "string" ? d.note : undefined,
+    r03_enriched: d.r03_enriched === true,
+    r03_coverage: typeof d.r03_coverage === "string" ? d.r03_coverage : undefined,
+    r03_population: typeof d.r03_population === "number" ? d.r03_population : null,
+    r03_families: typeof d.r03_families === "number" ? d.r03_families : null,
+    r03_dwellings: typeof d.r03_dwellings === "number" ? d.r03_dwellings : null,
+    r03_buildings: typeof d.r03_buildings === "number" ? d.r03_buildings : null,
+    r03_density: typeof d.r03_density === "number" ? d.r03_density : null,
+    r03_sections_count: typeof d.r03_sections_count === "number" ? d.r03_sections_count : null,
+    r03_sections_with_data: typeof d.r03_sections_with_data === "number" ? d.r03_sections_with_data : null,
   };
 }
