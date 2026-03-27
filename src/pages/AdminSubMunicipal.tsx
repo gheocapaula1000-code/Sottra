@@ -129,32 +129,40 @@ const AdminSubMunicipal = () => {
     setAggregating(false);
   };
 
-  const loadJobs = async () => {
+  const loadJobs = async (): Promise<{ ok: boolean; error?: string }> => {
     setJobsLoading(true);
     setJobsError(null);
+    let result: { ok: boolean; error?: string } = { ok: false, error: "unknown" };
     try {
       const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "list-jobs" } });
       if (error) {
         const msg = `Errore caricamento jobs: ${error.message}`;
         setJobsError(msg);
         toast.error(msg);
+        result = { ok: false, error: msg };
       } else if (data?.error) {
         const msg = data.error.includes("Admin") || data.error.includes("owner")
           ? `Permessi insufficienti per list-jobs: ${data.error}`
           : `Errore list-jobs: ${data.error}`;
         setJobsError(msg);
         toast.error(msg);
+        result = { ok: false, error: msg };
       } else if (data?.jobs) {
         setJobs(data.jobs);
+        result = { ok: true };
       } else {
-        setJobsError("Risposta list-jobs inattesa (nessun array jobs)");
+        const msg = "Risposta list-jobs inattesa (nessun array jobs)";
+        setJobsError(msg);
+        result = { ok: false, error: msg };
       }
     } catch (e: any) {
       const msg = `Errore rete list-jobs: ${e?.message ?? "sconosciuto"}`;
       setJobsError(msg);
       toast.error(msg);
+      result = { ok: false, error: msg };
     }
     setJobsLoading(false);
+    return result;
   };
 
   const handleUpload = async (datasetType: string, file: File) => {
