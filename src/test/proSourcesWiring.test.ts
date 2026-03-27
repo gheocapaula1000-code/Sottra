@@ -348,8 +348,8 @@ describe("Territorial resolution with OMI polygon data", () => {
     };
 
     const resolution = resolveTerritorialContext(mockResult as any);
-    // No locality invented
-    expect(resolution.identified_label).not.toContain("localit");
+    // No locality invented — identified_label is undefined when no data
+    expect(resolution.identified_label).toBeUndefined();
     expect(resolution.identified_geo_level).toBe("non_determinato");
   });
 });
