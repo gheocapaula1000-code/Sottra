@@ -98,7 +98,7 @@ describe("dataBackbone — evaluateSectionExposure", () => {
 
   it("shows profiloArea when sub-municipal data available", () => {
     const result = emptyScanResult();
-    result.istatDemographic = mockSection("success", { popolazione: 5000, geoLevel: "microzona" });
+    result.istatDemographic = mockSection("success", { popolazione: 5000, geoLevel: "microzona" }) as any;
     const exposure = evaluateSectionExposure("profiloArea", result);
     expect(exposure.decision).toBe("shown");
   });
