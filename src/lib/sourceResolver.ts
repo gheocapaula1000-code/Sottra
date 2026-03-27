@@ -378,8 +378,12 @@ export function resolutionSummary(resolved: ResolvedSource): string {
   if (resolved.tier === "unavailable") return "Nessuna fonte disponibile";
   const geoNote = resolved.geoLevel === "comune"
     ? " (livello comunale)"
-    : resolved.geoLevel === "non_determinato"
-      ? " (geo non determinato)"
-      : "";
+    : resolved.geoLevel === "macrozona"
+      ? " (livello macrozona)"
+      : resolved.geoLevel === "nazionale"
+        ? " (livello nazionale)"
+        : resolved.geoLevel === "non_determinato"
+          ? " (geo non determinato)"
+          : "";
   return `${resolved.sourceLabel}${geoNote} — ${resolved.isOfficial ? "ufficiale" : "non ufficiale"}`;
 }
