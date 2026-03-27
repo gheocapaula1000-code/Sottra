@@ -159,29 +159,95 @@ const AdminSubMunicipal = () => {
 
   const handleUpload = async (datasetType: string, file: File) => {
     setUploading(datasetType);
-    try {
-      const path = `imports/${datasetType}/${Date.now()}_${file.name}`;
-      const { error: upErr } = await supabase.storage.from("territorial-datasets").upload(path, file);
-      if (upErr) { toast.error(`Upload fallito: ${upErr.message}`); setUploading(null); return; }
+    const trace: typeof debugTrace = { datasetType, timestamp: new Date().toISOString() };
+    setDebugTrace(trace);
 
-      // Create job record
+    // Phase 1: Storage upload
+    const path = `imports/${datasetType}/${Date.now()}_${file.name}`;
+    trace.filePath = path;
+    try {
+      const { error: upErr } = await supabase.storage.from("territorial-datasets").upload(path, file);
+      if (upErr) {
+        const msg = upErr.message.includes("policy")
+          ? `Upload storage negato da policy RLS: ${upErr.message}`
+          : upErr.message.includes("bucket")
+          ? `Bucket 'territorial-datasets' non trovato o non accessibile`
+          : `Upload storage fallito: ${upErr.message}`;
+        trace.uploadOk = false;
+        trace.uploadError = msg;
+        trace.lastError = msg;
+        setDebugTrace({ ...trace });
+        toast.error(msg);
+        setUploading(null);
+        return;
+      }
+      trace.uploadOk = true;
+    } catch (e: any) {
+      trace.uploadOk = false;
+      trace.uploadError = e?.message ?? "Errore rete";
+      trace.lastError = trace.uploadError;
+      setDebugTrace({ ...trace });
+      toast.error(`Errore rete upload: ${trace.uploadError}`);
+      setUploading(null);
+      return;
+    }
+
+    // Phase 2: Insert job record
+    try {
       const { data: session } = await supabase.auth.getSession();
       const userId = session?.session?.user?.id;
 
-      const { error: jobErr } = await supabase.from("territorial_dataset_jobs" as any).insert({
+      const { data: insertData, error: jobErr } = await supabase.from("territorial_dataset_jobs" as any).insert({
         dataset_type: datasetType,
         file_path: path,
         file_name: file.name,
         file_size_bytes: file.size,
         created_by: userId,
-      } as any);
+      } as any).select("id").single();
 
-      if (jobErr) { toast.error(`Errore creazione job: ${jobErr.message}`); setUploading(null); return; }
-      toast.success(`File caricato: ${file.name}`);
-      await loadJobs();
-    } catch (e) {
-      toast.error("Errore upload");
+      if (jobErr) {
+        const msg = jobErr.message.includes("row-level security")
+          ? `Creazione job negata da RLS — verifica permessi admin/owner: ${jobErr.message}`
+          : `Creazione job fallita: ${jobErr.message}`;
+        trace.insertJobOk = false;
+        trace.insertJobError = msg;
+        trace.lastError = msg;
+        setDebugTrace({ ...trace });
+        toast.error(msg);
+
+        // Rollback: delete uploaded file
+        toast.info("Rollback: rimozione file dallo storage...");
+        await supabase.storage.from("territorial-datasets").remove([path]);
+
+        setUploading(null);
+        return;
+      }
+
+      trace.insertJobOk = true;
+      trace.jobId = (insertData as any)?.id ?? "unknown";
+    } catch (e: any) {
+      trace.insertJobOk = false;
+      trace.insertJobError = e?.message ?? "Errore rete";
+      trace.lastError = trace.insertJobError;
+      setDebugTrace({ ...trace });
+      toast.error(`Errore rete creazione job: ${trace.insertJobError}`);
+      // Rollback
+      await supabase.storage.from("territorial-datasets").remove([path]);
+      setUploading(null);
+      return;
     }
+
+    // Phase 3: Reload jobs
+    toast.success(`File caricato: ${file.name} — Job ID: ${trace.jobId}`);
+    try {
+      await loadJobs();
+      trace.listJobsOk = true;
+    } catch {
+      trace.listJobsOk = false;
+      trace.listJobsError = "Reload lista jobs fallito dopo insert";
+      toast.warning(`Job creato (${trace.jobId}) ma lista non aggiornata — prova Aggiorna`);
+    }
+    setDebugTrace({ ...trace });
     setUploading(null);
   };
 
