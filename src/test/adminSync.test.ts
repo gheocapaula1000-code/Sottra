@@ -170,3 +170,53 @@ describe("Admin Sync — explicit sourceKey→table mapping", () => {
     expect(brokenMap["istat_comuni_nazionale"]).not.toBe(explicitMap["istat_comuni_nazionale"]);
   });
 });
+
+/**
+ * Coherence check: DB CHECK constraints must cover all dataset_types and statuses
+ * used by the application layer. If a new type/status is added in code but not in DB,
+ * this test must be updated — and the migration must follow.
+ */
+describe("territorial_dataset_jobs — DB ↔ App coherence", () => {
+  const DB_ALLOWED_DATASET_TYPES = [
+    "ASC_2021", "R03_2021", "R03_CSV_SEZ", "R03_CSV_ASC1", "R03_CSV_ASC2", "R03_CSV_ASC3",
+    "COMUNI_ITALIA", "LOCALITA_ISTAT",
+  ];
+
+  const DB_ALLOWED_STATUSES = [
+    "uploaded", "validated", "validating", "ready_to_import", "importing", "imported", "failed",
+  ];
+
+  // These are the types actually used by the app/UI/edge-functions
+  const APP_USED_DATASET_TYPES = [
+    "ASC_2021", "R03_CSV_SEZ", "R03_CSV_ASC1", "R03_CSV_ASC2",
+    "COMUNI_ITALIA", "LOCALITA_ISTAT",
+  ];
+
+  const APP_USED_STATUSES = [
+    "uploaded", "validated", "validating", "importing", "imported", "failed",
+  ];
+
+  it("every app-used dataset_type is in DB allowed list", () => {
+    for (const t of APP_USED_DATASET_TYPES) {
+      expect(DB_ALLOWED_DATASET_TYPES).toContain(t);
+    }
+  });
+
+  it("every app-used status is in DB allowed list", () => {
+    for (const s of APP_USED_STATUSES) {
+      expect(DB_ALLOWED_STATUSES).toContain(s);
+    }
+  });
+
+  it("'validated' status is allowed (was missing before fix)", () => {
+    expect(DB_ALLOWED_STATUSES).toContain("validated");
+  });
+
+  it("COMUNI_ITALIA dataset_type is allowed (was missing before fix)", () => {
+    expect(DB_ALLOWED_DATASET_TYPES).toContain("COMUNI_ITALIA");
+  });
+
+  it("LOCALITA_ISTAT dataset_type is allowed (was missing before fix)", () => {
+    expect(DB_ALLOWED_DATASET_TYPES).toContain("LOCALITA_ISTAT");
+  });
+});
