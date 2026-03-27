@@ -75,13 +75,40 @@ const AdminSubMunicipal = () => {
   const [uploading, setUploading] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
 
+  // Aggregation state
+  const [aggStats, setAggStats] = useState<{ aggregates: number; stats: any; sample: any[] } | null>(null);
+  const [aggLoading, setAggLoading] = useState(false);
+  const [aggregating, setAggregating] = useState(false);
+
   const refreshAll = useCallback(() => {
     fetchSubMunicipalStats().then(s => { setStats(s); setLoading(false); });
     fetchR03Stats().then(s => { setR03Stats(s); setR03Loading(false); });
     loadJobs();
+    loadAggStats();
   }, []);
 
   useEffect(() => { refreshAll(); }, [refreshAll]);
+
+  const loadAggStats = async () => {
+    setAggLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "get-aggregation-stats" } });
+      if (!error && data?.ok) setAggStats({ aggregates: data.aggregates, stats: data.stats, sample: data.sample ?? [] });
+    } catch { /* ignore */ }
+    setAggLoading(false);
+  };
+
+  const runAggregation = async () => {
+    setAggregating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "aggregate-r03" } });
+      if (error) toast.error(`Errore aggregazione: ${error.message}`);
+      else if (data?.error) toast.error(data.error);
+      else toast.success(`Aggregazione completata: ${data?.imported ?? 0} aggregati generati`);
+      await loadAggStats();
+    } catch { toast.error("Errore aggregazione"); }
+    setAggregating(false);
+  };
 
   const loadJobs = async () => {
     setJobsLoading(true);
