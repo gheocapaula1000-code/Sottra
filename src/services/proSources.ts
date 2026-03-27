@@ -1,10 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { PoiEnrichmentData, OmiZoneData, IstatDemographicData } from "@/types";
+import type { PoiEnrichmentData, OmiZoneData, IstatDemographicData, SubMunicipalMatchData } from "@/types";
 
 interface ProSourcesResult {
   poi: PoiEnrichmentData | null;
   omi: OmiZoneData | null;
   istat: IstatDemographicData | null;
+  subMunicipalMatch: SubMunicipalMatchData | null;
 }
 
 /**
