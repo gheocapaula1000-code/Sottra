@@ -563,6 +563,10 @@ async function queryOmiWithPolygons(
     // Determine coverage level
     const coverageLevel = polygonMatch ? "zone_omi" : (zones.length === 1 ? "zone_omi" : "comune");
 
+    // Determine omiGeoLevel based on match quality
+    const omiGeoLevel = polygonMatch ? "microzona_omi"
+      : (zones.length === 1 ? "zona_specifica" : "comune");
+
     return {
       zonaOmi: zones.length === 1 ? zones[0] : zones.join(", "),
       zonaOmiLabel: zoneLabel,
@@ -579,6 +583,9 @@ async function queryOmiWithPolygons(
       sourcePeriod: `${latest.semestre}° semestre ${latest.anno}`,
       sourceCoverageLevel: coverageLevel,
       polygonMatch,
+      omiGeoLevel,
+      matchMethod: polygonMatch ? "polygon" : "catastale_fallback",
+      matchConfidence: polygonMatch ? 0.95 : (zones.length === 1 ? 0.7 : 0.5),
       licensingNote: "Dati OMI — Osservatorio del Mercato Immobiliare, Agenzia delle Entrate",
     };
   } catch (e) {
