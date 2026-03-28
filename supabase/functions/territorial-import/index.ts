@@ -880,7 +880,7 @@ serve(async (req) => {
 
     /* ── ACTION: validate-csv (dry-run) ── */
     if (action === "validate-csv") {
-      await recoverStuckR03SezJobs(admin);
+      await recoverStuckJobs(admin);
       const { jobId } = body as { jobId: string };
       if (!jobId) return json({ error: "jobId required" }, 200);
 
@@ -964,7 +964,7 @@ serve(async (req) => {
         }));
       };
 
-      await recoverStuckR03SezJobs(admin, logStep);
+      await recoverStuckJobs(admin, logStep);
 
       const { data: job, error: jobErr } = await admin.from("territorial_dataset_jobs").select("*").eq("id", jobId).single();
       if (jobErr || !job) return json({ error: "Job not found" }, 200);
@@ -1313,14 +1313,14 @@ serve(async (req) => {
 
     /* ── ACTION: list-jobs ── */
     if (action === "list-jobs") {
-      const recovered = await recoverStuckR03SezJobs(admin);
+      const recovered = await recoverStuckJobs(admin);
       const { data, error } = await admin.from("territorial_dataset_jobs").select("*").order("created_at", { ascending: false }).limit(50);
       if (error) return json({ error: error.message }, 200);
       return json({ ok: true, jobs: data, recovered });
     }
 
     if (action === "recover-stuck-jobs") {
-      const recovered = await recoverStuckR03SezJobs(admin);
+      const recovered = await recoverStuckJobs(admin);
       return json({ ok: true, recovered });
     }
 
