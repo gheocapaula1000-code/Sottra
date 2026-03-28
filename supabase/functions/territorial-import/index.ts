@@ -598,14 +598,24 @@ async function importR03Sez(
       };
     }).filter(Boolean);
 
+    // Deduplicate within batch by section_code (last-wins)
+    const dedupMap = new Map<string, (typeof dbRows)[0]>();
+    for (const row of dbRows) {
+      if (row) dedupMap.set(row.section_code, row);
+    }
+    const uniqueRows = [...dedupMap.values()];
+    const batchDuplicatesDropped = dbRows.length - uniqueRows.length;
+    if (batchDuplicatesDropped > 0) skipped += batchDuplicatesDropped;
+
     logStep("batch_started", {
       chunkIndex,
       chunkCount,
       chunkRows: chunk.length,
-      rowsReady: dbRows.length,
+      rowsReady: uniqueRows.length,
+      batchDuplicatesDropped,
     });
 
-    if (dbRows.length === 0) {
+    if (uniqueRows.length === 0) {
       skipped += chunk.length;
       const progress = buildProgressState({
         datasetType: "R03_CSV_SEZ",
@@ -640,10 +650,10 @@ async function importR03Sez(
 
     const { error } = await admin
       .from("census_sections_r03_2021")
-      .upsert(dbRows as any[], { onConflict: "source_dataset,section_code" });
+      .upsert(uniqueRows as any[], { onConflict: "source_dataset,section_code" });
 
     if (error) {
-      failed += dbRows.length;
+      failed += uniqueRows.length;
       if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: i, reason: `Batch ${chunkIndex}: ${error.message}` });
       logStep("job_marked_failed", {
         chunkIndex,
@@ -653,7 +663,7 @@ async function importR03Sez(
       throw new Error(`R03_CSV_SEZ batch ${chunkIndex}/${chunkCount} failed: ${error.message}`);
     }
 
-    imported += dbRows.length;
+    imported += uniqueRows.length;
 
     const progress = buildProgressState({
       datasetType: "R03_CSV_SEZ",
