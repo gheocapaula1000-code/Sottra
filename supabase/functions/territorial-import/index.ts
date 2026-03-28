@@ -52,6 +52,169 @@ function intSafe(v: string | undefined): number | null {
   return isNaN(n) ? null : n;
 }
 
+/* ── Region detection helper ── */
+
+interface RegionInfo {
+  regioni: string[];
+  regioniCount: number;
+  isMonoRegione: boolean;
+  regioneRilevata: string | null;
+  multiRegioneWarning: string | null;
+}
+
+function detectRegions(records: Record<string, string>[]): RegionInfo {
+  const regSet = new Set<string>();
+  for (const r of records) {
+    const reg = r["DEN_REG"] || r["REGIONE"] || "";
+    if (reg.trim()) regSet.add(reg.trim());
+  }
+  const regioni = [...regSet].sort();
+  const isMonoRegione = regioni.length === 1;
+  return {
+    regioni,
+    regioniCount: regioni.length,
+    isMonoRegione,
+    regioneRilevata: isMonoRegione ? regioni[0] : null,
+    multiRegioneWarning: regioni.length > 1
+      ? `File multi-regione: contiene ${regioni.length} regioni (${regioni.join(", ")}). Se intendevi caricare una sola regione, verifica il file.`
+      : null,
+  };
+}
+
+/* ── Column mapping helpers ── */
+
+const COMUNI_REQUIRED_COLS = { codice: ["PRO_COM_T", "PRO_COM", "CODICE_COMUNE", "COD_COM"], nome: ["DEN_COM", "DENOMINAZIONE", "COMUNE"] };
+const LOCALITA_REQUIRED_COLS = { codice_comune: ["PRO_COM_T", "PRO_COM", "CODICE_COMUNE"], codice_loc: ["COD_LOC", "CODICE_LOCALITA", "LOC"], nome_loc: ["DEN_LOC", "DENOMINAZIONE_LOC", "LOCALITA"] };
+const OPTIONAL_COLS = { regione: ["DEN_REG", "REGIONE", "COD_REG"], provincia: ["DEN_PRO", "DEN_PROV", "PROVINCIA", "COD_PRO"], coordinate: ["LAT", "LNG", "LON"] };
+
+function findColumn(headers: string[], candidates: string[]): string | null {
+  return candidates.find(c => headers.includes(c)) ?? null;
+}
+
+interface DetailedValidation {
+  totalRows: number;
+  headers: string[];
+  headersFound: Record<string, string | null>;
+  headersExpected: Record<string, string[]>;
+  missingCriticalColumns: string[];
+  validRows: number;
+  invalidRows: number;
+  duplicates: number;
+  noCode: number;
+  noName: number;
+  noRegione: number;
+  noCoords: number;
+  withCoords: number;
+  region: RegionInfo;
+  errors: { row: number; reason: string }[];
+  preview: Record<string, string>[];
+  recordsToImport: number;
+  recordsToSkip: number;
+  skipReasons: Record<string, number>;
+}
+
+function buildDetailedValidation(
+  records: Record<string, string>[],
+  datasetType: string,
+): DetailedValidation {
+  const headers = records.length > 0 ? Object.keys(records[0]) : [];
+  const region = detectRegions(records);
+  const errors: { row: number; reason: string }[] = [];
+  const seenKeys = new Set<string>();
+  let valid = 0, noCode = 0, noName = 0, noRegione = 0, noCoords = 0, withCoords = 0, duplicates = 0;
+  const skipReasons: Record<string, number> = {};
+
+  const addSkip = (reason: string) => { skipReasons[reason] = (skipReasons[reason] || 0) + 1; };
+
+  // Detect column presence
+  const headersFound: Record<string, string | null> = {};
+  const headersExpected: Record<string, string[]> = {};
+  const missingCriticalColumns: string[] = [];
+
+  if (datasetType === "COMUNI_ITALIA") {
+    headersExpected["codice_istat"] = COMUNI_REQUIRED_COLS.codice;
+    headersExpected["nome_comune"] = COMUNI_REQUIRED_COLS.nome;
+    headersExpected["regione"] = OPTIONAL_COLS.regione;
+    headersExpected["provincia"] = OPTIONAL_COLS.provincia;
+    headersExpected["coordinate"] = OPTIONAL_COLS.coordinate;
+
+    headersFound["codice_istat"] = findColumn(headers, COMUNI_REQUIRED_COLS.codice);
+    headersFound["nome_comune"] = findColumn(headers, COMUNI_REQUIRED_COLS.nome);
+    headersFound["regione"] = findColumn(headers, OPTIONAL_COLS.regione);
+    headersFound["provincia"] = findColumn(headers, OPTIONAL_COLS.provincia);
+
+    if (!headersFound["codice_istat"]) missingCriticalColumns.push(`Codice ISTAT comune (attesi: ${COMUNI_REQUIRED_COLS.codice.join(" | ")})`);
+    if (!headersFound["nome_comune"]) missingCriticalColumns.push(`Nome comune (attesi: ${COMUNI_REQUIRED_COLS.nome.join(" | ")})`);
+
+    for (let i = 0; i < records.length; i++) {
+      const r = records[i];
+      const code = r["PRO_COM_T"] || r["PRO_COM"] || r["CODICE_COMUNE"] || r["COD_COM"] || "";
+      const name = r["DEN_COM"] || r["DENOMINAZIONE"] || r["COMUNE"] || "";
+      if (!code) { noCode++; addSkip("codice_istat_mancante"); if (errors.length < 20) errors.push({ row: i + 2, reason: "Codice ISTAT comune mancante" }); continue; }
+      if (!name) { noName++; addSkip("nome_mancante"); if (errors.length < 20) errors.push({ row: i + 2, reason: "Nome comune mancante" }); continue; }
+      const key = `comune|${code}`;
+      if (seenKeys.has(key)) { duplicates++; addSkip("duplicato"); if (errors.length < 20) errors.push({ row: i + 2, reason: `Duplicato: ${code}` }); continue; }
+      seenKeys.add(key);
+      valid++;
+      const reg = r["DEN_REG"] || r["REGIONE"] || "";
+      if (!reg) noRegione++;
+      if (r["LAT"] && (r["LNG"] || r["LON"])) withCoords++; else noCoords++;
+    }
+  } else if (datasetType === "LOCALITA_ISTAT") {
+    headersExpected["codice_comune"] = LOCALITA_REQUIRED_COLS.codice_comune;
+    headersExpected["codice_localita"] = LOCALITA_REQUIRED_COLS.codice_loc;
+    headersExpected["nome_localita"] = LOCALITA_REQUIRED_COLS.nome_loc;
+    headersExpected["regione"] = OPTIONAL_COLS.regione;
+    headersExpected["coordinate"] = OPTIONAL_COLS.coordinate;
+
+    headersFound["codice_comune"] = findColumn(headers, LOCALITA_REQUIRED_COLS.codice_comune);
+    headersFound["codice_localita"] = findColumn(headers, LOCALITA_REQUIRED_COLS.codice_loc);
+    headersFound["nome_localita"] = findColumn(headers, LOCALITA_REQUIRED_COLS.nome_loc);
+    headersFound["regione"] = findColumn(headers, OPTIONAL_COLS.regione);
+
+    if (!headersFound["codice_comune"]) missingCriticalColumns.push(`Codice ISTAT comune (attesi: ${LOCALITA_REQUIRED_COLS.codice_comune.join(" | ")})`);
+    if (!headersFound["codice_localita"] && !headersFound["nome_localita"]) missingCriticalColumns.push(`Codice o nome località (attesi: ${[...LOCALITA_REQUIRED_COLS.codice_loc, ...LOCALITA_REQUIRED_COLS.nome_loc].join(" | ")})`);
+
+    for (let i = 0; i < records.length; i++) {
+      const r = records[i];
+      const code = r["PRO_COM_T"] || r["PRO_COM"] || r["CODICE_COMUNE"] || "";
+      const locCode = r["COD_LOC"] || r["CODICE_LOCALITA"] || r["LOC"] || "";
+      const locName = r["DEN_LOC"] || r["DENOMINAZIONE_LOC"] || r["LOCALITA"] || "";
+      if (!code) { noCode++; addSkip("codice_comune_mancante"); if (errors.length < 20) errors.push({ row: i + 2, reason: "Codice ISTAT comune mancante" }); continue; }
+      if (!locCode && !locName) { noName++; addSkip("loc_mancante"); if (errors.length < 20) errors.push({ row: i + 2, reason: "Codice o nome località mancante" }); continue; }
+      const key = `loc|${code}|${locCode || locName}`;
+      if (seenKeys.has(key)) { duplicates++; addSkip("duplicato"); if (errors.length < 20) errors.push({ row: i + 2, reason: `Duplicato: ${code}/${locCode || locName}` }); continue; }
+      seenKeys.add(key);
+      valid++;
+      const reg = r["DEN_REG"] || "";
+      if (!reg) noRegione++;
+      if (r["LAT"] && (r["LNG"] || r["LON"])) withCoords++; else noCoords++;
+    }
+  }
+
+  return {
+    totalRows: records.length,
+    headers,
+    headersFound,
+    headersExpected,
+    missingCriticalColumns,
+    validRows: valid,
+    invalidRows: records.length - valid,
+    duplicates,
+    noCode,
+    noName,
+    noRegione,
+    noCoords,
+    withCoords,
+    region,
+    errors,
+    preview: records.slice(0, 20),
+    recordsToImport: valid,
+    recordsToSkip: records.length - valid,
+    skipReasons,
+  };
+}
+
 /* ── Import processors ── */
 
 const CHUNK = 500;
@@ -63,18 +226,21 @@ async function importComuniItalia(
   batchId: string,
   admin: ReturnType<typeof createClient>,
 ) {
-  let imported = 0;
+  let inserted = 0, updated = 0, skipped = 0, failed = 0;
   const errors: { idx: number; reason: string }[] = [];
   const warnings: string[] = [];
+  const seenKeys = new Set<string>();
 
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
     const dbRows = chunk.map((r, j) => {
-      // Support multiple ISTAT CSV column conventions
       const istatCode = r["PRO_COM_T"] || r["PRO_COM"] || r["CODICE_COMUNE"] || r["COD_COM"] || "";
       const comuneName = r["DEN_COM"] || r["DENOMINAZIONE"] || r["COMUNE"] || "";
-      if (!istatCode) { errors.push({ idx: i + j, reason: "Codice ISTAT comune mancante" }); return null; }
-      if (!comuneName) { errors.push({ idx: i + j, reason: "Nome comune mancante" }); return null; }
+      if (!istatCode) { errors.push({ idx: i + j, reason: "Codice ISTAT comune mancante" }); skipped++; return null; }
+      if (!comuneName) { errors.push({ idx: i + j, reason: "Nome comune mancante" }); skipped++; return null; }
+      const key = `comune|${istatCode}`;
+      if (seenKeys.has(key)) { skipped++; return null; } // dedup within file
+      seenKeys.add(key);
       return {
         comune_istat_code: istatCode,
         comune_name: comuneName,
@@ -104,12 +270,14 @@ async function importComuniItalia(
     if (error) {
       log("comuni upsert error", error.message);
       dbRows.forEach((_, j) => errors.push({ idx: i + j, reason: error.message }));
+      failed += dbRows.length;
     } else {
-      imported += count ?? dbRows.length;
+      // upsert count = total affected (inserts + updates)
+      inserted += count ?? dbRows.length;
     }
   }
 
-  return { imported, errors, warnings };
+  return { inserted, updated, skipped, failed, errors, warnings };
 }
 
 /* ── LOCALITA_ISTAT import ── */
@@ -119,9 +287,10 @@ async function importLocalitaIstat(
   batchId: string,
   admin: ReturnType<typeof createClient>,
 ) {
-  let imported = 0;
+  let inserted = 0, updated = 0, skipped = 0, failed = 0;
   const errors: { idx: number; reason: string }[] = [];
   const warnings: string[] = [];
+  const seenKeys = new Set<string>();
 
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
@@ -129,8 +298,11 @@ async function importLocalitaIstat(
       const istatCode = r["PRO_COM_T"] || r["PRO_COM"] || r["CODICE_COMUNE"] || "";
       const locCode = r["COD_LOC"] || r["CODICE_LOCALITA"] || r["LOC"] || "";
       const locName = r["DEN_LOC"] || r["DENOMINAZIONE_LOC"] || r["LOCALITA"] || "";
-      if (!istatCode) { errors.push({ idx: i + j, reason: "Codice ISTAT comune mancante" }); return null; }
-      if (!locCode && !locName) { errors.push({ idx: i + j, reason: "Codice o nome località mancante" }); return null; }
+      if (!istatCode) { errors.push({ idx: i + j, reason: "Codice ISTAT comune mancante" }); skipped++; return null; }
+      if (!locCode && !locName) { errors.push({ idx: i + j, reason: "Codice o nome località mancante" }); skipped++; return null; }
+      const key = `loc|${istatCode}|${locCode || locName}`;
+      if (seenKeys.has(key)) { skipped++; return null; }
+      seenKeys.add(key);
       const locType = r["TIPO_LOC"] || r["TIPO"] || (r["CAPOLUOGO"] === "1" ? "capoluogo" : "localita");
       return {
         comune_istat_code: istatCode,
@@ -139,7 +311,7 @@ async function importLocalitaIstat(
         provincia_name: r["DEN_PRO"] || r["DEN_PROV"] || null,
         regione_code: r["COD_REG"] || null,
         regione_name: r["DEN_REG"] || null,
-        localita_code: locCode || locName, // fallback to name if no code
+        localita_code: locCode || locName,
         localita_name: locName || locCode,
         localita_type: locType,
         asc_code: "",
@@ -163,12 +335,13 @@ async function importLocalitaIstat(
     if (error) {
       log("localita upsert error", error.message);
       dbRows.forEach((_, j) => errors.push({ idx: i + j, reason: error.message }));
+      failed += dbRows.length;
     } else {
-      imported += count ?? dbRows.length;
+      inserted += count ?? dbRows.length;
     }
   }
 
-  return { imported, errors, warnings };
+  return { inserted, updated, skipped, failed, errors, warnings };
 }
 
 async function importR03Sez(
@@ -225,7 +398,7 @@ async function importR03Sez(
     else imported += count ?? dbRows.length;
   }
 
-  return { imported, errors, warnings };
+  return { inserted: imported, updated: 0, skipped: 0, failed: errors.length, errors, warnings };
 }
 
 async function importAscCsv(
@@ -277,7 +450,7 @@ async function importAscCsv(
     else imported += count ?? dbRows.length;
   }
 
-  return { imported, errors };
+  return { inserted: imported, updated: 0, skipped: 0, failed: errors.length, errors };
 }
 
 /* ── Post-import validation ── */
@@ -391,59 +564,64 @@ serve(async (req) => {
       if (jobErr || !job) return json({ error: "Job not found" }, 200);
 
       const { data: fileData, error: dlErr } = await admin.storage.from("territorial-datasets").download(job.file_path);
-      if (dlErr || !fileData) return json({ error: "File download failed" }, 200);
+      if (dlErr || !fileData) return json({ error: `File download failed: ${dlErr?.message ?? "unknown"}` }, 200);
 
       const csvText = await fileData.text();
       const records = parseCsv(csvText);
-      if (records.length === 0) return json({ error: "CSV vuoto" }, 200);
 
-      const headers = Object.keys(records[0]);
-      const dt = job.dataset_type as string;
-      const validation: Record<string, unknown> = { totalRows: records.length, headers, sampleRows: records.slice(0, 3) };
-
-      if (dt === "COMUNI_ITALIA") {
-        let valid = 0, noIstat = 0, noName = 0, withCoords = 0, noRegione = 0;
-        const regioni = new Set<string>();
-        for (const r of records) {
-          const code = r["PRO_COM_T"] || r["PRO_COM"] || r["CODICE_COMUNE"] || r["COD_COM"] || "";
-          const name = r["DEN_COM"] || r["DENOMINAZIONE"] || r["COMUNE"] || "";
-          if (!code) { noIstat++; continue; }
-          if (!name) { noName++; continue; }
-          valid++;
-          if (r["LAT"] && (r["LNG"] || r["LON"])) withCoords++;
-          const reg = r["DEN_REG"] || r["REGIONE"] || "";
-          if (reg) regioni.add(reg); else noRegione++;
-        }
-        validation.comuni = { valid, noIstat, noName, withCoords, withoutCoords: valid - withCoords, noRegione, regioni: [...regioni].sort(), regioniCount: regioni.size };
-      } else if (dt === "LOCALITA_ISTAT") {
-        let valid = 0, noIstat = 0, noLoc = 0, withCoords = 0, noComune = 0;
-        const comuni = new Set<string>(), regioni = new Set<string>();
-        const byType: Record<string, number> = {};
-        for (const r of records) {
-          const code = r["PRO_COM_T"] || r["PRO_COM"] || r["CODICE_COMUNE"] || "";
-          const locCode = r["COD_LOC"] || r["CODICE_LOCALITA"] || r["LOC"] || "";
-          const locName = r["DEN_LOC"] || r["DENOMINAZIONE_LOC"] || r["LOCALITA"] || "";
-          if (!code) { noIstat++; continue; }
-          if (!locCode && !locName) { noLoc++; continue; }
-          valid++;
-          if (r["LAT"] && (r["LNG"] || r["LON"])) withCoords++;
-          if (r["DEN_COM"] || r["COMUNE"]) comuni.add(code); else noComune++;
-          const reg = r["DEN_REG"] || "";
-          if (reg) regioni.add(reg);
-          const tp = r["TIPO_LOC"] || r["TIPO"] || "sconosciuto";
-          byType[tp] = (byType[tp] || 0) + 1;
-        }
-        validation.localita = { valid, noIstat, noLoc, withCoords, withoutCoords: valid - withCoords, noComune, comuni: comuni.size, regioni: [...regioni].sort(), regioniCount: regioni.size, byType };
+      if (records.length === 0) {
+        await admin.from("territorial_dataset_jobs").update({
+          status: "failed",
+          error_log: [{ reason: "CSV vuoto o formato non riconosciuto — verifica separatore (virgola o punto e virgola) e intestazioni" }],
+        }).eq("id", jobId);
+        return json({ error: "CSV vuoto o formato non riconosciuto" }, 200);
       }
 
-      // Save validation result to job
+      const dt = job.dataset_type as string;
+
+      // Full detailed validation for COMUNI_ITALIA and LOCALITA_ISTAT
+      if (dt === "COMUNI_ITALIA" || dt === "LOCALITA_ISTAT") {
+        const validation = buildDetailedValidation(records, dt);
+
+        // If critical columns are missing, mark as failed
+        if (validation.missingCriticalColumns.length > 0) {
+          const failReason = `Colonne critiche mancanti: ${validation.missingCriticalColumns.join("; ")}. Colonne trovate: ${validation.headers.join(", ")}`;
+          await admin.from("territorial_dataset_jobs").update({
+            status: "failed",
+            records_total: records.length,
+            validation_result: validation,
+            error_log: [{ reason: failReason }],
+          }).eq("id", jobId);
+          return json({ ok: false, error: failReason, validation });
+        }
+
+        // Save validation
+        await admin.from("territorial_dataset_jobs").update({
+          status: "validated",
+          records_total: records.length,
+          validation_result: validation,
+          warnings: validation.region.multiRegioneWarning ? [validation.region.multiRegioneWarning] : [],
+        }).eq("id", jobId);
+
+        return json({ ok: true, validation });
+      }
+
+      // Generic validation for other types (R03, ASC)
+      const headers = Object.keys(records[0]);
+      const genericValidation: Record<string, unknown> = {
+        totalRows: records.length,
+        headers,
+        sampleRows: records.slice(0, 3),
+        region: detectRegions(records),
+      };
+
       await admin.from("territorial_dataset_jobs").update({
         status: "validated",
         records_total: records.length,
-        validation_result: validation,
+        validation_result: genericValidation,
       }).eq("id", jobId);
 
-      return json({ ok: true, validation });
+      return json({ ok: true, validation: genericValidation });
     }
 
     /* ── ACTION: process-csv ── */
@@ -451,12 +629,11 @@ serve(async (req) => {
       const { jobId } = body as { jobId: string };
       if (!jobId) return json({ error: "jobId required" }, 200);
 
-      // Get job
       const { data: job, error: jobErr } = await admin.from("territorial_dataset_jobs").select("*").eq("id", jobId).single();
       if (jobErr || !job) return json({ error: "Job not found" }, 200);
 
       // Update status
-      await admin.from("territorial_dataset_jobs").update({ status: "validating", started_at: new Date().toISOString() }).eq("id", jobId);
+      await admin.from("territorial_dataset_jobs").update({ status: "importing", started_at: new Date().toISOString() }).eq("id", jobId);
 
       // Download file from storage
       const { data: fileData, error: dlErr } = await admin.storage.from("territorial-datasets").download(job.file_path);
@@ -475,23 +652,27 @@ serve(async (req) => {
 
       log("process-csv", `${records.length} records, type=${job.dataset_type}, headers=${Object.keys(records[0]).slice(0, 10).join(",")}`);
 
-      // Update to importing
+      const region = detectRegions(records);
+
+      // Update to importing with region info
       await admin.from("territorial_dataset_jobs").update({
         status: "importing",
         records_total: records.length,
-        validation_result: { headers: Object.keys(records[0]), sampleRow: records[0], totalRows: records.length },
+        validation_result: {
+          headers: Object.keys(records[0]),
+          sampleRow: records[0],
+          totalRows: records.length,
+          region,
+        },
       }).eq("id", jobId);
 
       const batchId = `${job.dataset_type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      let result: { imported: number; errors: { idx: number; reason: string }[]; warnings?: string[] };
+      let result: { inserted: number; updated: number; skipped: number; failed: number; errors: { idx: number; reason: string }[]; warnings?: string[] };
 
       if (job.dataset_type === "ASC_2021") {
         result = await importAscCsv(records, batchId, admin);
       } else if (job.dataset_type === "R03_CSV_SEZ") {
-        // Check if we have ASC mapping jobs already imported
         const ascMappings = new Map<string, { asc1: string | null; asc2: string | null; asc3: string | null }>();
-
-        // Try to load ASC1/ASC2 from already-imported files in storage
         for (const level of ["ASC1", "ASC2", "ASC3"]) {
           const ascType = `R03_CSV_${level}`;
           const { data: ascJob } = await admin.from("territorial_dataset_jobs")
@@ -515,11 +696,9 @@ serve(async (req) => {
             }
           }
         }
-
         result = await importR03Sez(records, ascMappings, batchId, admin);
       } else if (job.dataset_type.startsWith("R03_CSV_ASC")) {
-        // ASC mapping CSVs: just store them, they're used during SEZ import
-        result = { imported: records.length, errors: [], warnings: [`File mapping ${job.dataset_type} registrato. Verrà usato durante l'import di SEZ_R03_21.csv.`] };
+        result = { inserted: records.length, updated: 0, skipped: 0, failed: 0, errors: [], warnings: [`File mapping ${job.dataset_type} registrato. Verrà usato durante l'import di SEZ_R03_21.csv.`] };
       } else if (job.dataset_type === "COMUNI_ITALIA") {
         result = await importComuniItalia(records, batchId, admin);
       } else if (job.dataset_type === "LOCALITA_ISTAT") {
@@ -532,20 +711,34 @@ serve(async (req) => {
       // Post-import validation
       const validation = await validatePostImport(job.dataset_type, admin);
 
-      const finalStatus = result.errors.length > result.imported ? "failed" : "imported";
+      const totalFailed = result.failed + result.errors.length;
+      const finalStatus = totalFailed > result.inserted && result.inserted === 0 ? "failed" : "imported";
       await admin.from("territorial_dataset_jobs").update({
         status: finalStatus,
-        records_imported: result.imported,
-        records_errors: result.errors.length,
-        records_skipped: records.length - result.imported - result.errors.length,
+        records_imported: result.inserted,
+        records_errors: totalFailed,
+        records_skipped: result.skipped,
         import_batch_id: batchId,
         error_log: result.errors.slice(0, 100),
-        warnings: result.warnings || [],
-        stats: validation,
+        warnings: [
+          ...(result.warnings || []),
+          ...(region.multiRegioneWarning ? [region.multiRegioneWarning] : []),
+        ],
+        stats: { ...validation, importResult: { inserted: result.inserted, updated: result.updated, skipped: result.skipped, failed: result.failed } },
         completed_at: new Date().toISOString(),
       }).eq("id", jobId);
 
-      return json({ ok: true, imported: result.imported, errors: result.errors.length, batchId, validation });
+      return json({
+        ok: true,
+        inserted: result.inserted,
+        updated: result.updated,
+        skipped: result.skipped,
+        failed: result.failed,
+        errors: result.errors.length,
+        batchId,
+        region,
+        validation,
+      });
     }
 
     /* ── ACTION: aggregate-r03 ── */
@@ -553,14 +746,12 @@ serve(async (req) => {
       log("aggregate-r03", "starting R03→ASC aggregation");
       const batchId = `agg_r03_${Date.now()}`;
 
-      // Fetch all R03 sections with ASC codes
       const { data: sections, error: secErr } = await admin.from("census_sections_r03_2021")
         .select("section_code, comune_istat_code, comune_name, asc1_code, asc2_code, asc3_code, population_2021, families_2021, dwellings_2021, occupied_dwellings_2021, buildings_2021, residential_buildings_2021");
       if (secErr || !sections || sections.length === 0) {
         return json({ ok: false, error: "No R03 sections found", detail: secErr?.message });
       }
 
-      // Fetch ASC layer names for enrichment (scoped to R03 comuni)
       const r03Comuni = new Set((sections as any[]).map((s: any) => s.comune_istat_code).filter(Boolean));
       const { data: ascAreas } = await admin.from("sub_municipal_areas_2021")
         .select("area_code, asc_level, area_name, comune_istat_code, superficie_kmq");
@@ -574,7 +765,6 @@ serve(async (req) => {
         }
       }
 
-      // Aggregate by ASC level + code
       type AggKey = string;
       interface AggBucket {
         comune_istat_code: string; comune_name: string;
@@ -606,7 +796,6 @@ serve(async (req) => {
         }
       }
 
-      // Build rows
       const rows = [...buckets.values()].map(b => {
         const ascInfo = ascNames.get(`${b.asc_level}_${b.asc_code}`);
         const coverageRatio = b.count > 0 ? b.with_data / b.count : 0;
@@ -632,15 +821,14 @@ serve(async (req) => {
         };
       });
 
-      // Upsert in chunks
       let imported = 0;
-      const errors: string[] = [];
+      const importErrors: string[] = [];
       for (let i = 0; i < rows.length; i += CHUNK) {
         const chunk = rows.slice(i, i + CHUNK);
         const { error, count } = await admin.from("r03_asc_aggregates_2021")
           .upsert(chunk, { onConflict: "source_dataset,comune_istat_code,asc_level,asc_code" })
           .select("id");
-        if (error) errors.push(error.message);
+        if (error) importErrors.push(error.message);
         else imported += count ?? chunk.length;
       }
 
@@ -649,7 +837,7 @@ serve(async (req) => {
       for (const r of rows) byLevel[r.asc_level] = (byLevel[r.asc_level] || 0) + 1;
 
       return json({
-        ok: true, imported, total: rows.length, errors,
+        ok: true, imported, total: rows.length, errors: importErrors,
         stats: { comuni: comuni.size, byLevel, batchId },
       });
     }
@@ -688,7 +876,7 @@ serve(async (req) => {
 
     /* ── ACTION: list-jobs ── */
     if (action === "list-jobs") {
-      const { data, error } = await admin.from("territorial_dataset_jobs").select("*").order("created_at", { ascending: false }).limit(20);
+      const { data, error } = await admin.from("territorial_dataset_jobs").select("*").order("created_at", { ascending: false }).limit(50);
       if (error) return json({ error: error.message }, 200);
       return json({ ok: true, jobs: data });
     }
