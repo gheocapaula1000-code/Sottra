@@ -642,4 +642,64 @@ describe("R03_CSV_SEZ streaming import logic", () => {
     const result = simulateStreamingImport(csv);
     expect(result.rows[0].source_label).toBe("ISTAT Censimento 2021 — Lombardia");
   });
+
+  it("skipByReason tracks missing SEZ and COM separately", () => {
+    const csv = "SEZ2021;PRO_COM_T;COD_REG;P1\n;015146;03;100\n002;;03;200\n003;015147;03;300\n";
+    const result = simulateStreamingImport(csv);
+    expect(result.imported).toBe(1);
+    expect(result.failed).toBe(2);
+    expect(result.skipByReason["sez_mancante"]).toBe(1);
+    expect(result.skipByReason["com_mancante"]).toBe(1);
+  });
+
+  it("valid rows with missing ASC2 are NOT skipped", () => {
+    // 5 rows from different regions, no ASC mappings at all
+    const csv = [
+      "SEZ2021;PRO_COM_T;COD_REG;P1",
+      "001;015146;03;100",
+      "002;058091;12;200",
+      "003;024100;05;300",
+      "004;001272;01;400",
+      "005;080053;08;500",
+    ].join("\n");
+    const result = simulateStreamingImport(csv);
+    expect(result.imported).toBe(5);
+    expect(result.skipped).toBe(0);
+    expect(result.failed).toBe(0);
+    // All ASC codes should be null, no skip
+    for (const row of result.rows) {
+      expect(row.asc1_code).toBeNull();
+      expect(row.asc2_code).toBeNull();
+    }
+  });
+
+  it("full-file region scan detects all regions in large sorted file", () => {
+    // Simulate what the validate does: scan COD_REG from all lines
+    const lines = [
+      "SEZ2021;PRO_COM_T;COD_REG;P1",
+      ...Array.from({ length: 100 }, (_, i) => `${i + 1};015146;01;100`), // Piemonte
+      ...Array.from({ length: 100 }, (_, i) => `${i + 101};015147;03;200`), // Lombardia
+      ...Array.from({ length: 100 }, (_, i) => `${i + 201};058091;12;300`), // Lazio
+    ];
+    const csvText = lines.join("\n");
+
+    // Extract COD_REG from all lines (simulating the full-scan approach)
+    const regionCodesFound = new Set<string>();
+    const allLines = csvText.split("\n");
+    const header = allLines[0].split(";");
+    const codRegIdx = header.indexOf("COD_REG");
+    for (let i = 1; i < allLines.length; i++) {
+      const vals = allLines[i].split(";");
+      if (codRegIdx >= 0 && vals[codRegIdx]) {
+        regionCodesFound.add(vals[codRegIdx].trim());
+      }
+    }
+
+    const COD_REG_MAP_FULL: Record<string, string> = {
+      "01": "Piemonte", "03": "Lombardia", "12": "Lazio",
+    };
+    const regionNames = [...regionCodesFound].map(c => COD_REG_MAP_FULL[c.padStart(2, "0")] || `Regione ${c}`);
+    expect(regionNames.sort()).toEqual(["Lazio", "Lombardia", "Piemonte"]);
+    expect(regionNames.length).toBe(3);
+  });
 });
