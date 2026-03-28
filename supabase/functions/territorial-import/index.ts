@@ -540,6 +540,7 @@ async function importR03Sez(
   admin: ReturnType<typeof createClient>,
   jobId: string,
   logStep: (step: string, payload?: Record<string, unknown>) => void,
+  regionInfo: RegionInfo,
 ) {
   let imported = 0;
   let skipped = 0;
@@ -548,6 +549,22 @@ async function importR03Sez(
   const warnings: string[] = [];
   const totalRows = rows.length;
   const chunkCount = Math.ceil(totalRows / R03_SEZ_CHUNK);
+
+  // Derive region label from detected region (no more hardcoded Lombardia)
+  const detectedRegionName = regionInfo.regioneRilevata ?? null;
+  const detectedRegionCode = detectedRegionName
+    ? Object.entries(COD_REG_MAP).find(([_, v]) => v === detectedRegionName)?.[0] ?? null
+    : null;
+  const sourceLabel = detectedRegionName
+    ? `ISTAT Censimento 2021 — ${detectedRegionName}`
+    : "ISTAT Censimento 2021";
+
+  logStep("r03_region_detected", {
+    regionName: detectedRegionName,
+    regionCode: detectedRegionCode,
+    isMonoRegione: regionInfo.isMonoRegione,
+    regioniCount: regionInfo.regioniCount,
+  });
 
   for (let i = 0; i < rows.length; i += R03_SEZ_CHUNK) {
     const chunk = rows.slice(i, i + R03_SEZ_CHUNK);
@@ -566,12 +583,15 @@ async function importR03Sez(
         return null;
       }
       const m = ascMappings.get(sez);
+      // Per-row region: use row-level COD_REG/DEN_REG if available, fall back to file-level detection
+      const rowRegCode = r["COD_REG"] || detectedRegionCode || null;
+      const rowRegName = r["DEN_REG"] || r["REGIONE"] || detectedRegionName || null;
       return {
         source_dataset: "R03_21",
         source_year: 2021,
-        source_label: "ISTAT Censimento 2021 — Lombardia",
-        regione_code: "03",
-        regione_name: "Lombardia",
+        source_label: sourceLabel,
+        regione_code: rowRegCode,
+        regione_name: rowRegName,
         provincia_code: r["COD_PRO"] || null,
         comune_istat_code: com,
         comune_name: r["DEN_COM"] || "",
