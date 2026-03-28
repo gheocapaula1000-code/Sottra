@@ -1095,9 +1095,9 @@ serve(async (req) => {
             region,
             preview: previewRecords.slice(0, 20),
             sampleErrors,
-            validationMode: "light_streaming",
+            validationMode: "light_streaming_fullscan_region",
             previewRowsAnalyzed: previewRecords.length,
-            regionSampleSize: regionSampleRecords.length,
+            regionScanMode: "full_file",
           };
 
           if (missingCritical.length > 0) {
