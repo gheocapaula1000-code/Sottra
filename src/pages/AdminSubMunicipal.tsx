@@ -58,6 +58,9 @@ const STATUS_COLORS: Record<string, string> = {
   failed: "bg-destructive/10 text-destructive",
 };
 
+// Job filter state
+type JobFilter = { dataset?: string; regione?: string };
+
 const AdminSubMunicipal = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
