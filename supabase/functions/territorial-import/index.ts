@@ -1088,7 +1088,7 @@ serve(async (req) => {
             asc2Mappings: asc2MappingsCount,
             chunkSize: R03_SEZ_CHUNK,
           });
-          result = await importR03Sez(records, ascMappings, batchId, admin, jobId, logStep);
+          result = await importR03Sez(records, ascMappings, batchId, admin, jobId, logStep, region);
         } else if (job.dataset_type.startsWith("R03_CSV_ASC")) {
           result = { inserted: records.length, updated: 0, skipped: 0, failed: 0, errors: [], warnings: [`File mapping ${job.dataset_type} registrato. Verrà usato durante l'import di SEZ_R03_21.csv.`] };
         } else if (job.dataset_type === "COMUNI_ITALIA") {

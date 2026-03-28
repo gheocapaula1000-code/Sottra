@@ -807,7 +807,7 @@ const AdminSubMunicipal = () => {
         {/* ═══ R03 STATS ═══ */}
         <div className="space-y-1">
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" /> R03 Lombardia — Stato
+            <BarChart3 className="h-5 w-5" /> R03 Sezioni Censuarie — Stato
           </h2>
         </div>
 
