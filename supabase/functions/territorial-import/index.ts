@@ -1179,57 +1179,17 @@ serve(async (req) => {
         logStep("file_downloaded");
 
         const csvText = await fileData.text();
-        const records = parseCsv(csvText);
-        logStep("csv_parsed", `${records.length} rows`);
-
-        if (records.length === 0) {
-          finalError = "CSV vuoto o formato non riconosciuto";
-          logStep("csv_empty");
-          return json({ error: "Empty CSV" }, 200);
-        }
-
-        logStep("rows_counted", `${records.length} records, type=${job.dataset_type}, headers=${Object.keys(records[0]).slice(0, 10).join(",")}`);
-
-        const region = detectRegions(records);
-        finalRegion = region;
-
-        // Update to importing with region info
-        await admin.from("territorial_dataset_jobs").update({
-          status: "importing",
-          records_total: records.length,
-          records_imported: 0,
-          records_errors: 0,
-          records_skipped: 0,
-          updated_at: nowIso(),
-          validation_result: {
-            headers: Object.keys(records[0]),
-            sampleRow: records[0],
-            totalRows: records.length,
-            region,
-          },
-          stats: {
-            progress: buildProgressState({
-              datasetType: job.dataset_type,
-              processedRows: 0,
-              totalRows: records.length,
-              failedRows: 0,
-              skippedRows: 0,
-              chunkIndex: 0,
-              chunkCount: job.dataset_type === "R03_CSV_SEZ" ? Math.ceil(records.length / R03_SEZ_CHUNK) : Math.ceil(records.length / CHUNK),
-            }),
-          },
-        }).eq("id", jobId);
 
         const batchId = `${job.dataset_type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         finalBatchId = batchId;
         let result: typeof finalResult;
 
-        if (job.dataset_type === "ASC_2021") {
-          result = await importAscCsv(records, batchId, admin);
-        } else if (job.dataset_type === "R03_CSV_SEZ") {
+        // R03_CSV_SEZ uses STREAMING import to avoid memory crash on large files
+        if (job.dataset_type === "R03_CSV_SEZ") {
           logStep("asc_mapping_loading");
           const ascMappings = new Map<string, { asc1: string | null; asc2: string | null; asc3: string | null }>();
           let asc2MappingsCount = 0;
+          const ascLevelsFound: string[] = [];
           for (const level of ["ASC1", "ASC2", "ASC3"]) {
             const ascType = `R03_CSV_${level}`;
             const { data: ascJob } = await admin.from("territorial_dataset_jobs")
@@ -1245,36 +1205,95 @@ serve(async (req) => {
                   const existing = ascMappings.get(sez) || { asc1: null, asc2: null, asc3: null };
                   const code = row["COD_ASC"] || null;
                   if (level === "ASC1") existing.asc1 = code;
-                  else if (level === "ASC2") {
-                    existing.asc2 = code;
-                    asc2MappingsCount++;
-                  }
+                  else if (level === "ASC2") { existing.asc2 = code; asc2MappingsCount++; }
                   else if (level === "ASC3") existing.asc3 = code;
                   ascMappings.set(sez, existing);
                 }
-                logStep(level === "ASC2" ? "asc2_mapping_loaded" : "asc_mapping_loaded", {
-                  level,
-                  rows: ascRows.length,
-                });
+                ascLevelsFound.push(level);
+                logStep("asc_mapping_loaded", { level, rows: ascRows.length });
               }
+            } else {
+              logStep("asc_mapping_not_found", { level, note: "Nessun job importato trovato — sezioni senza questo livello ASC avranno campo null" });
             }
           }
-          logStep("batch_started", {
-            sections: records.length,
+          logStep("asc_mapping_summary", {
             ascMappings: ascMappings.size,
             asc2Mappings: asc2MappingsCount,
+            levelsFound: ascLevelsFound,
             chunkSize: R03_SEZ_CHUNK,
           });
-          result = await importR03Sez(records, ascMappings, batchId, admin, jobId, logStep, region);
-        } else if (job.dataset_type.startsWith("R03_CSV_ASC")) {
-          result = { inserted: records.length, updated: 0, skipped: 0, failed: 0, errors: [], warnings: [`File mapping ${job.dataset_type} registrato. Verrà usato durante l'import di SEZ_R03_21.csv.`] };
-        } else if (job.dataset_type === "COMUNI_ITALIA") {
-          result = await importComuniItalia(records, batchId, admin);
-        } else if (job.dataset_type === "LOCALITA_ISTAT") {
-          result = await importLocalitaIstat(records, batchId, admin);
+
+          // STREAMING import: never hold all rows in memory
+          const streamResult = await importR03SezStreaming(csvText, ascMappings, batchId, admin, jobId, logStep);
+          result = streamResult;
+
+          // Build region info from streaming result for job metadata
+          const regArr = [...streamResult.regionsFound].sort();
+          finalRegion = {
+            regioni: regArr,
+            regioniCount: regArr.length,
+            isMonoRegione: regArr.length === 1,
+            regioneRilevata: regArr.length === 1 ? regArr[0] : null,
+            multiRegioneWarning: regArr.length > 1
+              ? `File multi-regione: contiene ${regArr.length} regioni (${regArr.join(", ")})`
+              : null,
+            detectedVia: "COD_REG",
+          };
         } else {
-          finalError = `Tipo dataset non supportato: ${job.dataset_type}`;
-          return json({ error: "Unsupported dataset type" }, 200);
+          // Non-streaming path for smaller datasets
+          const records = parseCsv(csvText);
+          logStep("csv_parsed", `${records.length} rows`);
+
+          if (records.length === 0) {
+            finalError = "CSV vuoto o formato non riconosciuto";
+            logStep("csv_empty");
+            return json({ error: "Empty CSV" }, 200);
+          }
+
+          logStep("rows_counted", `${records.length} records, type=${job.dataset_type}, headers=${Object.keys(records[0]).slice(0, 10).join(",")}`);
+
+          const region = detectRegions(records);
+          finalRegion = region;
+
+          // Update to importing with region info
+          await admin.from("territorial_dataset_jobs").update({
+            status: "importing",
+            records_total: records.length,
+            records_imported: 0,
+            records_errors: 0,
+            records_skipped: 0,
+            updated_at: nowIso(),
+            validation_result: {
+              headers: Object.keys(records[0]),
+              sampleRow: records[0],
+              totalRows: records.length,
+              region,
+            },
+            stats: {
+              progress: buildProgressState({
+                datasetType: job.dataset_type,
+                processedRows: 0,
+                totalRows: records.length,
+                failedRows: 0,
+                skippedRows: 0,
+                chunkIndex: 0,
+                chunkCount: Math.ceil(records.length / CHUNK),
+              }),
+            },
+          }).eq("id", jobId);
+
+          if (job.dataset_type === "ASC_2021") {
+            result = await importAscCsv(records, batchId, admin);
+          } else if (job.dataset_type.startsWith("R03_CSV_ASC")) {
+            result = { inserted: records.length, updated: 0, skipped: 0, failed: 0, errors: [], warnings: [`File mapping ${job.dataset_type} registrato. Verrà usato durante l'import di SEZ_R03_21.csv.`] };
+          } else if (job.dataset_type === "COMUNI_ITALIA") {
+            result = await importComuniItalia(records, batchId, admin);
+          } else if (job.dataset_type === "LOCALITA_ISTAT") {
+            result = await importLocalitaIstat(records, batchId, admin);
+          } else {
+            finalError = `Tipo dataset non supportato: ${job.dataset_type}`;
+            return json({ error: "Unsupported dataset type" }, 200);
+          }
         }
 
         finalResult = result;
