@@ -657,6 +657,7 @@ const AdminSubMunicipal = () => {
                       {/* Import results */}
                       {job.status === "imported" && (job.stats as any)?.importResult && (
                         <div className="mt-1 flex gap-2 text-xs flex-wrap">
+                          {(job.stats as any).importResult.processed != null && <span className="text-foreground">processed: {(job.stats as any).importResult.processed}</span>}
                           <span className="text-emerald-600">inserted: {(job.stats as any).importResult.inserted}</span>
                           <span className="text-blue-600">updated: {(job.stats as any).importResult.updated}</span>
                           <span className="text-amber-600">skipped: {(job.stats as any).importResult.skipped}</span>
