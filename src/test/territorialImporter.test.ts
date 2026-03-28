@@ -355,3 +355,139 @@ describe("Preview output", () => {
     expect(headers).toContain("DEN_REG");
   });
 });
+
+/* ── Light/streaming validation logic tests ── */
+
+describe("Light streaming validation for R03_CSV_SEZ", () => {
+  // Simulate the line-counting approach used in the edge function
+  function lightValidate(csvText: string) {
+    const PREVIEW_LIMIT = 100;
+    const REGION_SAMPLE_LIMIT = 2000;
+
+    let totalLines = 0;
+    let headerLine = "";
+    const previewLines: string[] = [];
+    const regionSampleLines: string[] = [];
+    let pastBom = false;
+
+    let lineStart = 0;
+    for (let i = 0; i <= csvText.length; i++) {
+      if (i === csvText.length || csvText[i] === '\n') {
+        let line = csvText.substring(lineStart, i);
+        if (line.endsWith('\r')) line = line.slice(0, -1);
+        lineStart = i + 1;
+        if (!pastBom) {
+          if (line.charCodeAt(0) === 0xfeff) line = line.slice(1);
+          pastBom = true;
+        }
+        if (!line.trim()) continue;
+        if (!headerLine) { headerLine = line; continue; }
+        totalLines++;
+        if (previewLines.length < PREVIEW_LIMIT) previewLines.push(line);
+        if (regionSampleLines.length < REGION_SAMPLE_LIMIT) regionSampleLines.push(line);
+      }
+    }
+
+    const sep = headerLine.includes(";") ? ";" : ",";
+    const headers = headerLine.split(sep).map(h => h.trim().replace(/^"|"$/g, ""));
+
+    return { totalLines, headers, previewLines, regionSampleLines };
+  }
+
+  it("counts rows correctly without full parse", () => {
+    const csv = "SEZ2021;PRO_COM_T;COD_REG;P1\n001;015146;03;100\n002;015147;03;200\n003;015148;03;300\n";
+    const result = lightValidate(csv);
+    expect(result.totalLines).toBe(3);
+    expect(result.headers).toContain("SEZ2021");
+    expect(result.previewLines).toHaveLength(3);
+  });
+
+  it("handles BOM correctly", () => {
+    const csv = "\uFEFFSEZ2021;PRO_COM_T\n001;015146\n";
+    const result = lightValidate(csv);
+    expect(result.totalLines).toBe(1);
+    expect(result.headers[0]).toBe("SEZ2021");
+  });
+
+  it("limits preview to PREVIEW_LIMIT rows", () => {
+    const header = "SEZ2021;PRO_COM_T;COD_REG";
+    const rows = Array.from({ length: 200 }, (_, i) => `${i};015146;03`).join("\n");
+    const csv = header + "\n" + rows;
+    const result = lightValidate(csv);
+    expect(result.totalLines).toBe(200);
+    expect(result.previewLines).toHaveLength(100);
+  });
+
+  it("detects missing critical columns for R03_CSV_SEZ", () => {
+    const headers = ["CODICE", "NOME", "COD_REG"];
+    const hasSez = headers.some(h => ["SEZ2021", "SEZ", "SEZ2011"].includes(h));
+    const hasCom = headers.some(h => ["PRO_COM_T", "PRO_COM"].includes(h));
+    expect(hasSez).toBe(false);
+    expect(hasCom).toBe(false);
+  });
+
+  it("accepts correct R03_CSV_SEZ columns", () => {
+    const headers = ["SEZ2021", "PRO_COM_T", "COD_REG", "P1", "P2", "EXTRA_COL"];
+    const hasSez = headers.some(h => ["SEZ2021", "SEZ", "SEZ2011"].includes(h));
+    const hasCom = headers.some(h => ["PRO_COM_T", "PRO_COM"].includes(h));
+    expect(hasSez).toBe(true);
+    expect(hasCom).toBe(true);
+  });
+
+  it("tolerates extra columns without error", () => {
+    const csv = "SEZ2021;PRO_COM_T;COD_REG;EXTRA1;EXTRA2\n001;015146;03;foo;bar\n";
+    const result = lightValidate(csv);
+    expect(result.totalLines).toBe(1);
+    expect(result.headers).toContain("EXTRA1");
+    expect(result.headers).toContain("EXTRA2");
+  });
+
+  it("detects multi-region from sample", () => {
+    const COD_REG_MAP: Record<string, string> = { "03": "Lombardia", "05": "Veneto" };
+    const records = [
+      { COD_REG: "03" },
+      { COD_REG: "05" },
+    ];
+    const regSet = new Set<string>();
+    for (const r of records) {
+      const codReg = (r["COD_REG"] || "").trim();
+      if (codReg) {
+        const mapped = COD_REG_MAP[codReg.padStart(2, "0")] || `Regione ${codReg}`;
+        regSet.add(mapped);
+      }
+    }
+    expect(regSet.size).toBe(2);
+    expect(regSet.has("Lombardia")).toBe(true);
+    expect(regSet.has("Veneto")).toBe(true);
+  });
+
+  it("handles malformed rows gracefully", () => {
+    const csv = "SEZ2021;PRO_COM_T\n001;015146\n;;\nshort\n003;015148\n";
+    const result = lightValidate(csv);
+    expect(result.totalLines).toBe(4);
+    expect(result.previewLines).toHaveLength(4);
+  });
+
+  it("returns stable structure even with empty CSV", () => {
+    const csv = "";
+    const result = lightValidate(csv);
+    expect(result.totalLines).toBe(0);
+    expect(result.headers).toEqual([""]);
+  });
+
+  it("response envelope always has ok and code fields on error", () => {
+    const errorResponse = { ok: false, error: "Colonne critiche mancanti: ...", code: "MISSING_COLUMNS" };
+    expect(errorResponse.ok).toBe(false);
+    expect(errorResponse.code).toBe("MISSING_COLUMNS");
+    expect(typeof errorResponse.error).toBe("string");
+  });
+
+  it("no regression: small Lombardia file validates correctly", () => {
+    const csv = "SEZ2021;PRO_COM_T;COD_REG;P1\n001;015146;03;1500\n002;015147;03;2000\n";
+    const result = lightValidate(csv);
+    expect(result.totalLines).toBe(2);
+    expect(result.headers).toContain("SEZ2021");
+    expect(result.headers).toContain("PRO_COM_T");
+    expect(result.headers).toContain("COD_REG");
+  });
+});

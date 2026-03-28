@@ -315,11 +315,17 @@ const AdminSubMunicipal = () => {
     try {
       const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "validate-csv", jobId } });
       if (error) {
-        const msg = error.message.includes("Failed to") ? "Edge function non raggiungibile — controlla la connessione" : `Errore validazione: ${error.message}`;
-        toast.error(msg);
-      } else if (data?.error) {
-        const msg = data.error.includes("Admin") || data.error.includes("owner") ? `Permessi insufficienti per validate: ${data.error}` : data.error;
-        toast.error(msg);
+        // Non-2xx from edge function (memory exceeded, timeout, etc.)
+        const isNon2xx = error.message?.includes("non-2xx") || error.message?.includes("Failed to");
+        const msg = isNon2xx
+          ? "Validazione fallita: la Edge Function ha esaurito memoria o tempo. Il file potrebbe essere troppo grande — controlla i log."
+          : `Errore validazione: ${error.message}`;
+        toast.error(msg, { duration: 8000 });
+      } else if (data?.ok === false || data?.error) {
+        const code = data?.code || "";
+        const detail = data?.error || "Errore sconosciuto";
+        const prefix = code ? `[${code}] ` : "";
+        toast.error(`${prefix}${detail}`, { duration: 8000 });
       } else {
         toast.success("Validazione completata — controlla i risultati prima di importare");
       }

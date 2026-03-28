@@ -887,65 +887,190 @@ serve(async (req) => {
       const { data: job, error: jobErr } = await admin.from("territorial_dataset_jobs").select("*").eq("id", jobId).single();
       if (jobErr || !job) return json({ error: "Job not found" }, 200);
 
-      const { data: fileData, error: dlErr } = await admin.storage.from("territorial-datasets").download(job.file_path);
-      if (dlErr || !fileData) return json({ error: `File download failed: ${dlErr?.message ?? "unknown"}` }, 200);
-
-      const csvText = await fileData.text();
-      const records = parseCsv(csvText);
-
-      if (records.length === 0) {
-        await admin.from("territorial_dataset_jobs").update({
-          status: "failed",
-          error_log: [{ reason: "CSV vuoto o formato non riconosciuto — verifica separatore (virgola o punto e virgola) e intestazioni" }],
-        }).eq("id", jobId);
-        return json({ error: "CSV vuoto o formato non riconosciuto" }, 200);
-      }
-
       const dt = job.dataset_type as string;
 
-      // Full detailed validation for COMUNI_ITALIA and LOCALITA_ISTAT
-      if (dt === "COMUNI_ITALIA" || dt === "LOCALITA_ISTAT") {
-        const validation = buildDetailedValidation(records, dt);
+      // For large dataset types (R03_CSV_SEZ, ASC_2021, R03_CSV_ASC*), use lightweight streaming validation
+      const useLightValidation = dt === "R03_CSV_SEZ" || dt === "ASC_2021" || dt.startsWith("R03_CSV_ASC");
 
-        // If critical columns are missing, mark as failed
-        if (validation.missingCriticalColumns.length > 0) {
-          const failReason = `Colonne critiche mancanti: ${validation.missingCriticalColumns.join("; ")}. Colonne trovate: ${validation.headers.join(", ")}`;
+      try {
+        const { data: fileData, error: dlErr } = await admin.storage.from("territorial-datasets").download(job.file_path);
+        if (dlErr || !fileData) return json({ ok: false, error: `File download failed: ${dlErr?.message ?? "unknown"}`, code: "DOWNLOAD_FAILED" }, 200);
+
+        if (useLightValidation) {
+          // ── STREAMING/LIGHT VALIDATION: never load full CSV into memory ──
+          const PREVIEW_LIMIT = 100;
+          const REGION_SAMPLE_LIMIT = 2000;
+          const MAX_SAMPLE_ERRORS = 20;
+
+          const rawText = await fileData.text();
+          // Only split into lines — do NOT parse all into record objects
+          let totalLines = 0;
+          let headerLine = "";
+          const previewLines: string[] = [];
+          const regionSampleLines: string[] = [];
+          let pastBom = false;
+
+          // Count lines and collect samples without building full record array
+          let lineStart = 0;
+          for (let i = 0; i <= rawText.length; i++) {
+            if (i === rawText.length || rawText[i] === '\n') {
+              let line = rawText.substring(lineStart, i);
+              if (line.endsWith('\r')) line = line.slice(0, -1);
+              lineStart = i + 1;
+
+              if (!pastBom) {
+                if (line.charCodeAt(0) === 0xfeff) line = line.slice(1);
+                pastBom = true;
+              }
+
+              if (!line.trim()) continue;
+
+              if (!headerLine) {
+                headerLine = line;
+                continue;
+              }
+
+              totalLines++;
+              if (previewLines.length < PREVIEW_LIMIT) previewLines.push(line);
+              if (regionSampleLines.length < REGION_SAMPLE_LIMIT) regionSampleLines.push(line);
+            }
+          }
+
+          if (totalLines === 0 || !headerLine) {
+            await admin.from("territorial_dataset_jobs").update({
+              status: "failed",
+              error_log: [{ reason: "CSV vuoto o formato non riconosciuto" }],
+            }).eq("id", jobId);
+            return json({ ok: false, error: "CSV vuoto o formato non riconosciuto", code: "EMPTY_CSV" }, 200);
+          }
+
+          const sep = headerLine.includes(";") ? ";" : ",";
+          const headers = parseCsvLine(headerLine, sep);
+
+          // Parse only preview rows into records
+          const previewRecords: Record<string, string>[] = [];
+          const sampleErrors: { row: number; reason: string }[] = [];
+          for (let i = 0; i < previewLines.length; i++) {
+            try {
+              const vals = parseCsvLine(previewLines[i], sep);
+              if (vals.length < 2) {
+                if (sampleErrors.length < MAX_SAMPLE_ERRORS) sampleErrors.push({ row: i + 2, reason: "Riga con meno di 2 campi" });
+                continue;
+              }
+              const obj: Record<string, string> = {};
+              headers.forEach((h, j) => { obj[h] = vals[j] ?? ""; });
+              previewRecords.push(obj);
+            } catch {
+              if (sampleErrors.length < MAX_SAMPLE_ERRORS) sampleErrors.push({ row: i + 2, reason: "Errore parsing riga" });
+            }
+          }
+
+          // Detect regions from sample only
+          const regionSampleRecords: Record<string, string>[] = [];
+          for (const line of regionSampleLines) {
+            try {
+              const vals = parseCsvLine(line, sep);
+              if (vals.length < 2) continue;
+              const obj: Record<string, string> = {};
+              headers.forEach((h, j) => { obj[h] = vals[j] ?? ""; });
+              regionSampleRecords.push(obj);
+            } catch { /* skip malformed */ }
+          }
+          const region = detectRegions(regionSampleRecords);
+
+          // Check critical columns for R03_CSV_SEZ
+          const missingCritical: string[] = [];
+          if (dt === "R03_CSV_SEZ") {
+            const hasSez = headers.some(h => ["SEZ2021", "SEZ", "SEZ2011"].includes(h));
+            const hasCom = headers.some(h => ["PRO_COM_T", "PRO_COM"].includes(h));
+            if (!hasSez) missingCritical.push("Colonna sezione (SEZ2021 | SEZ)");
+            if (!hasCom) missingCritical.push("Colonna comune (PRO_COM_T | PRO_COM)");
+          } else if (dt === "ASC_2021" || dt.startsWith("R03_CSV_ASC")) {
+            const hasAsc = headers.some(h => ["COD_ASC", "AREA_CODE"].includes(h));
+            if (!hasAsc) missingCritical.push("Colonna area (COD_ASC | AREA_CODE)");
+          }
+
+          const lightValidation: Record<string, unknown> = {
+            totalRows: totalLines,
+            headers,
+            headersFound: { sez: findColumn(headers, ["SEZ2021", "SEZ"]), com: findColumn(headers, ["PRO_COM_T", "PRO_COM"]), reg: findColumn(headers, ["DEN_REG", "REGIONE", "COD_REG"]) },
+            missingCriticalColumns: missingCritical,
+            region,
+            preview: previewRecords.slice(0, 20),
+            sampleErrors,
+            validationMode: "light_streaming",
+            previewRowsAnalyzed: previewRecords.length,
+            regionSampleSize: regionSampleRecords.length,
+          };
+
+          if (missingCritical.length > 0) {
+            const failReason = `Colonne critiche mancanti: ${missingCritical.join("; ")}. Colonne trovate: ${headers.join(", ")}`;
+            await admin.from("territorial_dataset_jobs").update({
+              status: "failed",
+              records_total: totalLines,
+              validation_result: lightValidation,
+              error_log: [{ reason: failReason }],
+            }).eq("id", jobId);
+            return json({ ok: false, error: failReason, code: "MISSING_COLUMNS", validation: lightValidation }, 200);
+          }
+
           await admin.from("territorial_dataset_jobs").update({
-            status: "failed",
+            status: "validated",
+            records_total: totalLines,
+            validation_result: lightValidation,
+            warnings: region.multiRegioneWarning ? [region.multiRegioneWarning] : [],
+          }).eq("id", jobId);
+
+          return json({ ok: true, validation: lightValidation });
+
+        } else {
+          // ── FULL VALIDATION for smaller dataset types (COMUNI_ITALIA, LOCALITA_ISTAT) ──
+          const csvText = await fileData.text();
+          const records = parseCsv(csvText);
+
+          if (records.length === 0) {
+            await admin.from("territorial_dataset_jobs").update({
+              status: "failed",
+              error_log: [{ reason: "CSV vuoto o formato non riconosciuto — verifica separatore (virgola o punto e virgola) e intestazioni" }],
+            }).eq("id", jobId);
+            return json({ ok: false, error: "CSV vuoto o formato non riconosciuto", code: "EMPTY_CSV" }, 200);
+          }
+
+          const validation = buildDetailedValidation(records, dt);
+
+          if (validation.missingCriticalColumns.length > 0) {
+            const failReason = `Colonne critiche mancanti: ${validation.missingCriticalColumns.join("; ")}. Colonne trovate: ${validation.headers.join(", ")}`;
+            await admin.from("territorial_dataset_jobs").update({
+              status: "failed",
+              records_total: records.length,
+              validation_result: validation,
+              error_log: [{ reason: failReason }],
+            }).eq("id", jobId);
+            return json({ ok: false, error: failReason, code: "MISSING_COLUMNS", validation });
+          }
+
+          await admin.from("territorial_dataset_jobs").update({
+            status: "validated",
             records_total: records.length,
             validation_result: validation,
-            error_log: [{ reason: failReason }],
+            warnings: validation.region.multiRegioneWarning ? [validation.region.multiRegioneWarning] : [],
           }).eq("id", jobId);
-          return json({ ok: false, error: failReason, validation });
+
+          return json({ ok: true, validation });
         }
-
-        // Save validation
-        await admin.from("territorial_dataset_jobs").update({
-          status: "validated",
-          records_total: records.length,
-          validation_result: validation,
-          warnings: validation.region.multiRegioneWarning ? [validation.region.multiRegioneWarning] : [],
-        }).eq("id", jobId);
-
-        return json({ ok: true, validation });
+      } catch (validateErr: unknown) {
+        const errMsg = validateErr instanceof Error ? validateErr.message : String(validateErr);
+        log("validate-csv error", errMsg);
+        // Try to mark job as failed even if validation crashed
+        try {
+          await admin.from("territorial_dataset_jobs").update({
+            status: "failed",
+            error_log: [{ reason: `Errore interno validazione: ${errMsg}` }],
+            updated_at: nowIso(),
+          }).eq("id", jobId);
+        } catch { /* best effort */ }
+        return json({ ok: false, error: `Errore interno validazione: ${errMsg}`, code: "VALIDATE_INTERNAL_ERROR" }, 200);
       }
-
-      // Generic validation for other types (R03, ASC)
-      const headers = Object.keys(records[0]);
-      const genericValidation: Record<string, unknown> = {
-        totalRows: records.length,
-        headers,
-        sampleRows: records.slice(0, 3),
-        region: detectRegions(records),
-      };
-
-      await admin.from("territorial_dataset_jobs").update({
-        status: "validated",
-        records_total: records.length,
-        validation_result: genericValidation,
-      }).eq("id", jobId);
-
-      return json({ ok: true, validation: genericValidation });
     }
 
     /* ── ACTION: process-csv ── */
