@@ -36,8 +36,55 @@ interface DatasetJob {
   warnings: unknown[];
   stats: Record<string, unknown>;
   created_at: string;
+  started_at?: string | null;
   completed_at: string | null;
+  updated_at?: string;
 }
+
+const STUCK_TIMEOUT_MINUTES = 20;
+
+const getJobProgress = (job: DatasetJob) => {
+  const progress = (job.stats as any)?.progress;
+  if (!progress || typeof progress !== "object") return null;
+  return {
+    processedRows: Number(progress.processedRows ?? 0),
+    totalRows: Number(progress.totalRows ?? job.records_total ?? 0),
+    failedRows: Number(progress.failedRows ?? job.records_errors ?? 0),
+    skippedRows: Number(progress.skippedRows ?? job.records_skipped ?? 0),
+    percentage: Number(progress.percentage ?? 0),
+    lastHeartbeatAt: typeof progress.lastHeartbeatAt === "string" ? progress.lastHeartbeatAt : null,
+    stale: Boolean(progress.stale),
+    staleLabel: typeof progress.staleLabel === "string" ? progress.staleLabel : null,
+    staleForMinutes: Number(progress.staleForMinutes ?? 0),
+  };
+};
+
+const getElapsedMinutes = (from?: string | null, to?: string | null) => {
+  if (!from) return null;
+  const start = new Date(from).getTime();
+  const end = to ? new Date(to).getTime() : Date.now();
+  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  return Math.max(0, Math.round((end - start) / 60000));
+};
+
+const getDurationLabel = (minutes: number | null) => {
+  if (minutes == null) return null;
+  if (minutes < 1) return "<1 min";
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rem = minutes % 60;
+  return rem > 0 ? `${hours}h ${rem}m` : `${hours}h`;
+};
+
+const getJobErrorMessage = (job: DatasetJob) => {
+  const first = Array.isArray(job.error_log) ? job.error_log[0] : null;
+  if (first && typeof first === "object" && "reason" in first && typeof (first as { reason?: unknown }).reason === "string") {
+    return (first as { reason: string }).reason;
+  }
+  if (typeof first === "string") return first;
+  const recoveryReason = (job.stats as any)?.recovery?.reason;
+  return typeof recoveryReason === "string" ? recoveryReason : null;
+};
 
 const DATASET_TYPES: Record<string, { label: string; description: string; accept: string }> = {
   COMUNI_ITALIA: { label: "Comuni Italia", description: "CSV anagrafe comuni ISTAT (PRO_COM_T, DEN_COM, COD_PRO, DEN_PRO, COD_REG, DEN_REG...)", accept: ".csv" },
@@ -502,6 +549,13 @@ const AdminSubMunicipal = () => {
               const isMonoRegione = regionInfo?.isMonoRegione;
               const regioneRilevata = regionInfo?.regioneRilevata;
               const multiWarning = regionInfo?.multiRegioneWarning;
+              const progress = getJobProgress(job);
+              const importAgeMinutes = getElapsedMinutes(job.started_at ?? null, job.completed_at);
+              const importAgeLabel = getDurationLabel(importAgeMinutes);
+              const heartbeatAgeMinutes = getElapsedMinutes(progress?.lastHeartbeatAt ?? job.updated_at ?? null, null);
+              const heartbeatAgeLabel = getDurationLabel(heartbeatAgeMinutes);
+              const isPossiblyStuck = job.status === "importing" && heartbeatAgeMinutes != null && heartbeatAgeMinutes >= STUCK_TIMEOUT_MINUTES;
+              const errorMessage = getJobErrorMessage(job);
 
               return (
               <Card key={job.id}>
@@ -523,18 +577,43 @@ const AdminSubMunicipal = () => {
                             multi-regione ({regionInfo.regioniCount})
                           </Badge>
                         )}
+                        {progress?.stale && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive">
+                            {progress.staleLabel ?? "failed_stale"}
+                          </Badge>
+                        )}
+                        {isPossiblyStuck && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive">
+                            possibile stuck
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                         {job.file_size_bytes && <span>{(job.file_size_bytes / 1024 / 1024).toFixed(1)} MB</span>}
                         <span>{new Date(job.created_at).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}</span>
+                        {importAgeLabel && <span>durata: {importAgeLabel}</span>}
+                        {job.status === "importing" && heartbeatAgeLabel && <span>heartbeat: {heartbeatAgeLabel} fa</span>}
                         {job.records_imported > 0 && <span className="text-emerald-600">{job.records_imported.toLocaleString("it-IT")} importati</span>}
                         {job.records_skipped > 0 && <span className="text-amber-600">{job.records_skipped.toLocaleString("it-IT")} skipped</span>}
                         {job.records_errors > 0 && <span className="text-destructive">{job.records_errors} errori</span>}
                       </div>
+                      {progress && (
+                        <div className="mt-1 text-xs text-muted-foreground flex flex-wrap gap-3">
+                          <span>progress: <strong className="text-foreground">{progress.percentage}%</strong></span>
+                          <span>processed: <strong className="text-foreground">{progress.processedRows.toLocaleString("it-IT")}</strong> / {progress.totalRows.toLocaleString("it-IT")}</span>
+                          {progress.failedRows > 0 && <span className="text-destructive">failed rows: {progress.failedRows}</span>}
+                          {progress.skippedRows > 0 && <span className="text-amber-600">skipped rows: {progress.skippedRows}</span>}
+                        </div>
+                      )}
                       {multiWarning && (
                         <div className="mt-1 text-xs text-amber-600 flex items-start gap-1">
                           <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                           <span>{multiWarning}</span>
+                        </div>
+                      )}
+                      {errorMessage && (
+                        <div className="mt-1 text-xs text-destructive break-words">
+                          Errore finale: {errorMessage}
                         </div>
                       )}
                       {Array.isArray(job.warnings) && job.warnings.length > 0 && !multiWarning && (
