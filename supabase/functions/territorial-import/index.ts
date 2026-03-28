@@ -54,20 +54,42 @@ function intSafe(v: string | undefined): number | null {
 
 /* ── Region detection helper ── */
 
+const COD_REG_MAP: Record<string, string> = {
+  "01": "Piemonte", "02": "Valle d'Aosta", "03": "Lombardia", "04": "Trentino-Alto Adige",
+  "05": "Veneto", "06": "Friuli-Venezia Giulia", "07": "Liguria", "08": "Emilia-Romagna",
+  "09": "Toscana", "10": "Umbria", "11": "Marche", "12": "Lazio", "13": "Abruzzo",
+  "14": "Molise", "15": "Campania", "16": "Puglia", "17": "Basilicata", "18": "Calabria",
+  "19": "Sicilia", "20": "Sardegna",
+};
+
 interface RegionInfo {
   regioni: string[];
   regioniCount: number;
   isMonoRegione: boolean;
   regioneRilevata: string | null;
   multiRegioneWarning: string | null;
+  detectedVia: "DEN_REG" | "REGIONE" | "COD_REG" | "none";
 }
 
 function detectRegions(records: Record<string, string>[]): RegionInfo {
   const regSet = new Set<string>();
+  let detectedVia: RegionInfo["detectedVia"] = "none";
+
   for (const r of records) {
-    const reg = r["DEN_REG"] || r["REGIONE"] || "";
-    if (reg.trim()) regSet.add(reg.trim());
+    // Priority: DEN_REG > REGIONE > COD_REG (mapped to name)
+    const denReg = (r["DEN_REG"] || "").trim();
+    const regione = (r["REGIONE"] || "").trim();
+    const codReg = (r["COD_REG"] || "").trim();
+
+    if (denReg) { regSet.add(denReg); if (detectedVia === "none") detectedVia = "DEN_REG"; }
+    else if (regione) { regSet.add(regione); if (detectedVia === "none") detectedVia = "REGIONE"; }
+    else if (codReg) {
+      const mapped = COD_REG_MAP[codReg.padStart(2, "0")] || `Regione ${codReg}`;
+      regSet.add(mapped);
+      if (detectedVia === "none") detectedVia = "COD_REG";
+    }
   }
+
   const regioni = [...regSet].sort();
   const isMonoRegione = regioni.length === 1;
   return {
@@ -78,6 +100,7 @@ function detectRegions(records: Record<string, string>[]): RegionInfo {
     multiRegioneWarning: regioni.length > 1
       ? `File multi-regione: contiene ${regioni.length} regioni (${regioni.join(", ")}). Se intendevi caricare una sola regione, verifica il file.`
       : null,
+    detectedVia,
   };
 }
 
@@ -226,10 +249,16 @@ async function importComuniItalia(
   batchId: string,
   admin: ReturnType<typeof createClient>,
 ) {
-  let inserted = 0, updated = 0, skipped = 0, failed = 0;
+  let processed = 0, skipped = 0, failed = 0;
   const errors: { idx: number; reason: string }[] = [];
   const warnings: string[] = [];
   const seenKeys = new Set<string>();
+
+  // Pre-count existing comuni to distinguish new vs updated
+  const { count: existingBefore } = await admin.from("territorial_registry")
+    .select("id", { count: "exact", head: true })
+    .eq("geographic_level", "comune");
+  const countBefore = existingBefore ?? 0;
 
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
@@ -239,7 +268,7 @@ async function importComuniItalia(
       if (!istatCode) { errors.push({ idx: i + j, reason: "Codice ISTAT comune mancante" }); skipped++; return null; }
       if (!comuneName) { errors.push({ idx: i + j, reason: "Nome comune mancante" }); skipped++; return null; }
       const key = `comune|${istatCode}`;
-      if (seenKeys.has(key)) { skipped++; return null; } // dedup within file
+      if (seenKeys.has(key)) { skipped++; return null; }
       seenKeys.add(key);
       return {
         comune_istat_code: istatCode,
@@ -272,12 +301,19 @@ async function importComuniItalia(
       dbRows.forEach((_, j) => errors.push({ idx: i + j, reason: error.message }));
       failed += dbRows.length;
     } else {
-      // upsert count = total affected (inserts + updates)
-      inserted += count ?? dbRows.length;
+      processed += count ?? dbRows.length;
     }
   }
 
-  return { inserted, updated, skipped, failed, errors, warnings };
+  // Post-count to derive inserted vs updated
+  const { count: existingAfter } = await admin.from("territorial_registry")
+    .select("id", { count: "exact", head: true })
+    .eq("geographic_level", "comune");
+  const countAfter = existingAfter ?? 0;
+  const inserted = countAfter - countBefore;
+  const updated = processed - inserted;
+
+  return { inserted: Math.max(inserted, 0), updated: Math.max(updated, 0), processed, skipped, failed, errors, warnings };
 }
 
 /* ── LOCALITA_ISTAT import ── */
@@ -287,10 +323,16 @@ async function importLocalitaIstat(
   batchId: string,
   admin: ReturnType<typeof createClient>,
 ) {
-  let inserted = 0, updated = 0, skipped = 0, failed = 0;
+  let processed = 0, skipped = 0, failed = 0;
   const errors: { idx: number; reason: string }[] = [];
   const warnings: string[] = [];
   const seenKeys = new Set<string>();
+
+  // Pre-count existing località
+  const { count: existingBefore } = await admin.from("territorial_registry")
+    .select("id", { count: "exact", head: true })
+    .eq("geographic_level", "localita");
+  const countBefore = existingBefore ?? 0;
 
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
@@ -337,11 +379,19 @@ async function importLocalitaIstat(
       dbRows.forEach((_, j) => errors.push({ idx: i + j, reason: error.message }));
       failed += dbRows.length;
     } else {
-      inserted += count ?? dbRows.length;
+      processed += count ?? dbRows.length;
     }
   }
 
-  return { inserted, updated, skipped, failed, errors, warnings };
+  // Post-count to derive inserted vs updated
+  const { count: existingAfter } = await admin.from("territorial_registry")
+    .select("id", { count: "exact", head: true })
+    .eq("geographic_level", "localita");
+  const countAfter = existingAfter ?? 0;
+  const inserted = countAfter - countBefore;
+  const updated = processed - inserted;
+
+  return { inserted: Math.max(inserted, 0), updated: Math.max(updated, 0), processed, skipped, failed, errors, warnings };
 }
 
 async function importR03Sez(
@@ -667,7 +717,7 @@ serve(async (req) => {
       }).eq("id", jobId);
 
       const batchId = `${job.dataset_type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      let result: { inserted: number; updated: number; skipped: number; failed: number; errors: { idx: number; reason: string }[]; warnings?: string[] };
+      let result: { inserted: number; updated: number; processed?: number; skipped: number; failed: number; errors: { idx: number; reason: string }[]; warnings?: string[] };
 
       if (job.dataset_type === "ASC_2021") {
         result = await importAscCsv(records, batchId, admin);
@@ -712,10 +762,11 @@ serve(async (req) => {
       const validation = await validatePostImport(job.dataset_type, admin);
 
       const totalFailed = result.failed + result.errors.length;
-      const finalStatus = totalFailed > result.inserted && result.inserted === 0 ? "failed" : "imported";
+      const totalProcessed = result.processed ?? (result.inserted + result.updated);
+      const finalStatus = totalFailed > totalProcessed && totalProcessed === 0 ? "failed" : "imported";
       await admin.from("territorial_dataset_jobs").update({
         status: finalStatus,
-        records_imported: result.inserted,
+        records_imported: totalProcessed,
         records_errors: totalFailed,
         records_skipped: result.skipped,
         import_batch_id: batchId,
@@ -724,7 +775,7 @@ serve(async (req) => {
           ...(result.warnings || []),
           ...(region.multiRegioneWarning ? [region.multiRegioneWarning] : []),
         ],
-        stats: { ...validation, importResult: { inserted: result.inserted, updated: result.updated, skipped: result.skipped, failed: result.failed } },
+        stats: { ...validation, importResult: { processed: totalProcessed, inserted: result.inserted, updated: result.updated, skipped: result.skipped, failed: result.failed } },
         completed_at: new Date().toISOString(),
       }).eq("id", jobId);
 

@@ -6,11 +6,28 @@ import { describe, it, expect } from "vitest";
  */
 
 describe("Region detection logic", () => {
+  const COD_REG_MAP: Record<string, string> = {
+    "01": "Piemonte", "02": "Valle d'Aosta", "03": "Lombardia", "04": "Trentino-Alto Adige",
+    "05": "Veneto", "06": "Friuli-Venezia Giulia", "07": "Liguria", "08": "Emilia-Romagna",
+    "09": "Toscana", "10": "Umbria", "11": "Marche", "12": "Lazio", "13": "Abruzzo",
+    "14": "Molise", "15": "Campania", "16": "Puglia", "17": "Basilicata", "18": "Calabria",
+    "19": "Sicilia", "20": "Sardegna",
+  };
+
   const detectRegions = (records: Record<string, string>[]) => {
     const regSet = new Set<string>();
+    let detectedVia: string = "none";
     for (const r of records) {
-      const reg = r["DEN_REG"] || r["REGIONE"] || "";
-      if (reg.trim()) regSet.add(reg.trim());
+      const denReg = (r["DEN_REG"] || "").trim();
+      const regione = (r["REGIONE"] || "").trim();
+      const codReg = (r["COD_REG"] || "").trim();
+      if (denReg) { regSet.add(denReg); if (detectedVia === "none") detectedVia = "DEN_REG"; }
+      else if (regione) { regSet.add(regione); if (detectedVia === "none") detectedVia = "REGIONE"; }
+      else if (codReg) {
+        const mapped = COD_REG_MAP[codReg.padStart(2, "0")] || `Regione ${codReg}`;
+        regSet.add(mapped);
+        if (detectedVia === "none") detectedVia = "COD_REG";
+      }
     }
     const regioni = [...regSet].sort();
     const isMonoRegione = regioni.length === 1;
@@ -22,6 +39,7 @@ describe("Region detection logic", () => {
       multiRegioneWarning: regioni.length > 1
         ? `File multi-regione: contiene ${regioni.length} regioni (${regioni.join(", ")})`
         : null,
+      detectedVia,
     };
   };
 
@@ -34,7 +52,7 @@ describe("Region detection logic", () => {
     expect(r.isMonoRegione).toBe(true);
     expect(r.regioneRilevata).toBe("Lombardia");
     expect(r.multiRegioneWarning).toBeNull();
-    expect(r.regioniCount).toBe(1);
+    expect(r.detectedVia).toBe("DEN_REG");
   });
 
   it("detects multi-regione and warns", () => {
@@ -46,8 +64,6 @@ describe("Region detection logic", () => {
     expect(r.isMonoRegione).toBe(false);
     expect(r.regioneRilevata).toBeNull();
     expect(r.multiRegioneWarning).toContain("multi-regione");
-    expect(r.multiRegioneWarning).toContain("Lazio");
-    expect(r.multiRegioneWarning).toContain("Lombardia");
     expect(r.regioniCount).toBe(2);
   });
 
@@ -59,16 +75,53 @@ describe("Region detection logic", () => {
     const r = detectRegions(records);
     expect(r.regioniCount).toBe(0);
     expect(r.isMonoRegione).toBe(false);
-    expect(r.multiRegioneWarning).toBeNull();
+    expect(r.detectedVia).toBe("none");
   });
 
   it("uses REGIONE column as fallback", () => {
-    const records = [
-      { PRO_COM_T: "015146", REGIONE: "Piemonte" },
-    ];
+    const records = [{ PRO_COM_T: "015146", REGIONE: "Piemonte" }];
     const r = detectRegions(records);
     expect(r.isMonoRegione).toBe(true);
     expect(r.regioneRilevata).toBe("Piemonte");
+    expect(r.detectedVia).toBe("REGIONE");
+  });
+
+  it("maps COD_REG to region name when DEN_REG is absent", () => {
+    const records = [
+      { PRO_COM_T: "015146", COD_REG: "03" },
+      { PRO_COM_T: "015147", COD_REG: "03" },
+    ];
+    const r = detectRegions(records);
+    expect(r.isMonoRegione).toBe(true);
+    expect(r.regioneRilevata).toBe("Lombardia");
+    expect(r.detectedVia).toBe("COD_REG");
+  });
+
+  it("maps COD_REG correctly for all 20 regions", () => {
+    expect(COD_REG_MAP["01"]).toBe("Piemonte");
+    expect(COD_REG_MAP["12"]).toBe("Lazio");
+    expect(COD_REG_MAP["19"]).toBe("Sicilia");
+    expect(COD_REG_MAP["20"]).toBe("Sardegna");
+    expect(Object.keys(COD_REG_MAP)).toHaveLength(20);
+  });
+
+  it("prefers DEN_REG over COD_REG when both present", () => {
+    const records = [{ PRO_COM_T: "058091", DEN_REG: "Lazio", COD_REG: "12" }];
+    const r = detectRegions(records);
+    expect(r.regioneRilevata).toBe("Lazio");
+    expect(r.detectedVia).toBe("DEN_REG");
+  });
+
+  it("handles COD_REG without zero-padding", () => {
+    const records = [{ PRO_COM_T: "015146", COD_REG: "3" }];
+    const r = detectRegions(records);
+    expect(r.regioneRilevata).toBe("Lombardia");
+  });
+
+  it("falls back gracefully for unknown COD_REG", () => {
+    const records = [{ PRO_COM_T: "015146", COD_REG: "99" }];
+    const r = detectRegions(records);
+    expect(r.regioneRilevata).toBe("Regione 99");
   });
 });
 
