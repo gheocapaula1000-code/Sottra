@@ -551,6 +551,8 @@ async function importR03SezStreaming(
   const errors: { idx: number; reason: string }[] = [];
   const warnings: string[] = [];
   const regionsFound = new Set<string>();
+  const skipByReason: Record<string, number> = {};
+  const addSkip = (reason: string) => { skipByReason[reason] = (skipByReason[reason] || 0) + 1; skipped++; };
 
   // Parse header
   let text = rawText;
@@ -559,7 +561,7 @@ async function importR03SezStreaming(
   // Find header line
   let headerEnd = text.indexOf('\n');
   if (headerEnd === -1) {
-    return { inserted: 0, updated: 0, processed: 0, skipped: 0, failed: 0, errors: [{ idx: 0, reason: "No header line" }], warnings: [], regionsFound: new Set<string>() };
+    return { inserted: 0, updated: 0, processed: 0, skipped: 0, failed: 0, errors: [{ idx: 0, reason: "No header line" }], warnings: [], regionsFound: new Set<string>(), skipByReason: {} };
   }
   let headerLine = text.substring(0, headerEnd);
   if (headerLine.endsWith('\r')) headerLine = headerLine.slice(0, -1);
@@ -596,11 +598,13 @@ async function importR03SezStreaming(
       if (!sez) {
         failed++;
         if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx - chunkRows.length + j, reason: "SEZ2021 mancante" });
+        skipByReason["sez_mancante"] = (skipByReason["sez_mancante"] || 0) + 1;
         continue;
       }
       if (!com) {
         failed++;
         if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx - chunkRows.length + j, reason: "PRO_COM_T mancante" });
+        skipByReason["com_mancante"] = (skipByReason["com_mancante"] || 0) + 1;
         continue;
       }
 
@@ -652,13 +656,18 @@ async function importR03SezStreaming(
     }
     const uniqueRows = [...dedupMap.values()];
     const batchDuplicatesDropped = dbRows.length - uniqueRows.length;
-    if (batchDuplicatesDropped > 0) skipped += batchDuplicatesDropped;
+    if (batchDuplicatesDropped > 0) {
+      addSkip("duplicato_intra_batch");
+      // Correct: addSkip adds 1, but we need to add the rest
+      skipByReason["duplicato_intra_batch"] += (batchDuplicatesDropped - 1);
+      skipped += (batchDuplicatesDropped - 1);
+    }
 
     if (uniqueRows.length === 0) {
       // Update heartbeat even for empty chunks
       await admin.from("territorial_dataset_jobs").update({
         updated_at: nowIso(),
-        stats: { progress: buildProgressState({ datasetType: "R03_CSV_SEZ", processedRows: imported, totalRows: totalLines, failedRows: failed, skippedRows: skipped, chunkIndex, chunkCount }) },
+        stats: { progress: buildProgressState({ datasetType: "R03_CSV_SEZ", processedRows: imported, totalRows: totalLines, failedRows: failed, skippedRows: skipped, chunkIndex, chunkCount }), skipByReason },
       }).eq("id", jobId);
       chunkRows = [];
       return;
@@ -673,6 +682,7 @@ async function importR03SezStreaming(
       failed += uniqueRows.length;
       if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx - chunkRows.length, reason: `Batch ${chunkIndex}: ${error.message}` });
       warnings.push(`Batch ${chunkIndex}/${chunkCount} fallito: ${error.message}`);
+      skipByReason["batch_error"] = (skipByReason["batch_error"] || 0) + uniqueRows.length;
       logStep("batch_error_continuing", { chunkIndex, chunkCount, reason: error.message });
     } else {
       imported += uniqueRows.length;
@@ -695,7 +705,7 @@ async function importR03SezStreaming(
       records_errors: failed,
       records_skipped: skipped,
       updated_at: nowIso(),
-      stats: { progress },
+      stats: { progress, skipByReason },
     }).eq("id", jobId);
 
     logStep("batch_progress", {
@@ -721,7 +731,7 @@ async function importR03SezStreaming(
       try {
         const vals = parseCsvLine(line, sep);
         if (vals.length < 2) {
-          skipped++;
+          addSkip("riga_troppo_corta");
           if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx, reason: "Riga con meno di 2 campi" });
           globalRowIdx++;
           continue;
@@ -730,7 +740,7 @@ async function importR03SezStreaming(
         headers.forEach((h, j) => { obj[h] = vals[j] ?? ""; });
         chunkRows.push(obj);
       } catch {
-        skipped++;
+        addSkip("errore_parsing");
         if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx, reason: "Errore parsing riga" });
       }
 
@@ -750,18 +760,13 @@ async function importR03SezStreaming(
     warnings.push(`File multi-regione: ${regionsFound.size} regioni rilevate (${[...regionsFound].sort().join(", ")})`);
   }
 
-  // Regions without ASC2 mapping
-  const regionsWithoutAsc2 = [...regionsFound].filter(r => {
-    // Check if there are any ASC2 mappings at all — if total file had them
-    return true; // We just note the regions for transparency
-  });
-
   logStep("streaming_import_complete", {
     imported, skipped, failed,
     totalLines, chunkCount,
     regionsFound: [...regionsFound].sort(),
     regionsCount: regionsFound.size,
     ascMappingsUsed: ascMappings.size,
+    skipByReason,
   });
 
   return {
@@ -773,6 +778,7 @@ async function importR03SezStreaming(
     errors,
     warnings,
     regionsFound,
+    skipByReason,
   };
 }
 
