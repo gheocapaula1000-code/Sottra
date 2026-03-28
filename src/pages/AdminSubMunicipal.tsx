@@ -339,13 +339,21 @@ const AdminSubMunicipal = () => {
     try {
       const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "process-csv", jobId } });
       if (error) {
-        const msg = error.message.includes("Failed to") ? "Edge function non raggiungibile — controlla la connessione" : `Errore import: ${error.message}`;
+        const isNon2xx = error.message?.includes("non-2xx") || error.message?.includes("Failed to");
+        const msg = isNon2xx
+          ? "Import fallito: la Edge Function ha esaurito memoria o tempo. Per file grandi (>100k righe) potrebbe servire più tempo — controlla i log."
+          : `Errore import: ${error.message}`;
         toast.error(msg);
       } else if (data?.error) {
         const msg = data.error.includes("Admin") || data.error.includes("owner") ? `Permessi insufficienti per import: ${data.error}` : data.error;
         toast.error(msg);
+      } else if (data?.status === "failed") {
+        toast.error(`Import fallito: ${data?.errors ?? 0} errori — ${data?.error || "controlla i dettagli del job"}`);
       } else {
-        toast.success(`Import completato: ${data?.imported ?? 0} record importati`);
+        const regionLabel = data?.region?.regioniCount > 1
+          ? ` — multi-regione (${data.region.regioniCount})`
+          : data?.region?.regioneRilevata ? ` — ${data.region.regioneRilevata}` : "";
+        toast.success(`Import completato: ${data?.inserted ?? 0} inseriti, ${data?.updated ?? 0} aggiornati, ${data?.skipped ?? 0} skipped${regionLabel}`);
       }
       await loadJobs();
       refreshAll();
