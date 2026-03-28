@@ -299,7 +299,6 @@ function getJobHeartbeat(job: Record<string, unknown>): string | null {
 
 function isStaleImportingJob(job: Record<string, unknown>) {
   if (job.status !== "importing") return false;
-  if (job.dataset_type !== "R03_CSV_SEZ") return false;
 
   const heartbeat = getJobHeartbeat(job);
   if (!heartbeat) return false;
