@@ -421,6 +421,28 @@ const AdminSubMunicipal = () => {
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Clock className="h-5 w-5" /> Import Jobs
           </h2>
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            <select
+              value={jobFilter.dataset ?? ""}
+              onChange={e => setJobFilter(f => ({ ...f, dataset: e.target.value || undefined }))}
+              className="h-7 text-xs rounded border bg-background px-2 text-foreground"
+            >
+              <option value="">Tutti i dataset</option>
+              {Object.keys(DATASET_TYPES).map(dt => <option key={dt} value={dt}>{dt}</option>)}
+            </select>
+            <select
+              value={jobFilter.regione ?? ""}
+              onChange={e => setJobFilter(f => ({ ...f, regione: e.target.value || undefined }))}
+              className="h-7 text-xs rounded border bg-background px-2 text-foreground"
+            >
+              <option value="">Tutte le regioni</option>
+              {[...new Set(jobs.map(j => {
+                const vr = (j.validation_result as any)?.region?.regioneRilevata;
+                return vr || null;
+              }).filter(Boolean))].sort().map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
         </div>
 
         {/* Inline error for jobs */}
@@ -465,51 +487,180 @@ const AdminSubMunicipal = () => {
           <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">Nessun job di import</CardContent></Card>
         ) : (
           <div className="space-y-2">
-            {jobs.map(job => (
+            {jobs
+              .filter(job => {
+                if (jobFilter.dataset && job.dataset_type !== jobFilter.dataset) return false;
+                if (jobFilter.regione) {
+                  const vr = (job.validation_result as any)?.region?.regioneRilevata;
+                  if (vr !== jobFilter.regione) return false;
+                }
+                return true;
+              })
+              .map(job => {
+              const vr = job.validation_result as any;
+              const regionInfo = vr?.region;
+              const isMonoRegione = regionInfo?.isMonoRegione;
+              const regioneRilevata = regionInfo?.regioneRilevata;
+              const multiWarning = regionInfo?.multiRegioneWarning;
+
+              return (
               <Card key={job.id}>
                 <CardContent className="pt-3 pb-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="text-sm font-medium text-foreground truncate">{job.file_name}</span>
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${STATUS_COLORS[job.status] ?? ""}`}>{job.status}</Badge>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{job.dataset_type}</Badge>
+                        {regioneRilevata && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                            {regioneRilevata}
+                          </Badge>
+                        )}
+                        {isMonoRegione === false && regionInfo?.regioniCount > 1 && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                            multi-regione ({regionInfo.regioniCount})
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                        <span>{job.dataset_type}</span>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                         {job.file_size_bytes && <span>{(job.file_size_bytes / 1024 / 1024).toFixed(1)} MB</span>}
                         <span>{new Date(job.created_at).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}</span>
                         {job.records_imported > 0 && <span className="text-emerald-600">{job.records_imported.toLocaleString("it-IT")} importati</span>}
+                        {job.records_skipped > 0 && <span className="text-amber-600">{job.records_skipped.toLocaleString("it-IT")} skipped</span>}
                         {job.records_errors > 0 && <span className="text-destructive">{job.records_errors} errori</span>}
                       </div>
-                      {Array.isArray(job.warnings) && job.warnings.length > 0 && (
+                      {multiWarning && (
+                        <div className="mt-1 text-xs text-amber-600 flex items-start gap-1">
+                          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                          <span>{multiWarning}</span>
+                        </div>
+                      )}
+                      {Array.isArray(job.warnings) && job.warnings.length > 0 && !multiWarning && (
                         <div className="mt-1 text-xs text-amber-600">{job.warnings.map((w, i) => <span key={i} className="block">{String(w)}</span>)}</div>
                       )}
-                      {/* Validation results */}
-                      {job.status === "validated" && job.validation_result && (
+
+                      {/* Enhanced validation results */}
+                      {job.status === "validated" && vr && (
                         <div className="mt-2 p-2 rounded bg-muted/50 text-xs space-y-1">
                           <p className="font-medium text-foreground">Risultato validazione:</p>
-                          <p>Righe totali: {(job.validation_result as any).totalRows ?? "—"}</p>
-                          {(job.validation_result as any).comuni && (
+                          <p>Righe totali: {vr.totalRows ?? "—"}</p>
+
+                          {/* Missing critical columns */}
+                          {vr.missingCriticalColumns?.length > 0 && (
+                            <div className="text-destructive font-medium">
+                              ⚠ Colonne critiche mancanti: {vr.missingCriticalColumns.join("; ")}
+                            </div>
+                          )}
+
+                          {/* Column mapping */}
+                          {vr.headersFound && (
+                            <div className="text-muted-foreground">
+                              Colonne mappate: {Object.entries(vr.headersFound).map(([k, v]) => (
+                                <span key={k} className={`inline-block mr-2 ${v ? "" : "text-destructive"}`}>{k}→{String(v ?? "❌")}</span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Region info */}
+                          {vr.region && (
+                            <p>
+                              Regioni ({vr.region.regioniCount}): {vr.region.regioni?.join(", ")}
+                              {vr.region.isMonoRegione && <span className="text-emerald-600 ml-1">(mono-regione ✓)</span>}
+                            </p>
+                          )}
+
+                          {/* Import preview */}
+                          <div className="flex flex-wrap gap-3">
+                            {vr.validRows != null && <span className="text-emerald-600">Valide: {vr.validRows}</span>}
+                            {vr.invalidRows > 0 && <span className="text-destructive">Invalide: {vr.invalidRows}</span>}
+                            {vr.duplicates > 0 && <span className="text-amber-600">Duplicati: {vr.duplicates}</span>}
+                            {vr.noCode > 0 && <span className="text-destructive">Senza codice: {vr.noCode}</span>}
+                            {vr.noName > 0 && <span className="text-destructive">Senza nome: {vr.noName}</span>}
+                            {vr.noRegione > 0 && <span className="text-amber-600">Senza regione: {vr.noRegione}</span>}
+                            {vr.withCoords != null && <span>Con coord: {vr.withCoords}</span>}
+                            {vr.noCoords > 0 && <span className="text-amber-600">Senza coord: {vr.noCoords}</span>}
+                          </div>
+
+                          {vr.recordsToImport != null && (
+                            <p className="font-medium">→ Record da importare: <span className="text-emerald-600">{vr.recordsToImport}</span> — Da scartare: <span className="text-amber-600">{vr.recordsToSkip}</span></p>
+                          )}
+
+                          {/* Skip reasons */}
+                          {vr.skipReasons && Object.keys(vr.skipReasons).length > 0 && (
+                            <div className="text-muted-foreground">
+                              Motivi scarto: {Object.entries(vr.skipReasons).map(([k, v]) => <span key={k} className="mr-2">{k}: {String(v)}</span>)}
+                            </div>
+                          )}
+
+                          {/* First errors */}
+                          {vr.errors?.length > 0 && (
+                            <details className="mt-1">
+                              <summary className="text-destructive cursor-pointer">Primi {vr.errors.length} errori</summary>
+                              <div className="mt-1 space-y-0.5 pl-2 border-l-2 border-destructive/20">
+                                {vr.errors.slice(0, 20).map((e: any, i: number) => (
+                                  <div key={i} className="text-destructive">Riga {e.row}: {e.reason}</div>
+                                ))}
+                              </div>
+                            </details>
+                          )}
+
+                          {/* Preview rows */}
+                          {vr.preview?.length > 0 && (
+                            <details className="mt-1">
+                              <summary className="cursor-pointer text-muted-foreground">Anteprima prime {vr.preview.length} righe</summary>
+                              <div className="mt-1 overflow-x-auto max-h-40 overflow-y-auto">
+                                <table className="text-[10px] border-collapse">
+                                  <thead>
+                                    <tr>
+                                      {Object.keys(vr.preview[0]).slice(0, 8).map(h => (
+                                        <th key={h} className="border px-1 py-0.5 bg-muted text-left font-medium">{h}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {vr.preview.slice(0, 10).map((row: any, ri: number) => (
+                                      <tr key={ri}>
+                                        {Object.keys(vr.preview[0]).slice(0, 8).map(h => (
+                                          <td key={h} className="border px-1 py-0.5 truncate max-w-[120px]">{row[h] ?? ""}</td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </details>
+                          )}
+
+                          {/* Legacy comuni/localita display for backward compat */}
+                          {vr.comuni && !vr.validRows && (
                             <>
-                              <p className="text-emerald-600">Valide: {(job.validation_result as any).comuni.valid}</p>
-                              {(job.validation_result as any).comuni.noIstat > 0 && <p className="text-destructive">Senza codice ISTAT: {(job.validation_result as any).comuni.noIstat}</p>}
-                              {(job.validation_result as any).comuni.noName > 0 && <p className="text-destructive">Senza nome: {(job.validation_result as any).comuni.noName}</p>}
-                              <p>Con coordinate: {(job.validation_result as any).comuni.withCoords} — Senza: {(job.validation_result as any).comuni.withoutCoords}</p>
-                              {(job.validation_result as any).comuni.noRegione > 0 && <p className="text-amber-600">Senza regione: {(job.validation_result as any).comuni.noRegione}</p>}
-                              <p>Regioni trovate ({(job.validation_result as any).comuni.regioniCount}): {(job.validation_result as any).comuni.regioni?.join(", ")}</p>
+                              <p className="text-emerald-600">Valide: {vr.comuni.valid}</p>
+                              {vr.comuni.noIstat > 0 && <p className="text-destructive">Senza codice ISTAT: {vr.comuni.noIstat}</p>}
+                              <p>Con coordinate: {vr.comuni.withCoords} — Senza: {vr.comuni.withoutCoords}</p>
+                              <p>Regioni ({vr.comuni.regioniCount}): {vr.comuni.regioni?.join(", ")}</p>
                             </>
                           )}
-                          {(job.validation_result as any).localita && (
+                          {vr.localita && !vr.validRows && (
                             <>
-                              <p className="text-emerald-600">Valide: {(job.validation_result as any).localita.valid}</p>
-                              {(job.validation_result as any).localita.noIstat > 0 && <p className="text-destructive">Senza codice ISTAT comune: {(job.validation_result as any).localita.noIstat}</p>}
-                              {(job.validation_result as any).localita.noLoc > 0 && <p className="text-destructive">Senza codice/nome località: {(job.validation_result as any).localita.noLoc}</p>}
-                              <p>Con centroidi: {(job.validation_result as any).localita.withCoords} — Senza: {(job.validation_result as any).localita.withoutCoords}</p>
-                              <p>Comuni distinti: {(job.validation_result as any).localita.comuni}</p>
-                              <p>Regioni ({(job.validation_result as any).localita.regioniCount}): {(job.validation_result as any).localita.regioni?.join(", ")}</p>
+                              <p className="text-emerald-600">Valide: {vr.localita.valid}</p>
+                              {vr.localita.noIstat > 0 && <p className="text-destructive">Senza codice ISTAT comune: {vr.localita.noIstat}</p>}
+                              <p>Con centroidi: {vr.localita.withCoords} — Senza: {vr.localita.withoutCoords}</p>
+                              <p>Comuni distinti: {vr.localita.comuni}</p>
+                              <p>Regioni ({vr.localita.regioniCount}): {vr.localita.regioni?.join(", ")}</p>
                             </>
                           )}
+                        </div>
+                      )}
+
+                      {/* Import results */}
+                      {job.status === "imported" && (job.stats as any)?.importResult && (
+                        <div className="mt-1 flex gap-2 text-xs flex-wrap">
+                          <span className="text-emerald-600">inserted: {(job.stats as any).importResult.inserted}</span>
+                          <span className="text-blue-600">updated: {(job.stats as any).importResult.updated}</span>
+                          <span className="text-amber-600">skipped: {(job.stats as any).importResult.skipped}</span>
+                          {(job.stats as any).importResult.failed > 0 && <span className="text-destructive">failed: {(job.stats as any).importResult.failed}</span>}
                         </div>
                       )}
                     </div>
@@ -530,7 +681,8 @@ const AdminSubMunicipal = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
 
