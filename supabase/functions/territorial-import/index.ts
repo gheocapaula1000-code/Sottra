@@ -551,6 +551,8 @@ async function importR03SezStreaming(
   const errors: { idx: number; reason: string }[] = [];
   const warnings: string[] = [];
   const regionsFound = new Set<string>();
+  const skipByReason: Record<string, number> = {};
+  const addSkip = (reason: string) => { skipByReason[reason] = (skipByReason[reason] || 0) + 1; skipped++; };
 
   // Parse header
   let text = rawText;
@@ -559,7 +561,7 @@ async function importR03SezStreaming(
   // Find header line
   let headerEnd = text.indexOf('\n');
   if (headerEnd === -1) {
-    return { inserted: 0, updated: 0, processed: 0, skipped: 0, failed: 0, errors: [{ idx: 0, reason: "No header line" }], warnings: [], regionsFound: new Set<string>() };
+    return { inserted: 0, updated: 0, processed: 0, skipped: 0, failed: 0, errors: [{ idx: 0, reason: "No header line" }], warnings: [], regionsFound: new Set<string>(), skipByReason: {} };
   }
   let headerLine = text.substring(0, headerEnd);
   if (headerLine.endsWith('\r')) headerLine = headerLine.slice(0, -1);
@@ -596,11 +598,13 @@ async function importR03SezStreaming(
       if (!sez) {
         failed++;
         if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx - chunkRows.length + j, reason: "SEZ2021 mancante" });
+        skipByReason["sez_mancante"] = (skipByReason["sez_mancante"] || 0) + 1;
         continue;
       }
       if (!com) {
         failed++;
         if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx - chunkRows.length + j, reason: "PRO_COM_T mancante" });
+        skipByReason["com_mancante"] = (skipByReason["com_mancante"] || 0) + 1;
         continue;
       }
 
@@ -652,13 +656,18 @@ async function importR03SezStreaming(
     }
     const uniqueRows = [...dedupMap.values()];
     const batchDuplicatesDropped = dbRows.length - uniqueRows.length;
-    if (batchDuplicatesDropped > 0) skipped += batchDuplicatesDropped;
+    if (batchDuplicatesDropped > 0) {
+      addSkip("duplicato_intra_batch");
+      // Correct: addSkip adds 1, but we need to add the rest
+      skipByReason["duplicato_intra_batch"] += (batchDuplicatesDropped - 1);
+      skipped += (batchDuplicatesDropped - 1);
+    }
 
     if (uniqueRows.length === 0) {
       // Update heartbeat even for empty chunks
       await admin.from("territorial_dataset_jobs").update({
         updated_at: nowIso(),
-        stats: { progress: buildProgressState({ datasetType: "R03_CSV_SEZ", processedRows: imported, totalRows: totalLines, failedRows: failed, skippedRows: skipped, chunkIndex, chunkCount }) },
+        stats: { progress: buildProgressState({ datasetType: "R03_CSV_SEZ", processedRows: imported, totalRows: totalLines, failedRows: failed, skippedRows: skipped, chunkIndex, chunkCount }), skipByReason },
       }).eq("id", jobId);
       chunkRows = [];
       return;
@@ -673,6 +682,7 @@ async function importR03SezStreaming(
       failed += uniqueRows.length;
       if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx - chunkRows.length, reason: `Batch ${chunkIndex}: ${error.message}` });
       warnings.push(`Batch ${chunkIndex}/${chunkCount} fallito: ${error.message}`);
+      skipByReason["batch_error"] = (skipByReason["batch_error"] || 0) + uniqueRows.length;
       logStep("batch_error_continuing", { chunkIndex, chunkCount, reason: error.message });
     } else {
       imported += uniqueRows.length;
@@ -695,7 +705,7 @@ async function importR03SezStreaming(
       records_errors: failed,
       records_skipped: skipped,
       updated_at: nowIso(),
-      stats: { progress },
+      stats: { progress, skipByReason },
     }).eq("id", jobId);
 
     logStep("batch_progress", {
@@ -721,7 +731,7 @@ async function importR03SezStreaming(
       try {
         const vals = parseCsvLine(line, sep);
         if (vals.length < 2) {
-          skipped++;
+          addSkip("riga_troppo_corta");
           if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx, reason: "Riga con meno di 2 campi" });
           globalRowIdx++;
           continue;
@@ -730,7 +740,7 @@ async function importR03SezStreaming(
         headers.forEach((h, j) => { obj[h] = vals[j] ?? ""; });
         chunkRows.push(obj);
       } catch {
-        skipped++;
+        addSkip("errore_parsing");
         if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx, reason: "Errore parsing riga" });
       }
 
@@ -750,18 +760,13 @@ async function importR03SezStreaming(
     warnings.push(`File multi-regione: ${regionsFound.size} regioni rilevate (${[...regionsFound].sort().join(", ")})`);
   }
 
-  // Regions without ASC2 mapping
-  const regionsWithoutAsc2 = [...regionsFound].filter(r => {
-    // Check if there are any ASC2 mappings at all — if total file had them
-    return true; // We just note the regions for transparency
-  });
-
   logStep("streaming_import_complete", {
     imported, skipped, failed,
     totalLines, chunkCount,
     regionsFound: [...regionsFound].sort(),
     regionsCount: regionsFound.size,
     ascMappingsUsed: ascMappings.size,
+    skipByReason,
   });
 
   return {
@@ -773,6 +778,7 @@ async function importR03SezStreaming(
     errors,
     warnings,
     regionsFound,
+    skipByReason,
   };
 }
 
@@ -951,7 +957,6 @@ serve(async (req) => {
         if (useLightValidation) {
           // ── STREAMING/LIGHT VALIDATION: never load full CSV into memory ──
           const PREVIEW_LIMIT = 100;
-          const REGION_SAMPLE_LIMIT = 2000;
           const MAX_SAMPLE_ERRORS = 20;
 
           const rawText = await fileData.text();
@@ -959,8 +964,14 @@ serve(async (req) => {
           let totalLines = 0;
           let headerLine = "";
           const previewLines: string[] = [];
-          const regionSampleLines: string[] = [];
           let pastBom = false;
+
+          // Find COD_REG column index for lightweight full-file region scan
+          let codRegIdx = -1;
+          let denRegIdx = -1;
+          let regioneIdx = -1;
+          const regionCodesFound = new Set<string>();
+          const regionNamesFound = new Set<string>();
 
           // Count lines and collect samples without building full record array
           let lineStart = 0;
@@ -979,12 +990,34 @@ serve(async (req) => {
 
               if (!headerLine) {
                 headerLine = line;
+                // Find region column indices from header
+                const sep0 = headerLine.includes(";") ? ";" : ",";
+                const hdr = parseCsvLine(headerLine, sep0);
+                codRegIdx = hdr.indexOf("COD_REG");
+                denRegIdx = hdr.indexOf("DEN_REG");
+                regioneIdx = hdr.indexOf("REGIONE");
                 continue;
               }
 
               totalLines++;
               if (previewLines.length < PREVIEW_LIMIT) previewLines.push(line);
-              if (regionSampleLines.length < REGION_SAMPLE_LIMIT) regionSampleLines.push(line);
+
+              // Lightweight region extraction: just split and grab the region column
+              // This is O(n) but avoids building full record objects
+              if (codRegIdx >= 0 || denRegIdx >= 0 || regioneIdx >= 0) {
+                const sep0 = headerLine.includes(";") ? ";" : ",";
+                const vals = line.split(sep0);
+                if (denRegIdx >= 0 && vals[denRegIdx]) {
+                  const v = vals[denRegIdx].trim().replace(/^"|"$/g, "");
+                  if (v) regionNamesFound.add(v);
+                } else if (regioneIdx >= 0 && vals[regioneIdx]) {
+                  const v = vals[regioneIdx].trim().replace(/^"|"$/g, "");
+                  if (v) regionNamesFound.add(v);
+                } else if (codRegIdx >= 0 && vals[codRegIdx]) {
+                  const v = vals[codRegIdx].trim().replace(/^"|"$/g, "");
+                  if (v) regionCodesFound.add(v);
+                }
+              }
             }
           }
 
@@ -998,6 +1031,31 @@ serve(async (req) => {
 
           const sep = headerLine.includes(";") ? ";" : ",";
           const headers = parseCsvLine(headerLine, sep);
+
+          // Build region info from full-file scan
+          const regSet = new Set<string>();
+          let regionDetectedVia: RegionInfo["detectedVia"] = "none";
+          if (regionNamesFound.size > 0) {
+            for (const n of regionNamesFound) regSet.add(n);
+            regionDetectedVia = denRegIdx >= 0 ? "DEN_REG" : "REGIONE";
+          } else if (regionCodesFound.size > 0) {
+            for (const c of regionCodesFound) {
+              const mapped = COD_REG_MAP[c.padStart(2, "0")] || `Regione ${c}`;
+              regSet.add(mapped);
+            }
+            regionDetectedVia = "COD_REG";
+          }
+          const regioni = [...regSet].sort();
+          const region: RegionInfo = {
+            regioni,
+            regioniCount: regioni.length,
+            isMonoRegione: regioni.length === 1,
+            regioneRilevata: regioni.length === 1 ? regioni[0] : null,
+            multiRegioneWarning: regioni.length > 1
+              ? `File multi-regione: contiene ${regioni.length} regioni (${regioni.join(", ")}). Se intendevi caricare una sola regione, verifica il file.`
+              : null,
+            detectedVia: regionDetectedVia,
+          };
 
           // Parse only preview rows into records
           const previewRecords: Record<string, string>[] = [];
@@ -1016,19 +1074,6 @@ serve(async (req) => {
               if (sampleErrors.length < MAX_SAMPLE_ERRORS) sampleErrors.push({ row: i + 2, reason: "Errore parsing riga" });
             }
           }
-
-          // Detect regions from sample only
-          const regionSampleRecords: Record<string, string>[] = [];
-          for (const line of regionSampleLines) {
-            try {
-              const vals = parseCsvLine(line, sep);
-              if (vals.length < 2) continue;
-              const obj: Record<string, string> = {};
-              headers.forEach((h, j) => { obj[h] = vals[j] ?? ""; });
-              regionSampleRecords.push(obj);
-            } catch { /* skip malformed */ }
-          }
-          const region = detectRegions(regionSampleRecords);
 
           // Check critical columns for R03_CSV_SEZ
           const missingCritical: string[] = [];
@@ -1050,9 +1095,9 @@ serve(async (req) => {
             region,
             preview: previewRecords.slice(0, 20),
             sampleErrors,
-            validationMode: "light_streaming",
+            validationMode: "light_streaming_fullscan_region",
             previewRowsAnalyzed: previewRecords.length,
-            regionSampleSize: regionSampleRecords.length,
+            regionScanMode: "full_file",
           };
 
           if (missingCritical.length > 0) {
@@ -1337,6 +1382,7 @@ serve(async (req) => {
           updatePayload.stats = {
             ...finalValidation,
             importResult: { processed: totalProcessed, inserted: finalResult.inserted, updated: finalResult.updated, skipped: finalResult.skipped, failed: finalResult.failed },
+            skipByReason: (finalResult as any).skipByReason || {},
             progress: buildProgressState({
               datasetType: job.dataset_type,
               processedRows: totalProcessed,
