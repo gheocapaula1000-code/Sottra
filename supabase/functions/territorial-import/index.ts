@@ -249,10 +249,16 @@ async function importComuniItalia(
   batchId: string,
   admin: ReturnType<typeof createClient>,
 ) {
-  let inserted = 0, updated = 0, skipped = 0, failed = 0;
+  let processed = 0, skipped = 0, failed = 0;
   const errors: { idx: number; reason: string }[] = [];
   const warnings: string[] = [];
   const seenKeys = new Set<string>();
+
+  // Pre-count existing comuni to distinguish new vs updated
+  const { count: existingBefore } = await admin.from("territorial_registry")
+    .select("id", { count: "exact", head: true })
+    .eq("geographic_level", "comune");
+  const countBefore = existingBefore ?? 0;
 
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
@@ -262,7 +268,7 @@ async function importComuniItalia(
       if (!istatCode) { errors.push({ idx: i + j, reason: "Codice ISTAT comune mancante" }); skipped++; return null; }
       if (!comuneName) { errors.push({ idx: i + j, reason: "Nome comune mancante" }); skipped++; return null; }
       const key = `comune|${istatCode}`;
-      if (seenKeys.has(key)) { skipped++; return null; } // dedup within file
+      if (seenKeys.has(key)) { skipped++; return null; }
       seenKeys.add(key);
       return {
         comune_istat_code: istatCode,
@@ -295,12 +301,19 @@ async function importComuniItalia(
       dbRows.forEach((_, j) => errors.push({ idx: i + j, reason: error.message }));
       failed += dbRows.length;
     } else {
-      // upsert count = total affected (inserts + updates)
-      inserted += count ?? dbRows.length;
+      processed += count ?? dbRows.length;
     }
   }
 
-  return { inserted, updated, skipped, failed, errors, warnings };
+  // Post-count to derive inserted vs updated
+  const { count: existingAfter } = await admin.from("territorial_registry")
+    .select("id", { count: "exact", head: true })
+    .eq("geographic_level", "comune");
+  const countAfter = existingAfter ?? 0;
+  const inserted = countAfter - countBefore;
+  const updated = processed - inserted;
+
+  return { inserted: Math.max(inserted, 0), updated: Math.max(updated, 0), processed, skipped, failed, errors, warnings };
 }
 
 /* ── LOCALITA_ISTAT import ── */
