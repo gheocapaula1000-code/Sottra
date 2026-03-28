@@ -1382,6 +1382,7 @@ serve(async (req) => {
           updatePayload.stats = {
             ...finalValidation,
             importResult: { processed: totalProcessed, inserted: finalResult.inserted, updated: finalResult.updated, skipped: finalResult.skipped, failed: finalResult.failed },
+            skipByReason: (finalResult as any).skipByReason || {},
             progress: buildProgressState({
               datasetType: job.dataset_type,
               processedRows: totalProcessed,
