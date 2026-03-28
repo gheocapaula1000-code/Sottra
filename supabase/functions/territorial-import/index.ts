@@ -323,10 +323,16 @@ async function importLocalitaIstat(
   batchId: string,
   admin: ReturnType<typeof createClient>,
 ) {
-  let inserted = 0, updated = 0, skipped = 0, failed = 0;
+  let processed = 0, skipped = 0, failed = 0;
   const errors: { idx: number; reason: string }[] = [];
   const warnings: string[] = [];
   const seenKeys = new Set<string>();
+
+  // Pre-count existing località
+  const { count: existingBefore } = await admin.from("territorial_registry")
+    .select("id", { count: "exact", head: true })
+    .eq("geographic_level", "localita");
+  const countBefore = existingBefore ?? 0;
 
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
@@ -373,11 +379,19 @@ async function importLocalitaIstat(
       dbRows.forEach((_, j) => errors.push({ idx: i + j, reason: error.message }));
       failed += dbRows.length;
     } else {
-      inserted += count ?? dbRows.length;
+      processed += count ?? dbRows.length;
     }
   }
 
-  return { inserted, updated, skipped, failed, errors, warnings };
+  // Post-count to derive inserted vs updated
+  const { count: existingAfter } = await admin.from("territorial_registry")
+    .select("id", { count: "exact", head: true })
+    .eq("geographic_level", "localita");
+  const countAfter = existingAfter ?? 0;
+  const inserted = countAfter - countBefore;
+  const updated = processed - inserted;
+
+  return { inserted: Math.max(inserted, 0), updated: Math.max(updated, 0), processed, skipped, failed, errors, warnings };
 }
 
 async function importR03Sez(
