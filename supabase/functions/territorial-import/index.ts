@@ -241,6 +241,147 @@ function buildDetailedValidation(
 /* ── Import processors ── */
 
 const CHUNK = 500;
+const R03_SEZ_CHUNK = 1000;
+const R03_SEZ_STUCK_TIMEOUT_MINUTES = 20;
+const MAX_IMPORT_ERRORS = 100;
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function buildProgressState(params: {
+  datasetType: string;
+  processedRows: number;
+  totalRows: number;
+  failedRows: number;
+  skippedRows: number;
+  chunkIndex: number;
+  chunkCount: number;
+}) {
+  const percentage = params.totalRows > 0
+    ? Math.min(100, Math.round((params.processedRows / params.totalRows) * 100))
+    : 0;
+
+  return {
+    datasetType: params.datasetType,
+    processedRows: params.processedRows,
+    totalRows: params.totalRows,
+    failedRows: params.failedRows,
+    skippedRows: params.skippedRows,
+    chunkIndex: params.chunkIndex,
+    chunkCount: params.chunkCount,
+    percentage,
+    lastHeartbeatAt: nowIso(),
+  };
+}
+
+function getJobHeartbeat(job: Record<string, unknown>): string | null {
+  const stats = asRecord(job.stats);
+  const progress = asRecord(stats.progress);
+  const heartbeat = progress.lastHeartbeatAt;
+
+  if (typeof heartbeat === "string" && heartbeat) return heartbeat;
+  if (typeof job.updated_at === "string" && job.updated_at) return job.updated_at;
+  if (typeof job.started_at === "string" && job.started_at) return job.started_at;
+  if (typeof job.created_at === "string" && job.created_at) return job.created_at;
+  return null;
+}
+
+function isStaleImportingJob(job: Record<string, unknown>) {
+  if (job.status !== "importing") return false;
+  if (job.dataset_type !== "R03_CSV_SEZ") return false;
+
+  const heartbeat = getJobHeartbeat(job);
+  if (!heartbeat) return false;
+
+  const heartbeatMs = new Date(heartbeat).getTime();
+  if (Number.isNaN(heartbeatMs)) return false;
+
+  return Date.now() - heartbeatMs > R03_SEZ_STUCK_TIMEOUT_MINUTES * 60 * 1000;
+}
+
+async function recoverStuckR03SezJobs(
+  admin: ReturnType<typeof createClient>,
+  logStep?: (step: string, payload?: Record<string, unknown>) => void,
+) {
+  const { data, error } = await admin
+    .from("territorial_dataset_jobs")
+    .select("id, dataset_type, status, created_at, started_at, updated_at, records_total, records_imported, records_errors, records_skipped, stats, error_log, warnings")
+    .eq("dataset_type", "R03_CSV_SEZ")
+    .eq("status", "importing")
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error || !data?.length) {
+    if (error) logStep?.("job_recovery_query_failed", { error: error.message });
+    return { recovered: 0, jobIds: [] as string[] };
+  }
+
+  const staleJobs = (data as Record<string, unknown>[]).filter(isStaleImportingJob);
+  if (staleJobs.length === 0) return { recovered: 0, jobIds: [] as string[] };
+
+  const recoveredIds: string[] = [];
+  for (const staleJob of staleJobs) {
+    const stats = asRecord(staleJob.stats);
+    const progress = asRecord(stats.progress);
+    const heartbeat = getJobHeartbeat(staleJob);
+    const staleForMinutes = heartbeat
+      ? Math.max(1, Math.round((Date.now() - new Date(heartbeat).getTime()) / 60000))
+      : R03_SEZ_STUCK_TIMEOUT_MINUTES;
+    const reason = `timeout_or_stuck_job: nessun heartbeat da ${staleForMinutes} minuti`;
+    const errorLog = asArray(staleJob.error_log);
+    const warnings = asArray(staleJob.warnings);
+
+    const { error: updateError } = await admin
+      .from("territorial_dataset_jobs")
+      .update({
+        status: "failed",
+        completed_at: nowIso(),
+        updated_at: nowIso(),
+        error_log: [...errorLog, { reason }].slice(-MAX_IMPORT_ERRORS),
+        warnings: [...warnings, "Job recuperato automaticamente come stale import"].slice(-MAX_IMPORT_ERRORS),
+        stats: {
+          ...stats,
+          progress: {
+            ...progress,
+            stale: true,
+            staleLabel: "failed_stale",
+            staleForMinutes,
+            lastHeartbeatAt: heartbeat,
+          },
+          recovery: {
+            reason: "timeout_or_stuck_job",
+            recoveredAt: nowIso(),
+            staleForMinutes,
+            timeoutMinutes: R03_SEZ_STUCK_TIMEOUT_MINUTES,
+            label: "failed_stale",
+          },
+        },
+      })
+      .eq("id", staleJob.id as string);
+
+    if (!updateError) {
+      recoveredIds.push(staleJob.id as string);
+      logStep?.("job_marked_failed", {
+        jobId: staleJob.id,
+        reason: "timeout_or_stuck_job",
+        staleForMinutes,
+      });
+    }
+  }
+
+  return { recovered: recoveredIds.length, jobIds: recoveredIds };
+}
 
 /* ── COMUNI_ITALIA import ── */
 
@@ -399,18 +540,33 @@ async function importR03Sez(
   ascMappings: Map<string, { asc1: string | null; asc2: string | null; asc3: string | null }>,
   batchId: string,
   admin: ReturnType<typeof createClient>,
+  jobId: string,
+  logStep: (step: string, payload?: Record<string, unknown>) => void,
 ) {
   let imported = 0;
+  let skipped = 0;
+  let failed = 0;
   const errors: { idx: number; reason: string }[] = [];
   const warnings: string[] = [];
+  const totalRows = rows.length;
+  const chunkCount = Math.ceil(totalRows / R03_SEZ_CHUNK);
 
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const chunk = rows.slice(i, i + CHUNK);
+  for (let i = 0; i < rows.length; i += R03_SEZ_CHUNK) {
+    const chunk = rows.slice(i, i + R03_SEZ_CHUNK);
+    const chunkIndex = Math.floor(i / R03_SEZ_CHUNK) + 1;
     const dbRows = chunk.map((r, j) => {
       const sez = r["SEZ2021"] || r["SEZ"] || "";
       const com = r["PRO_COM_T"] || r["PRO_COM"] || "";
-      if (!sez) { errors.push({ idx: i + j, reason: "SEZ2021 mancante" }); return null; }
-      if (!com) { errors.push({ idx: i + j, reason: "PRO_COM_T mancante" }); return null; }
+      if (!sez) {
+        failed++;
+        if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: i + j, reason: "SEZ2021 mancante" });
+        return null;
+      }
+      if (!com) {
+        failed++;
+        if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: i + j, reason: "PRO_COM_T mancante" });
+        return null;
+      }
       const m = ascMappings.get(sez);
       return {
         source_dataset: "R03_21",
@@ -442,13 +598,102 @@ async function importR03Sez(
       };
     }).filter(Boolean);
 
-    if (dbRows.length === 0) continue;
-    const { error, count } = await admin.from("census_sections_r03_2021").upsert(dbRows as any[], { onConflict: "source_dataset,section_code" }).select("id");
-    if (error) { dbRows.forEach((_, j) => errors.push({ idx: i + j, reason: error.message })); }
-    else imported += count ?? dbRows.length;
+    logStep("batch_started", {
+      chunkIndex,
+      chunkCount,
+      chunkRows: chunk.length,
+      rowsReady: dbRows.length,
+    });
+
+    if (dbRows.length === 0) {
+      skipped += chunk.length;
+      const progress = buildProgressState({
+        datasetType: "R03_CSV_SEZ",
+        processedRows: imported,
+        totalRows,
+        failedRows: failed,
+        skippedRows: skipped,
+        chunkIndex,
+        chunkCount,
+      });
+
+      await admin.from("territorial_dataset_jobs").update({
+        records_total: totalRows,
+        records_imported: imported,
+        records_errors: failed,
+        records_skipped: skipped,
+        updated_at: nowIso(),
+        stats: { progress },
+      }).eq("id", jobId);
+
+      logStep("batch_progress", {
+        chunkIndex,
+        chunkCount,
+        processedRows: imported,
+        totalRows,
+        failedRows: failed,
+        skippedRows: skipped,
+        percentage: progress.percentage,
+      });
+      continue;
+    }
+
+    const { error } = await admin
+      .from("census_sections_r03_2021")
+      .upsert(dbRows as any[], { onConflict: "source_dataset,section_code" });
+
+    if (error) {
+      failed += dbRows.length;
+      if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: i, reason: `Batch ${chunkIndex}: ${error.message}` });
+      logStep("job_marked_failed", {
+        chunkIndex,
+        chunkCount,
+        reason: error.message,
+      });
+      throw new Error(`R03_CSV_SEZ batch ${chunkIndex}/${chunkCount} failed: ${error.message}`);
+    }
+
+    imported += dbRows.length;
+
+    const progress = buildProgressState({
+      datasetType: "R03_CSV_SEZ",
+      processedRows: imported,
+      totalRows,
+      failedRows: failed,
+      skippedRows: skipped,
+      chunkIndex,
+      chunkCount,
+    });
+
+    await admin.from("territorial_dataset_jobs").update({
+      records_total: totalRows,
+      records_imported: imported,
+      records_errors: failed,
+      records_skipped: skipped,
+      updated_at: nowIso(),
+      stats: { progress },
+    }).eq("id", jobId);
+
+    logStep("batch_progress", {
+      chunkIndex,
+      chunkCount,
+      processedRows: imported,
+      totalRows,
+      failedRows: failed,
+      skippedRows: skipped,
+      percentage: progress.percentage,
+    });
   }
 
-  return { inserted: imported, updated: 0, skipped: 0, failed: errors.length, errors, warnings };
+  logStep("batch_completed", {
+    processedRows: imported,
+    totalRows,
+    failedRows: failed,
+    skippedRows: skipped,
+    chunkCount,
+  });
+
+  return { inserted: imported, updated: 0, processed: imported, skipped, failed, errors, warnings };
 }
 
 async function importAscCsv(
@@ -607,6 +852,7 @@ serve(async (req) => {
 
     /* ── ACTION: validate-csv (dry-run) ── */
     if (action === "validate-csv") {
+      await recoverStuckR03SezJobs(admin);
       const { jobId } = body as { jobId: string };
       if (!jobId) return json({ error: "jobId required" }, 200);
 
@@ -679,13 +925,34 @@ serve(async (req) => {
       const { jobId } = body as { jobId: string };
       if (!jobId) return json({ error: "jobId required" }, 200);
 
+      const logStep = (step: string, payload?: Record<string, unknown>) => {
+        console.log(JSON.stringify({
+          scope: "territorial-import",
+          ts: nowIso(),
+          action: "process-csv",
+          jobId,
+          step,
+          ...(payload ?? {}),
+        }));
+      };
+
+      await recoverStuckR03SezJobs(admin, logStep);
+
       const { data: job, error: jobErr } = await admin.from("territorial_dataset_jobs").select("*").eq("id", jobId).single();
       if (jobErr || !job) return json({ error: "Job not found" }, 200);
 
       // Update status to importing
-      await admin.from("territorial_dataset_jobs").update({ status: "importing", started_at: new Date().toISOString() }).eq("id", jobId);
+      await admin.from("territorial_dataset_jobs").update({
+        status: "importing",
+        started_at: nowIso(),
+        updated_at: nowIso(),
+      }).eq("id", jobId);
 
-      const logStep = (step: string, detail?: string) => log(`[Job ${jobId}] ${step}`, detail);
+      logStep("job_loaded", {
+        datasetType: job.dataset_type,
+        fileName: job.file_name,
+        filePath: job.file_path,
+      });
 
       // ── FAIL-SAFE: wrap entire import in try/finally so job NEVER stays stuck in "importing" ──
       let finalStatus = "failed";
@@ -701,7 +968,7 @@ serve(async (req) => {
         const { data: fileData, error: dlErr } = await admin.storage.from("territorial-datasets").download(job.file_path);
         if (dlErr || !fileData) {
           finalError = `Download failed: ${dlErr?.message ?? "unknown"}`;
-          logStep("file_download_failed", finalError);
+          logStep("file_download_failed", { error: finalError });
           return json({ error: "File download failed" }, 200);
         }
         logStep("file_downloaded");
@@ -725,11 +992,26 @@ serve(async (req) => {
         await admin.from("territorial_dataset_jobs").update({
           status: "importing",
           records_total: records.length,
+          records_imported: 0,
+          records_errors: 0,
+          records_skipped: 0,
+          updated_at: nowIso(),
           validation_result: {
             headers: Object.keys(records[0]),
             sampleRow: records[0],
             totalRows: records.length,
             region,
+          },
+          stats: {
+            progress: buildProgressState({
+              datasetType: job.dataset_type,
+              processedRows: 0,
+              totalRows: records.length,
+              failedRows: 0,
+              skippedRows: 0,
+              chunkIndex: 0,
+              chunkCount: job.dataset_type === "R03_CSV_SEZ" ? Math.ceil(records.length / R03_SEZ_CHUNK) : Math.ceil(records.length / CHUNK),
+            }),
           },
         }).eq("id", jobId);
 
@@ -742,6 +1024,7 @@ serve(async (req) => {
         } else if (job.dataset_type === "R03_CSV_SEZ") {
           logStep("asc_mapping_loading");
           const ascMappings = new Map<string, { asc1: string | null; asc2: string | null; asc3: string | null }>();
+          let asc2MappingsCount = 0;
           for (const level of ["ASC1", "ASC2", "ASC3"]) {
             const ascType = `R03_CSV_${level}`;
             const { data: ascJob } = await admin.from("territorial_dataset_jobs")
@@ -757,17 +1040,27 @@ serve(async (req) => {
                   const existing = ascMappings.get(sez) || { asc1: null, asc2: null, asc3: null };
                   const code = row["COD_ASC"] || null;
                   if (level === "ASC1") existing.asc1 = code;
-                  else if (level === "ASC2") existing.asc2 = code;
+                  else if (level === "ASC2") {
+                    existing.asc2 = code;
+                    asc2MappingsCount++;
+                  }
                   else if (level === "ASC3") existing.asc3 = code;
                   ascMappings.set(sez, existing);
                 }
-                logStep("asc_mapping_loaded", `${level}: ${ascRows.length} mappings`);
+                logStep(level === "ASC2" ? "asc2_mapping_loaded" : "asc_mapping_loaded", {
+                  level,
+                  rows: ascRows.length,
+                });
               }
             }
           }
-          logStep("batch_started", `${records.length} sections, ${ascMappings.size} ASC mappings`);
-          result = await importR03Sez(records, ascMappings, batchId, admin);
-          logStep("batch_completed", `inserted=${result.inserted} failed=${result.failed}`);
+          logStep("batch_started", {
+            sections: records.length,
+            ascMappings: ascMappings.size,
+            asc2Mappings: asc2MappingsCount,
+            chunkSize: R03_SEZ_CHUNK,
+          });
+          result = await importR03Sez(records, ascMappings, batchId, admin, jobId, logStep);
         } else if (job.dataset_type.startsWith("R03_CSV_ASC")) {
           result = { inserted: records.length, updated: 0, skipped: 0, failed: 0, errors: [], warnings: [`File mapping ${job.dataset_type} registrato. Verrà usato durante l'import di SEZ_R03_21.csv.`] };
         } else if (job.dataset_type === "COMUNI_ITALIA") {
@@ -784,31 +1077,35 @@ serve(async (req) => {
         // Post-import validation
         finalValidation = await validatePostImport(job.dataset_type, admin);
 
-        const totalFailed = result.failed + result.errors.length;
+        const totalFailed = result.failed;
         const totalProcessed = result.processed ?? (result.inserted + result.updated);
         finalStatus = totalFailed > totalProcessed && totalProcessed === 0 ? "failed" : "imported";
         finalError = "";
-        logStep(finalStatus === "imported" ? "job_marked_imported" : "job_marked_failed", `processed=${totalProcessed} failed=${totalFailed}`);
+        logStep(finalStatus === "imported" ? "job_marked_imported" : "job_marked_failed", {
+          processed: totalProcessed,
+          failed: totalFailed,
+        });
 
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
-        logStep("job_error_caught", errMsg);
+        logStep("job_error_caught", { error: errMsg });
         finalStatus = "failed";
         finalError = `Errore imprevisto: ${errMsg}`;
       } finally {
         // ── GUARANTEED STATUS UPDATE: no job stays stuck in "importing" ──
-        logStep("job_finalizing", `status=${finalStatus}`);
+        logStep("job_finalizing", { status: finalStatus });
         const updatePayload: Record<string, unknown> = {
           status: finalStatus,
-          completed_at: new Date().toISOString(),
+          completed_at: nowIso(),
+          updated_at: nowIso(),
         };
         if (finalResult) {
           const totalProcessed = finalResult.processed ?? (finalResult.inserted + finalResult.updated);
           updatePayload.records_imported = totalProcessed;
-          updatePayload.records_errors = finalResult.failed + finalResult.errors.length;
+          updatePayload.records_errors = finalResult.failed;
           updatePayload.records_skipped = finalResult.skipped;
           updatePayload.import_batch_id = finalBatchId;
-          updatePayload.error_log = finalResult.errors.slice(0, 100);
+          updatePayload.error_log = finalResult.errors.slice(0, MAX_IMPORT_ERRORS);
           updatePayload.warnings = [
             ...(finalResult.warnings || []),
             ...(finalRegion?.multiRegioneWarning ? [finalRegion.multiRegioneWarning] : []),
@@ -816,13 +1113,26 @@ serve(async (req) => {
           updatePayload.stats = {
             ...finalValidation,
             importResult: { processed: totalProcessed, inserted: finalResult.inserted, updated: finalResult.updated, skipped: finalResult.skipped, failed: finalResult.failed },
+            progress: buildProgressState({
+              datasetType: job.dataset_type,
+              processedRows: totalProcessed,
+              totalRows: Number(job.records_total || totalProcessed),
+              failedRows: finalResult.failed,
+              skippedRows: finalResult.skipped,
+              chunkIndex: finalStatus === "imported"
+                ? (job.dataset_type === "R03_CSV_SEZ" ? Math.ceil(Number(job.records_total || totalProcessed) / R03_SEZ_CHUNK) : 1)
+                : 0,
+              chunkCount: job.dataset_type === "R03_CSV_SEZ"
+                ? Math.ceil(Number(job.records_total || totalProcessed) / R03_SEZ_CHUNK)
+                : 1,
+            }),
           };
         } else {
           // No result means early failure — save the error
           updatePayload.error_log = [{ reason: finalError }];
         }
         await admin.from("territorial_dataset_jobs").update(updatePayload).eq("id", jobId);
-        logStep("job_finalized", finalStatus);
+        logStep("job_finalized", { status: finalStatus });
       }
 
       return json({
@@ -975,9 +1285,15 @@ serve(async (req) => {
 
     /* ── ACTION: list-jobs ── */
     if (action === "list-jobs") {
+      const recovered = await recoverStuckR03SezJobs(admin);
       const { data, error } = await admin.from("territorial_dataset_jobs").select("*").order("created_at", { ascending: false }).limit(50);
       if (error) return json({ error: error.message }, 200);
-      return json({ ok: true, jobs: data });
+      return json({ ok: true, jobs: data, recovered });
+    }
+
+    if (action === "recover-stuck-jobs") {
+      const recovered = await recoverStuckR03SezJobs(admin);
+      return json({ ok: true, recovered });
     }
 
     return json({ error: `Unknown action: ${action}` }, 200);
