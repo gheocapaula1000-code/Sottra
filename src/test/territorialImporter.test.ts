@@ -522,8 +522,8 @@ describe("R03_CSV_SEZ streaming import logic", () => {
 
       const sez = r["SEZ2021"] || r["SEZ"] || "";
       const com = r["PRO_COM_T"] || r["PRO_COM"] || "";
-      if (!sez) { failed++; continue; }
-      if (!com) { failed++; continue; }
+      if (!sez) { failed++; skipByReason["sez_mancante"] = (skipByReason["sez_mancante"] || 0) + 1; continue; }
+      if (!com) { failed++; skipByReason["com_mancante"] = (skipByReason["com_mancante"] || 0) + 1; continue; }
 
       const codReg = (r["COD_REG"] || "").trim();
       const denReg = (r["DEN_REG"] || r["REGIONE"] || "").trim();
@@ -545,7 +545,7 @@ describe("R03_CSV_SEZ streaming import logic", () => {
       imported++;
     }
 
-    return { imported, skipped, failed, regionsFound, rows };
+    return { imported, skipped, failed, regionsFound, rows, skipByReason };
   }
 
   it("single-region Lombardia file imports correctly", () => {
