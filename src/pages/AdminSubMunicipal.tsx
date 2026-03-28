@@ -757,6 +757,18 @@ const AdminSubMunicipal = () => {
                           {(job.stats as any).importResult.failed > 0 && <span className="text-destructive">failed: {(job.stats as any).importResult.failed}</span>}
                         </div>
                       )}
+
+                      {/* Skip reasons from import */}
+                      {(job.stats as any)?.skipByReason && Object.keys((job.stats as any).skipByReason).length > 0 && (
+                        <details className="mt-1">
+                          <summary className="text-xs text-amber-600 cursor-pointer">Dettaglio skip ({Object.values((job.stats as any).skipByReason as Record<string, number>).reduce((a: number, b: number) => a + b, 0)} totali)</summary>
+                          <div className="mt-1 pl-2 border-l-2 border-amber-200 text-xs space-y-0.5">
+                            {Object.entries((job.stats as any).skipByReason).map(([reason, count]) => (
+                              <div key={reason} className="text-muted-foreground">{reason}: <span className="font-medium text-foreground">{String(count)}</span></div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1">
                       {(job.status === "uploaded") && (
