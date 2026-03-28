@@ -762,10 +762,11 @@ serve(async (req) => {
       const validation = await validatePostImport(job.dataset_type, admin);
 
       const totalFailed = result.failed + result.errors.length;
-      const finalStatus = totalFailed > result.inserted && result.inserted === 0 ? "failed" : "imported";
+      const totalProcessed = result.processed ?? (result.inserted + result.updated);
+      const finalStatus = totalFailed > totalProcessed && totalProcessed === 0 ? "failed" : "imported";
       await admin.from("territorial_dataset_jobs").update({
         status: finalStatus,
-        records_imported: result.inserted,
+        records_imported: totalProcessed,
         records_errors: totalFailed,
         records_skipped: result.skipped,
         import_batch_id: batchId,
@@ -774,7 +775,7 @@ serve(async (req) => {
           ...(result.warnings || []),
           ...(region.multiRegioneWarning ? [region.multiRegioneWarning] : []),
         ],
-        stats: { ...validation, importResult: { inserted: result.inserted, updated: result.updated, skipped: result.skipped, failed: result.failed } },
+        stats: { ...validation, importResult: { processed: totalProcessed, inserted: result.inserted, updated: result.updated, skipped: result.skipped, failed: result.failed } },
         completed_at: new Date().toISOString(),
       }).eq("id", jobId);
 
