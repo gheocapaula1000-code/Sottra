@@ -102,6 +102,9 @@ const AdminSubMunicipal = () => {
   const [aggLoading, setAggLoading] = useState(false);
   const [aggregating, setAggregating] = useState(false);
 
+  // Filter state
+  const [jobFilter, setJobFilter] = useState<JobFilter>({});
+
   const refreshAll = useCallback(() => {
     fetchSubMunicipalStats().then(s => { setStats(s); setLoading(false); });
     fetchR03Stats().then(s => { setR03Stats(s); setR03Loading(false); });
