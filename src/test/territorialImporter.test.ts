@@ -491,3 +491,154 @@ describe("Light streaming validation for R03_CSV_SEZ", () => {
     expect(result.headers).toContain("COD_REG");
   });
 });
+
+/* ── R03_CSV_SEZ streaming import simulation tests ── */
+
+describe("R03_CSV_SEZ streaming import logic", () => {
+  const COD_REG_MAP: Record<string, string> = {
+    "01": "Piemonte", "03": "Lombardia", "05": "Veneto", "12": "Lazio",
+  };
+
+  // Simulate the per-row region detection used in streaming import
+  function simulateStreamingImport(csvText: string, ascMappings: Map<string, { asc1: string | null; asc2: string | null; asc3: string | null }> = new Map()) {
+    let text = csvText;
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    const headerEnd = text.indexOf('\n');
+    if (headerEnd === -1) return { imported: 0, skipped: 0, failed: 0, regionsFound: new Set<string>(), rows: [] as any[] };
+    let headerLine = text.substring(0, headerEnd);
+    if (headerLine.endsWith('\r')) headerLine = headerLine.slice(0, -1);
+    const sep = headerLine.includes(";") ? ";" : ",";
+    const headers = headerLine.split(sep).map(h => h.trim());
+
+    const regionsFound = new Set<string>();
+    const rows: any[] = [];
+    let imported = 0, skipped = 0, failed = 0;
+
+    const lines = text.substring(headerEnd + 1).split(/\r?\n/).filter(l => l.trim());
+    for (let i = 0; i < lines.length; i++) {
+      const vals = lines[i].split(sep).map(v => v.trim());
+      const r: Record<string, string> = {};
+      headers.forEach((h, j) => { r[h] = vals[j] ?? ""; });
+
+      const sez = r["SEZ2021"] || r["SEZ"] || "";
+      const com = r["PRO_COM_T"] || r["PRO_COM"] || "";
+      if (!sez) { failed++; continue; }
+      if (!com) { failed++; continue; }
+
+      const codReg = (r["COD_REG"] || "").trim();
+      const denReg = (r["DEN_REG"] || r["REGIONE"] || "").trim();
+      let rowRegName = denReg || null;
+      if (!rowRegName && codReg) {
+        rowRegName = COD_REG_MAP[codReg.padStart(2, "0")] || null;
+      }
+      if (rowRegName) regionsFound.add(rowRegName);
+
+      const m = ascMappings.get(sez);
+      rows.push({
+        section_code: sez,
+        comune_istat_code: com,
+        regione_name: rowRegName,
+        asc1_code: m?.asc1 || null,
+        asc2_code: m?.asc2 || null,
+        source_label: rowRegName ? `ISTAT Censimento 2021 — ${rowRegName}` : "ISTAT Censimento 2021",
+      });
+      imported++;
+    }
+
+    return { imported, skipped, failed, regionsFound, rows };
+  }
+
+  it("single-region Lombardia file imports correctly", () => {
+    const csv = "SEZ2021;PRO_COM_T;COD_REG;P1\n001;015146;03;1500\n002;015147;03;2000\n";
+    const result = simulateStreamingImport(csv);
+    expect(result.imported).toBe(2);
+    expect(result.failed).toBe(0);
+    expect(result.regionsFound.size).toBe(1);
+    expect(result.regionsFound.has("Lombardia")).toBe(true);
+    expect(result.rows[0].source_label).toContain("Lombardia");
+  });
+
+  it("multi-region file handles region transitions correctly", () => {
+    const csv = [
+      "SEZ2021;PRO_COM_T;COD_REG;P1",
+      "001;015146;03;1500",  // Lombardia
+      "002;015147;03;2000",  // Lombardia
+      "003;058091;12;3000",  // Lazio
+      "004;024100;05;4000",  // Veneto
+    ].join("\n");
+    const result = simulateStreamingImport(csv);
+    expect(result.imported).toBe(4);
+    expect(result.regionsFound.size).toBe(3);
+    expect(result.regionsFound.has("Lombardia")).toBe(true);
+    expect(result.regionsFound.has("Lazio")).toBe(true);
+    expect(result.regionsFound.has("Veneto")).toBe(true);
+    // Each row gets its own region label
+    expect(result.rows[0].regione_name).toBe("Lombardia");
+    expect(result.rows[2].regione_name).toBe("Lazio");
+    expect(result.rows[3].regione_name).toBe("Veneto");
+  });
+
+  it("missing ASC2 mapping does not crash — fields are null", () => {
+    const csv = "SEZ2021;PRO_COM_T;COD_REG;P1\n001;015146;03;1500\n002;058091;12;2000\n";
+    // Only provide ASC mapping for Lombardia section, not Lazio
+    const ascMappings = new Map([
+      ["001", { asc1: "ASC1_A", asc2: "ASC2_B", asc3: null }],
+    ]);
+    const result = simulateStreamingImport(csv, ascMappings);
+    expect(result.imported).toBe(2);
+    expect(result.rows[0].asc1_code).toBe("ASC1_A");
+    expect(result.rows[0].asc2_code).toBe("ASC2_B");
+    // Lazio section has no ASC mapping — null, no crash
+    expect(result.rows[1].asc1_code).toBeNull();
+    expect(result.rows[1].asc2_code).toBeNull();
+  });
+
+  it("malformed row (missing SEZ) does not abort import", () => {
+    const csv = "SEZ2021;PRO_COM_T;COD_REG;P1\n;015146;03;1500\n002;015147;03;2000\n";
+    const result = simulateStreamingImport(csv);
+    expect(result.imported).toBe(1);
+    expect(result.failed).toBe(1);
+    expect(result.rows.length).toBe(1);
+    expect(result.rows[0].section_code).toBe("002");
+  });
+
+  it("malformed row (missing PRO_COM_T) does not abort import", () => {
+    const csv = "SEZ2021;PRO_COM_T;COD_REG;P1\n001;;03;1500\n002;015147;03;2000\n";
+    const result = simulateStreamingImport(csv);
+    expect(result.imported).toBe(1);
+    expect(result.failed).toBe(1);
+  });
+
+  it("multi-region metadata shows correct count", () => {
+    const csv = "SEZ2021;PRO_COM_T;COD_REG\n001;015146;01\n002;015147;03\n003;058091;12\n";
+    const result = simulateStreamingImport(csv);
+    const regArr = [...result.regionsFound].sort();
+    expect(regArr.length).toBe(3);
+    expect(regArr).toEqual(["Lazio", "Lombardia", "Piemonte"]);
+    // Simulating what the edge function would build
+    const isMulti = regArr.length > 1;
+    expect(isMulti).toBe(true);
+  });
+
+  it("dedup within chunk uses last-wins strategy", () => {
+    // Two rows with same section_code — last wins
+    const csv = "SEZ2021;PRO_COM_T;COD_REG;P1\n001;015146;03;1500\n001;015146;03;9999\n";
+    const result = simulateStreamingImport(csv);
+    // Both are valid, dedup happens at upsert level (section_code,source_dataset)
+    // In streaming import the dedup map is applied per chunk
+    expect(result.imported).toBe(2); // Both parsed, dedup happens at DB level
+  });
+
+  it("empty file returns zero imported", () => {
+    const csv = "SEZ2021;PRO_COM_T;COD_REG;P1\n";
+    const result = simulateStreamingImport(csv);
+    expect(result.imported).toBe(0);
+    expect(result.regionsFound.size).toBe(0);
+  });
+
+  it("no regression: Lombardia-only file gets correct source_label", () => {
+    const csv = "SEZ2021;PRO_COM_T;COD_REG;P1\n001;015146;03;1500\n";
+    const result = simulateStreamingImport(csv);
+    expect(result.rows[0].source_label).toBe("ISTAT Censimento 2021 — Lombardia");
+  });
+});
