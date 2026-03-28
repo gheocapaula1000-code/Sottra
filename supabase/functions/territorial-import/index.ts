@@ -717,7 +717,7 @@ serve(async (req) => {
       }).eq("id", jobId);
 
       const batchId = `${job.dataset_type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      let result: { inserted: number; updated: number; skipped: number; failed: number; errors: { idx: number; reason: string }[]; warnings?: string[] };
+      let result: { inserted: number; updated: number; processed?: number; skipped: number; failed: number; errors: { idx: number; reason: string }[]; warnings?: string[] };
 
       if (job.dataset_type === "ASC_2021") {
         result = await importAscCsv(records, batchId, admin);
