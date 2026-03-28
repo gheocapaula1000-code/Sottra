@@ -299,7 +299,6 @@ function getJobHeartbeat(job: Record<string, unknown>): string | null {
 
 function isStaleImportingJob(job: Record<string, unknown>) {
   if (job.status !== "importing") return false;
-  if (job.dataset_type !== "R03_CSV_SEZ") return false;
 
   const heartbeat = getJobHeartbeat(job);
   if (!heartbeat) return false;
@@ -310,14 +309,13 @@ function isStaleImportingJob(job: Record<string, unknown>) {
   return Date.now() - heartbeatMs > R03_SEZ_STUCK_TIMEOUT_MINUTES * 60 * 1000;
 }
 
-async function recoverStuckR03SezJobs(
+async function recoverStuckJobs(
   admin: ReturnType<typeof createClient>,
   logStep?: (step: string, payload?: Record<string, unknown>) => void,
 ) {
   const { data, error } = await admin
     .from("territorial_dataset_jobs")
     .select("id, dataset_type, status, created_at, started_at, updated_at, records_total, records_imported, records_errors, records_skipped, stats, error_log, warnings")
-    .eq("dataset_type", "R03_CSV_SEZ")
     .eq("status", "importing")
     .order("created_at", { ascending: false })
     .limit(100);
@@ -542,6 +540,7 @@ async function importR03Sez(
   admin: ReturnType<typeof createClient>,
   jobId: string,
   logStep: (step: string, payload?: Record<string, unknown>) => void,
+  regionInfo: RegionInfo,
 ) {
   let imported = 0;
   let skipped = 0;
@@ -550,6 +549,22 @@ async function importR03Sez(
   const warnings: string[] = [];
   const totalRows = rows.length;
   const chunkCount = Math.ceil(totalRows / R03_SEZ_CHUNK);
+
+  // Derive region label from detected region (no more hardcoded Lombardia)
+  const detectedRegionName = regionInfo.regioneRilevata ?? null;
+  const detectedRegionCode = detectedRegionName
+    ? Object.entries(COD_REG_MAP).find(([_, v]) => v === detectedRegionName)?.[0] ?? null
+    : null;
+  const sourceLabel = detectedRegionName
+    ? `ISTAT Censimento 2021 — ${detectedRegionName}`
+    : "ISTAT Censimento 2021";
+
+  logStep("r03_region_detected", {
+    regionName: detectedRegionName,
+    regionCode: detectedRegionCode,
+    isMonoRegione: regionInfo.isMonoRegione,
+    regioniCount: regionInfo.regioniCount,
+  });
 
   for (let i = 0; i < rows.length; i += R03_SEZ_CHUNK) {
     const chunk = rows.slice(i, i + R03_SEZ_CHUNK);
@@ -568,12 +583,15 @@ async function importR03Sez(
         return null;
       }
       const m = ascMappings.get(sez);
+      // Per-row region: use row-level COD_REG/DEN_REG if available, fall back to file-level detection
+      const rowRegCode = r["COD_REG"] || detectedRegionCode || null;
+      const rowRegName = r["DEN_REG"] || r["REGIONE"] || detectedRegionName || null;
       return {
         source_dataset: "R03_21",
         source_year: 2021,
-        source_label: "ISTAT Censimento 2021 — Lombardia",
-        regione_code: "03",
-        regione_name: "Lombardia",
+        source_label: sourceLabel,
+        regione_code: rowRegCode,
+        regione_name: rowRegName,
         provincia_code: r["COD_PRO"] || null,
         comune_istat_code: com,
         comune_name: r["DEN_COM"] || "",
@@ -862,7 +880,7 @@ serve(async (req) => {
 
     /* ── ACTION: validate-csv (dry-run) ── */
     if (action === "validate-csv") {
-      await recoverStuckR03SezJobs(admin);
+      await recoverStuckJobs(admin);
       const { jobId } = body as { jobId: string };
       if (!jobId) return json({ error: "jobId required" }, 200);
 
@@ -946,7 +964,7 @@ serve(async (req) => {
         }));
       };
 
-      await recoverStuckR03SezJobs(admin, logStep);
+      await recoverStuckJobs(admin, logStep);
 
       const { data: job, error: jobErr } = await admin.from("territorial_dataset_jobs").select("*").eq("id", jobId).single();
       if (jobErr || !job) return json({ error: "Job not found" }, 200);
@@ -1070,7 +1088,7 @@ serve(async (req) => {
             asc2Mappings: asc2MappingsCount,
             chunkSize: R03_SEZ_CHUNK,
           });
-          result = await importR03Sez(records, ascMappings, batchId, admin, jobId, logStep);
+          result = await importR03Sez(records, ascMappings, batchId, admin, jobId, logStep, region);
         } else if (job.dataset_type.startsWith("R03_CSV_ASC")) {
           result = { inserted: records.length, updated: 0, skipped: 0, failed: 0, errors: [], warnings: [`File mapping ${job.dataset_type} registrato. Verrà usato durante l'import di SEZ_R03_21.csv.`] };
         } else if (job.dataset_type === "COMUNI_ITALIA") {
@@ -1295,14 +1313,14 @@ serve(async (req) => {
 
     /* ── ACTION: list-jobs ── */
     if (action === "list-jobs") {
-      const recovered = await recoverStuckR03SezJobs(admin);
+      const recovered = await recoverStuckJobs(admin);
       const { data, error } = await admin.from("territorial_dataset_jobs").select("*").order("created_at", { ascending: false }).limit(50);
       if (error) return json({ error: error.message }, 200);
       return json({ ok: true, jobs: data, recovered });
     }
 
     if (action === "recover-stuck-jobs") {
-      const recovered = await recoverStuckR03SezJobs(admin);
+      const recovered = await recoverStuckJobs(admin);
       return json({ ok: true, recovered });
     }
 

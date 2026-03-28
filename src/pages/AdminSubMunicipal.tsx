@@ -92,7 +92,7 @@ const DATASET_TYPES: Record<string, { label: string; description: string; accept
   ASC_2021: { label: "ASC 2021 Nazionale", description: "CSV con aree sub-comunali ISTAT 2021 (COD_ASC, DEN_ASC, PRO_COM_T, POP_RES...)", accept: ".csv" },
   R03_CSV_ASC1: { label: "R03 — ASC1 Mapping", description: "ASC1_R03_21.csv — mapping sezioni → ASC livello 1", accept: ".csv" },
   R03_CSV_ASC2: { label: "R03 — ASC2 Mapping", description: "ASC2_R03_21.csv — mapping sezioni → ASC livello 2", accept: ".csv" },
-  R03_CSV_SEZ: { label: "R03 — Sezioni Lombardia", description: "SEZ_R03_21.csv — sezioni censuarie con P1, P14, A2, E3...", accept: ".csv" },
+  R03_CSV_SEZ: { label: "R03 — Sezioni Censuarie", description: "SEZ_R03_21.csv — sezioni censuarie regionali con P1, P14, A2, E3...", accept: ".csv" },
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -454,11 +454,11 @@ const AdminSubMunicipal = () => {
         {/* Ordine di import consigliato */}
         <Card className="bg-muted/30 border-muted">
           <CardContent className="pt-4">
-            <p className="text-xs font-medium text-foreground mb-1">Ordine di import consigliato per R03 Lombardia:</p>
+            <p className="text-xs font-medium text-foreground mb-1">Ordine di import consigliato per R03 regionale:</p>
             <ol className="text-xs text-muted-foreground list-decimal pl-5 space-y-0.5">
-              <li>Carica <strong>ASC1_R03_21.csv</strong> e <strong>ASC2_R03_21.csv</strong> → lancia import per registrarli</li>
-              <li>Carica <strong>SEZ_R03_21.csv</strong> → lancia import (usa automaticamente i mapping ASC)</li>
-              <li>Per ASC nazionale: carica il CSV ASC_2021 con le aree sub-comunali</li>
+              <li>Carica i file ASC mapping regionali (ASC1, ASC2) → lancia import per registrarli</li>
+              <li>Carica il file sezioni regionali (SEZ_R03_21.csv) → lancia import (usa automaticamente i mapping ASC)</li>
+              <li>Ripeti per ogni regione. Il sistema rileva automaticamente la regione dal file.</li>
             </ol>
           </CardContent>
         </Card>
@@ -807,7 +807,7 @@ const AdminSubMunicipal = () => {
         {/* ═══ R03 STATS ═══ */}
         <div className="space-y-1">
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" /> R03 Lombardia — Stato
+            <BarChart3 className="h-5 w-5" /> R03 Sezioni Censuarie — Stato
           </h2>
         </div>
 
