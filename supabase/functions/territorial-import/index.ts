@@ -682,113 +682,161 @@ serve(async (req) => {
       const { data: job, error: jobErr } = await admin.from("territorial_dataset_jobs").select("*").eq("id", jobId).single();
       if (jobErr || !job) return json({ error: "Job not found" }, 200);
 
-      // Update status
+      // Update status to importing
       await admin.from("territorial_dataset_jobs").update({ status: "importing", started_at: new Date().toISOString() }).eq("id", jobId);
 
-      // Download file from storage
-      const { data: fileData, error: dlErr } = await admin.storage.from("territorial-datasets").download(job.file_path);
-      if (dlErr || !fileData) {
-        await admin.from("territorial_dataset_jobs").update({ status: "failed", error_log: [{ reason: `Download failed: ${dlErr?.message}` }] }).eq("id", jobId);
-        return json({ error: "File download failed" }, 200);
-      }
+      const logStep = (step: string, detail?: string) => log(`[Job ${jobId}] ${step}`, detail);
 
-      const csvText = await fileData.text();
-      const records = parseCsv(csvText);
+      // ── FAIL-SAFE: wrap entire import in try/finally so job NEVER stays stuck in "importing" ──
+      let finalStatus = "failed";
+      let finalError = "Import interrotto da errore imprevisto";
+      let finalResult: { inserted: number; updated: number; processed?: number; skipped: number; failed: number; errors: { idx: number; reason: string }[]; warnings?: string[] } | null = null;
+      let finalBatchId = "";
+      let finalRegion: RegionInfo | null = null;
+      let finalValidation: Record<string, unknown> = {};
 
-      if (records.length === 0) {
-        await admin.from("territorial_dataset_jobs").update({ status: "failed", error_log: [{ reason: "CSV vuoto o formato non riconosciuto" }] }).eq("id", jobId);
-        return json({ error: "Empty CSV" }, 200);
-      }
+      try {
+        // Download file from storage
+        logStep("file_downloading");
+        const { data: fileData, error: dlErr } = await admin.storage.from("territorial-datasets").download(job.file_path);
+        if (dlErr || !fileData) {
+          finalError = `Download failed: ${dlErr?.message ?? "unknown"}`;
+          logStep("file_download_failed", finalError);
+          return json({ error: "File download failed" }, 200);
+        }
+        logStep("file_downloaded");
 
-      log("process-csv", `${records.length} records, type=${job.dataset_type}, headers=${Object.keys(records[0]).slice(0, 10).join(",")}`);
+        const csvText = await fileData.text();
+        const records = parseCsv(csvText);
+        logStep("csv_parsed", `${records.length} rows`);
 
-      const region = detectRegions(records);
+        if (records.length === 0) {
+          finalError = "CSV vuoto o formato non riconosciuto";
+          logStep("csv_empty");
+          return json({ error: "Empty CSV" }, 200);
+        }
 
-      // Update to importing with region info
-      await admin.from("territorial_dataset_jobs").update({
-        status: "importing",
-        records_total: records.length,
-        validation_result: {
-          headers: Object.keys(records[0]),
-          sampleRow: records[0],
-          totalRows: records.length,
-          region,
-        },
-      }).eq("id", jobId);
+        logStep("rows_counted", `${records.length} records, type=${job.dataset_type}, headers=${Object.keys(records[0]).slice(0, 10).join(",")}`);
 
-      const batchId = `${job.dataset_type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      let result: { inserted: number; updated: number; processed?: number; skipped: number; failed: number; errors: { idx: number; reason: string }[]; warnings?: string[] };
+        const region = detectRegions(records);
+        finalRegion = region;
 
-      if (job.dataset_type === "ASC_2021") {
-        result = await importAscCsv(records, batchId, admin);
-      } else if (job.dataset_type === "R03_CSV_SEZ") {
-        const ascMappings = new Map<string, { asc1: string | null; asc2: string | null; asc3: string | null }>();
-        for (const level of ["ASC1", "ASC2", "ASC3"]) {
-          const ascType = `R03_CSV_${level}`;
-          const { data: ascJob } = await admin.from("territorial_dataset_jobs")
-            .select("file_path").eq("dataset_type", ascType).eq("status", "imported").order("completed_at", { ascending: false }).limit(1).maybeSingle();
-          if (ascJob?.file_path) {
-            const { data: ascFile } = await admin.storage.from("territorial-datasets").download(ascJob.file_path);
-            if (ascFile) {
-              const ascCsv = await ascFile.text();
-              const ascRows = parseCsv(ascCsv);
-              for (const row of ascRows) {
-                const sez = row["SEZ2021"] || row["SEZ"] || "";
-                if (!sez) continue;
-                const existing = ascMappings.get(sez) || { asc1: null, asc2: null, asc3: null };
-                const code = row["COD_ASC"] || null;
-                if (level === "ASC1") existing.asc1 = code;
-                else if (level === "ASC2") existing.asc2 = code;
-                else if (level === "ASC3") existing.asc3 = code;
-                ascMappings.set(sez, existing);
+        // Update to importing with region info
+        await admin.from("territorial_dataset_jobs").update({
+          status: "importing",
+          records_total: records.length,
+          validation_result: {
+            headers: Object.keys(records[0]),
+            sampleRow: records[0],
+            totalRows: records.length,
+            region,
+          },
+        }).eq("id", jobId);
+
+        const batchId = `${job.dataset_type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        finalBatchId = batchId;
+        let result: typeof finalResult;
+
+        if (job.dataset_type === "ASC_2021") {
+          result = await importAscCsv(records, batchId, admin);
+        } else if (job.dataset_type === "R03_CSV_SEZ") {
+          logStep("asc_mapping_loading");
+          const ascMappings = new Map<string, { asc1: string | null; asc2: string | null; asc3: string | null }>();
+          for (const level of ["ASC1", "ASC2", "ASC3"]) {
+            const ascType = `R03_CSV_${level}`;
+            const { data: ascJob } = await admin.from("territorial_dataset_jobs")
+              .select("file_path").eq("dataset_type", ascType).eq("status", "imported").order("completed_at", { ascending: false }).limit(1).maybeSingle();
+            if (ascJob?.file_path) {
+              const { data: ascFile } = await admin.storage.from("territorial-datasets").download(ascJob.file_path);
+              if (ascFile) {
+                const ascCsv = await ascFile.text();
+                const ascRows = parseCsv(ascCsv);
+                for (const row of ascRows) {
+                  const sez = row["SEZ2021"] || row["SEZ"] || "";
+                  if (!sez) continue;
+                  const existing = ascMappings.get(sez) || { asc1: null, asc2: null, asc3: null };
+                  const code = row["COD_ASC"] || null;
+                  if (level === "ASC1") existing.asc1 = code;
+                  else if (level === "ASC2") existing.asc2 = code;
+                  else if (level === "ASC3") existing.asc3 = code;
+                  ascMappings.set(sez, existing);
+                }
+                logStep("asc_mapping_loaded", `${level}: ${ascRows.length} mappings`);
               }
-              log("asc-mapping", `${level}: ${ascRows.length} mappings loaded`);
             }
           }
+          logStep("batch_started", `${records.length} sections, ${ascMappings.size} ASC mappings`);
+          result = await importR03Sez(records, ascMappings, batchId, admin);
+          logStep("batch_completed", `inserted=${result.inserted} failed=${result.failed}`);
+        } else if (job.dataset_type.startsWith("R03_CSV_ASC")) {
+          result = { inserted: records.length, updated: 0, skipped: 0, failed: 0, errors: [], warnings: [`File mapping ${job.dataset_type} registrato. Verrà usato durante l'import di SEZ_R03_21.csv.`] };
+        } else if (job.dataset_type === "COMUNI_ITALIA") {
+          result = await importComuniItalia(records, batchId, admin);
+        } else if (job.dataset_type === "LOCALITA_ISTAT") {
+          result = await importLocalitaIstat(records, batchId, admin);
+        } else {
+          finalError = `Tipo dataset non supportato: ${job.dataset_type}`;
+          return json({ error: "Unsupported dataset type" }, 200);
         }
-        result = await importR03Sez(records, ascMappings, batchId, admin);
-      } else if (job.dataset_type.startsWith("R03_CSV_ASC")) {
-        result = { inserted: records.length, updated: 0, skipped: 0, failed: 0, errors: [], warnings: [`File mapping ${job.dataset_type} registrato. Verrà usato durante l'import di SEZ_R03_21.csv.`] };
-      } else if (job.dataset_type === "COMUNI_ITALIA") {
-        result = await importComuniItalia(records, batchId, admin);
-      } else if (job.dataset_type === "LOCALITA_ISTAT") {
-        result = await importLocalitaIstat(records, batchId, admin);
-      } else {
-        await admin.from("territorial_dataset_jobs").update({ status: "failed", error_log: [{ reason: `Tipo dataset non supportato: ${job.dataset_type}` }] }).eq("id", jobId);
-        return json({ error: "Unsupported dataset type" }, 200);
+
+        finalResult = result;
+
+        // Post-import validation
+        finalValidation = await validatePostImport(job.dataset_type, admin);
+
+        const totalFailed = result.failed + result.errors.length;
+        const totalProcessed = result.processed ?? (result.inserted + result.updated);
+        finalStatus = totalFailed > totalProcessed && totalProcessed === 0 ? "failed" : "imported";
+        finalError = "";
+        logStep(finalStatus === "imported" ? "job_marked_imported" : "job_marked_failed", `processed=${totalProcessed} failed=${totalFailed}`);
+
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        logStep("job_error_caught", errMsg);
+        finalStatus = "failed";
+        finalError = `Errore imprevisto: ${errMsg}`;
+      } finally {
+        // ── GUARANTEED STATUS UPDATE: no job stays stuck in "importing" ──
+        logStep("job_finalizing", `status=${finalStatus}`);
+        const updatePayload: Record<string, unknown> = {
+          status: finalStatus,
+          completed_at: new Date().toISOString(),
+        };
+        if (finalResult) {
+          const totalProcessed = finalResult.processed ?? (finalResult.inserted + finalResult.updated);
+          updatePayload.records_imported = totalProcessed;
+          updatePayload.records_errors = finalResult.failed + finalResult.errors.length;
+          updatePayload.records_skipped = finalResult.skipped;
+          updatePayload.import_batch_id = finalBatchId;
+          updatePayload.error_log = finalResult.errors.slice(0, 100);
+          updatePayload.warnings = [
+            ...(finalResult.warnings || []),
+            ...(finalRegion?.multiRegioneWarning ? [finalRegion.multiRegioneWarning] : []),
+          ];
+          updatePayload.stats = {
+            ...finalValidation,
+            importResult: { processed: totalProcessed, inserted: finalResult.inserted, updated: finalResult.updated, skipped: finalResult.skipped, failed: finalResult.failed },
+          };
+        } else {
+          // No result means early failure — save the error
+          updatePayload.error_log = [{ reason: finalError }];
+        }
+        await admin.from("territorial_dataset_jobs").update(updatePayload).eq("id", jobId);
+        logStep("job_finalized", finalStatus);
       }
 
-      // Post-import validation
-      const validation = await validatePostImport(job.dataset_type, admin);
-
-      const totalFailed = result.failed + result.errors.length;
-      const totalProcessed = result.processed ?? (result.inserted + result.updated);
-      const finalStatus = totalFailed > totalProcessed && totalProcessed === 0 ? "failed" : "imported";
-      await admin.from("territorial_dataset_jobs").update({
-        status: finalStatus,
-        records_imported: totalProcessed,
-        records_errors: totalFailed,
-        records_skipped: result.skipped,
-        import_batch_id: batchId,
-        error_log: result.errors.slice(0, 100),
-        warnings: [
-          ...(result.warnings || []),
-          ...(region.multiRegioneWarning ? [region.multiRegioneWarning] : []),
-        ],
-        stats: { ...validation, importResult: { processed: totalProcessed, inserted: result.inserted, updated: result.updated, skipped: result.skipped, failed: result.failed } },
-        completed_at: new Date().toISOString(),
-      }).eq("id", jobId);
-
       return json({
-        ok: true,
-        inserted: result.inserted,
-        updated: result.updated,
-        skipped: result.skipped,
-        failed: result.failed,
-        errors: result.errors.length,
-        batchId,
-        region,
-        validation,
+        ok: finalStatus === "imported",
+        status: finalStatus,
+        inserted: finalResult?.inserted ?? 0,
+        updated: finalResult?.updated ?? 0,
+        skipped: finalResult?.skipped ?? 0,
+        failed: finalResult?.failed ?? 0,
+        errors: finalResult?.errors?.length ?? 0,
+        batchId: finalBatchId,
+        region: finalRegion,
+        validation: finalValidation,
+        ...(finalError ? { error: finalError } : {}),
       });
     }
 
