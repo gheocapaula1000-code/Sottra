@@ -650,10 +650,10 @@ async function importR03Sez(
 
     const { error } = await admin
       .from("census_sections_r03_2021")
-      .upsert(dbRows as any[], { onConflict: "source_dataset,section_code" });
+      .upsert(uniqueRows as any[], { onConflict: "source_dataset,section_code" });
 
     if (error) {
-      failed += dbRows.length;
+      failed += uniqueRows.length;
       if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: i, reason: `Batch ${chunkIndex}: ${error.message}` });
       logStep("job_marked_failed", {
         chunkIndex,
@@ -663,7 +663,7 @@ async function importR03Sez(
       throw new Error(`R03_CSV_SEZ batch ${chunkIndex}/${chunkCount} failed: ${error.message}`);
     }
 
-    imported += dbRows.length;
+    imported += uniqueRows.length;
 
     const progress = buildProgressState({
       datasetType: "R03_CSV_SEZ",
