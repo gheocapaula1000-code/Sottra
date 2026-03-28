@@ -533,63 +533,92 @@ async function importLocalitaIstat(
   return { inserted: Math.max(inserted, 0), updated: Math.max(updated, 0), processed, skipped, failed, errors, warnings };
 }
 
-async function importR03Sez(
-  rows: Record<string, string>[],
+/**
+ * Streaming R03_CSV_SEZ import: parses CSV line-by-line in chunks to avoid memory crash on large files.
+ * Handles multi-region files with per-row region detection. Missing ASC2 is tolerated gracefully.
+ */
+async function importR03SezStreaming(
+  rawText: string,
   ascMappings: Map<string, { asc1: string | null; asc2: string | null; asc3: string | null }>,
   batchId: string,
   admin: ReturnType<typeof createClient>,
   jobId: string,
   logStep: (step: string, payload?: Record<string, unknown>) => void,
-  regionInfo: RegionInfo,
 ) {
   let imported = 0;
   let skipped = 0;
   let failed = 0;
   const errors: { idx: number; reason: string }[] = [];
   const warnings: string[] = [];
-  const totalRows = rows.length;
-  const chunkCount = Math.ceil(totalRows / R03_SEZ_CHUNK);
+  const regionsFound = new Set<string>();
 
-  // Derive region label from detected region (no more hardcoded Lombardia)
-  const detectedRegionName = regionInfo.regioneRilevata ?? null;
-  const detectedRegionCode = detectedRegionName
-    ? Object.entries(COD_REG_MAP).find(([_, v]) => v === detectedRegionName)?.[0] ?? null
-    : null;
-  const sourceLabel = detectedRegionName
-    ? `ISTAT Censimento 2021 — ${detectedRegionName}`
-    : "ISTAT Censimento 2021";
+  // Parse header
+  let text = rawText;
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
 
-  logStep("r03_region_detected", {
-    regionName: detectedRegionName,
-    regionCode: detectedRegionCode,
-    isMonoRegione: regionInfo.isMonoRegione,
-    regioniCount: regionInfo.regioniCount,
-  });
+  // Find header line
+  let headerEnd = text.indexOf('\n');
+  if (headerEnd === -1) {
+    return { inserted: 0, updated: 0, processed: 0, skipped: 0, failed: 0, errors: [{ idx: 0, reason: "No header line" }], warnings: [], regionsFound: new Set<string>() };
+  }
+  let headerLine = text.substring(0, headerEnd);
+  if (headerLine.endsWith('\r')) headerLine = headerLine.slice(0, -1);
+  const sep = headerLine.includes(";") ? ";" : ",";
+  const headers = parseCsvLine(headerLine, sep);
 
-  for (let i = 0; i < rows.length; i += R03_SEZ_CHUNK) {
-    const chunk = rows.slice(i, i + R03_SEZ_CHUNK);
-    const chunkIndex = Math.floor(i / R03_SEZ_CHUNK) + 1;
-    const dbRows = chunk.map((r, j) => {
+  // Count total lines for progress (fast scan)
+  let totalLines = 0;
+  for (let i = headerEnd + 1; i < text.length; i++) {
+    if (text[i] === '\n') totalLines++;
+  }
+  // Account for last line without trailing newline
+  if (text.length > headerEnd + 1 && text[text.length - 1] !== '\n') totalLines++;
+
+  const chunkCount = Math.ceil(totalLines / R03_SEZ_CHUNK);
+
+  logStep("streaming_import_start", { totalLines, chunkCount, headers: headers.slice(0, 10) });
+
+  // Process line by line in chunks
+  let lineStart = headerEnd + 1;
+  let chunkRows: Record<string, string>[] = [];
+  let globalRowIdx = 0;
+  let chunkIndex = 0;
+
+  const flushChunk = async () => {
+    if (chunkRows.length === 0) return;
+    chunkIndex++;
+
+    const dbRows: any[] = [];
+    for (let j = 0; j < chunkRows.length; j++) {
+      const r = chunkRows[j];
       const sez = r["SEZ2021"] || r["SEZ"] || "";
       const com = r["PRO_COM_T"] || r["PRO_COM"] || "";
       if (!sez) {
         failed++;
-        if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: i + j, reason: "SEZ2021 mancante" });
-        return null;
+        if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx - chunkRows.length + j, reason: "SEZ2021 mancante" });
+        continue;
       }
       if (!com) {
         failed++;
-        if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: i + j, reason: "PRO_COM_T mancante" });
-        return null;
+        if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx - chunkRows.length + j, reason: "PRO_COM_T mancante" });
+        continue;
       }
+
+      // Per-row region detection
+      const codReg = (r["COD_REG"] || "").trim();
+      const denReg = (r["DEN_REG"] || r["REGIONE"] || "").trim();
+      let rowRegName = denReg || null;
+      let rowRegCode = codReg || null;
+      if (!rowRegName && codReg) {
+        rowRegName = COD_REG_MAP[codReg.padStart(2, "0")] || null;
+      }
+      if (rowRegName) regionsFound.add(rowRegName);
+
       const m = ascMappings.get(sez);
-      // Per-row region: use row-level COD_REG/DEN_REG if available, fall back to file-level detection
-      const rowRegCode = r["COD_REG"] || detectedRegionCode || null;
-      const rowRegName = r["DEN_REG"] || r["REGIONE"] || detectedRegionName || null;
-      return {
+      dbRows.push({
         source_dataset: "R03_21",
         source_year: 2021,
-        source_label: sourceLabel,
+        source_label: rowRegName ? `ISTAT Censimento 2021 — ${rowRegName}` : "ISTAT Censimento 2021",
         regione_code: rowRegCode,
         regione_name: rowRegName,
         provincia_code: r["COD_PRO"] || null,
@@ -613,57 +642,26 @@ async function importR03Sez(
         polygon_coords: null,
         metadata_json: {},
         import_batch_id: batchId,
-      };
-    }).filter(Boolean);
+      });
+    }
 
-    // Deduplicate within batch by section_code (last-wins)
-    const dedupMap = new Map<string, (typeof dbRows)[0]>();
+    // Deduplicate within chunk by section_code (last-wins)
+    const dedupMap = new Map<string, any>();
     for (const row of dbRows) {
-      if (row) dedupMap.set(row.section_code, row);
+      dedupMap.set(row.section_code, row);
     }
     const uniqueRows = [...dedupMap.values()];
     const batchDuplicatesDropped = dbRows.length - uniqueRows.length;
     if (batchDuplicatesDropped > 0) skipped += batchDuplicatesDropped;
 
-    logStep("batch_started", {
-      chunkIndex,
-      chunkCount,
-      chunkRows: chunk.length,
-      rowsReady: uniqueRows.length,
-      batchDuplicatesDropped,
-    });
-
     if (uniqueRows.length === 0) {
-      skipped += chunk.length;
-      const progress = buildProgressState({
-        datasetType: "R03_CSV_SEZ",
-        processedRows: imported,
-        totalRows,
-        failedRows: failed,
-        skippedRows: skipped,
-        chunkIndex,
-        chunkCount,
-      });
-
+      // Update heartbeat even for empty chunks
       await admin.from("territorial_dataset_jobs").update({
-        records_total: totalRows,
-        records_imported: imported,
-        records_errors: failed,
-        records_skipped: skipped,
         updated_at: nowIso(),
-        stats: { progress },
+        stats: { progress: buildProgressState({ datasetType: "R03_CSV_SEZ", processedRows: imported, totalRows: totalLines, failedRows: failed, skippedRows: skipped, chunkIndex, chunkCount }) },
       }).eq("id", jobId);
-
-      logStep("batch_progress", {
-        chunkIndex,
-        chunkCount,
-        processedRows: imported,
-        totalRows,
-        failedRows: failed,
-        skippedRows: skipped,
-        percentage: progress.percentage,
-      });
-      continue;
+      chunkRows = [];
+      return;
     }
 
     const { error } = await admin
@@ -671,22 +669,20 @@ async function importR03Sez(
       .upsert(uniqueRows as any[], { onConflict: "source_dataset,section_code" });
 
     if (error) {
+      // DON'T throw — accumulate error and continue with next chunks
       failed += uniqueRows.length;
-      if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: i, reason: `Batch ${chunkIndex}: ${error.message}` });
-      logStep("job_marked_failed", {
-        chunkIndex,
-        chunkCount,
-        reason: error.message,
-      });
-      throw new Error(`R03_CSV_SEZ batch ${chunkIndex}/${chunkCount} failed: ${error.message}`);
+      if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx - chunkRows.length, reason: `Batch ${chunkIndex}: ${error.message}` });
+      warnings.push(`Batch ${chunkIndex}/${chunkCount} fallito: ${error.message}`);
+      logStep("batch_error_continuing", { chunkIndex, chunkCount, reason: error.message });
+    } else {
+      imported += uniqueRows.length;
     }
 
-    imported += uniqueRows.length;
-
+    // Heartbeat + progress
     const progress = buildProgressState({
       datasetType: "R03_CSV_SEZ",
       processedRows: imported,
-      totalRows,
+      totalRows: totalLines,
       failedRows: failed,
       skippedRows: skipped,
       chunkIndex,
@@ -694,7 +690,7 @@ async function importR03Sez(
     });
 
     await admin.from("territorial_dataset_jobs").update({
-      records_total: totalRows,
+      records_total: totalLines,
       records_imported: imported,
       records_errors: failed,
       records_skipped: skipped,
@@ -703,25 +699,81 @@ async function importR03Sez(
     }).eq("id", jobId);
 
     logStep("batch_progress", {
-      chunkIndex,
-      chunkCount,
-      processedRows: imported,
-      totalRows,
-      failedRows: failed,
-      skippedRows: skipped,
+      chunkIndex, chunkCount,
+      processedRows: imported, totalRows: totalLines,
+      failedRows: failed, skippedRows: skipped,
+      batchDuplicatesDropped,
       percentage: progress.percentage,
     });
+
+    chunkRows = [];
+  };
+
+  // Stream through lines
+  for (let i = lineStart; i <= text.length; i++) {
+    if (i === text.length || text[i] === '\n') {
+      let line = text.substring(lineStart, i);
+      if (line.endsWith('\r')) line = line.slice(0, -1);
+      lineStart = i + 1;
+
+      if (!line.trim()) continue;
+
+      try {
+        const vals = parseCsvLine(line, sep);
+        if (vals.length < 2) {
+          skipped++;
+          if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx, reason: "Riga con meno di 2 campi" });
+          globalRowIdx++;
+          continue;
+        }
+        const obj: Record<string, string> = {};
+        headers.forEach((h, j) => { obj[h] = vals[j] ?? ""; });
+        chunkRows.push(obj);
+      } catch {
+        skipped++;
+        if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx, reason: "Errore parsing riga" });
+      }
+
+      globalRowIdx++;
+
+      if (chunkRows.length >= R03_SEZ_CHUNK) {
+        await flushChunk();
+      }
+    }
   }
 
-  logStep("batch_completed", {
-    processedRows: imported,
-    totalRows,
-    failedRows: failed,
-    skippedRows: skipped,
-    chunkCount,
+  // Flush remaining
+  await flushChunk();
+
+  // Multi-region warnings
+  if (regionsFound.size > 1) {
+    warnings.push(`File multi-regione: ${regionsFound.size} regioni rilevate (${[...regionsFound].sort().join(", ")})`);
+  }
+
+  // Regions without ASC2 mapping
+  const regionsWithoutAsc2 = [...regionsFound].filter(r => {
+    // Check if there are any ASC2 mappings at all — if total file had them
+    return true; // We just note the regions for transparency
   });
 
-  return { inserted: imported, updated: 0, processed: imported, skipped, failed, errors, warnings };
+  logStep("streaming_import_complete", {
+    imported, skipped, failed,
+    totalLines, chunkCount,
+    regionsFound: [...regionsFound].sort(),
+    regionsCount: regionsFound.size,
+    ascMappingsUsed: ascMappings.size,
+  });
+
+  return {
+    inserted: imported,
+    updated: 0,
+    processed: imported,
+    skipped,
+    failed,
+    errors,
+    warnings,
+    regionsFound,
+  };
 }
 
 async function importAscCsv(
