@@ -309,14 +309,13 @@ function isStaleImportingJob(job: Record<string, unknown>) {
   return Date.now() - heartbeatMs > R03_SEZ_STUCK_TIMEOUT_MINUTES * 60 * 1000;
 }
 
-async function recoverStuckR03SezJobs(
+async function recoverStuckJobs(
   admin: ReturnType<typeof createClient>,
   logStep?: (step: string, payload?: Record<string, unknown>) => void,
 ) {
   const { data, error } = await admin
     .from("territorial_dataset_jobs")
     .select("id, dataset_type, status, created_at, started_at, updated_at, records_total, records_imported, records_errors, records_skipped, stats, error_log, warnings")
-    .eq("dataset_type", "R03_CSV_SEZ")
     .eq("status", "importing")
     .order("created_at", { ascending: false })
     .limit(100);
