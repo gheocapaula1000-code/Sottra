@@ -54,20 +54,42 @@ function intSafe(v: string | undefined): number | null {
 
 /* ── Region detection helper ── */
 
+const COD_REG_MAP: Record<string, string> = {
+  "01": "Piemonte", "02": "Valle d'Aosta", "03": "Lombardia", "04": "Trentino-Alto Adige",
+  "05": "Veneto", "06": "Friuli-Venezia Giulia", "07": "Liguria", "08": "Emilia-Romagna",
+  "09": "Toscana", "10": "Umbria", "11": "Marche", "12": "Lazio", "13": "Abruzzo",
+  "14": "Molise", "15": "Campania", "16": "Puglia", "17": "Basilicata", "18": "Calabria",
+  "19": "Sicilia", "20": "Sardegna",
+};
+
 interface RegionInfo {
   regioni: string[];
   regioniCount: number;
   isMonoRegione: boolean;
   regioneRilevata: string | null;
   multiRegioneWarning: string | null;
+  detectedVia: "DEN_REG" | "REGIONE" | "COD_REG" | "none";
 }
 
 function detectRegions(records: Record<string, string>[]): RegionInfo {
   const regSet = new Set<string>();
+  let detectedVia: RegionInfo["detectedVia"] = "none";
+
   for (const r of records) {
-    const reg = r["DEN_REG"] || r["REGIONE"] || "";
-    if (reg.trim()) regSet.add(reg.trim());
+    // Priority: DEN_REG > REGIONE > COD_REG (mapped to name)
+    const denReg = (r["DEN_REG"] || "").trim();
+    const regione = (r["REGIONE"] || "").trim();
+    const codReg = (r["COD_REG"] || "").trim();
+
+    if (denReg) { regSet.add(denReg); if (detectedVia === "none") detectedVia = "DEN_REG"; }
+    else if (regione) { regSet.add(regione); if (detectedVia === "none") detectedVia = "REGIONE"; }
+    else if (codReg) {
+      const mapped = COD_REG_MAP[codReg.padStart(2, "0")] || `Regione ${codReg}`;
+      regSet.add(mapped);
+      if (detectedVia === "none") detectedVia = "COD_REG";
+    }
   }
+
   const regioni = [...regSet].sort();
   const isMonoRegione = regioni.length === 1;
   return {
@@ -78,6 +100,7 @@ function detectRegions(records: Record<string, string>[]): RegionInfo {
     multiRegioneWarning: regioni.length > 1
       ? `File multi-regione: contiene ${regioni.length} regioni (${regioni.join(", ")}). Se intendevi caricare una sola regione, verifica il file.`
       : null,
+    detectedVia,
   };
 }
 
