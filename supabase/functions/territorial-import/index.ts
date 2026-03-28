@@ -957,7 +957,6 @@ serve(async (req) => {
         if (useLightValidation) {
           // ── STREAMING/LIGHT VALIDATION: never load full CSV into memory ──
           const PREVIEW_LIMIT = 100;
-          const REGION_SAMPLE_LIMIT = 2000;
           const MAX_SAMPLE_ERRORS = 20;
 
           const rawText = await fileData.text();
@@ -965,8 +964,14 @@ serve(async (req) => {
           let totalLines = 0;
           let headerLine = "";
           const previewLines: string[] = [];
-          const regionSampleLines: string[] = [];
           let pastBom = false;
+
+          // Find COD_REG column index for lightweight full-file region scan
+          let codRegIdx = -1;
+          let denRegIdx = -1;
+          let regioneIdx = -1;
+          const regionCodesFound = new Set<string>();
+          const regionNamesFound = new Set<string>();
 
           // Count lines and collect samples without building full record array
           let lineStart = 0;
@@ -985,12 +990,34 @@ serve(async (req) => {
 
               if (!headerLine) {
                 headerLine = line;
+                // Find region column indices from header
+                const sep0 = headerLine.includes(";") ? ";" : ",";
+                const hdr = parseCsvLine(headerLine, sep0);
+                codRegIdx = hdr.indexOf("COD_REG");
+                denRegIdx = hdr.indexOf("DEN_REG");
+                regioneIdx = hdr.indexOf("REGIONE");
                 continue;
               }
 
               totalLines++;
               if (previewLines.length < PREVIEW_LIMIT) previewLines.push(line);
-              if (regionSampleLines.length < REGION_SAMPLE_LIMIT) regionSampleLines.push(line);
+
+              // Lightweight region extraction: just split and grab the region column
+              // This is O(n) but avoids building full record objects
+              if (codRegIdx >= 0 || denRegIdx >= 0 || regioneIdx >= 0) {
+                const sep0 = headerLine.includes(";") ? ";" : ",";
+                const vals = line.split(sep0);
+                if (denRegIdx >= 0 && vals[denRegIdx]) {
+                  const v = vals[denRegIdx].trim().replace(/^"|"$/g, "");
+                  if (v) regionNamesFound.add(v);
+                } else if (regioneIdx >= 0 && vals[regioneIdx]) {
+                  const v = vals[regioneIdx].trim().replace(/^"|"$/g, "");
+                  if (v) regionNamesFound.add(v);
+                } else if (codRegIdx >= 0 && vals[codRegIdx]) {
+                  const v = vals[codRegIdx].trim().replace(/^"|"$/g, "");
+                  if (v) regionCodesFound.add(v);
+                }
+              }
             }
           }
 
@@ -1004,6 +1031,31 @@ serve(async (req) => {
 
           const sep = headerLine.includes(";") ? ";" : ",";
           const headers = parseCsvLine(headerLine, sep);
+
+          // Build region info from full-file scan
+          const regSet = new Set<string>();
+          let regionDetectedVia: RegionInfo["detectedVia"] = "none";
+          if (regionNamesFound.size > 0) {
+            for (const n of regionNamesFound) regSet.add(n);
+            regionDetectedVia = denRegIdx >= 0 ? "DEN_REG" : "REGIONE";
+          } else if (regionCodesFound.size > 0) {
+            for (const c of regionCodesFound) {
+              const mapped = COD_REG_MAP[c.padStart(2, "0")] || `Regione ${c}`;
+              regSet.add(mapped);
+            }
+            regionDetectedVia = "COD_REG";
+          }
+          const regioni = [...regSet].sort();
+          const region: RegionInfo = {
+            regioni,
+            regioniCount: regioni.length,
+            isMonoRegione: regioni.length === 1,
+            regioneRilevata: regioni.length === 1 ? regioni[0] : null,
+            multiRegioneWarning: regioni.length > 1
+              ? `File multi-regione: contiene ${regioni.length} regioni (${regioni.join(", ")}). Se intendevi caricare una sola regione, verifica il file.`
+              : null,
+            detectedVia: regionDetectedVia,
+          };
 
           // Parse only preview rows into records
           const previewRecords: Record<string, string>[] = [];
@@ -1022,19 +1074,6 @@ serve(async (req) => {
               if (sampleErrors.length < MAX_SAMPLE_ERRORS) sampleErrors.push({ row: i + 2, reason: "Errore parsing riga" });
             }
           }
-
-          // Detect regions from sample only
-          const regionSampleRecords: Record<string, string>[] = [];
-          for (const line of regionSampleLines) {
-            try {
-              const vals = parseCsvLine(line, sep);
-              if (vals.length < 2) continue;
-              const obj: Record<string, string> = {};
-              headers.forEach((h, j) => { obj[h] = vals[j] ?? ""; });
-              regionSampleRecords.push(obj);
-            } catch { /* skip malformed */ }
-          }
-          const region = detectRegions(regionSampleRecords);
 
           // Check critical columns for R03_CSV_SEZ
           const missingCritical: string[] = [];
