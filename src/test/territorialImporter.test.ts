@@ -504,7 +504,7 @@ describe("R03_CSV_SEZ streaming import logic", () => {
     let text = csvText;
     if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
     const headerEnd = text.indexOf('\n');
-    if (headerEnd === -1) return { imported: 0, skipped: 0, failed: 0, regionsFound: new Set<string>(), rows: [] as any[] };
+    if (headerEnd === -1) return { imported: 0, skipped: 0, failed: 0, regionsFound: new Set<string>(), rows: [] as any[], skipByReason: {} as Record<string, number> };
     let headerLine = text.substring(0, headerEnd);
     if (headerLine.endsWith('\r')) headerLine = headerLine.slice(0, -1);
     const sep = headerLine.includes(";") ? ";" : ",";
