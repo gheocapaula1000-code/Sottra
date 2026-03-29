@@ -10,7 +10,7 @@ import type { ZoneValueResult, ValueNarrativeMode } from "@/lib/zoneValueEngine"
 import { valueNarrativeMode, valuePrecisionLabel, valueReliabilityLabel } from "@/lib/zoneValueEngine";
 import type { RenovationResult, RenovationNarrativeMode } from "@/lib/renovationCostEngine";
 import { renovationNarrativeMode, estimateStrengthLabel } from "@/lib/renovationCostEngine";
-import type { ZoneGrowthSignalResult } from "@/lib/zoneGrowthSignals";
+import type { ZoneGrowthSignalsResult } from "@/lib/zoneGrowthSignals";
 import type { ZoneCorrespondenceResult } from "@/lib/zoneCorrespondenceEngine";
 
 /* ═══════════════════════════════════════════════════════════
