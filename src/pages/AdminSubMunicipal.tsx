@@ -350,6 +350,10 @@ const AdminSubMunicipal = () => {
         toast.error(msg);
       } else if (data?.status === "failed") {
         toast.error(`Import fallito: ${data?.errors ?? 0} errori — ${data?.error || "controlla i dettagli del job"}`);
+      } else if (data?.status === "pending_next_chunk") {
+        const cp = data.checkpoint;
+        const pct = cp?.totalRows ? Math.round((cp.globalRowIdx / cp.totalRows) * 100) : 0;
+        toast.info(`Passaggio ${cp?.passNumber ?? "?"} completato — ${pct}% del file processato. Clicca "Riprendi" per continuare.`, { duration: 8000 });
       } else {
         const regionLabel = data?.region?.regioniCount > 1
           ? ` — multi-regione (${data.region.regioniCount})`
