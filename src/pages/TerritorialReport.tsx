@@ -25,13 +25,7 @@ const SECTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 function badgeClasses(variant: ReportBadge["variant"]): string {
-  switch (variant) {
-    case "official": return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
-    case "elaborated": return "bg-sky-500/15 text-sky-400 border-sky-500/30";
-    case "partial": return "bg-amber-500/15 text-amber-400 border-amber-500/30";
-    case "unavailable": return "bg-muted text-muted-foreground border-border";
-    case "info": return "bg-primary/15 text-primary border-primary/30";
-  }
+  return badgeVariantClasses(variant);
 }
 
 function renderModeIndicator(mode: SectionRenderMode) {

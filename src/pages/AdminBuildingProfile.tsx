@@ -43,10 +43,10 @@ export default function AdminBuildingProfile() {
   };
 
   const badgeColor = (v: string) => {
-    if (v === "official") return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
-    if (v === "elaborated") return "bg-sky-500/10 text-sky-700 border-sky-500/20";
-    if (v === "partial") return "bg-amber-500/10 text-amber-700 border-amber-500/20";
-    return "bg-muted text-muted-foreground";
+    if (v === "official" || v === "strong") return badgeVariantClasses("official");
+    if (v === "elaborated" || v === "moderate" || v === "adequate") return badgeVariantClasses("elaborated");
+    if (v === "partial" || v === "weak" || v === "limited") return badgeVariantClasses("partial");
+    return badgeVariantClasses("unavailable");
   };
 
   return (

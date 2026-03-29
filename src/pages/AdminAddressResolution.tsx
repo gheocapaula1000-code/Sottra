@@ -32,10 +32,10 @@ export default function AdminAddressResolution() {
   };
 
   const qBadge = (v: string) => {
-    if (v === "strong") return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
-    if (v === "moderate") return "bg-sky-500/10 text-sky-700 border-sky-500/20";
-    if (v === "weak") return "bg-amber-500/10 text-amber-700 border-amber-500/20";
-    return "bg-muted text-muted-foreground";
+    if (v === "strong") return badgeVariantClasses("official");
+    if (v === "moderate") return badgeVariantClasses("elaborated");
+    if (v === "weak") return badgeVariantClasses("partial");
+    return badgeVariantClasses("unavailable");
   };
 
   return (
