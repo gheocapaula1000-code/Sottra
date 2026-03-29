@@ -135,7 +135,7 @@ describe("ANNCSU Match Audit — aggregate metrics", () => {
 
     const m = computeAuditMetrics(batch);
     expect(m.total_evaluated).toBe(4);
-    expect(m.exact_official_street_match_count).toBeGreaterThanOrEqual(1);
+    expect(m.official_street_support_count).toBeGreaterThanOrEqual(2);
     expect(m.building_truth_promoted_count).toBe(0);
     expect(m.case_distribution.unresolved).toBe(1);
     expect(m.case_distribution.textual_match_only).toBe(1);
