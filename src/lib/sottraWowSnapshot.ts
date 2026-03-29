@@ -88,7 +88,7 @@ function resolveAttention(
 export interface WowSnapshotInput {
   value: ZoneValueResult;
   renovation: RenovationResult;
-  growth: ZoneGrowthSignalResult | null;
+  growth: ZoneGrowthSignalsResult | null;
   corr: ZoneCorrespondenceResult;
 }
 
