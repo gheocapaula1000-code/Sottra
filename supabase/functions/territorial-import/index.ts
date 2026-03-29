@@ -1235,7 +1235,7 @@ serve(async (req) => {
           const lightValidation: Record<string, unknown> = {
             totalRows: totalLines,
             headers,
-            headersFound: { sez: findColumn(headers, ["SEZ2021", "SEZ"]), com: findColumn(headers, ["PRO_COM_T", "PRO_COM"]), reg: findColumn(headers, ["DEN_REG", "REGIONE", "COD_REG"]) },
+            headersFound: { sez: findColumn(headers, ["SEZ2021", "SEZ", "SEZ21_ID"]), com: findColumn(headers, ["PRO_COM_T", "PRO_COM"]), reg: findColumn(headers, ["DEN_REG", "REGIONE", "COD_REG"]) },
             missingCriticalColumns: missingCritical,
             region,
             preview: previewRecords.slice(0, 20),
