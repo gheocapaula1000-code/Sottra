@@ -704,7 +704,7 @@ async function importR03SezStreaming(
     const dbRows: any[] = [];
     for (let j = 0; j < chunkRows.length; j++) {
       const r = chunkRows[j];
-      const sez = r["SEZ2021"] || r["SEZ"] || "";
+      const sez = r["SEZ2021"] || r["SEZ"] || r["SEZ21_ID"] || "";
       const com = r["PRO_COM_T"] || r["PRO_COM"] || "";
       if (!sez) {
         failed++;
@@ -1223,9 +1223,9 @@ serve(async (req) => {
 
           const missingCritical: string[] = [];
           if (dt === "R03_CSV_SEZ") {
-            const hasSez = headers.some(h => ["SEZ2021", "SEZ", "SEZ2011"].includes(h));
+            const hasSez = headers.some(h => ["SEZ2021", "SEZ", "SEZ2011", "SEZ21_ID"].includes(h));
             const hasCom = headers.some(h => ["PRO_COM_T", "PRO_COM"].includes(h));
-            if (!hasSez) missingCritical.push("Colonna sezione (SEZ2021 | SEZ)");
+            if (!hasSez) missingCritical.push("Colonna sezione (SEZ2021 | SEZ | SEZ21_ID)");
             if (!hasCom) missingCritical.push("Colonna comune (PRO_COM_T | PRO_COM)");
           } else if (dt === "ASC_2021" || dt.startsWith("R03_CSV_ASC")) {
             const hasAsc = headers.some(h => ["COD_ASC", "AREA_CODE", "COD_ASC2"].includes(h));
@@ -1235,7 +1235,7 @@ serve(async (req) => {
           const lightValidation: Record<string, unknown> = {
             totalRows: totalLines,
             headers,
-            headersFound: { sez: findColumn(headers, ["SEZ2021", "SEZ"]), com: findColumn(headers, ["PRO_COM_T", "PRO_COM"]), reg: findColumn(headers, ["DEN_REG", "REGIONE", "COD_REG"]) },
+            headersFound: { sez: findColumn(headers, ["SEZ2021", "SEZ", "SEZ21_ID"]), com: findColumn(headers, ["PRO_COM_T", "PRO_COM"]), reg: findColumn(headers, ["DEN_REG", "REGIONE", "COD_REG"]) },
             missingCriticalColumns: missingCritical,
             region,
             preview: previewRecords.slice(0, 20),
@@ -1408,7 +1408,7 @@ serve(async (req) => {
                 const ascCsv = await ascFile.text();
                 const ascRows = parseCsv(ascCsv);
                 for (const row of ascRows) {
-                  const sez = row["SEZ2021"] || row["SEZ"] || "";
+                  const sez = row["SEZ2021"] || row["SEZ"] || row["SEZ21_ID"] || "";
                   if (!sez) continue;
                   const existing = ascMappings.get(sez) || { asc1: null, asc2: null, asc3: null };
                   const code = row["COD_ASC"] || row["COD_ASC2"] || null;

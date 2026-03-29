@@ -826,3 +826,43 @@ describe("ASC2 area code column fallback", () => {
     expect(hasAsc).toBe(false);
   });
 });
+
+describe("SEZ column fallback for R03_CSV_SEZ", () => {
+  const resolveSez = (row: Record<string, string>) =>
+    row["SEZ2021"] || row["SEZ"] || row["SEZ21_ID"] || "";
+
+  const validateSezHeaders = (headers: string[]) =>
+    headers.some(h => ["SEZ2021", "SEZ", "SEZ2011", "SEZ21_ID"].includes(h));
+
+  it("resolves SEZ2021 first", () => {
+    expect(resolveSez({ SEZ2021: "100001", SEZ: "X", SEZ21_ID: "Y" })).toBe("100001");
+  });
+
+  it("falls back to SEZ", () => {
+    expect(resolveSez({ SEZ: "200002", SEZ21_ID: "Z" })).toBe("200002");
+  });
+
+  it("falls back to SEZ21_ID", () => {
+    expect(resolveSez({ SEZ21_ID: "300003" })).toBe("300003");
+  });
+
+  it("returns empty when none present", () => {
+    expect(resolveSez({ PRO_COM: "015146" })).toBe("");
+  });
+
+  it("validator accepts SEZ2021", () => {
+    expect(validateSezHeaders(["SEZ2021", "PRO_COM_T"])).toBe(true);
+  });
+
+  it("validator accepts SEZ", () => {
+    expect(validateSezHeaders(["SEZ", "PRO_COM"])).toBe(true);
+  });
+
+  it("validator accepts SEZ21_ID", () => {
+    expect(validateSezHeaders(["SEZ21_ID", "PRO_COM", "COD_REG"])).toBe(true);
+  });
+
+  it("validator rejects file without any section column", () => {
+    expect(validateSezHeaders(["PRO_COM", "COD_REG", "P1"])).toBe(false);
+  });
+});
