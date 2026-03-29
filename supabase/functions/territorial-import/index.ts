@@ -343,9 +343,10 @@ async function persistPendingNextChunkJob(params: {
     },
   };
 
-  const { error } = await params.admin
+  const { data, error } = await params.admin
     .from("territorial_dataset_jobs")
     .update(updatePayload)
+    .select("id, status, stats")
     .eq("id", params.jobId);
 
   if (error) {
@@ -355,6 +356,19 @@ async function persistPendingNextChunkJob(params: {
       passNumber: params.checkpoint.passNumber,
     });
     throw new Error(`checkpoint_persist_failed: ${error.message}`);
+  }
+
+  const persistedJob = Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
+  const persistedStats = asRecord(persistedJob?.stats);
+  const persistedCheckpoint = asRecord(persistedStats.checkpoint);
+  if (persistedJob?.status !== "pending_next_chunk" || Number(persistedCheckpoint.globalRowIdx ?? -1) !== params.checkpoint.globalRowIdx) {
+    params.logStep("checkpoint_persist_mismatch", {
+      persistedStatus: persistedJob?.status ?? null,
+      persistedCheckpointRow: persistedCheckpoint.globalRowIdx ?? null,
+      expectedCheckpointRow: params.checkpoint.globalRowIdx,
+      passNumber: params.checkpoint.passNumber,
+    });
+    throw new Error("checkpoint_persist_mismatch");
   }
 
   params.logStep("checkpoint_saved", {
