@@ -87,7 +87,7 @@ export default function AdminBuildingProfile() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Precisione</span><span className="font-medium">{profile.building_identity.identification_precision}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Puntuale</span><span className="font-medium">{profile.building_identity.is_point_specific ? "Sì" : "No"}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Livello edificio</span><span className="font-medium">{profile.building_identity.is_building_level_supported ? "Supportato" : "No"}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Via/civico</span><span className="font-medium">Non introdotto</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Via/civico</span><span className="font-medium">{profile.building_identity.is_address_level_supported ? "Supportato" : profile.building_localization.address_resolution ? "Layer applicato" : "Non fornito"}</span></div>
               </CardContent>
             </Card>
 
