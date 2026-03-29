@@ -68,6 +68,7 @@ export default function AdminBuildingProfile() {
               <Input placeholder="Lat (opz.)" value={lat} onChange={e => setLat(e.target.value)} />
               <Input placeholder="Lng (opz.)" value={lng} onChange={e => setLng(e.target.value)} />
             </div>
+            <Input placeholder="Indirizzo (opz. es. Via Roma 12)" value={address} onChange={e => setAddress(e.target.value)} />
             <Button onClick={run} className="w-full">Genera profilo edificio</Button>
           </CardContent>
         </Card>
