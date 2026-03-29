@@ -1,6 +1,6 @@
 /**
- * Territorial Report Page — Sottra Phase 3
- * Mobile-first, professional zone profile report.
+ * Territorial Report Page — Sottra
+ * Mobile-first, professional zone profile report with correspondence and growth signals.
  */
 
 import { useState } from "react";
@@ -8,10 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MapPin, Shield, Layers, BarChart3, AlertTriangle, Info, ChevronDown, ChevronUp } from "lucide-react";
-import { resolveTerritorialData } from "@/lib/territorialDataBackbone";
+import { MapPin, Shield, Layers, BarChart3, AlertTriangle, Info, ChevronDown, ChevronUp, TrendingUp, Anchor } from "lucide-react";
+import { resolveTerritorialData, type TerritorialDataResult } from "@/lib/territorialDataBackbone";
 import { buildTerritorialReport, type TerritorialReportViewModel, type ReportSectionVM, type ReportBadge, type SectionRenderMode } from "@/lib/zoneProfileEngine";
 import { badgeVariantClasses } from "@/lib/badgeUtils";
+import { buildZoneCorrespondence, type ZoneCorrespondenceResult } from "@/lib/zoneCorrespondenceEngine";
+import { buildZoneGrowthSignals, growthStatusLabel, type ZoneGrowthSignalsResult, type GrowthSignal } from "@/lib/zoneGrowthSignals";
 import AppHeader from "@/components/AppHeader";
 
 const SECTION_ICONS: Record<string, React.ReactNode> = {
