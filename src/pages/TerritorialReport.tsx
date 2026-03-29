@@ -17,6 +17,7 @@ import { buildZoneGrowthSignals, growthStatusLabel, type ZoneGrowthSignalsResult
 import { buildUrbanTransformations, transformationStatusLabel, stageLabel, proximityLabel, relevanceLabel, type UrbanTransformationResult, type UrbanTransformationInput } from "@/lib/zoneUrbanTransformations";
 import { buildAttractorsPressure, pressureStatusLabel, attractorFamilyLabel, attractorProximityLabel, attractorRelevanceLabel, attractorIntensityLabel, type AttractorPressureResult, type AttractorInput } from "@/lib/zoneAttractorsPressure";
 import { buildZoneBoundaries, boundaryNarrativeMode, boundaryPrecisionLabel, boundaryDisplayModeLabel, boundaryConfidenceLabel, boundarySourceLabel, type ZoneBoundaryResult } from "@/lib/zoneBoundariesEngine";
+import { buildZoneOutlook, outlookStatusLabel, outlookDirectionLabel, outlookAttentionLabel, outlookNarrativeMode, type ZoneOutlookResult, type HorizonView } from "@/lib/zoneOutlookEngine";
 import AppHeader from "@/components/AppHeader";
 
 // Synthetic demo signals — in production these come from a real source
