@@ -304,6 +304,74 @@ interface Checkpoint {
   passNumber: number;
 }
 
+async function persistPendingNextChunkJob(params: {
+  admin: ReturnType<typeof createClient>;
+  jobId: string;
+  batchId: string;
+  checkpoint: Checkpoint;
+  totalRows: number;
+  processedRows: number;
+  failedRows: number;
+  skippedRows: number;
+  skipByReason: Record<string, number>;
+  logStep: (step: string, payload?: Record<string, unknown>) => void;
+}) {
+  const chunkCount = Math.ceil(params.totalRows / R03_SEZ_CHUNK);
+  const progress = buildProgressState({
+    datasetType: "R03_CSV_SEZ",
+    processedRows: params.processedRows,
+    totalRows: params.totalRows,
+    failedRows: params.failedRows,
+    skippedRows: params.skippedRows,
+    chunkIndex: params.checkpoint.chunkIndex,
+    chunkCount,
+  });
+
+  const updatePayload = {
+    status: "pending_next_chunk",
+    import_batch_id: params.batchId,
+    records_total: params.totalRows,
+    records_imported: params.processedRows,
+    records_errors: params.failedRows,
+    records_skipped: params.skippedRows,
+    updated_at: nowIso(),
+    stats: {
+      progress,
+      skipByReason: params.skipByReason,
+      checkpoint: params.checkpoint,
+      passNumber: params.checkpoint.passNumber,
+    },
+  };
+
+  const { error } = await params.admin
+    .from("territorial_dataset_jobs")
+    .update(updatePayload)
+    .eq("id", params.jobId);
+
+  if (error) {
+    params.logStep("checkpoint_persist_failed", {
+      error: error.message,
+      checkpointRow: params.checkpoint.globalRowIdx,
+      passNumber: params.checkpoint.passNumber,
+    });
+    throw new Error(`checkpoint_persist_failed: ${error.message}`);
+  }
+
+  params.logStep("checkpoint_saved", {
+    checkpointRow: params.checkpoint.globalRowIdx,
+    checkpointOffset: params.checkpoint.lineOffset,
+    passNumber: params.checkpoint.passNumber,
+    processedRows: params.processedRows,
+    totalRows: params.totalRows,
+  });
+  params.logStep("status_set_pending_next_chunk", {
+    status: "pending_next_chunk",
+    checkpointRow: params.checkpoint.globalRowIdx,
+    checkpointOffset: params.checkpoint.lineOffset,
+    passNumber: params.checkpoint.passNumber,
+  });
+}
+
 function getJobHeartbeat(job: Record<string, unknown>): string | null {
   const stats = asRecord(job.stats);
   const progress = asRecord(stats.progress);
@@ -694,7 +762,7 @@ async function importR03SezStreaming(
       await admin.from("territorial_dataset_jobs").update({
         updated_at: nowIso(),
         stats: { progress: buildProgressState({ datasetType: "R03_CSV_SEZ", processedRows: imported, totalRows: totalLines, failedRows: failed, skippedRows: skipped, chunkIndex, chunkCount }), skipByReason },
-      }).eq("id", jobId);
+      }).eq("id", jobId).eq("status", "importing");
       chunkRows = [];
       return;
     }
@@ -731,7 +799,7 @@ async function importR03SezStreaming(
       records_skipped: skipped,
       updated_at: nowIso(),
       stats: { progress, skipByReason, passNumber },
-    }).eq("id", jobId);
+    }).eq("id", jobId).eq("status", "importing");
 
     logStep("batch_progress", {
       chunkIndex, chunkCount, passNumber,
@@ -799,6 +867,18 @@ async function importR03SezStreaming(
             totalRowsProcessed: globalRowIdx,
             totalLines,
             passNumber,
+          });
+          await persistPendingNextChunkJob({
+            admin,
+            jobId,
+            batchId,
+            checkpoint: pauseCheckpoint,
+            totalRows: totalLines,
+            processedRows: imported,
+            failedRows: failed,
+            skippedRows: skipped,
+            skipByReason: { ...skipByReason },
+            logStep,
           });
           break;
         }
@@ -1255,6 +1335,11 @@ serve(async (req) => {
         importingUpdate.started_at = nowIso();
       }
       await admin.from("territorial_dataset_jobs").update(importingUpdate).eq("id", jobId);
+      logStep("status_set_importing", {
+        isResume,
+        checkpointRow: existingCheckpoint?.globalRowIdx ?? 0,
+        checkpointPass: existingCheckpoint?.passNumber ?? 0,
+      });
 
       logStep("job_loaded", {
         datasetType: job.dataset_type,
@@ -1450,6 +1535,7 @@ serve(async (req) => {
 
         if (finalResult) {
           const totalProcessed = finalResult.processed ?? (finalResult.inserted + finalResult.updated);
+          const totalRows = Math.max(Number(job.records_total || 0), totalProcessed);
           updatePayload.records_imported = totalProcessed;
           updatePayload.records_errors = finalResult.failed;
           updatePayload.records_skipped = finalResult.skipped;
@@ -1467,14 +1553,16 @@ serve(async (req) => {
             progress: buildProgressState({
               datasetType: job.dataset_type,
               processedRows: totalProcessed,
-              totalRows: Number(job.records_total || totalProcessed),
+              totalRows,
               failedRows: finalResult.failed,
               skippedRows: finalResult.skipped,
-              chunkIndex: finalStatus === "imported"
-                ? (job.dataset_type === "R03_CSV_SEZ" ? Math.ceil(Number(job.records_total || totalProcessed) / R03_SEZ_CHUNK) : 1)
-                : 0,
+              chunkIndex: finalStatus === "pending_next_chunk"
+                ? (finalCheckpoint?.chunkIndex ?? 0)
+                : finalStatus === "imported"
+                  ? (job.dataset_type === "R03_CSV_SEZ" ? Math.ceil(totalRows / R03_SEZ_CHUNK) : 1)
+                  : 0,
               chunkCount: job.dataset_type === "R03_CSV_SEZ"
-                ? Math.ceil(Number(job.records_total || totalProcessed) / R03_SEZ_CHUNK)
+                ? Math.ceil(totalRows / R03_SEZ_CHUNK)
                 : 1,
             }),
           };
@@ -1492,8 +1580,12 @@ serve(async (req) => {
         } else {
           updatePayload.error_log = [{ reason: finalError }];
         }
-        await admin.from("territorial_dataset_jobs").update(updatePayload).eq("id", jobId);
-        logStep("job_finalized", { status: finalStatus });
+        const { error: finalizeError } = await admin.from("territorial_dataset_jobs").update(updatePayload).eq("id", jobId);
+        if (finalizeError) {
+          logStep("job_finalize_update_failed", { status: finalStatus, error: finalizeError.message });
+        } else {
+          logStep("job_finalized", { status: finalStatus });
+        }
       }
 
       return json({
