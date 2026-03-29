@@ -492,8 +492,8 @@ function computeRenderability(
 function qualityVariant(q: TerritorialDataQuality): ReportBadge["variant"] {
   switch (q) {
     case "official": return "official";
-    case "territorial_verified": return "official";
-    case "commercial_verified": return "official";
+    case "territorial_verified": return "elaborated"; // Not promoted to "official" — geo-verified ≠ institutional
+    case "commercial_verified": return "elaborated"; // Not promoted to "official" — commercial ≠ institutional
     case "commercial_partial": return "partial";
     case "elaborated": return "elaborated";
     case "unavailable": return "unavailable";
