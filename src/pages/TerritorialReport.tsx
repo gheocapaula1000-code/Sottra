@@ -24,6 +24,12 @@ const DEMO_URBAN_SIGNALS: UrbanTransformationInput[] = [
   { signal_key: "regen_area", signal_label: "Rigenerazione area ex-scalo", signal_family: "rigenerazione_urbana", signal_type: "recupero_area", signal_status: "approved", signal_stage: "approved", signal_direction: "supportive", geo_scope: "sub_comunale", evidence_level: "medium", source_basis: "variante_urbanistica", is_official: true },
 ];
 
+// Synthetic demo attractors — in production these come from a real source
+const DEMO_ATTRACTORS: AttractorInput[] = [
+  { signal_key: "uni_statale", signal_label: "Università Statale", signal_family: "poli_formativi", signal_type: "università", attractor_category: "istruzione_superiore", signal_status: "active", signal_direction: "supportive", geo_scope: "sub_comunale", proximity_hint: "immediate", intensity_hint: "strong", evidence_level: "strong", source_basis: "anagrafe_istruzione", is_official: true },
+  { signal_key: "stazione_centrale", signal_label: "Stazione Centrale", signal_family: "nodi_di_flusso", signal_type: "stazione_ferroviaria", attractor_category: "trasporto", signal_status: "active", signal_direction: "supportive", geo_scope: "sub_comunale", proximity_hint: "near", intensity_hint: "strong", evidence_level: "strong", source_basis: "rfi_rete", is_official: true },
+];
+
 const SECTION_ICONS: Record<string, React.ReactNode> = {
   territorial_identity: <MapPin className="h-4 w-4" />,
   precision_level: <Layers className="h-4 w-4" />,
