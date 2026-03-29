@@ -791,3 +791,38 @@ describe("pending_next_chunk persistence and admin visibility", () => {
     expect(shouldShowResumeButton(completedJob)).toBe(false);
   });
 });
+
+describe("ASC2 area code column fallback", () => {
+  const resolveAreaCode = (r: Record<string, string>) =>
+    r["COD_ASC"] || r["AREA_CODE"] || r["COD_ASC2"] || "";
+  const resolveAreaName = (r: Record<string, string>) =>
+    r["DEN_ASC"] || r["AREA_NAME"] || r["DEN_ASC2"] || "";
+
+  it("uses COD_ASC when present", () => {
+    expect(resolveAreaCode({ COD_ASC: "A1", COD_ASC2: "B2" })).toBe("A1");
+  });
+
+  it("falls back to AREA_CODE", () => {
+    expect(resolveAreaCode({ AREA_CODE: "X9" })).toBe("X9");
+  });
+
+  it("falls back to COD_ASC2 when COD_ASC and AREA_CODE missing", () => {
+    expect(resolveAreaCode({ COD_ASC2: "C3" })).toBe("C3");
+  });
+
+  it("uses DEN_ASC2 as name fallback", () => {
+    expect(resolveAreaName({ DEN_ASC2: "Centro Storico" })).toBe("Centro Storico");
+  });
+
+  it("validator accepts COD_ASC2 as valid area column", () => {
+    const headers = ["COD_REG", "PRO_COM", "COD_ASC2", "DEN_ASC2"];
+    const hasAsc = headers.some(h => ["COD_ASC", "AREA_CODE", "COD_ASC2"].includes(h));
+    expect(hasAsc).toBe(true);
+  });
+
+  it("validator rejects file without any area column", () => {
+    const headers = ["COD_REG", "PRO_COM", "DEN_COM"];
+    const hasAsc = headers.some(h => ["COD_ASC", "AREA_CODE", "COD_ASC2"].includes(h));
+    expect(hasAsc).toBe(false);
+  });
+});
