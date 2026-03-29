@@ -948,7 +948,7 @@ async function importAscCsv(
     const chunk = rows.slice(i, i + CHUNK);
     const dbRows = chunk.map((r, j) => {
       const areaCode = r["COD_ASC"] || r["AREA_CODE"] || r["COD_ASC2"] || "";
-      const areaName = r["DEN_ASC"] || r["AREA_NAME"] || "";
+      const areaName = r["DEN_ASC"] || r["AREA_NAME"] || r["DEN_ASC2"] || "";
       const comCode = r["PRO_COM_T"] || r["PRO_COM"] || "";
       const ascLevel = intSafe(r["LIVELLO"] || r["ASC_LEVEL"]);
       if (!areaCode) { errors.push({ idx: i + j, reason: "COD_ASC mancante" }); return null; }
