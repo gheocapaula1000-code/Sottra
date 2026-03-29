@@ -8,13 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MapPin, Shield, Layers, BarChart3, AlertTriangle, Info, ChevronDown, ChevronUp, TrendingUp, Anchor } from "lucide-react";
+import { MapPin, Shield, Layers, BarChart3, AlertTriangle, Info, ChevronDown, ChevronUp, TrendingUp, Anchor, Construction } from "lucide-react";
 import { resolveTerritorialData, type TerritorialDataResult } from "@/lib/territorialDataBackbone";
 import { buildTerritorialReport, type TerritorialReportViewModel, type ReportSectionVM, type ReportBadge, type SectionRenderMode } from "@/lib/zoneProfileEngine";
 import { badgeVariantClasses } from "@/lib/badgeUtils";
 import { buildZoneCorrespondence, type ZoneCorrespondenceResult } from "@/lib/zoneCorrespondenceEngine";
 import { buildZoneGrowthSignals, growthStatusLabel, type ZoneGrowthSignalsResult, type GrowthSignal } from "@/lib/zoneGrowthSignals";
+import { buildUrbanTransformations, transformationStatusLabel, stageLabel, proximityLabel, relevanceLabel, type UrbanTransformationResult, type UrbanTransformationInput } from "@/lib/zoneUrbanTransformations";
 import AppHeader from "@/components/AppHeader";
+
+// Synthetic demo signals — in production these come from a real source
+const DEMO_URBAN_SIGNALS: UrbanTransformationInput[] = [
+  { signal_key: "metro_m4", signal_label: "Prolungamento metropolitana M4", signal_family: "opere_pubbliche", signal_type: "infrastruttura", signal_status: "in_progress", signal_stage: "in_progress", signal_direction: "supportive", geo_scope: "sub_comunale", evidence_level: "strong", source_basis: "delibera_comunale", is_official: true },
+  { signal_key: "regen_area", signal_label: "Rigenerazione area ex-scalo", signal_family: "rigenerazione_urbana", signal_type: "recupero_area", signal_status: "approved", signal_stage: "approved", signal_direction: "supportive", geo_scope: "sub_comunale", evidence_level: "medium", source_basis: "variante_urbanistica", is_official: true },
+];
 
 const SECTION_ICONS: Record<string, React.ReactNode> = {
   territorial_identity: <MapPin className="h-4 w-4" />,
@@ -176,6 +183,7 @@ export default function TerritorialReport() {
   const [vm, setVm] = useState<TerritorialReportViewModel | null>(null);
   const [corr, setCorr] = useState<ZoneCorrespondenceResult | null>(null);
   const [growth, setGrowth] = useState<ZoneGrowthSignalsResult | null>(null);
+  const [urban, setUrban] = useState<UrbanTransformationResult | null>(null);
 
   const generate = () => {
     const data = resolveTerritorialData({
@@ -185,9 +193,11 @@ export default function TerritorialReport() {
     const { viewModel } = buildTerritorialReport(data);
     const c = buildZoneCorrespondence(data);
     const g = buildZoneGrowthSignals(data, c);
+    const u = buildUrbanTransformations(data, c, DEMO_URBAN_SIGNALS);
     setVm(viewModel);
     setCorr(c);
     setGrowth(g);
+    setUrban(u);
   };
 
   return (
@@ -245,6 +255,46 @@ export default function TerritorialReport() {
 
             {/* Zone Correspondence + Growth Signals */}
             {corr && growth && <GrowthSignalsPanel growth={growth} corr={corr} />}
+
+            {/* Urban Transformations */}
+            {urban && urban.urban_transformation_summary.narrative_mode !== "hidden" && (
+              <Card className="border-border/50">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Construction className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Trasformazioni e opere rilevate</CardTitle>
+                    </div>
+                    <Badge variant={urban.urban_transformation_summary.overall_transformation_signal_status === "supportive" ? "default" : "secondary"} className="text-[10px]">
+                      {transformationStatusLabel(urban.urban_transformation_summary.overall_transformation_signal_status)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-2">
+                  {urban.urban_transformation_signals
+                    .filter(s => s.territorial_relevance !== "not_determinable")
+                    .map(s => (
+                    <div key={s.signal_key} className="flex items-start gap-2 text-sm">
+                      <span className={`text-xs font-bold mt-0.5 ${s.signal_direction === "supportive" ? "text-emerald-500" : "text-muted-foreground"}`}>
+                        {s.signal_direction === "supportive" ? "↑" : "—"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-foreground">{s.signal_label}</span>
+                          <Badge variant="outline" className="text-[9px] py-0">{stageLabel(s.signal_stage)}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground/80">
+                          {proximityLabel(s.proximity_relevance)} · Rilevanza {relevanceLabel(s.territorial_relevance).toLowerCase()} · Evidenza {s.evidence_level}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {urban.urban_transformation_limitations.transparency_notes.map((n, i) => (
+                    <p key={i} className="text-xs text-muted-foreground/80 leading-relaxed">{n}</p>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Sections */}
             <div className="space-y-3">

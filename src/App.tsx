@@ -66,6 +66,7 @@ const AdminSourcesRoadmap = lazyWithRecovery(() => import("./pages/AdminSourcesR
 const AdminAnncsuReadiness = lazyWithRecovery(() => import("./pages/AdminAnncsuReadiness"));
 const AdminAnncsuMatchAudit = lazyWithRecovery(() => import("./pages/AdminAnncsuMatchAudit"));
 const AdminZoneCorrespondence = lazyWithRecovery(() => import("./pages/AdminZoneCorrespondence"));
+const AdminZoneUrbanTransformations = lazyWithRecovery(() => import("./pages/AdminZoneUrbanTransformations"));
 
 const queryClient = new QueryClient();
 
@@ -104,6 +105,7 @@ const App = () => (
                     <Route path="/admin/anncsu-readiness" element={<ProtectedAdminRoute><AdminAnncsuReadiness /></ProtectedAdminRoute>} />
                     <Route path="/admin/anncsu-match-audit" element={<ProtectedAdminRoute><AdminAnncsuMatchAudit /></ProtectedAdminRoute>} />
                     <Route path="/admin/zone-correspondence" element={<ProtectedAdminRoute><AdminZoneCorrespondence /></ProtectedAdminRoute>} />
+                    <Route path="/admin/zone-urban-transformations" element={<ProtectedAdminRoute><AdminZoneUrbanTransformations /></ProtectedAdminRoute>} />
                     <Route path="/territorial-report" element={<ProtectedRoute><TerritorialReport /></ProtectedRoute>} />
                     <Route path="/scan" element={<TrialProtectedRoute><Scan /></TrialProtectedRoute>} />
                     <Route path="/result" element={<TrialProtectedRoute><Result /></TrialProtectedRoute>} />
