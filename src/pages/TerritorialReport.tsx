@@ -14,7 +14,14 @@ import { buildTerritorialReport, type TerritorialReportViewModel, type ReportSec
 import { badgeVariantClasses } from "@/lib/badgeUtils";
 import { buildZoneCorrespondence, type ZoneCorrespondenceResult } from "@/lib/zoneCorrespondenceEngine";
 import { buildZoneGrowthSignals, growthStatusLabel, type ZoneGrowthSignalsResult, type GrowthSignal } from "@/lib/zoneGrowthSignals";
+import { buildUrbanTransformations, transformationStatusLabel, stageLabel, proximityLabel, relevanceLabel, type UrbanTransformationResult, type UrbanTransformationInput } from "@/lib/zoneUrbanTransformations";
 import AppHeader from "@/components/AppHeader";
+
+// Synthetic demo signals — in production these come from a real source
+const DEMO_URBAN_SIGNALS: UrbanTransformationInput[] = [
+  { signal_key: "metro_m4", signal_label: "Prolungamento metropolitana M4", signal_family: "opere_pubbliche", signal_type: "infrastruttura", signal_status: "in_progress", signal_stage: "in_progress", signal_direction: "supportive", geo_scope: "sub_comunale", evidence_level: "strong", source_basis: "delibera_comunale", is_official: true },
+  { signal_key: "regen_area", signal_label: "Rigenerazione area ex-scalo", signal_family: "rigenerazione_urbana", signal_type: "recupero_area", signal_status: "approved", signal_stage: "approved", signal_direction: "supportive", geo_scope: "sub_comunale", evidence_level: "medium", source_basis: "variante_urbanistica", is_official: true },
+];
 
 const SECTION_ICONS: Record<string, React.ReactNode> = {
   territorial_identity: <MapPin className="h-4 w-4" />,
