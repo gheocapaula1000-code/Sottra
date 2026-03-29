@@ -1599,8 +1599,24 @@ const Result = () => {
 
           <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} lowConfidence={lowConfidence} />
 
-          {/* WOW Snapshot — immediate value panel */}
-          <SectionSafe><WowSnapshotPanel snapshot={wowSnapshot} loading={result.pricing.status === "loading"} /></SectionSafe>
+          {/* ═══ WOW PANEL — Tiers 1+2 (colpo d'occhio + decisione) ═══ */}
+          <SectionSafe>
+            <WowPanel
+              snapshot={wowSnapshot}
+              loading={result.pricing.status === "loading"}
+              outlookLabel={null}
+              outlookVariant="muted"
+              alignmentLabel={houseDiff ? (
+                houseDiff.address_alignment.photo_address_alignment === "high_alignment" ? "Forte" :
+                houseDiff.address_alignment.photo_address_alignment === "medium_alignment" ? "Medio" :
+                houseDiff.address_alignment.photo_address_alignment === "low_alignment" ? "Debole" : null
+              ) : null}
+              alignmentVariant={houseDiff ? (
+                houseDiff.address_alignment.photo_address_alignment === "high_alignment" ? "positive" :
+                houseDiff.address_alignment.photo_address_alignment === "medium_alignment" ? "neutral" : "warning"
+              ) : "muted"}
+            />
+          </SectionSafe>
 
           {/* Manual address override — shown after identify success, not during initial scan */}
           {identifyDone && !lowConfidence && !identifyFailed && (
@@ -1629,32 +1645,36 @@ const Result = () => {
 
           {!lowConfidence && !identifyFailed && (
             <>
+              {/* ═══ TIER 2 — Decisione iniziale (7-15s) ═══ */}
+
               {/* A) Profilo Rapido */}
               <SectionSafe><ProfiloRapidoCard data={result.profiloRapido.data as import("@/types/report").ProfiloRapidoData | null} loading={result.profiloRapido.status === "loading"} /></SectionSafe>
 
-              {/* B) Immobile e Facciata */}
-              <SectionSafe><ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} /></SectionSafe>
-
-              {/* B.1) Specificità immobile */}
+              {/* Specificità immobile — emerges early for decision-making */}
               <SectionSafe><HouseDifferentiationCard diff={houseDiff} loading={scanning} /></SectionSafe>
 
-              {/* C) Contesto e Vicinato */}
-              <SectionSafe><ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} /></SectionSafe>
-
-              {/* D) Zona OMI — FROZEN */}
+              {/* Zona OMI — key pricing context */}
               <SectionSafe><OmiCard data={result.omiZone.data as import("@/types").OmiZoneData | null} loading={result.omiZone.status === "loading"} /></SectionSafe>
 
-              {/* E) Servizi e POI */}
-              <SectionSafe><PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} /></SectionSafe>
-
-              {/* F) Mercato live */}
+              {/* Mercato live — pricing supports the snapshot */}
               <SectionSafe><PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} /></SectionSafe>
               <SectionSafe><MarketContextCard data={result.marketContext.data as MarketContextData | null} loading={result.marketContext.status === "loading"} /></SectionSafe>
 
-              {/* G) Posizionamento commerciale */}
+              {/* ═══ TIER 3 — Approfondimento ═══ */}
+
+              {/* Immobile e Facciata */}
+              <SectionSafe><ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} /></SectionSafe>
+
+              {/* Contesto e Vicinato */}
+              <SectionSafe><ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} /></SectionSafe>
+
+              {/* Servizi e POI */}
+              <SectionSafe><PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} /></SectionSafe>
+
+              {/* Posizionamento commerciale */}
               <SectionSafe><PosizionamentoCommercialeCard data={result.posizionamentoCommerciale.data as import("@/types/report").PosizionamentoCommercialeData | null} loading={result.posizionamentoCommerciale.status === "loading"} /></SectionSafe>
 
-              {/* H) Profilo Area */}
+              {/* Profilo Area */}
               <SectionSafe><ProfiloAreaCard data={result.profiloArea.data as import("@/types/report").ProfiloAreaData | null} loading={result.profiloArea.status === "loading"} /></SectionSafe>
 
               {/* Territorial modules */}
@@ -1662,7 +1682,7 @@ const Result = () => {
               <SectionSafe><IstatCard data={result.istatDemographic.data as import("@/types").IstatDemographicData | null} loading={result.istatDemographic.status === "loading"} /></SectionSafe>
               <SectionSafe><TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} /></SectionSafe>
 
-              {/* M) Profilo di Zona — Indice di Vicinato */}
+              {/* Profilo di Zona — Indice di Vicinato */}
               <SectionSafe>
                 <NeighborhoodIndexCard
                   index={calculateNeighborhoodIndex(
@@ -1675,25 +1695,25 @@ const Result = () => {
                 />
               </SectionSafe>
 
-              {/* Tier 2 */}
+              {/* Convergenza + Opportunità */}
               <SectionSafe><ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} /></SectionSafe>
               <SectionSafe><OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} /></SectionSafe>
 
-              {/* I) Scenario 5/10/20 anni */}
+              {/* Scenario temporale */}
               <SectionSafe><ScenarioTemporaleCard data={result.scenarioTemporale.data as import("@/types/report").ScenarioTemporaleData | null} loading={result.scenarioTemporale.status === "loading"} /></SectionSafe>
 
-              {/* Time/infra modules */}
+              {/* Time/infra */}
               <SectionSafe><TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} /></SectionSafe>
               <SectionSafe><InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} /></SectionSafe>
               <SectionSafe><SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} /></SectionSafe>
 
-              {/* J) Sintesi Finale */}
+              {/* Sintesi Finale */}
               <SectionSafe><SintesiFinaleCard data={result.sintesiFinale.data as import("@/types/report").SintesiFinaleData | null} loading={result.sintesiFinale.status === "loading"} /></SectionSafe>
 
-              {/* L) Priorità / Criticità */}
+              {/* Priorità / Criticità */}
               <SectionSafe><PrioritaCriticitaCard data={result.prioritaCriticita.data as PrioritaCriticitaData | null} loading={result.prioritaCriticita.status === "loading"} /></SectionSafe>
 
-              {/* K) Trasparenza Fonti */}
+              {/* Trasparenza Fonti */}
               {!scanning && <SectionSafe><TrasparenzaFontiCard data={buildTrasparenzaFonti(result)} /></SectionSafe>}
 
               {/* Discrete quality footer */}
