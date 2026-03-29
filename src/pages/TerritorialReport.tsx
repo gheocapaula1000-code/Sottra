@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Shield, Layers, BarChart3, AlertTriangle, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { resolveTerritorialData } from "@/lib/territorialDataBackbone";
 import { buildTerritorialReport, type TerritorialReportViewModel, type ReportSectionVM, type ReportBadge, type SectionRenderMode } from "@/lib/zoneProfileEngine";
+import { badgeVariantClasses } from "@/lib/badgeUtils";
 import AppHeader from "@/components/AppHeader";
 
 const SECTION_ICONS: Record<string, React.ReactNode> = {
