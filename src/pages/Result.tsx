@@ -1,7 +1,7 @@
 import { useEffect, useRef, Component, type ReactNode, type ErrorInfo } from "react";
 import AppHeader from "@/components/AppHeader";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bookmark, TrendingUp, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers, Camera, CheckCircle2, BarChart3, Gem } from "lucide-react";
+import { ArrowLeft, Bookmark, TrendingUp, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers, Camera, CheckCircle2, BarChart3, Gem, Zap, Wrench } from "lucide-react";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,10 @@ import {
 import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/types/report";
 import AddressOverrideForm from "@/components/AddressOverrideForm";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
+import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib/zoneValueEngine";
+import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
+import { buildWowSnapshot, attentionSignalLabel, attentionSignalColor } from "@/lib/sottraWowSnapshot";
+import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
 
 /* ── Section-level ErrorBoundary ──────────────────────── */
 
@@ -211,6 +215,65 @@ function isSectionPublishable(status: string, data: unknown): boolean {
   if (status === "error" || !data) return false;
   if (typeof data === "object" && data !== null && (data as Record<string, unknown>).sourceType === "unavailable") return false;
   return true;
+}
+
+/* ── WOW Snapshot Panel ──────────────────────────────── */
+
+function WowSnapshotPanel({ snapshot, loading }: { snapshot: WowSnapshot | null; loading: boolean }) {
+  if (loading) return <SectionSkeleton />;
+  if (!snapshot || snapshot.narrative_mode === "hidden") return null;
+
+  const isPartial = snapshot.narrative_mode === "partial";
+  const attnColor = attentionSignalColor(snapshot.attenzione_area);
+
+  return (
+    <Section className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
+          <Zap className="h-4 w-4 text-primary" />
+        </div>
+        <span className="font-semibold text-foreground text-sm tracking-tight">Snapshot Immediato</span>
+        {isPartial && <Badge variant="secondary" className="text-[10px]">Parziale</Badge>}
+      </div>
+
+      {/* Value + Renovation row */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {snapshot.valore_al_mq && (
+          <div className="rounded-xl bg-background/60 border border-border/40 p-3">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Valore al m²</span>
+            <p className="text-xl font-extrabold text-foreground mt-0.5">{snapshot.valore_al_mq}</p>
+            {snapshot.valore_range && <p className="text-[10px] text-muted-foreground mt-0.5">{snapshot.valore_range}</p>}
+          </div>
+        )}
+        {snapshot.costo_ristrutturazione && (
+          <div className="rounded-xl bg-background/60 border border-border/40 p-3">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Wrench className="h-3 w-3" />Costo ristr.</span>
+            <p className="text-xl font-extrabold text-foreground mt-0.5">{snapshot.costo_ristrutturazione}</p>
+            {snapshot.costo_range && <p className="text-[10px] text-muted-foreground mt-0.5">{snapshot.costo_range}</p>}
+          </div>
+        )}
+      </div>
+
+      {/* Meta row */}
+      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+        <div><span className="text-muted-foreground">Affidabilità</span><p className="font-semibold text-foreground">{snapshot.affidabilita_valore}</p></div>
+        <div><span className="text-muted-foreground">Segnali zona</span><p className="font-semibold text-foreground">{snapshot.segnali_zona}</p></div>
+      </div>
+
+      {/* Attention signal */}
+      <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3">
+        <span className="text-xs text-muted-foreground">Attenzione area</span>
+        <span className={cn("text-xs font-bold", attnColor)}>{attentionSignalLabel(snapshot.attenzione_area)}</span>
+      </div>
+
+      {/* Primary limitation — always visible */}
+      <div className="flex items-start gap-2 text-[10px] text-muted-foreground/70">
+        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+        <span>{snapshot.limite_principale}</span>
+      </div>
+      <p className="text-[9px] text-muted-foreground/30 mt-2">Snapshot orientativo — non sostituisce una valutazione professionale</p>
+    </Section>
+  );
 }
 
 /* ── cards ────────────────────────────────────────────── */
@@ -1450,6 +1513,31 @@ const Result = () => {
   const publishedCount = completedModules.filter(k => isSectionPublishable(result[k].status, result[k].data)).length;
   const excludedCount = completedModules.length - publishedCount;
 
+  // ── WOW Snapshot computation ──
+  const pricingData = result.pricing.data as PricingData | null;
+  const streetEvidence = identifyData?.streetEvidence;
+  const wowSnapshot: WowSnapshot | null = (() => {
+    if (!identifyDone || lowConfidence || identifyFailed) return null;
+    try {
+      // Stub minimal zone correspondence for snapshot
+      const stubCorr = {
+        zone_identity: { geo_level_reale: "zona_omi" as const, geo_code: pricingData?.omiGeoLevel ?? "unknown", geo_label: identifyData?.address?.split(",").pop()?.trim() ?? "Zona", normalized_path: "", zone_type_label: pricingData?.omiGeoLevel === "microzona_omi" ? "Microzona OMI" : pricingData?.omiGeoLevel === "comune" ? "Livello comunale" : "Zona OMI", zone_corresponds_to: "", zone_anchor_strength: "medium" as const },
+        zone_correspondence: { corresponds_to_microzona_omi: pricingData?.omiGeoLevel === "microzona_omi", corresponds_to_asc: false, corresponds_to_section_or_aggregate: false, corresponds_to_comune_only: pricingData?.omiGeoLevel === "comune", primary_zone_basis: "OMI", secondary_zone_basis: [] as string[], fallback_used: !pricingData?.polygonMatch, fallback_weight: (pricingData?.polygonMatch ? "none" : pricingData?.omiGeoLevel === "comune" ? "high" : "medium") as "none" | "low" | "medium" | "high", false_specificity_risk: (pricingData?.omiGeoLevel === "comune" ? "medium" : "none") as "none" | "low" | "medium" | "high" },
+        zone_precision: { precision_status: "medium" as const, sub_comunale_support_status: "unavailable" as const, market_zone_support_status: "direct" as const, territorial_support_status: "partial" as const, max_safe_claim_level: "zona_omi" as const },
+        zone_limitations: { missing_sub_comunale: true, market_only_comunale: false, weak_zone_anchor: false, fallback_dominant: false, blocking_gaps: [] as string[], transparency_notes: [] as string[] },
+      };
+      // Stub minimal territorial data for value engine
+      const block = (avail: string, geo: string) => ({ availability: avail, quality: "official" as const, geo_level: geo, source_key: "live", source_label: "live", is_derived: false, officiality: "official" as const, limitations: [] as string[] });
+      const stubTd = {
+        territorial_identity: { geo_level: "zona_omi" as const, geo_code: "live", geo_label: identifyData?.address?.split(",").pop()?.trim() ?? "", normalized_path: "", resolution_method: "direct" },
+        territorial_datasets: { demographic: block("unavailable", "unknown"), territorial_structure: block("full", "comune"), sub_municipal: block("unavailable", "unknown"), omi_linkage: block(pricingData ? "full" : "unavailable", "zona_omi"), census_sections: block("unavailable", "unknown"), environmental: block("unavailable", "unknown"), services: block("unavailable", "unknown"), mobility: block("unavailable", "unknown") },
+      };
+      const value = buildZoneValue({ data: stubTd as any, corr: stubCorr as any, omiMin: pricingData?.prezzoMqMin, omiMax: pricingData?.prezzoMqMax, omiGeoLevel: pricingData?.omiGeoLevel, omiPolygonMatch: pricingData?.polygonMatch });
+      const reno = buildRenovationEstimate({ zone_geo_code: "live", zone_geo_level: "zona_omi", hasPhoto: true, visibleFloors: streetEvidence?.photoAnalysis?.visibleFloors, buildingType: streetEvidence?.photoAnalysis?.buildingType, facadeConsistencyLevel: streetEvidence?.facadeConsistencyLevel, photoReadability: streetEvidence?.photoAnalysis?.photoReadability, value_per_sqm_mid: value.value_result.value_per_sqm_mid });
+      return buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any });
+    } catch { return null; }
+  })();
+
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <AppHeader rightContent={
@@ -1482,6 +1570,9 @@ const Result = () => {
           )}
 
           <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} lowConfidence={lowConfidence} />
+
+          {/* WOW Snapshot — immediate value panel */}
+          <SectionSafe><WowSnapshotPanel snapshot={wowSnapshot} loading={result.pricing.status === "loading"} /></SectionSafe>
 
           {/* Manual address override — shown after identify success, not during initial scan */}
           {identifyDone && !lowConfidence && !identifyFailed && (
