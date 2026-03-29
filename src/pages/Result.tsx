@@ -1612,9 +1612,29 @@ const Result = () => {
       };
       const value = buildZoneValue({ data: stubTd as any, corr: stubCorr as any, omiMin: pricingData?.prezzoMqMin, omiMax: pricingData?.prezzoMqMax, omiGeoLevel: pricingData?.omiGeoLevel, omiPolygonMatch: pricingData?.polygonMatch });
       const reno = buildRenovationEstimate({ zone_geo_code: "live", zone_geo_level: "zona_omi", hasPhoto: true, visibleFloors: streetEvidence?.photoAnalysis?.visibleFloors, buildingType: streetEvidence?.photoAnalysis?.buildingType, facadeConsistencyLevel: streetEvidence?.facadeConsistencyLevel, photoReadability: streetEvidence?.photoAnalysis?.photoReadability, value_per_sqm_mid: value.value_result.value_per_sqm_mid });
-      return buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any });
+      // Build house differentiation for specificity label
+      const hDiff = buildHouseDifferentiation({
+        photo_present: true,
+        geo_present: hasValidCoords,
+        lat: state?.lat ?? null,
+        lng: state?.lng ?? null,
+        address_raw: identifyData?.address ?? null,
+        address_resolution: null,
+        building_profile: null,
+        identify_hints: identifyData ? {
+          confidence: identifyData.confidence ?? 0.5,
+          facade_visible: streetEvidence?.photoAnalysis?.facadeVisible ?? undefined,
+          entrance_visible: streetEvidence?.photoAnalysis?.entranceVisible ?? undefined,
+          civic_visible: streetEvidence?.photoAnalysis?.civicVisible ?? undefined,
+          neighboring_visible: streetEvidence?.photoAnalysis?.neighboringVisible ?? undefined,
+        } : null,
+      });
+      return { snapshot: buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any, specificity_strength: hDiff.specificity.specificity_strength }), houseDiff: hDiff };
     } catch { return null; }
   })();
+
+  const wowSnapshot = wowAndDiff?.snapshot ?? null;
+  const houseDiff = wowAndDiff?.houseDiff ?? null;
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
