@@ -193,7 +193,7 @@ export default function TerritorialReport() {
   const [growth, setGrowth] = useState<ZoneGrowthSignalsResult | null>(null);
   const [urban, setUrban] = useState<UrbanTransformationResult | null>(null);
   const [attractors, setAttractors] = useState<AttractorPressureResult | null>(null);
-
+  const [boundaries, setBoundaries] = useState<ZoneBoundaryResult | null>(null);
   const generate = () => {
     const data = resolveTerritorialData({
       geo_input: { comune_istat_code: istatCode },
