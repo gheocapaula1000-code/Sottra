@@ -64,6 +64,7 @@ const AdminBuildingProfile = lazyWithRecovery(() => import("./pages/AdminBuildin
 const AdminAddressResolution = lazyWithRecovery(() => import("./pages/AdminAddressResolution"));
 const AdminSourcesRoadmap = lazyWithRecovery(() => import("./pages/AdminSourcesRoadmap"));
 const AdminAnncsuReadiness = lazyWithRecovery(() => import("./pages/AdminAnncsuReadiness"));
+const AdminAnncsuMatchAudit = lazyWithRecovery(() => import("./pages/AdminAnncsuMatchAudit"));
 
 const queryClient = new QueryClient();
 
