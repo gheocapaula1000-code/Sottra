@@ -996,6 +996,27 @@ export function buildBuildingReportViewModel(
     fallback_count: bq.fallback_count,
   };
 
+  // Phase 5: address precision panel
+  const ar = bl.address_resolution;
+  let address_precision_panel: BuildingReportSectionVM | null = null;
+  if (ar && rr.sections.address_precision?.can_render) {
+    const addrFacts: ReportKeyFact[] = [
+      { label: "Indirizzo normalizzato", value: ar.address_identity.normalized_address_string || "—" },
+      { label: "Match strada", value: streetMatchLabel(ar.address_resolution.matched_street_status) },
+      { label: "Confidenza strada", value: `${Math.round(ar.address_resolution.matched_street_confidence * 100)}%` },
+      { label: "Match civico", value: ar.civic_resolution.civic_input_present
+        ? civicMatchLabel(ar.civic_resolution.civic_match_status) : "Assente" },
+      { label: "Civico = verità stabile?", value: ar.civic_resolution.civic_supported_as_building_truth ? "Sì" : "No" },
+      { label: "Qualità indirizzo", value: addressQualityLabel(ar.address_quality.overall_address_quality) },
+      { label: "Rischio sovraprecisione", value: ar.address_quality.overprecision_risk },
+    ];
+    address_precision_panel = sectionOrNull("address_precision", "Precisione indirizzo", rr,
+      addrFacts,
+      ar.address_limitations.transparency_notes.slice(0, 3),
+      [{ label: addressQualityLabel(ar.address_quality.overall_address_quality), variant: "partial" as ReportBadge["variant"] }],
+    );
+  }
+
   // Hidden sections
   const hidden_sections: string[] = [];
   for (const [key, val] of Object.entries(rr.sections)) {
@@ -1012,6 +1033,7 @@ export function buildBuildingReportViewModel(
     limitations_panel,
     transparency_panel,
     unsupported_claims_panel,
+    address_precision_panel,
     hidden_sections,
   };
 }
