@@ -724,7 +724,7 @@ function buildLimitations(
     notes.push("Indirizzo preciso non disponibile o approssimativo");
   }
   if (missingCivic) {
-    notes.push("Layer via/civico non ancora introdotto nel sistema");
+    notes.push("Civico non disponibile o non verificato contro registro ufficiale");
   }
   if (missingRegistry) {
     gaps.push("Registro edifici non ancora attivo");
