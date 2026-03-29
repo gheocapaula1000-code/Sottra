@@ -185,7 +185,8 @@ export type BuildingReportSectionKey =
   | "supported_facts"
   | "quality"
   | "limitations"
-  | "unsupported_claims";
+  | "unsupported_claims"
+  | "address_precision";
 
 export interface BuildingSectionRenderability {
   can_render: boolean;
