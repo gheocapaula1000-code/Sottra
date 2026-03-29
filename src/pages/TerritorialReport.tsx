@@ -191,6 +191,7 @@ export default function TerritorialReport() {
   const [corr, setCorr] = useState<ZoneCorrespondenceResult | null>(null);
   const [growth, setGrowth] = useState<ZoneGrowthSignalsResult | null>(null);
   const [urban, setUrban] = useState<UrbanTransformationResult | null>(null);
+  const [attractors, setAttractors] = useState<AttractorPressureResult | null>(null);
 
   const generate = () => {
     const data = resolveTerritorialData({
@@ -201,10 +202,12 @@ export default function TerritorialReport() {
     const c = buildZoneCorrespondence(data);
     const g = buildZoneGrowthSignals(data, c);
     const u = buildUrbanTransformations(data, c, DEMO_URBAN_SIGNALS);
+    const a = buildAttractorsPressure(data, c, DEMO_ATTRACTORS);
     setVm(viewModel);
     setCorr(c);
     setGrowth(g);
     setUrban(u);
+    setAttractors(a);
   };
 
   return (
