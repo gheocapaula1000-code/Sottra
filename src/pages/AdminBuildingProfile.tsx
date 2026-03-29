@@ -18,6 +18,7 @@ export default function AdminBuildingProfile() {
   const [istatCode, setIstatCode] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
+  const [address, setAddress] = useState("");
   const [profile, setProfile] = useState<BuildingProfile | null>(null);
   const [vm, setVm] = useState<BuildingReportViewModel | null>(null);
 
@@ -31,6 +32,7 @@ export default function AdminBuildingProfile() {
       territorial_data: td,
       lat: latN,
       lng: lngN,
+      address: address || null,
       has_photo: false,
       identification_confidence: latN ? 0.6 : 0,
       identification_mode: latN ? "coordinate" : "territorial_only",
@@ -66,6 +68,7 @@ export default function AdminBuildingProfile() {
               <Input placeholder="Lat (opz.)" value={lat} onChange={e => setLat(e.target.value)} />
               <Input placeholder="Lng (opz.)" value={lng} onChange={e => setLng(e.target.value)} />
             </div>
+            <Input placeholder="Indirizzo (opz. es. Via Roma 12)" value={address} onChange={e => setAddress(e.target.value)} />
             <Button onClick={run} className="w-full">Genera profilo edificio</Button>
           </CardContent>
         </Card>
@@ -84,7 +87,7 @@ export default function AdminBuildingProfile() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Precisione</span><span className="font-medium">{profile.building_identity.identification_precision}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Puntuale</span><span className="font-medium">{profile.building_identity.is_point_specific ? "Sì" : "No"}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Livello edificio</span><span className="font-medium">{profile.building_identity.is_building_level_supported ? "Supportato" : "No"}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Via/civico</span><span className="font-medium">Non introdotto</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Via/civico</span><span className="font-medium">{profile.building_identity.is_address_level_supported ? "Supportato" : profile.building_localization.address_resolution ? "Layer applicato" : "Non fornito"}</span></div>
               </CardContent>
             </Card>
 

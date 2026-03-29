@@ -61,6 +61,7 @@ const AdminTerritorialBackbone = lazyWithRecovery(() => import("./pages/AdminTer
 const TerritorialReport = lazyWithRecovery(() => import("./pages/TerritorialReport"));
 const AdminZoneProfile = lazyWithRecovery(() => import("./pages/AdminZoneProfile"));
 const AdminBuildingProfile = lazyWithRecovery(() => import("./pages/AdminBuildingProfile"));
+const AdminAddressResolution = lazyWithRecovery(() => import("./pages/AdminAddressResolution"));
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,7 @@ const App = () => (
                     <Route path="/admin/territorial-backbone" element={<ProtectedAdminRoute><AdminTerritorialBackbone /></ProtectedAdminRoute>} />
                     <Route path="/admin/zone-profile" element={<ProtectedAdminRoute><AdminZoneProfile /></ProtectedAdminRoute>} />
                     <Route path="/admin/building-profile" element={<ProtectedAdminRoute><AdminBuildingProfile /></ProtectedAdminRoute>} />
+                    <Route path="/admin/address-resolution" element={<ProtectedAdminRoute><AdminAddressResolution /></ProtectedAdminRoute>} />
                     <Route path="/territorial-report" element={<ProtectedRoute><TerritorialReport /></ProtectedRoute>} />
                     <Route path="/scan" element={<TrialProtectedRoute><Scan /></TrialProtectedRoute>} />
                     <Route path="/result" element={<TrialProtectedRoute><Result /></TrialProtectedRoute>} />

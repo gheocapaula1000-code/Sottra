@@ -1,12 +1,12 @@
 /**
- * Building Profile Engine — Sottra Phase 4
+ * Building Profile Engine — Sottra Phase 4+5
  *
  * Produces a building/property profile from the territorial backbone,
  * clearly distinguishing direct facts, contextual facts, derived facts
  * and unsupported claims.
  *
- * Does NOT touch OMI logic. Does NOT introduce vie/civici as an operative layer.
- * Does NOT invent building-specific data not backed by real sources.
+ * Phase 5 addition: integrates Address Resolution Engine as an optional
+ * precision layer — never promoting address parsing to building truth.
  */
 
 import type {
@@ -28,6 +28,14 @@ import {
   type ReportBadge,
   type ReportKeyFact,
 } from "@/lib/zoneProfileEngine";
+import {
+  resolveAddress,
+  addressFactSupportLevel,
+  addressQualityLabel,
+  streetMatchLabel,
+  civicMatchLabel,
+  type AddressResolutionResult,
+} from "@/lib/addressResolutionEngine";
 
 /* ═══════════════════════════════════════════════════════════
    SUPPORT LEVEL — direct vs contextual vs derived
@@ -89,6 +97,8 @@ export interface BuildingLocalization {
   coordinate_status: CoordinateStatus;
   address_status: AddressStatus;
   civic_status: AddressStatus;
+  /** Phase 5: full address resolution layer (null if no address input) */
+  address_resolution: AddressResolutionResult | null;
 }
 
 export interface BuildingContext {
@@ -175,7 +185,8 @@ export type BuildingReportSectionKey =
   | "supported_facts"
   | "quality"
   | "limitations"
-  | "unsupported_claims";
+  | "unsupported_claims"
+  | "address_precision";
 
 export interface BuildingSectionRenderability {
   can_render: boolean;
@@ -231,6 +242,8 @@ export interface BuildingReportViewModel {
     fallback_count: number;
   };
   unsupported_claims_panel: BuildingReportSectionVM | null;
+  /** Phase 5: address precision panel */
+  address_precision_panel: BuildingReportSectionVM | null;
   hidden_sections: string[];
 }
 
@@ -265,7 +278,7 @@ export function buildBuildingProfile(input: BuildingProfileInput): BuildingProfi
   const localization = buildLocalization(input, td, zp);
   const context = buildContext(td, zp);
   const facts = buildFacts(input, td, zp, identity, localization);
-  const bounds = buildBounds(td, zp, identity);
+  const bounds = buildBounds(td, zp, identity, localization);
   const quality = buildQuality(td, zp, identity, localization);
   const limitations = buildLimitations(identity, localization);
   const summary = buildSummary(identity, localization, quality, limitations, td);
@@ -344,13 +357,37 @@ function buildLocalization(
   const hasAddress = !!input.address;
 
   const coordStatus: CoordinateStatus = hasCoords ? "available" : "unavailable";
-  const addrStatus: AddressStatus = hasAddress ? "approximate" : "not_introduced_yet";
 
   let method = "territorial_resolution";
   if (hasCoords) method = "coordinate_lookup";
   if (input.has_photo) method = "photo_scan_with_coordinates";
 
   const conf = hasCoords ? 0.7 : 0.3;
+
+  // Phase 5: resolve address if provided
+  let addressRes: AddressResolutionResult | null = null;
+  let addrStatus: AddressStatus = "not_introduced_yet";
+  let civicStatus: AddressStatus = "not_introduced_yet";
+
+  if (hasAddress && input.address) {
+    addressRes = resolveAddress({
+      raw_address: input.address,
+      comune: td.territorial_identity.geo_label || undefined,
+      lat: input.lat,
+      lng: input.lng,
+      resolved_geo_level: td.territorial_identity.geo_level,
+    });
+
+    // Map address quality to status — never "available" without registry
+    const aq = addressRes.address_quality.overall_address_quality;
+    addrStatus = aq === "strong" ? "available"
+      : aq === "moderate" || aq === "weak" ? "approximate"
+      : "not_determinable";
+
+    civicStatus = addressRes.civic_resolution.civic_input_present
+      ? "approximate" // Never "available" — civic is parsed, not verified
+      : "not_determinable";
+  }
 
   return {
     resolved_geo_level: td.territorial_identity.geo_level,
@@ -366,7 +403,8 @@ function buildLocalization(
       ? "ASC disponibile" : null,
     coordinate_status: coordStatus,
     address_status: addrStatus,
-    civic_status: "not_introduced_yet",
+    civic_status: civicStatus,
+    address_resolution: addressRes,
   };
 }
 
@@ -412,7 +450,7 @@ function buildFacts(
   td: TerritorialDataResult,
   zp: ZoneProfile,
   identity: BuildingIdentity,
-  _loc: BuildingLocalization,
+  localization: BuildingLocalization,
 ): BuildingSupportedFacts {
   const idFacts: BuildingFact[] = [];
   const locFacts: BuildingFact[] = [];
@@ -453,6 +491,31 @@ function buildFacts(
       "address_ref", "Indirizzo (riferimento)", input.address,
       "contextual", "input_utente", "comune", "elaborated",
     ));
+
+    // Phase 5: add address resolution facts
+    const ar = localization.address_resolution;
+    if (ar) {
+      const addrSupport = addressFactSupportLevel(ar);
+      if (ar.address_identity.normalized_street_name) {
+        locFacts.push(makeFact(
+          "street_match", "Match strada",
+          `${streetMatchLabel(ar.address_resolution.matched_street_status)} (${Math.round(ar.address_resolution.matched_street_confidence * 100)}%)`,
+          addrSupport, "text_normalization", "comune", "elaborated",
+        ));
+      }
+      if (ar.civic_resolution.civic_input_present) {
+        locFacts.push(makeFact(
+          "civic_match", "Match civico",
+          `${civicMatchLabel(ar.civic_resolution.civic_match_status)} — ${ar.civic_resolution.civic_supported_as_building_truth ? "verificato" : "non verificato"}`,
+          addrSupport, "text_parsing", "comune", "elaborated",
+        ));
+      }
+      locFacts.push(makeFact(
+        "address_quality", "Qualità indirizzo",
+        addressQualityLabel(ar.address_quality.overall_address_quality),
+        addrSupport, "address_resolution", "comune", "elaborated",
+      ));
+    }
   }
 
   // Territorial context facts
@@ -524,6 +587,7 @@ function buildBounds(
   td: TerritorialDataResult,
   zp: ZoneProfile,
   identity: BuildingIdentity,
+  localization: BuildingLocalization,
 ): BuildingInferredBounds {
   const canSay: string[] = [];
   const cannotSay: string[] = [];
@@ -544,7 +608,20 @@ function buildBounds(
   cannotSay.push("Numero di piani");
   cannotSay.push("Stato di conservazione");
   cannotSay.push("Dettagli catastali puntuali");
-  cannotSay.push("Indirizzo e civico precisi (layer non ancora introdotto)");
+  // Phase 5: update based on address resolution
+  const ar = localization.address_resolution;
+  if (ar) {
+    if (ar.address_resolution.matched_street_status !== "not_found") {
+      canSay.push("Interpretazione indirizzo da testo (non verificata)");
+    }
+    if (ar.civic_resolution.civic_input_present) {
+      canSay.push("Civico estratto dal testo (non verificato come verità stabile)");
+    }
+    cannotSay.push("Indirizzo verificato contro registro ufficiale");
+    cannotSay.push("Civico verificato come identificativo stabile");
+  } else {
+    cannotSay.push("Indirizzo e civico (layer non ancora applicato)");
+  }
 
   if (!identity.is_building_level_supported) {
     downgrade.push("Identificazione edificio non sufficiente per dati puntuali");
@@ -750,6 +827,17 @@ function computeRenderability(
 
     s("unsupported_claims", true, "full",
       "Trasparenza sulle affermazioni non supportate", null),
+
+    // Phase 5: address precision section
+    s("address_precision",
+      localization.address_resolution != null,
+      localization.address_resolution
+        ? (localization.address_resolution.address_quality.overall_address_quality !== "none" ? "partial" : "hidden")
+        : "hidden",
+      localization.address_resolution
+        ? "Layer indirizzo applicato"
+        : "Nessun indirizzo fornito",
+      "address_resolution"),
   ];
 
   return {
@@ -825,11 +913,18 @@ export function buildBuildingReportViewModel(
     [], []);
 
   // Localization panel
+  const addrStatusLabel = bl.address_status === "not_introduced_yet" ? "Non fornito"
+    : bl.address_status === "approximate" ? "Approssimativo (da testo)"
+    : bl.address_status === "available" ? "Disponibile"
+    : "Non determinabile";
+  const civicStatusLabel = bl.civic_status === "not_introduced_yet" ? "Non fornito"
+    : bl.civic_status === "approximate" ? "Estratto da testo (non verificato)"
+    : "Non determinabile";
   const locFacts: ReportKeyFact[] = [
     { label: "Livello risolto", value: geoLevelLabel(bl.resolved_geo_level) },
     { label: "Coordinate", value: bl.coordinate_status === "available" ? "Disponibili" : "Non disponibili" },
-    { label: "Indirizzo", value: bl.address_status === "not_introduced_yet" ? "Layer non introdotto" : bl.address_status === "approximate" ? "Approssimativo" : "Non disponibile" },
-    { label: "Civico", value: "Layer non introdotto" },
+    { label: "Indirizzo", value: addrStatusLabel },
+    { label: "Civico", value: civicStatusLabel },
   ];
   const localization_panel = sectionOrNull("localization", "Localizzazione", rr,
     locFacts, [], []);
@@ -908,6 +1003,27 @@ export function buildBuildingReportViewModel(
     fallback_count: bq.fallback_count,
   };
 
+  // Phase 5: address precision panel
+  const ar = bl.address_resolution;
+  let address_precision_panel: BuildingReportSectionVM | null = null;
+  if (ar && rr.sections.address_precision?.can_render) {
+    const addrFacts: ReportKeyFact[] = [
+      { label: "Indirizzo normalizzato", value: ar.address_identity.normalized_address_string || "—" },
+      { label: "Match strada", value: streetMatchLabel(ar.address_resolution.matched_street_status) },
+      { label: "Confidenza strada", value: `${Math.round(ar.address_resolution.matched_street_confidence * 100)}%` },
+      { label: "Match civico", value: ar.civic_resolution.civic_input_present
+        ? civicMatchLabel(ar.civic_resolution.civic_match_status) : "Assente" },
+      { label: "Civico = verità stabile?", value: ar.civic_resolution.civic_supported_as_building_truth ? "Sì" : "No" },
+      { label: "Qualità indirizzo", value: addressQualityLabel(ar.address_quality.overall_address_quality) },
+      { label: "Rischio sovraprecisione", value: ar.address_quality.overprecision_risk },
+    ];
+    address_precision_panel = sectionOrNull("address_precision", "Precisione indirizzo", rr,
+      addrFacts,
+      ar.address_limitations.transparency_notes.slice(0, 3),
+      [{ label: addressQualityLabel(ar.address_quality.overall_address_quality), variant: "partial" as ReportBadge["variant"] }],
+    );
+  }
+
   // Hidden sections
   const hidden_sections: string[] = [];
   for (const [key, val] of Object.entries(rr.sections)) {
@@ -924,6 +1040,7 @@ export function buildBuildingReportViewModel(
     limitations_panel,
     transparency_panel,
     unsupported_claims_panel,
+    address_precision_panel,
     hidden_sections,
   };
 }
