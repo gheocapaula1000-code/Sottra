@@ -63,6 +63,7 @@ const AdminZoneProfile = lazyWithRecovery(() => import("./pages/AdminZoneProfile
 const AdminBuildingProfile = lazyWithRecovery(() => import("./pages/AdminBuildingProfile"));
 const AdminAddressResolution = lazyWithRecovery(() => import("./pages/AdminAddressResolution"));
 const AdminSourcesRoadmap = lazyWithRecovery(() => import("./pages/AdminSourcesRoadmap"));
+const AdminAnncsuReadiness = lazyWithRecovery(() => import("./pages/AdminAnncsuReadiness"));
 
 const queryClient = new QueryClient();
 
@@ -98,6 +99,7 @@ const App = () => (
                     <Route path="/admin/building-profile" element={<ProtectedAdminRoute><AdminBuildingProfile /></ProtectedAdminRoute>} />
                     <Route path="/admin/address-resolution" element={<ProtectedAdminRoute><AdminAddressResolution /></ProtectedAdminRoute>} />
                     <Route path="/admin/sources-roadmap" element={<ProtectedAdminRoute><AdminSourcesRoadmap /></ProtectedAdminRoute>} />
+                    <Route path="/admin/anncsu-readiness" element={<ProtectedAdminRoute><AdminAnncsuReadiness /></ProtectedAdminRoute>} />
                     <Route path="/territorial-report" element={<ProtectedRoute><TerritorialReport /></ProtectedRoute>} />
                     <Route path="/scan" element={<TrialProtectedRoute><Scan /></TrialProtectedRoute>} />
                     <Route path="/result" element={<TrialProtectedRoute><Result /></TrialProtectedRoute>} />
