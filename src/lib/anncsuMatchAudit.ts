@@ -230,6 +230,7 @@ export function computeAuditMetrics(results: AddressResolutionResult[]): AuditMe
     if (ar.official_civic_support) m.official_civic_support_count++;
     if (ar.anncsu_civic_exactness === "ambiguous") m.official_civic_ambiguous_count++;
     if (ar.precise_location_support) m.precise_location_support_count++;
+    if (ar.official_street_support) m.official_street_support_count++;
     if (ar.ambiguity_level === "high" || ar.ambiguity_level === "critical") m.ambiguous_match_count++;
     if (ar.matched_street_confidence < 0.4) m.low_confidence_count++;
     if (ar.building_truth_support as boolean) m.building_truth_promoted_count++; // safety check
