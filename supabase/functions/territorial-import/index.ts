@@ -1411,7 +1411,7 @@ serve(async (req) => {
                   const sez = row["SEZ2021"] || row["SEZ"] || "";
                   if (!sez) continue;
                   const existing = ascMappings.get(sez) || { asc1: null, asc2: null, asc3: null };
-                  const code = row["COD_ASC"] || null;
+                  const code = row["COD_ASC"] || row["COD_ASC2"] || null;
                   if (level === "ASC1") existing.asc1 = code;
                   else if (level === "ASC2") { existing.asc2 = code; asc2MappingsCount++; }
                   else if (level === "ASC3") existing.asc3 = code;
