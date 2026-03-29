@@ -448,7 +448,7 @@ function buildFacts(
   td: TerritorialDataResult,
   zp: ZoneProfile,
   identity: BuildingIdentity,
-  _loc: BuildingLocalization,
+  localization: BuildingLocalization,
 ): BuildingSupportedFacts {
   const idFacts: BuildingFact[] = [];
   const locFacts: BuildingFact[] = [];
