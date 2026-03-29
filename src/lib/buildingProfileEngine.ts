@@ -242,6 +242,8 @@ export interface BuildingReportViewModel {
     fallback_count: number;
   };
   unsupported_claims_panel: BuildingReportSectionVM | null;
+  /** Phase 5: address precision panel */
+  address_precision_panel: BuildingReportSectionVM | null;
   hidden_sections: string[];
 }
 
