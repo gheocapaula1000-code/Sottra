@@ -176,12 +176,12 @@ export default function AdminAnncsuReadiness() {
     if (!queryComune) return;
     if (queryStreet) {
       const res = await queryAnncsuStreetCandidates(queryComune, queryStreet, 30);
-      if (res.ok) setQueryResults(res.records);
-      else if (!res.ok) toast.error(res.error);
+      if (!res.ok) { toast.error(res.error); return; }
+      setQueryResults(res.records);
     } else {
       const res = await queryAnncsuByComune(queryComune, 30);
-      if (res.ok) setQueryResults(res.records);
-      else if (!res.ok) toast.error(res.error);
+      if (!res.ok) { toast.error(res.error); return; }
+      setQueryResults(res.records);
     }
   };
 
