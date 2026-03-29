@@ -788,6 +788,12 @@ const AdminSubMunicipal = () => {
                           Importa
                         </Button>
                       )}
+                      {job.status === "pending_next_chunk" && (
+                        <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => processJob(job.id)} disabled={processing !== null}>
+                          {processing === job.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                          Riprendi
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
