@@ -95,6 +95,7 @@ const App = () => (
                     <Route path="/admin/territorial-backbone" element={<ProtectedAdminRoute><AdminTerritorialBackbone /></ProtectedAdminRoute>} />
                     <Route path="/admin/zone-profile" element={<ProtectedAdminRoute><AdminZoneProfile /></ProtectedAdminRoute>} />
                     <Route path="/admin/building-profile" element={<ProtectedAdminRoute><AdminBuildingProfile /></ProtectedAdminRoute>} />
+                    <Route path="/admin/address-resolution" element={<ProtectedAdminRoute><AdminAddressResolution /></ProtectedAdminRoute>} />
                     <Route path="/territorial-report" element={<ProtectedRoute><TerritorialReport /></ProtectedRoute>} />
                     <Route path="/scan" element={<TrialProtectedRoute><Scan /></TrialProtectedRoute>} />
                     <Route path="/result" element={<TrialProtectedRoute><Result /></TrialProtectedRoute>} />
