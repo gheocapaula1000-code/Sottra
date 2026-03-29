@@ -825,6 +825,17 @@ function computeRenderability(
 
     s("unsupported_claims", true, "full",
       "Trasparenza sulle affermazioni non supportate", null),
+
+    // Phase 5: address precision section
+    s("address_precision",
+      localization.address_resolution != null,
+      localization.address_resolution
+        ? (localization.address_resolution.address_quality.overall_address_quality !== "none" ? "partial" : "hidden")
+        : "hidden",
+      localization.address_resolution
+        ? "Layer indirizzo applicato"
+        : "Nessun indirizzo fornito",
+      "address_resolution"),
   ];
 
   return {
