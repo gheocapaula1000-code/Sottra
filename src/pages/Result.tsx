@@ -33,8 +33,9 @@ import AddressOverrideForm from "@/components/AddressOverrideForm";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
 import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib/zoneValueEngine";
 import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
-import { buildWowSnapshot, attentionSignalLabel, attentionSignalColor } from "@/lib/sottraWowSnapshot";
+import { buildWowSnapshot } from "@/lib/sottraWowSnapshot";
 import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
+import { WowPanel } from "@/components/report/WowPanel";
 import {
   buildHouseDifferentiation,
   differentiationStatusLabel,
