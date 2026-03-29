@@ -704,7 +704,7 @@ async function importR03SezStreaming(
     const dbRows: any[] = [];
     for (let j = 0; j < chunkRows.length; j++) {
       const r = chunkRows[j];
-      const sez = r["SEZ2021"] || r["SEZ"] || "";
+      const sez = r["SEZ2021"] || r["SEZ"] || r["SEZ21_ID"] || "";
       const com = r["PRO_COM_T"] || r["PRO_COM"] || "";
       if (!sez) {
         failed++;
