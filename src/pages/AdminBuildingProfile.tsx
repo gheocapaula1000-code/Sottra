@@ -32,6 +32,7 @@ export default function AdminBuildingProfile() {
       territorial_data: td,
       lat: latN,
       lng: lngN,
+      address: address || null,
       has_photo: false,
       identification_confidence: latN ? 0.6 : 0,
       identification_mode: latN ? "coordinate" : "territorial_only",
