@@ -276,7 +276,7 @@ export interface SystemReadinessAssessment {
 
 export function assessSystemReadiness(metrics: AuditMetrics): SystemReadinessAssessment {
   const total = metrics.total_evaluated || 1;
-  const strongStreet = metrics.exact_official_street_match_count + metrics.normalized_official_street_match_count;
+  const strongStreet = metrics.official_street_support_count;
   const strongRatio = strongStreet / total;
   const ambiguityRatio = metrics.ambiguous_match_count / total;
   const overprecisionRatio = metrics.high_overprecision_risk_count / total;
