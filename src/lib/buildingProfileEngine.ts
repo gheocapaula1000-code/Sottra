@@ -606,7 +606,20 @@ function buildBounds(
   cannotSay.push("Numero di piani");
   cannotSay.push("Stato di conservazione");
   cannotSay.push("Dettagli catastali puntuali");
-  cannotSay.push("Indirizzo e civico precisi (layer non ancora introdotto)");
+  // Phase 5: update based on address resolution
+  const ar = localization.address_resolution;
+  if (ar) {
+    if (ar.address_resolution.matched_street_status !== "not_found") {
+      canSay.push("Interpretazione indirizzo da testo (non verificata)");
+    }
+    if (ar.civic_resolution.civic_input_present) {
+      canSay.push("Civico estratto dal testo (non verificato come verità stabile)");
+    }
+    cannotSay.push("Indirizzo verificato contro registro ufficiale");
+    cannotSay.push("Civico verificato come identificativo stabile");
+  } else {
+    cannotSay.push("Indirizzo e civico (layer non ancora applicato)");
+  }
 
   if (!identity.is_building_level_supported) {
     downgrade.push("Identificazione edificio non sufficiente per dati puntuali");
