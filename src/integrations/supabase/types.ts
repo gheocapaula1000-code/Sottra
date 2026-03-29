@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      anncsu_streets: {
+        Row: {
+          ambiguity_flags: string[] | null
+          barrato: string | null
+          civic_full_label: string | null
+          civic_normalized: string | null
+          civic_status: string
+          cod_strada: string | null
+          comune_istat_code: string
+          comune_label: string | null
+          created_at: string | null
+          esponente: string | null
+          id: string
+          import_batch_id: string | null
+          import_job_id: string | null
+          ingest_readiness: string
+          localita_code: string | null
+          provincia_code: string | null
+          raw_completeness: number | null
+          regione_code: string | null
+          sezione_censuaria: string | null
+          source_date: string | null
+          source_version: string | null
+          street_full_name: string | null
+          street_name: string
+          street_status: string
+          street_type: string | null
+          updated_at: string | null
+          warnings: string[] | null
+        }
+        Insert: {
+          ambiguity_flags?: string[] | null
+          barrato?: string | null
+          civic_full_label?: string | null
+          civic_normalized?: string | null
+          civic_status?: string
+          cod_strada?: string | null
+          comune_istat_code: string
+          comune_label?: string | null
+          created_at?: string | null
+          esponente?: string | null
+          id?: string
+          import_batch_id?: string | null
+          import_job_id?: string | null
+          ingest_readiness?: string
+          localita_code?: string | null
+          provincia_code?: string | null
+          raw_completeness?: number | null
+          regione_code?: string | null
+          sezione_censuaria?: string | null
+          source_date?: string | null
+          source_version?: string | null
+          street_full_name?: string | null
+          street_name: string
+          street_status?: string
+          street_type?: string | null
+          updated_at?: string | null
+          warnings?: string[] | null
+        }
+        Update: {
+          ambiguity_flags?: string[] | null
+          barrato?: string | null
+          civic_full_label?: string | null
+          civic_normalized?: string | null
+          civic_status?: string
+          cod_strada?: string | null
+          comune_istat_code?: string
+          comune_label?: string | null
+          created_at?: string | null
+          esponente?: string | null
+          id?: string
+          import_batch_id?: string | null
+          import_job_id?: string | null
+          ingest_readiness?: string
+          localita_code?: string | null
+          provincia_code?: string | null
+          raw_completeness?: number | null
+          regione_code?: string | null
+          sezione_censuaria?: string | null
+          source_date?: string | null
+          source_version?: string | null
+          street_full_name?: string | null
+          street_name?: string
+          street_status?: string
+          street_type?: string | null
+          updated_at?: string | null
+          warnings?: string[] | null
+        }
+        Relationships: []
+      }
       census_sections_r03_2021: {
         Row: {
           asc1_code: string | null
