@@ -243,6 +243,9 @@ export default function TerritorialReport() {
               </CardContent>
             </Card>
 
+            {/* Zone Correspondence + Growth Signals */}
+            {corr && growth && <GrowthSignalsPanel growth={growth} corr={corr} />}
+
             {/* Sections */}
             <div className="space-y-3">
               {vm.sections.map(s => <ReportSection key={s.key} section={s} />)}
