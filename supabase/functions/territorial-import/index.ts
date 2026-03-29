@@ -76,7 +76,6 @@ function detectRegions(records: Record<string, string>[]): RegionInfo {
   let detectedVia: RegionInfo["detectedVia"] = "none";
 
   for (const r of records) {
-    // Priority: DEN_REG > REGIONE > COD_REG (mapped to name)
     const denReg = (r["DEN_REG"] || "").trim();
     const regione = (r["REGIONE"] || "").trim();
     const codReg = (r["COD_REG"] || "").trim();
@@ -149,7 +148,6 @@ function buildDetailedValidation(
 
   const addSkip = (reason: string) => { skipReasons[reason] = (skipReasons[reason] || 0) + 1; };
 
-  // Detect column presence
   const headersFound: Record<string, string | null> = {};
   const headersExpected: Record<string, string[]> = {};
   const missingCriticalColumns: string[] = [];
@@ -241,9 +239,13 @@ function buildDetailedValidation(
 /* ── Import processors ── */
 
 const CHUNK = 500;
-const R03_SEZ_CHUNK = 1000;
+const R03_SEZ_CHUNK = 500; // Smaller chunks for faster heartbeat
 const R03_SEZ_STUCK_TIMEOUT_MINUTES = 20;
 const MAX_IMPORT_ERRORS = 100;
+
+// Time budget: stop processing 8s before the platform kills us (~60s limit)
+const TIME_BUDGET_MS = 45_000;
+const TIME_BUDGET_RESERVE_MS = 8_000;
 
 function nowIso() {
   return new Date().toISOString();
@@ -285,6 +287,20 @@ function buildProgressState(params: {
   };
 }
 
+interface Checkpoint {
+  lineOffset: number; // byte offset into the CSV text where we left off (after header)
+  globalRowIdx: number;
+  imported: number;
+  skipped: number;
+  failed: number;
+  skipByReason: Record<string, number>;
+  regionsFound: string[];
+  errors: { idx: number; reason: string }[];
+  warnings: string[];
+  chunkIndex: number;
+  passNumber: number;
+}
+
 function getJobHeartbeat(job: Record<string, unknown>): string | null {
   const stats = asRecord(job.stats);
   const progress = asRecord(stats.progress);
@@ -298,6 +314,8 @@ function getJobHeartbeat(job: Record<string, unknown>): string | null {
 }
 
 function isStaleImportingJob(job: Record<string, unknown>) {
+  // Don't mark pending_next_chunk as stale — they're waiting for the next invocation
+  if (job.status === "pending_next_chunk") return false;
   if (job.status !== "importing") return false;
 
   const heartbeat = getJobHeartbeat(job);
@@ -393,7 +411,6 @@ async function importComuniItalia(
   const warnings: string[] = [];
   const seenKeys = new Set<string>();
 
-  // Pre-count existing comuni to distinguish new vs updated
   const { count: existingBefore } = await admin.from("territorial_registry")
     .select("id", { count: "exact", head: true })
     .eq("geographic_level", "comune");
@@ -444,7 +461,6 @@ async function importComuniItalia(
     }
   }
 
-  // Post-count to derive inserted vs updated
   const { count: existingAfter } = await admin.from("territorial_registry")
     .select("id", { count: "exact", head: true })
     .eq("geographic_level", "comune");
@@ -467,7 +483,6 @@ async function importLocalitaIstat(
   const warnings: string[] = [];
   const seenKeys = new Set<string>();
 
-  // Pre-count existing località
   const { count: existingBefore } = await admin.from("territorial_registry")
     .select("id", { count: "exact", head: true })
     .eq("geographic_level", "localita");
@@ -522,7 +537,6 @@ async function importLocalitaIstat(
     }
   }
 
-  // Post-count to derive inserted vs updated
   const { count: existingAfter } = await admin.from("territorial_registry")
     .select("id", { count: "exact", head: true })
     .eq("geographic_level", "localita");
@@ -534,8 +548,9 @@ async function importLocalitaIstat(
 }
 
 /**
- * Streaming R03_CSV_SEZ import: parses CSV line-by-line in chunks to avoid memory crash on large files.
- * Handles multi-region files with per-row region detection. Missing ASC2 is tolerated gracefully.
+ * Streaming R03_CSV_SEZ import with CHECKPOINT/RESUME support.
+ * Processes CSV line-by-line in chunks, saves checkpoint when time budget runs out,
+ * and resumes from the saved offset on next invocation.
  */
 async function importR03SezStreaming(
   rawText: string,
@@ -544,24 +559,26 @@ async function importR03SezStreaming(
   admin: ReturnType<typeof createClient>,
   jobId: string,
   logStep: (step: string, payload?: Record<string, unknown>) => void,
-) {
-  let imported = 0;
-  let skipped = 0;
-  let failed = 0;
-  const errors: { idx: number; reason: string }[] = [];
-  const warnings: string[] = [];
-  const regionsFound = new Set<string>();
-  const skipByReason: Record<string, number> = {};
+  checkpoint: Checkpoint | null,
+  startTimeMs: number,
+): Promise<{ inserted: number; updated: number; processed: number; skipped: number; failed: number; errors: { idx: number; reason: string }[]; warnings: string[]; regionsFound: Set<string>; skipByReason: Record<string, number>; paused: boolean; checkpoint: Checkpoint | null }> {
+  // Resume counters from checkpoint
+  let imported = checkpoint?.imported ?? 0;
+  let skipped = checkpoint?.skipped ?? 0;
+  let failed = checkpoint?.failed ?? 0;
+  const errors: { idx: number; reason: string }[] = checkpoint?.errors ?? [];
+  const warnings: string[] = checkpoint?.warnings ?? [];
+  const regionsFound = new Set<string>(checkpoint?.regionsFound ?? []);
+  const skipByReason: Record<string, number> = checkpoint?.skipByReason ?? {};
   const addSkip = (reason: string) => { skipByReason[reason] = (skipByReason[reason] || 0) + 1; skipped++; };
 
   // Parse header
   let text = rawText;
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
 
-  // Find header line
   let headerEnd = text.indexOf('\n');
   if (headerEnd === -1) {
-    return { inserted: 0, updated: 0, processed: 0, skipped: 0, failed: 0, errors: [{ idx: 0, reason: "No header line" }], warnings: [], regionsFound: new Set<string>(), skipByReason: {} };
+    return { inserted: 0, updated: 0, processed: 0, skipped: 0, failed: 0, errors: [{ idx: 0, reason: "No header line" }], warnings: [], regionsFound: new Set<string>(), skipByReason: {}, paused: false, checkpoint: null };
   }
   let headerLine = text.substring(0, headerEnd);
   if (headerLine.endsWith('\r')) headerLine = headerLine.slice(0, -1);
@@ -573,18 +590,27 @@ async function importR03SezStreaming(
   for (let i = headerEnd + 1; i < text.length; i++) {
     if (text[i] === '\n') totalLines++;
   }
-  // Account for last line without trailing newline
   if (text.length > headerEnd + 1 && text[text.length - 1] !== '\n') totalLines++;
 
   const chunkCount = Math.ceil(totalLines / R03_SEZ_CHUNK);
+  const passNumber = (checkpoint?.passNumber ?? 0) + 1;
 
-  logStep("streaming_import_start", { totalLines, chunkCount, headers: headers.slice(0, 10) });
+  // Resume: skip to checkpoint offset
+  const resumeLineOffset = checkpoint?.lineOffset ?? (headerEnd + 1);
+  let globalRowIdx = checkpoint?.globalRowIdx ?? 0;
+  let chunkIndex = checkpoint?.chunkIndex ?? 0;
+
+  logStep("streaming_import_start", {
+    totalLines, chunkCount, passNumber,
+    resumingFrom: checkpoint ? globalRowIdx : 0,
+    headers: headers.slice(0, 10),
+  });
 
   // Process line by line in chunks
-  let lineStart = headerEnd + 1;
+  let lineStart = resumeLineOffset;
   let chunkRows: Record<string, string>[] = [];
-  let globalRowIdx = 0;
-  let chunkIndex = 0;
+  let paused = false;
+  let pauseCheckpoint: Checkpoint | null = null;
 
   const flushChunk = async () => {
     if (chunkRows.length === 0) return;
@@ -608,7 +634,6 @@ async function importR03SezStreaming(
         continue;
       }
 
-      // Per-row region detection
       const codReg = (r["COD_REG"] || "").trim();
       const denReg = (r["DEN_REG"] || r["REGIONE"] || "").trim();
       let rowRegName = denReg || null;
@@ -658,13 +683,11 @@ async function importR03SezStreaming(
     const batchDuplicatesDropped = dbRows.length - uniqueRows.length;
     if (batchDuplicatesDropped > 0) {
       addSkip("duplicato_intra_batch");
-      // Correct: addSkip adds 1, but we need to add the rest
       skipByReason["duplicato_intra_batch"] += (batchDuplicatesDropped - 1);
       skipped += (batchDuplicatesDropped - 1);
     }
 
     if (uniqueRows.length === 0) {
-      // Update heartbeat even for empty chunks
       await admin.from("territorial_dataset_jobs").update({
         updated_at: nowIso(),
         stats: { progress: buildProgressState({ datasetType: "R03_CSV_SEZ", processedRows: imported, totalRows: totalLines, failedRows: failed, skippedRows: skipped, chunkIndex, chunkCount }), skipByReason },
@@ -678,7 +701,6 @@ async function importR03SezStreaming(
       .upsert(uniqueRows as any[], { onConflict: "source_dataset,section_code" });
 
     if (error) {
-      // DON'T throw — accumulate error and continue with next chunks
       failed += uniqueRows.length;
       if (errors.length < MAX_IMPORT_ERRORS) errors.push({ idx: globalRowIdx - chunkRows.length, reason: `Batch ${chunkIndex}: ${error.message}` });
       warnings.push(`Batch ${chunkIndex}/${chunkCount} fallito: ${error.message}`);
@@ -705,11 +727,11 @@ async function importR03SezStreaming(
       records_errors: failed,
       records_skipped: skipped,
       updated_at: nowIso(),
-      stats: { progress, skipByReason },
+      stats: { progress, skipByReason, passNumber },
     }).eq("id", jobId);
 
     logStep("batch_progress", {
-      chunkIndex, chunkCount,
+      chunkIndex, chunkCount, passNumber,
       processedRows: imported, totalRows: totalLines,
       failedRows: failed, skippedRows: skipped,
       batchDuplicatesDropped,
@@ -719,7 +741,7 @@ async function importR03SezStreaming(
     chunkRows = [];
   };
 
-  // Stream through lines
+  // Stream through lines from resume offset
   for (let i = lineStart; i <= text.length; i++) {
     if (i === text.length || text[i] === '\n') {
       let line = text.substring(lineStart, i);
@@ -748,26 +770,60 @@ async function importR03SezStreaming(
 
       if (chunkRows.length >= R03_SEZ_CHUNK) {
         await flushChunk();
+
+        // ── TIME BUDGET CHECK after each flushed chunk ──
+        const elapsed = Date.now() - startTimeMs;
+        if (elapsed > TIME_BUDGET_MS - TIME_BUDGET_RESERVE_MS) {
+          // Save checkpoint and pause
+          paused = true;
+          pauseCheckpoint = {
+            lineOffset: lineStart,
+            globalRowIdx,
+            imported,
+            skipped,
+            failed,
+            skipByReason: { ...skipByReason },
+            regionsFound: [...regionsFound],
+            errors: errors.slice(-20), // Keep last 20 errors
+            warnings: [...warnings],
+            chunkIndex,
+            passNumber,
+          };
+          logStep("time_budget_pause", {
+            elapsedMs: elapsed,
+            budgetMs: TIME_BUDGET_MS,
+            reserveMs: TIME_BUDGET_RESERVE_MS,
+            rowsProcessedThisPass: globalRowIdx - (checkpoint?.globalRowIdx ?? 0),
+            totalRowsProcessed: globalRowIdx,
+            totalLines,
+            passNumber,
+          });
+          break;
+        }
       }
     }
   }
 
-  // Flush remaining
-  await flushChunk();
+  // Flush remaining if not paused
+  if (!paused && chunkRows.length > 0) {
+    await flushChunk();
+  }
 
   // Multi-region warnings
   if (regionsFound.size > 1) {
     warnings.push(`File multi-regione: ${regionsFound.size} regioni rilevate (${[...regionsFound].sort().join(", ")})`);
   }
 
-  logStep("streaming_import_complete", {
-    imported, skipped, failed,
-    totalLines, chunkCount,
-    regionsFound: [...regionsFound].sort(),
-    regionsCount: regionsFound.size,
-    ascMappingsUsed: ascMappings.size,
-    skipByReason,
-  });
+  if (!paused) {
+    logStep("streaming_import_complete", {
+      imported, skipped, failed,
+      totalLines, chunkCount, passNumber,
+      regionsFound: [...regionsFound].sort(),
+      regionsCount: regionsFound.size,
+      ascMappingsUsed: ascMappings.size,
+      skipByReason,
+    });
+  }
 
   return {
     inserted: imported,
@@ -779,6 +835,8 @@ async function importR03SezStreaming(
     warnings,
     regionsFound,
     skipByReason,
+    paused,
+    checkpoint: pauseCheckpoint,
   };
 }
 
@@ -896,7 +954,7 @@ async function validatePostImport(datasetType: string, admin: ReturnType<typeof 
         const t = r.localita_type || "sconosciuto";
         byType[t] = (byType[t] || 0) + 1;
       }
-      result.localita = { total: data.length, comuni: comuni.size, regioni: regioni.size, byType };
+      result.localita = { total: data.length, comuni: comuni.size, regioni: regioni.size, regioniList: [...regioni].sort(), byType };
     }
   }
 
@@ -909,6 +967,8 @@ serve(async (req) => {
   _req = req;
   const preflight = handleCors(req);
   if (preflight) return preflight;
+
+  const requestStartMs = Date.now();
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -947,7 +1007,6 @@ serve(async (req) => {
 
       const dt = job.dataset_type as string;
 
-      // For large dataset types (R03_CSV_SEZ, ASC_2021, R03_CSV_ASC*), use lightweight streaming validation
       const useLightValidation = dt === "R03_CSV_SEZ" || dt === "ASC_2021" || dt.startsWith("R03_CSV_ASC");
 
       try {
@@ -955,25 +1014,21 @@ serve(async (req) => {
         if (dlErr || !fileData) return json({ ok: false, error: `File download failed: ${dlErr?.message ?? "unknown"}`, code: "DOWNLOAD_FAILED" }, 200);
 
         if (useLightValidation) {
-          // ── STREAMING/LIGHT VALIDATION: never load full CSV into memory ──
           const PREVIEW_LIMIT = 100;
           const MAX_SAMPLE_ERRORS = 20;
 
           const rawText = await fileData.text();
-          // Only split into lines — do NOT parse all into record objects
           let totalLines = 0;
           let headerLine = "";
           const previewLines: string[] = [];
           let pastBom = false;
 
-          // Find COD_REG column index for lightweight full-file region scan
           let codRegIdx = -1;
           let denRegIdx = -1;
           let regioneIdx = -1;
           const regionCodesFound = new Set<string>();
           const regionNamesFound = new Set<string>();
 
-          // Count lines and collect samples without building full record array
           let lineStart = 0;
           for (let i = 0; i <= rawText.length; i++) {
             if (i === rawText.length || rawText[i] === '\n') {
@@ -990,7 +1045,6 @@ serve(async (req) => {
 
               if (!headerLine) {
                 headerLine = line;
-                // Find region column indices from header
                 const sep0 = headerLine.includes(";") ? ";" : ",";
                 const hdr = parseCsvLine(headerLine, sep0);
                 codRegIdx = hdr.indexOf("COD_REG");
@@ -1002,8 +1056,6 @@ serve(async (req) => {
               totalLines++;
               if (previewLines.length < PREVIEW_LIMIT) previewLines.push(line);
 
-              // Lightweight region extraction: just split and grab the region column
-              // This is O(n) but avoids building full record objects
               if (codRegIdx >= 0 || denRegIdx >= 0 || regioneIdx >= 0) {
                 const sep0 = headerLine.includes(";") ? ";" : ",";
                 const vals = line.split(sep0);
@@ -1032,7 +1084,6 @@ serve(async (req) => {
           const sep = headerLine.includes(";") ? ";" : ",";
           const headers = parseCsvLine(headerLine, sep);
 
-          // Build region info from full-file scan
           const regSet = new Set<string>();
           let regionDetectedVia: RegionInfo["detectedVia"] = "none";
           if (regionNamesFound.size > 0) {
@@ -1057,7 +1108,6 @@ serve(async (req) => {
             detectedVia: regionDetectedVia,
           };
 
-          // Parse only preview rows into records
           const previewRecords: Record<string, string>[] = [];
           const sampleErrors: { row: number; reason: string }[] = [];
           for (let i = 0; i < previewLines.length; i++) {
@@ -1075,7 +1125,6 @@ serve(async (req) => {
             }
           }
 
-          // Check critical columns for R03_CSV_SEZ
           const missingCritical: string[] = [];
           if (dt === "R03_CSV_SEZ") {
             const hasSez = headers.some(h => ["SEZ2021", "SEZ", "SEZ2011"].includes(h));
@@ -1121,7 +1170,6 @@ serve(async (req) => {
           return json({ ok: true, validation: lightValidation });
 
         } else {
-          // ── FULL VALIDATION for smaller dataset types (COMUNI_ITALIA, LOCALITA_ISTAT) ──
           const csvText = await fileData.text();
           const records = parseCsv(csvText);
 
@@ -1158,7 +1206,6 @@ serve(async (req) => {
       } catch (validateErr: unknown) {
         const errMsg = validateErr instanceof Error ? validateErr.message : String(validateErr);
         log("validate-csv error", errMsg);
-        // Try to mark job as failed even if validation crashed
         try {
           await admin.from("territorial_dataset_jobs").update({
             status: "failed",
@@ -1191,29 +1238,42 @@ serve(async (req) => {
       const { data: job, error: jobErr } = await admin.from("territorial_dataset_jobs").select("*").eq("id", jobId).single();
       if (jobErr || !job) return json({ error: "Job not found" }, 200);
 
-      // Update status to importing
-      await admin.from("territorial_dataset_jobs").update({
+      // Check if this is a resume from pending_next_chunk
+      const isResume = job.status === "pending_next_chunk";
+      const existingCheckpoint: Checkpoint | null = isResume
+        ? (asRecord(job.stats) as any)?.checkpoint ?? null
+        : null;
+
+      // Update status to importing (preserve batch_id on resume)
+      const importingUpdate: Record<string, unknown> = {
         status: "importing",
-        started_at: nowIso(),
         updated_at: nowIso(),
-      }).eq("id", jobId);
+      };
+      if (!isResume) {
+        importingUpdate.started_at = nowIso();
+      }
+      await admin.from("territorial_dataset_jobs").update(importingUpdate).eq("id", jobId);
 
       logStep("job_loaded", {
         datasetType: job.dataset_type,
         fileName: job.file_name,
         filePath: job.file_path,
+        isResume,
+        checkpointPass: existingCheckpoint?.passNumber ?? 0,
+        checkpointRow: existingCheckpoint?.globalRowIdx ?? 0,
       });
 
-      // ── FAIL-SAFE: wrap entire import in try/finally so job NEVER stays stuck in "importing" ──
+      // ── FAIL-SAFE: wrap entire import in try/finally ──
       let finalStatus = "failed";
       let finalError = "Import interrotto da errore imprevisto";
       let finalResult: { inserted: number; updated: number; processed?: number; skipped: number; failed: number; errors: { idx: number; reason: string }[]; warnings?: string[] } | null = null;
-      let finalBatchId = "";
+      let finalBatchId = isResume ? (job.import_batch_id || "") : "";
       let finalRegion: RegionInfo | null = null;
       let finalValidation: Record<string, unknown> = {};
+      let finalCheckpoint: Checkpoint | null = null;
+      let isPaused = false;
 
       try {
-        // Download file from storage
         logStep("file_downloading");
         const { data: fileData, error: dlErr } = await admin.storage.from("territorial-datasets").download(job.file_path);
         if (dlErr || !fileData) {
@@ -1225,11 +1285,13 @@ serve(async (req) => {
 
         const csvText = await fileData.text();
 
-        const batchId = `${job.dataset_type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const batchId = isResume && finalBatchId
+          ? finalBatchId
+          : `${job.dataset_type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         finalBatchId = batchId;
-        let result: typeof finalResult;
+        let result: typeof finalResult & { paused?: boolean; checkpoint?: Checkpoint | null };
 
-        // R03_CSV_SEZ uses STREAMING import to avoid memory crash on large files
+        // R03_CSV_SEZ uses STREAMING import with CHECKPOINT/RESUME
         if (job.dataset_type === "R03_CSV_SEZ") {
           logStep("asc_mapping_loading");
           const ascMappings = new Map<string, { asc1: string | null; asc2: string | null; asc3: string | null }>();
@@ -1268,11 +1330,16 @@ serve(async (req) => {
             chunkSize: R03_SEZ_CHUNK,
           });
 
-          // STREAMING import: never hold all rows in memory
-          const streamResult = await importR03SezStreaming(csvText, ascMappings, batchId, admin, jobId, logStep);
+          // STREAMING import with checkpoint/resume
+          const streamResult = await importR03SezStreaming(
+            csvText, ascMappings, batchId, admin, jobId, logStep,
+            existingCheckpoint, requestStartMs,
+          );
           result = streamResult;
+          isPaused = streamResult.paused;
+          finalCheckpoint = streamResult.checkpoint;
 
-          // Build region info from streaming result for job metadata
+          // Build region info from streaming result
           const regArr = [...streamResult.regionsFound].sort();
           finalRegion = {
             regioni: regArr,
@@ -1300,7 +1367,6 @@ serve(async (req) => {
           const region = detectRegions(records);
           finalRegion = region;
 
-          // Update to importing with region info
           await admin.from("territorial_dataset_jobs").update({
             status: "importing",
             records_total: records.length,
@@ -1343,16 +1409,24 @@ serve(async (req) => {
 
         finalResult = result;
 
-        // Post-import validation
-        finalValidation = await validatePostImport(job.dataset_type, admin);
+        if (!isPaused) {
+          // Full completion — run post-import validation
+          finalValidation = await validatePostImport(job.dataset_type, admin);
+          const totalFailed = result.failed;
+          const totalProcessed = result.processed ?? (result.inserted + result.updated);
+          finalStatus = totalFailed > totalProcessed && totalProcessed === 0 ? "failed" : "imported";
+          finalError = "";
+        } else {
+          // Paused — status is pending_next_chunk
+          finalStatus = "pending_next_chunk";
+          finalError = "";
+        }
 
-        const totalFailed = result.failed;
-        const totalProcessed = result.processed ?? (result.inserted + result.updated);
-        finalStatus = totalFailed > totalProcessed && totalProcessed === 0 ? "failed" : "imported";
-        finalError = "";
-        logStep(finalStatus === "imported" ? "job_marked_imported" : "job_marked_failed", {
-          processed: totalProcessed,
-          failed: totalFailed,
+        logStep(finalStatus === "imported" ? "job_marked_imported" : finalStatus === "pending_next_chunk" ? "job_paused_checkpoint" : "job_marked_failed", {
+          processed: finalResult?.processed ?? 0,
+          failed: finalResult?.failed ?? 0,
+          paused: isPaused,
+          passNumber: finalCheckpoint?.passNumber ?? existingCheckpoint?.passNumber ?? 1,
         });
 
       } catch (err: unknown) {
@@ -1361,13 +1435,17 @@ serve(async (req) => {
         finalStatus = "failed";
         finalError = `Errore imprevisto: ${errMsg}`;
       } finally {
-        // ── GUARANTEED STATUS UPDATE: no job stays stuck in "importing" ──
-        logStep("job_finalizing", { status: finalStatus });
+        // ── GUARANTEED STATUS UPDATE ──
+        logStep("job_finalizing", { status: finalStatus, paused: isPaused });
         const updatePayload: Record<string, unknown> = {
           status: finalStatus,
-          completed_at: nowIso(),
           updated_at: nowIso(),
         };
+
+        if (finalStatus !== "pending_next_chunk") {
+          updatePayload.completed_at = nowIso();
+        }
+
         if (finalResult) {
           const totalProcessed = finalResult.processed ?? (finalResult.inserted + finalResult.updated);
           updatePayload.records_imported = totalProcessed;
@@ -1379,7 +1457,8 @@ serve(async (req) => {
             ...(finalResult.warnings || []),
             ...(finalRegion?.multiRegioneWarning ? [finalRegion.multiRegioneWarning] : []),
           ];
-          updatePayload.stats = {
+
+          const statsPayload: Record<string, unknown> = {
             ...finalValidation,
             importResult: { processed: totalProcessed, inserted: finalResult.inserted, updated: finalResult.updated, skipped: finalResult.skipped, failed: finalResult.failed },
             skipByReason: (finalResult as any).skipByReason || {},
@@ -1397,8 +1476,18 @@ serve(async (req) => {
                 : 1,
             }),
           };
+
+          // Save checkpoint for resumable jobs
+          if (isPaused && finalCheckpoint) {
+            statsPayload.checkpoint = finalCheckpoint;
+            statsPayload.passNumber = finalCheckpoint.passNumber;
+          } else {
+            // Clear checkpoint on completion
+            statsPayload.checkpoint = null;
+          }
+
+          updatePayload.stats = statsPayload;
         } else {
-          // No result means early failure — save the error
           updatePayload.error_log = [{ reason: finalError }];
         }
         await admin.from("territorial_dataset_jobs").update(updatePayload).eq("id", jobId);
@@ -1408,6 +1497,7 @@ serve(async (req) => {
       return json({
         ok: finalStatus === "imported",
         status: finalStatus,
+        paused: isPaused,
         inserted: finalResult?.inserted ?? 0,
         updated: finalResult?.updated ?? 0,
         skipped: finalResult?.skipped ?? 0,
@@ -1416,6 +1506,7 @@ serve(async (req) => {
         batchId: finalBatchId,
         region: finalRegion,
         validation: finalValidation,
+        checkpoint: isPaused ? { passNumber: finalCheckpoint?.passNumber, globalRowIdx: finalCheckpoint?.globalRowIdx, totalRows: job.records_total } : null,
         ...(finalError ? { error: finalError } : {}),
       });
     }

@@ -101,6 +101,7 @@ const STATUS_COLORS: Record<string, string> = {
   validating: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   ready_to_import: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
   importing: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  pending_next_chunk: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
   imported: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   failed: "bg-destructive/10 text-destructive",
 };
@@ -349,6 +350,10 @@ const AdminSubMunicipal = () => {
         toast.error(msg);
       } else if (data?.status === "failed") {
         toast.error(`Import fallito: ${data?.errors ?? 0} errori — ${data?.error || "controlla i dettagli del job"}`);
+      } else if (data?.status === "pending_next_chunk") {
+        const cp = data.checkpoint;
+        const pct = cp?.totalRows ? Math.round((cp.globalRowIdx / cp.totalRows) * 100) : 0;
+        toast.info(`Passaggio ${cp?.passNumber ?? "?"} completato — ${pct}% del file processato. Clicca "Riprendi" per continuare.`, { duration: 8000 });
       } else {
         const regionLabel = data?.region?.regioniCount > 1
           ? ` — multi-regione (${data.region.regioniCount})`
@@ -596,7 +601,12 @@ const AdminSubMunicipal = () => {
                             {progress.staleLabel ?? "failed_stale"}
                           </Badge>
                         )}
-                        {isPossiblyStuck && (
+                        {job.status === "pending_next_chunk" && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                            in pausa — passaggio {(job.stats as any)?.passNumber ?? "?"}
+                          </Badge>
+                        )}
+                        {isPossiblyStuck && job.status !== "pending_next_chunk" && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive">
                             possibile stuck
                           </Badge>
@@ -781,6 +791,12 @@ const AdminSubMunicipal = () => {
                         <Button size="sm" className="h-7 text-xs" onClick={() => processJob(job.id)} disabled={processing !== null}>
                           {processing === job.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                           Importa
+                        </Button>
+                      )}
+                      {job.status === "pending_next_chunk" && (
+                        <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => processJob(job.id)} disabled={processing !== null}>
+                          {processing === job.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                          Riprendi
                         </Button>
                       )}
                     </div>
