@@ -913,11 +913,18 @@ export function buildBuildingReportViewModel(
     [], []);
 
   // Localization panel
+  const addrStatusLabel = bl.address_status === "not_introduced_yet" ? "Non fornito"
+    : bl.address_status === "approximate" ? "Approssimativo (da testo)"
+    : bl.address_status === "available" ? "Disponibile"
+    : "Non determinabile";
+  const civicStatusLabel = bl.civic_status === "not_introduced_yet" ? "Non fornito"
+    : bl.civic_status === "approximate" ? "Estratto da testo (non verificato)"
+    : "Non determinabile";
   const locFacts: ReportKeyFact[] = [
     { label: "Livello risolto", value: geoLevelLabel(bl.resolved_geo_level) },
     { label: "Coordinate", value: bl.coordinate_status === "available" ? "Disponibili" : "Non disponibili" },
-    { label: "Indirizzo", value: bl.address_status === "not_introduced_yet" ? "Layer non introdotto" : bl.address_status === "approximate" ? "Approssimativo" : "Non disponibile" },
-    { label: "Civico", value: "Layer non introdotto" },
+    { label: "Indirizzo", value: addrStatusLabel },
+    { label: "Civico", value: civicStatusLabel },
   ];
   const localization_panel = sectionOrNull("localization", "Localizzazione", rr,
     locFacts, [], []);
