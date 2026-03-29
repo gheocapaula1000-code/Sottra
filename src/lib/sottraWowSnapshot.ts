@@ -98,7 +98,7 @@ export interface WowSnapshotInput {
 }
 
 export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
-  const { value, renovation, growth, corr } = input;
+  const { value, renovation, growth, corr, specificity_strength } = input;
 
   const valMode = valueNarrativeMode(value);
   const renMode = renovationNarrativeMode(renovation);
