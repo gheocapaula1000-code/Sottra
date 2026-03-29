@@ -20,6 +20,8 @@ import type { ZoneCorrespondenceResult } from "@/lib/zoneCorrespondenceEngine";
 export type AttentionSignal = "high" | "medium" | "low" | "insufficient";
 export type SnapshotNarrativeMode = "full" | "partial" | "hidden";
 
+export type SpecificityLabel = "Alta" | "Media" | "Bassa" | "Non sufficiente";
+
 export interface WowSnapshot {
   zona_reale: string;
   livello_lettura: string;
@@ -32,6 +34,7 @@ export interface WowSnapshot {
   attenzione_area: AttentionSignal;
   limite_principale: string;
   narrative_mode: SnapshotNarrativeMode;
+  specificita_immobile: SpecificityLabel | null;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -90,10 +93,12 @@ export interface WowSnapshotInput {
   renovation: RenovationResult;
   growth: ZoneGrowthSignalsResult | null;
   corr: ZoneCorrespondenceResult;
+  /** Optional house differentiation specificity strength */
+  specificity_strength?: "strong" | "medium" | "weak" | "insufficient" | null;
 }
 
 export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
-  const { value, renovation, growth, corr } = input;
+  const { value, renovation, growth, corr, specificity_strength } = input;
 
   const valMode = valueNarrativeMode(value);
   const renMode = renovationNarrativeMode(renovation);
@@ -151,6 +156,15 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
     narrativeMode = "partial";
   }
 
+  // ── Specificity label ──
+  const specMap: Record<string, SpecificityLabel> = {
+    strong: "Alta",
+    medium: "Media",
+    weak: "Bassa",
+    insufficient: "Non sufficiente",
+  };
+  const specLabel: SpecificityLabel | null = specificity_strength ? (specMap[specificity_strength] ?? null) : null;
+
   return {
     zona_reale: corr.zone_identity.geo_label,
     livello_lettura: corr.zone_identity.zone_type_label,
@@ -163,6 +177,7 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
     attenzione_area: attention,
     limite_principale: limitePrincipale,
     narrative_mode: narrativeMode,
+    specificita_immobile: specLabel,
   };
 }
 

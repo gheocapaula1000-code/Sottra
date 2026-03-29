@@ -35,6 +35,14 @@ import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib
 import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
 import { buildWowSnapshot, attentionSignalLabel, attentionSignalColor } from "@/lib/sottraWowSnapshot";
 import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
+import {
+  buildHouseDifferentiation,
+  differentiationStatusLabel,
+  specificityStrengthLabel,
+  specificityStrengthColor,
+  separationLabel,
+  type HouseDifferentiationResult,
+} from "@/lib/houseDifferentiationEngine";
 
 /* ── Section-level ErrorBoundary ──────────────────────── */
 
@@ -260,10 +268,18 @@ function WowSnapshotPanel({ snapshot, loading }: { snapshot: WowSnapshot | null;
         <div><span className="text-muted-foreground">Segnali zona</span><p className="font-semibold text-foreground">{snapshot.segnali_zona}</p></div>
       </div>
 
-      {/* Attention signal */}
-      <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3">
-        <span className="text-xs text-muted-foreground">Attenzione area</span>
-        <span className={cn("text-xs font-bold", attnColor)}>{attentionSignalLabel(snapshot.attenzione_area)}</span>
+      {/* Specificity + Attention row */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2">
+          <span className="text-xs text-muted-foreground">Attenzione area</span>
+          <span className={cn("text-xs font-bold", attnColor)}>{attentionSignalLabel(snapshot.attenzione_area)}</span>
+        </div>
+        {snapshot.specificita_immobile && (
+          <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2">
+            <span className="text-xs text-muted-foreground">Specificità</span>
+            <span className="text-xs font-bold text-foreground">{snapshot.specificita_immobile}</span>
+          </div>
+        )}
       </div>
 
       {/* Primary limitation — always visible */}
@@ -272,6 +288,68 @@ function WowSnapshotPanel({ snapshot, loading }: { snapshot: WowSnapshot | null;
         <span>{snapshot.limite_principale}</span>
       </div>
       <p className="text-[9px] text-muted-foreground/30 mt-2">Snapshot orientativo — non sostituisce una valutazione professionale</p>
+    </Section>
+  );
+}
+
+/* ── House Differentiation Card ──────────────────────── */
+
+function HouseDifferentiationCard({ diff, loading }: { diff: HouseDifferentiationResult | null; loading: boolean }) {
+  if (loading) return <SectionSkeleton />;
+  if (!diff || diff.summary.narrative_mode === "hidden") return null;
+
+  const isPartial = diff.summary.narrative_mode === "partial";
+  const strengthColor = specificityStrengthColor(diff.specificity.specificity_strength);
+
+  return (
+    <Section>
+      <SectionHeader icon={Eye} title="Specificità dell'immobile" badge={isPartial ? "Parziale" : null} />
+
+      {/* Main status */}
+      <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3">
+        <span className="text-xs text-muted-foreground">Differenziazione</span>
+        <span className={cn("text-xs font-bold", strengthColor)}>
+          {specificityStrengthLabel(diff.specificity.specificity_strength)}
+        </span>
+      </div>
+
+      <p className="text-xs text-foreground mb-3">{differentiationStatusLabel(diff.specificity.specificity_status)}</p>
+
+      {/* Separation */}
+      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+        <div>
+          <span className="text-muted-foreground">Separazione</span>
+          <p className="font-semibold text-foreground text-[11px]">{separationLabel(diff.specificity.house_vs_adjacent_separation)}</p>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Claim massimo</span>
+          <p className="font-semibold text-foreground text-[11px]">
+            {diff.specificity.max_safe_claim_level === "building_candidate" ? "Candidato edificio" :
+             diff.specificity.max_safe_claim_level === "address_area" ? "Area indirizzo" : "Solo zona"}
+          </p>
+        </div>
+      </div>
+
+      {/* Visual notes */}
+      {diff.visual_signals.visual_notes.length > 0 && (
+        <div className="space-y-1 mb-3">
+          {diff.visual_signals.visual_notes.map((n, i) => (
+            <p key={i} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+              <Eye className="h-3 w-3 mt-0.5 shrink-0 text-primary/50" />{n}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* Limitations */}
+      {diff.summary.limitations.slice(0, 2).map((l, i) => (
+        <div key={i} className="flex items-start gap-2 text-[10px] text-muted-foreground/70 mb-1">
+          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+          <span>{l}</span>
+        </div>
+      ))}
+
+      <p className="text-[9px] text-muted-foreground/30 mt-2">La differenziazione non equivale a una identificazione catastale</p>
     </Section>
   );
 }
@@ -1516,7 +1594,7 @@ const Result = () => {
   // ── WOW Snapshot computation ──
   const pricingData = result.pricing.data as PricingData | null;
   const streetEvidence = identifyData?.streetEvidence;
-  const wowSnapshot: WowSnapshot | null = (() => {
+  const wowAndDiff: { snapshot: WowSnapshot; houseDiff: HouseDifferentiationResult } | null = (() => {
     if (!identifyDone || lowConfidence || identifyFailed) return null;
     try {
       // Stub minimal zone correspondence for snapshot
@@ -1526,7 +1604,6 @@ const Result = () => {
         zone_precision: { precision_status: "medium" as const, sub_comunale_support_status: "unavailable" as const, market_zone_support_status: "direct" as const, territorial_support_status: "partial" as const, max_safe_claim_level: "zona_omi" as const },
         zone_limitations: { missing_sub_comunale: true, market_only_comunale: false, weak_zone_anchor: false, fallback_dominant: false, blocking_gaps: [] as string[], transparency_notes: [] as string[] },
       };
-      // Stub minimal territorial data for value engine
       const block = (avail: string, geo: string) => ({ availability: avail, quality: "official" as const, geo_level: geo, source_key: "live", source_label: "live", is_derived: false, officiality: "official" as const, limitations: [] as string[] });
       const stubTd = {
         territorial_identity: { geo_level: "zona_omi" as const, geo_code: "live", geo_label: identifyData?.address?.split(",").pop()?.trim() ?? "", normalized_path: "", resolution_method: "direct" },
@@ -1534,9 +1611,24 @@ const Result = () => {
       };
       const value = buildZoneValue({ data: stubTd as any, corr: stubCorr as any, omiMin: pricingData?.prezzoMqMin, omiMax: pricingData?.prezzoMqMax, omiGeoLevel: pricingData?.omiGeoLevel, omiPolygonMatch: pricingData?.polygonMatch });
       const reno = buildRenovationEstimate({ zone_geo_code: "live", zone_geo_level: "zona_omi", hasPhoto: true, visibleFloors: streetEvidence?.photoAnalysis?.visibleFloors, buildingType: streetEvidence?.photoAnalysis?.buildingType, facadeConsistencyLevel: streetEvidence?.facadeConsistencyLevel, photoReadability: streetEvidence?.photoAnalysis?.photoReadability, value_per_sqm_mid: value.value_result.value_per_sqm_mid });
-      return buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any });
+      const hDiff = buildHouseDifferentiation({
+        photo_present: true,
+        geo_present: hasValidCoords,
+        lat: state?.lat ?? null,
+        lng: state?.lng ?? null,
+        address_raw: identifyData?.address ?? null,
+        address_resolution: null,
+        building_profile: null,
+        identify_hints: identifyData ? {
+          confidence: identifyData.confidence ?? 0.5,
+        } : null,
+      });
+      return { snapshot: buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any, specificity_strength: hDiff.specificity.specificity_strength }), houseDiff: hDiff };
     } catch { return null; }
   })();
+
+  const wowSnapshot = wowAndDiff?.snapshot ?? null;
+  const houseDiff = wowAndDiff?.houseDiff ?? null;
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -1606,6 +1698,9 @@ const Result = () => {
 
               {/* B) Immobile e Facciata */}
               <SectionSafe><ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} /></SectionSafe>
+
+              {/* B.1) Specificità immobile */}
+              <SectionSafe><HouseDifferentiationCard diff={houseDiff} loading={scanning} /></SectionSafe>
 
               {/* C) Contesto e Vicinato */}
               <SectionSafe><ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} /></SectionSafe>
