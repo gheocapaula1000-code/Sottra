@@ -30,7 +30,9 @@ function stubTerritorial(geoLevel = "zona_omi"): TerritorialDataResult {
     territorial_coverage: { available_levels: [geoLevel as any], completeness_score: 0.7, level_coverage: {} as any },
     territorial_quality: { overall_status: "strong", officiality_mix: "official", data_coherence: true, warnings: [], fallback_count: 0, blocking_gaps: [] },
     territorial_summary: { executive: "", status_label: "", key_strengths: [], key_gaps: [] },
-  } as TerritorialDataResult;
+    territorial_sources: [],
+    geo_backbone: {} as any,
+  } as unknown as TerritorialDataResult;
 }
 
 function stubCorr(fallbackWeight: "none" | "low" | "medium" | "high" = "none"): ZoneCorrespondenceResult {
