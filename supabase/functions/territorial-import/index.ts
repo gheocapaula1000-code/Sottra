@@ -947,8 +947,8 @@ async function importAscCsv(
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
     const dbRows = chunk.map((r, j) => {
-      const areaCode = r["COD_ASC"] || r["AREA_CODE"] || "";
-      const areaName = r["DEN_ASC"] || r["AREA_NAME"] || "";
+      const areaCode = r["COD_ASC"] || r["AREA_CODE"] || r["COD_ASC2"] || "";
+      const areaName = r["DEN_ASC"] || r["AREA_NAME"] || r["DEN_ASC2"] || "";
       const comCode = r["PRO_COM_T"] || r["PRO_COM"] || "";
       const ascLevel = intSafe(r["LIVELLO"] || r["ASC_LEVEL"]);
       if (!areaCode) { errors.push({ idx: i + j, reason: "COD_ASC mancante" }); return null; }
@@ -1228,8 +1228,8 @@ serve(async (req) => {
             if (!hasSez) missingCritical.push("Colonna sezione (SEZ2021 | SEZ)");
             if (!hasCom) missingCritical.push("Colonna comune (PRO_COM_T | PRO_COM)");
           } else if (dt === "ASC_2021" || dt.startsWith("R03_CSV_ASC")) {
-            const hasAsc = headers.some(h => ["COD_ASC", "AREA_CODE"].includes(h));
-            if (!hasAsc) missingCritical.push("Colonna area (COD_ASC | AREA_CODE)");
+            const hasAsc = headers.some(h => ["COD_ASC", "AREA_CODE", "COD_ASC2"].includes(h));
+            if (!hasAsc) missingCritical.push("Colonna area (COD_ASC | AREA_CODE | COD_ASC2)");
           }
 
           const lightValidation: Record<string, unknown> = {
@@ -1411,7 +1411,7 @@ serve(async (req) => {
                   const sez = row["SEZ2021"] || row["SEZ"] || "";
                   if (!sez) continue;
                   const existing = ascMappings.get(sez) || { asc1: null, asc2: null, asc3: null };
-                  const code = row["COD_ASC"] || null;
+                  const code = row["COD_ASC"] || row["COD_ASC2"] || null;
                   if (level === "ASC1") existing.asc1 = code;
                   else if (level === "ASC2") { existing.asc2 = code; asc2MappingsCount++; }
                   else if (level === "ASC3") existing.asc3 = code;
