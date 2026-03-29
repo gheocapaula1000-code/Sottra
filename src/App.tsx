@@ -71,6 +71,7 @@ const AdminZoneAttractorsPressure = lazyWithRecovery(() => import("./pages/Admin
 const AdminZoneBoundaries = lazyWithRecovery(() => import("./pages/AdminZoneBoundaries"));
 const AdminZoneValue = lazyWithRecovery(() => import("./pages/AdminZoneValue"));
 const AdminZoneOutlook = lazyWithRecovery(() => import("./pages/AdminZoneOutlook"));
+const AdminHouseDifferentiation = lazyWithRecovery(() => import("./pages/AdminHouseDifferentiation"));
 
 const queryClient = new QueryClient();
 
