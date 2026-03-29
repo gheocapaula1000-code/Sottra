@@ -30,9 +30,6 @@ function makeCorr(overrides: Partial<{
       fallback_used: (overrides.fallback_weight ?? "none") !== "none",
       fallback_weight: (overrides.fallback_weight ?? "none") as any,
       false_specificity_risk: "none" as any,
-      max_safe_claim_level: "microzona" as any,
-      data_layers_at_zone: [],
-      data_layers_at_fallback: [],
     },
     zone_precision: {
       precision_status: "strong",
