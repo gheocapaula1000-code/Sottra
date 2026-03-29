@@ -117,15 +117,13 @@ export async function queryAnncsuStats(): Promise<{
   with_civic: number;
   ready: number;
 }> {
-  const [totalRes, civicRes, readyRes] = await Promise.all([
-    supabase.from("anncsu_streets" as never).select("id", { count: "exact", head: true }) as Promise<{ count: number | null }>,
-    supabase.from("anncsu_streets" as never).select("id", { count: "exact", head: true }).not("civic_normalized", "is", null) as Promise<{ count: number | null }>,
-    supabase.from("anncsu_streets" as never).select("id", { count: "exact", head: true }).eq("ingest_readiness", "ready") as Promise<{ count: number | null }>,
-  ]);
+  const totalRes = await supabase.from("anncsu_streets" as never).select("id", { count: "exact", head: true });
+  const civicRes = await supabase.from("anncsu_streets" as never).select("id", { count: "exact", head: true }).not("civic_normalized", "is", null);
+  const readyRes = await supabase.from("anncsu_streets" as never).select("id", { count: "exact", head: true }).eq("ingest_readiness", "ready");
 
   return {
     total: (totalRes as unknown as { count: number | null }).count ?? 0,
-    comuni_count: 0, // Would need a distinct count query
+    comuni_count: 0,
     with_civic: (civicRes as unknown as { count: number | null }).count ?? 0,
     ready: (readyRes as unknown as { count: number | null }).count ?? 0,
   };

@@ -177,11 +177,11 @@ export default function AdminAnncsuReadiness() {
     if (queryStreet) {
       const res = await queryAnncsuStreetCandidates(queryComune, queryStreet, 30);
       if (res.ok) setQueryResults(res.records);
-      else toast.error(res.error);
+      else if (!res.ok) toast.error(res.error);
     } else {
       const res = await queryAnncsuByComune(queryComune, 30);
       if (res.ok) setQueryResults(res.records);
-      else toast.error(res.error);
+      else if (!res.ok) toast.error(res.error);
     }
   };
 
