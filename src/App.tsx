@@ -70,6 +70,7 @@ const AdminZoneUrbanTransformations = lazyWithRecovery(() => import("./pages/Adm
 const AdminZoneAttractorsPressure = lazyWithRecovery(() => import("./pages/AdminZoneAttractorsPressure"));
 const AdminZoneBoundaries = lazyWithRecovery(() => import("./pages/AdminZoneBoundaries"));
 const AdminZoneValue = lazyWithRecovery(() => import("./pages/AdminZoneValue"));
+const AdminZoneOutlook = lazyWithRecovery(() => import("./pages/AdminZoneOutlook"));
 
 const queryClient = new QueryClient();
 
