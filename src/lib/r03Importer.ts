@@ -339,11 +339,23 @@ export async function importR03Sections(
 /* ------------------------------------------------------------------ */
 
 export async function fetchR03Stats() {
-  const { data, error } = await supabase
-    .from("census_sections_r03_2021" as any)
-    .select("section_code, comune_istat_code, asc1_code, asc2_code, asc3_code, population_2021, polygon_coords, centroid_lat");
+  const PAGE = 5000;
+  const allData: any[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("census_sections_r03_2021" as any)
+      .select("section_code, comune_istat_code, asc1_code, asc2_code, asc3_code, population_2021, polygon_coords, centroid_lat")
+      .range(from, from + PAGE - 1);
+    if (error || !data || data.length === 0) break;
+    allData.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
 
-  if (error || !data) return null;
+  if (allData.length === 0) return null;
+
+  const data = allData;
 
   const comuniSet = new Set<string>();
   const asc1Set = new Set<string>();
@@ -391,20 +403,38 @@ export async function fetchR03Stats() {
  * Scoped: only considers ASC layer records whose comune_istat_code is in R03 comuni.
  */
 export async function validateAscSectionCoherence(): Promise<AscValidationReport | null> {
-  const { data: sections, error: secErr } = await supabase
-    .from("census_sections_r03_2021" as any)
-    .select("section_code, comune_istat_code, asc1_code, asc2_code, asc3_code");
+  // Paginated fetch of sections (bypass 1000-row default limit)
+  const PAGE = 5000;
+  const allSections: any[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("census_sections_r03_2021" as any)
+      .select("section_code, comune_istat_code, asc1_code, asc2_code, asc3_code")
+      .range(from, from + PAGE - 1);
+    if (error || !data || data.length === 0) break;
+    allSections.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  if (allSections.length === 0) return null;
 
-  if (secErr || !sections) return null;
+  // Paginated fetch of ASC areas
+  const allAscAreas: any[] = [];
+  from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("sub_municipal_areas_2021")
+      .select("area_code, asc_level, comune_istat_code")
+      .range(from, from + PAGE - 1);
+    if (error || !data || data.length === 0) break;
+    allAscAreas.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
 
-  const { data: ascAreas, error: ascErr } = await supabase
-    .from("sub_municipal_areas_2021")
-    .select("area_code, asc_level, comune_istat_code");
-
-  if (ascErr) return null;
-
-  const sectionsList = sections as any[];
-  const ascList = (ascAreas || []) as any[];
+  const sectionsList = allSections;
+  const ascList = allAscAreas;
 
   // Collect R03 comuni
   const r03Comuni = new Set<string>();
