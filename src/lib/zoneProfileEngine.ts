@@ -406,10 +406,10 @@ function buildSummaryBlock(
   }
 
   const next_best_step = limitations.missing_layers.length > 0
-    ? `Dati mancanti: ${limitations.missing_layers.slice(0, 3).join(", ")}. Previsti nelle prossime fasi.`
+    ? `Dati mancanti: ${limitations.missing_layers.slice(0, 3).join(", ")}. Arricchimento previsto nelle prossime iterazioni.`
     : backboneSummary.key_gaps.length > 0
       ? backboneSummary.key_gaps[0]
-      : "Profilo pronto per arricchimento edificio (Fase 4).";
+      : "Profilo zona completo. Pronto per arricchimento edificio e indirizzo.";
 
   return { executive_summary, analytical_summary, user_facing_summary, next_best_step };
 }
