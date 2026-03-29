@@ -684,8 +684,10 @@ function buildQuality(
   if (!identity.is_building_level_supported) {
     warnings.push("Identificazione edificio non supportata a livello puntuale");
   }
-  if (localization.address_status === "not_introduced_yet") {
-    warnings.push("Layer indirizzo/civico non ancora introdotto");
+  if (localization.address_status === "not_introduced_yet" || localization.address_status === "not_determinable") {
+    warnings.push("Indirizzo non disponibile o non determinabile");
+  } else if (localization.address_status === "approximate") {
+    warnings.push("Indirizzo approssimativo (da testo, non verificato)");
   }
 
   // Transparency: how clear is the data provenance
