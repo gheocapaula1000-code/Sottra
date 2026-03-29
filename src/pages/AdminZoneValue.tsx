@@ -25,8 +25,8 @@ export default function AdminZoneValue() {
   const [renoResult, setRenoResult] = useState<ReturnType<typeof buildRenovationEstimate> | null>(null);
 
   const run = () => {
-    const geo = resolveGeoBackbone(code);
-    const td = buildTerritorialData(geo);
+    const geo = resolveFromInput({ codice_comune_catastale: code });
+    const td = resolveTerritorialData({ geo_backbone: geo });
     const corr = buildZoneCorrespondence(td);
     const growth = buildZoneGrowthSignals(td, corr);
     const value = buildZoneValue({ data: td, corr, omiMin: 2800, omiMax: 3500, omiGeoLevel: "microzona_omi", omiPolygonMatch: true });
