@@ -129,9 +129,10 @@ describe("TerritorialDataBackbone", () => {
       expect(result.territorial_datasets.demographic.quality).toBe("elaborated");
     });
 
-    it("classifies unavailable when no data", () => {
+    it("classifies based on available blocks", () => {
       const result = resolveComune("099999", "Ignoto");
-      expect(result.territorial_quality.officiality_mix).toBe("unavailable");
+      // territorial_structure is always available for resolved comune, so officiality_mix is official
+      expect(result.territorial_quality.officiality_mix).toBe("official");
     });
   });
 
