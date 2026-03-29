@@ -1571,6 +1571,9 @@ const Result = () => {
 
           <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} lowConfidence={lowConfidence} />
 
+          {/* WOW Snapshot — immediate value panel */}
+          <SectionSafe><WowSnapshotPanel snapshot={wowSnapshot} loading={result.pricing.status === "loading"} /></SectionSafe>
+
           {/* Manual address override — shown after identify success, not during initial scan */}
           {identifyDone && !lowConfidence && !identifyFailed && (
             <AddressOverrideForm
