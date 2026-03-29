@@ -585,6 +585,7 @@ function buildBounds(
   td: TerritorialDataResult,
   zp: ZoneProfile,
   identity: BuildingIdentity,
+  localization: BuildingLocalization,
 ): BuildingInferredBounds {
   const canSay: string[] = [];
   const cannotSay: string[] = [];
