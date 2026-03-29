@@ -100,9 +100,8 @@ describe("Zone Growth Signals", () => {
     expect(g.growth_limitations.missing_depth).toBe(true);
   });
 
-  it("no regression on zone profile engine", () => {
-    // Importing zone profile to make sure it still works
-    const { buildTerritorialReport } = require("@/lib/zoneProfileEngine");
+  it("no regression on zone profile engine", async () => {
+    const { buildTerritorialReport } = await import("@/lib/zoneProfileEngine");
     const data = resolveTerritorialData({ geo_input: { comune_istat_code: "015146" }, include_placeholders: true });
     const result = buildTerritorialReport(data);
     expect(result.profile.zone_identity.geo_level).toBe("comune");
