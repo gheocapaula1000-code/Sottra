@@ -601,7 +601,12 @@ const AdminSubMunicipal = () => {
                             {progress.staleLabel ?? "failed_stale"}
                           </Badge>
                         )}
-                        {isPossiblyStuck && (
+                        {job.status === "pending_next_chunk" && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                            in pausa — passaggio {(job.stats as any)?.passNumber ?? "?"}
+                          </Badge>
+                        )}
+                        {isPossiblyStuck && job.status !== "pending_next_chunk" && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive">
                             possibile stuck
                           </Badge>
