@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Building2, MapPin, ShieldAlert, Eye, Layers, AlertTriangle } from "lucide-react";
+import { badgeVariantClasses } from "@/lib/badgeUtils";
 import { resolveTerritorialData } from "@/lib/territorialDataBackbone";
 import {
   buildFullBuildingReport,
