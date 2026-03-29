@@ -187,7 +187,13 @@ const AdminSubMunicipal = () => {
       const { data, error } = await supabase.functions.invoke("territorial-import", { body: { action: "aggregate-r03" } });
       if (error) toast.error(`Errore aggregazione: ${error.message}`);
       else if (data?.error) toast.error(data.error);
-      else toast.success(`Aggregazione completata: ${data?.imported ?? 0} aggregati generati`);
+      else {
+        const d = data?.diagnostics;
+        const details = d
+          ? ` (${d.sectionsTotal} sezioni, ${d.comuniWithAsc}/${d.comuniTotal} comuni con ASC, ${d.sectionsUnmatched} non matchate${d.usedFallback ? ", fallback comune" : ""})`
+          : "";
+        toast.success(`Aggregazione completata: ${data?.imported ?? 0} aggregati generati${details}`);
+      }
       await loadAggStats();
     } catch { toast.error("Errore aggregazione"); }
     setAggregating(false);
