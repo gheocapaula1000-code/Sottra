@@ -165,6 +165,9 @@ export interface AuditMetrics {
   // Per-quality
   quality_distribution: Record<string, number>;
 
+  // Official support totals
+  official_street_support_count: number;
+
   // Overprecision risk
   high_overprecision_risk_count: number;
   high_false_specificity_count: number;
