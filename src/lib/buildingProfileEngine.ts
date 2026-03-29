@@ -1,12 +1,12 @@
 /**
- * Building Profile Engine — Sottra Phase 4
+ * Building Profile Engine — Sottra Phase 4+5
  *
  * Produces a building/property profile from the territorial backbone,
  * clearly distinguishing direct facts, contextual facts, derived facts
  * and unsupported claims.
  *
- * Does NOT touch OMI logic. Does NOT introduce vie/civici as an operative layer.
- * Does NOT invent building-specific data not backed by real sources.
+ * Phase 5 addition: integrates Address Resolution Engine as an optional
+ * precision layer — never promoting address parsing to building truth.
  */
 
 import type {
