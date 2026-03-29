@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MapPin, Shield, Layers, BarChart3, AlertTriangle, Info, ChevronDown, ChevronUp, TrendingUp, Anchor, Construction, Magnet } from "lucide-react";
+import { MapPin, Shield, Layers, BarChart3, AlertTriangle, Info, ChevronDown, ChevronUp, TrendingUp, Anchor, Construction, Magnet, Square } from "lucide-react";
 import { resolveTerritorialData, type TerritorialDataResult } from "@/lib/territorialDataBackbone";
 import { buildTerritorialReport, type TerritorialReportViewModel, type ReportSectionVM, type ReportBadge, type SectionRenderMode } from "@/lib/zoneProfileEngine";
 import { badgeVariantClasses } from "@/lib/badgeUtils";
@@ -16,6 +16,7 @@ import { buildZoneCorrespondence, type ZoneCorrespondenceResult } from "@/lib/zo
 import { buildZoneGrowthSignals, growthStatusLabel, type ZoneGrowthSignalsResult, type GrowthSignal } from "@/lib/zoneGrowthSignals";
 import { buildUrbanTransformations, transformationStatusLabel, stageLabel, proximityLabel, relevanceLabel, type UrbanTransformationResult, type UrbanTransformationInput } from "@/lib/zoneUrbanTransformations";
 import { buildAttractorsPressure, pressureStatusLabel, attractorFamilyLabel, attractorProximityLabel, attractorRelevanceLabel, attractorIntensityLabel, type AttractorPressureResult, type AttractorInput } from "@/lib/zoneAttractorsPressure";
+import { buildZoneBoundaries, boundaryNarrativeMode, boundaryPrecisionLabel, boundaryDisplayModeLabel, boundaryConfidenceLabel, boundarySourceLabel, type ZoneBoundaryResult } from "@/lib/zoneBoundariesEngine";
 import AppHeader from "@/components/AppHeader";
 
 // Synthetic demo signals — in production these come from a real source
@@ -192,7 +193,7 @@ export default function TerritorialReport() {
   const [growth, setGrowth] = useState<ZoneGrowthSignalsResult | null>(null);
   const [urban, setUrban] = useState<UrbanTransformationResult | null>(null);
   const [attractors, setAttractors] = useState<AttractorPressureResult | null>(null);
-
+  const [boundaries, setBoundaries] = useState<ZoneBoundaryResult | null>(null);
   const generate = () => {
     const data = resolveTerritorialData({
       geo_input: { comune_istat_code: istatCode },
@@ -203,11 +204,13 @@ export default function TerritorialReport() {
     const g = buildZoneGrowthSignals(data, c);
     const u = buildUrbanTransformations(data, c, DEMO_URBAN_SIGNALS);
     const a = buildAttractorsPressure(data, c, DEMO_ATTRACTORS);
+    const b = buildZoneBoundaries(data, c);
     setVm(viewModel);
     setCorr(c);
     setGrowth(g);
     setUrban(u);
     setAttractors(a);
+    setBoundaries(b);
   };
 
   return (
@@ -340,6 +343,46 @@ export default function TerritorialReport() {
                     </div>
                   ))}
                   {attractors.pressure_limitations.transparency_notes.map((n, i) => (
+                    <p key={i} className="text-xs text-muted-foreground/80 leading-relaxed">{n}</p>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Zone Boundaries */}
+            {boundaries && boundaryNarrativeMode(boundaries) !== "hidden" && (
+              <Card className="border-border/50">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Square className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Confini della zona</CardTitle>
+                    </div>
+                    <Badge variant={boundaries.zone_boundary_identity.boundary_precision_status === "strong" ? "default" : "secondary"} className="text-[10px]">
+                      {boundaryPrecisionLabel(boundaries.zone_boundary_identity.boundary_precision_status)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Perimetro</span>
+                    <span className="font-medium text-foreground">{boundaries.zone_boundary_identity.boundary_label}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Fonte confine</span>
+                    <span className="font-medium text-foreground">{boundarySourceLabel(boundaries.zone_boundary_identity.boundary_source_type)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Modalità</span>
+                    <span className="font-medium text-foreground">{boundaryDisplayModeLabel(boundaries.zone_boundary_geometry.boundary_display_mode)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Attendibilità</span>
+                    <Badge variant={boundaries.zone_boundary_geometry.boundary_confidence === "high" ? "default" : "secondary"} className="text-[10px]">
+                      {boundaryConfidenceLabel(boundaries.zone_boundary_geometry.boundary_confidence)}
+                    </Badge>
+                  </div>
+                  {boundaries.zone_boundary_limitations.transparency_notes.map((n, i) => (
                     <p key={i} className="text-xs text-muted-foreground/80 leading-relaxed">{n}</p>
                   ))}
                 </CardContent>
