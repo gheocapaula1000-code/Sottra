@@ -1022,7 +1022,10 @@ export function buildBuildingReportViewModel(
     address_precision_panel = sectionOrNull("address_precision", "Precisione indirizzo", rr,
       addrFacts,
       ar.address_limitations.transparency_notes.slice(0, 3),
-      [{ label: addressQualityLabel(ar.address_quality.overall_address_quality), variant: "partial" as ReportBadge["variant"] }],
+      [{ label: addressQualityLabel(ar.address_quality.overall_address_quality),
+        variant: (ar.address_quality.overall_address_quality === "strong" ? "official"
+          : ar.address_quality.overall_address_quality === "moderate" ? "elaborated"
+          : "partial") as ReportBadge["variant"] }],
     );
   }
 
