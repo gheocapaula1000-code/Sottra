@@ -489,6 +489,31 @@ function buildFacts(
       "address_ref", "Indirizzo (riferimento)", input.address,
       "contextual", "input_utente", "comune", "elaborated",
     ));
+
+    // Phase 5: add address resolution facts
+    const ar = localization.address_resolution;
+    if (ar) {
+      const addrSupport = addressFactSupportLevel(ar);
+      if (ar.address_identity.normalized_street_name) {
+        locFacts.push(makeFact(
+          "street_match", "Match strada",
+          `${streetMatchLabel(ar.address_resolution.matched_street_status)} (${Math.round(ar.address_resolution.matched_street_confidence * 100)}%)`,
+          addrSupport, "text_normalization", "comune", "elaborated",
+        ));
+      }
+      if (ar.civic_resolution.civic_input_present) {
+        locFacts.push(makeFact(
+          "civic_match", "Match civico",
+          `${civicMatchLabel(ar.civic_resolution.civic_match_status)} — ${ar.civic_resolution.civic_supported_as_building_truth ? "verificato" : "non verificato"}`,
+          addrSupport, "text_parsing", "comune", "elaborated",
+        ));
+      }
+      locFacts.push(makeFact(
+        "address_quality", "Qualità indirizzo",
+        addressQualityLabel(ar.address_quality.overall_address_quality),
+        addrSupport, "address_resolution", "comune", "elaborated",
+      ));
+    }
   }
 
   // Territorial context facts
