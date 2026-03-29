@@ -62,6 +62,7 @@ const TerritorialReport = lazyWithRecovery(() => import("./pages/TerritorialRepo
 const AdminZoneProfile = lazyWithRecovery(() => import("./pages/AdminZoneProfile"));
 const AdminBuildingProfile = lazyWithRecovery(() => import("./pages/AdminBuildingProfile"));
 const AdminAddressResolution = lazyWithRecovery(() => import("./pages/AdminAddressResolution"));
+const AdminSourcesRoadmap = lazyWithRecovery(() => import("./pages/AdminSourcesRoadmap"));
 
 const queryClient = new QueryClient();
 
