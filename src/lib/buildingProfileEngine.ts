@@ -364,7 +364,7 @@ function buildLocalization(
 
   const conf = hasCoords ? 0.7 : 0.3;
 
-  // Phase 5: resolve address if provided
+  // Phase 5+ANNCSU: resolve address if provided
   let addressRes: AddressResolutionResult | null = null;
   let addrStatus: AddressStatus = "not_introduced_yet";
   let civicStatus: AddressStatus = "not_introduced_yet";
@@ -376,16 +376,21 @@ function buildLocalization(
       lat: input.lat,
       lng: input.lng,
       resolved_geo_level: td.territorial_identity.geo_level,
+      anncsu_street_candidates: input.anncsu_street_candidates,
+      anncsu_civic_candidates: input.anncsu_civic_candidates,
     });
 
-    // Map address quality to status — never "available" without registry
+    // Map address quality to status
     const aq = addressRes.address_quality.overall_address_quality;
-    addrStatus = aq === "strong" ? "available"
-      : aq === "moderate" || aq === "weak" ? "approximate"
+    const hasOfficialStreet = addressRes.address_resolution.official_street_support;
+    addrStatus = aq === "strong" && hasOfficialStreet ? "available"
+      : aq === "strong" || aq === "moderate" || aq === "weak" ? "approximate"
       : "not_determinable";
 
-    civicStatus = addressRes.civic_resolution.civic_input_present
-      ? "approximate" // Never "available" — civic is parsed, not verified
+    // Civic status: official support upgrades to "available" but still NOT building truth
+    const hasOfficialCivic = addressRes.address_resolution.official_civic_support;
+    civicStatus = hasOfficialCivic ? "available"
+      : addressRes.civic_resolution.civic_input_present ? "approximate"
       : "not_determinable";
   }
 
