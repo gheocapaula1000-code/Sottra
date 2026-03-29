@@ -779,7 +779,7 @@ function buildSummary(
 
   const next_best_step = limitations.blocking_gaps.length > 0
     ? `Prossimi passi: ${limitations.blocking_gaps.slice(0, 2).join("; ")}.`
-    : "Profilo territoriale completo. Layer edificio e via/civico previsti nelle prossime fasi.";
+    : "Profilo basato su contesto territoriale. Registro edifici e verifica civici previsti nelle prossime iterazioni.";
 
   return { executive_summary, analytical_summary, safe_user_summary, next_best_step };
 }
