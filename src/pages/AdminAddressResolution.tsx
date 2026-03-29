@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MapPin, Search, AlertTriangle, ShieldCheck } from "lucide-react";
+import { badgeVariantClasses } from "@/lib/badgeUtils";
 import {
   resolveAddress,
   streetMatchLabel,
