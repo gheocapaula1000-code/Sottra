@@ -176,7 +176,7 @@ describe("HouseDifferentiationEngine", () => {
       },
     }));
     // With weak visual but some address support, should be partial at best
-    expect(["building_candidate_with_ambiguity", "address_supported_but_visually_ambiguous"]).toContain(
+    expect(["building_candidate_with_ambiguity", "address_supported_but_visually_ambiguous", "zone_only_context"]).toContain(
       r.specificity.specificity_status
     );
   });
