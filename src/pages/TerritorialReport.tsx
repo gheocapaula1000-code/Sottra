@@ -17,6 +17,7 @@ import { buildZoneGrowthSignals, growthStatusLabel, type ZoneGrowthSignalsResult
 import { buildUrbanTransformations, transformationStatusLabel, stageLabel, proximityLabel, relevanceLabel, type UrbanTransformationResult, type UrbanTransformationInput } from "@/lib/zoneUrbanTransformations";
 import { buildAttractorsPressure, pressureStatusLabel, attractorFamilyLabel, attractorProximityLabel, attractorRelevanceLabel, attractorIntensityLabel, type AttractorPressureResult, type AttractorInput } from "@/lib/zoneAttractorsPressure";
 import { buildZoneBoundaries, boundaryNarrativeMode, boundaryPrecisionLabel, boundaryDisplayModeLabel, boundaryConfidenceLabel, boundarySourceLabel, type ZoneBoundaryResult } from "@/lib/zoneBoundariesEngine";
+import { buildZoneOutlook, outlookStatusLabel, outlookDirectionLabel, outlookAttentionLabel, outlookNarrativeMode, type ZoneOutlookResult, type HorizonView } from "@/lib/zoneOutlookEngine";
 import AppHeader from "@/components/AppHeader";
 
 // Synthetic demo signals — in production these come from a real source
@@ -194,6 +195,7 @@ export default function TerritorialReport() {
   const [urban, setUrban] = useState<UrbanTransformationResult | null>(null);
   const [attractors, setAttractors] = useState<AttractorPressureResult | null>(null);
   const [boundaries, setBoundaries] = useState<ZoneBoundaryResult | null>(null);
+  const [outlook, setOutlook] = useState<ZoneOutlookResult | null>(null);
   const generate = () => {
     const data = resolveTerritorialData({
       geo_input: { comune_istat_code: istatCode },
@@ -205,12 +207,14 @@ export default function TerritorialReport() {
     const u = buildUrbanTransformations(data, c, DEMO_URBAN_SIGNALS);
     const a = buildAttractorsPressure(data, c, DEMO_ATTRACTORS);
     const b = buildZoneBoundaries(data, c);
+    const o = buildZoneOutlook(c, g, u, a);
     setVm(viewModel);
     setCorr(c);
     setGrowth(g);
     setUrban(u);
     setAttractors(a);
     setBoundaries(b);
+    setOutlook(o);
   };
 
   return (
@@ -343,6 +347,58 @@ export default function TerritorialReport() {
                     </div>
                   ))}
                   {attractors.pressure_limitations.transparency_notes.map((n, i) => (
+                    <p key={i} className="text-xs text-muted-foreground/80 leading-relaxed">{n}</p>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Zone Outlook 2/5/10 */}
+            {outlook && outlookNarrativeMode(outlook) !== "hidden" && (
+              <Card className="border-border/50">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Vista 2 / 5 / 10 anni</CardTitle>
+                    </div>
+                    <Badge variant={outlook.outlook_attention === "high" ? "default" : "secondary"} className="text-[10px]">
+                      {outlookAttentionLabel(outlook.outlook_attention)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-3">
+                  {[outlook.horizon_2y, outlook.horizon_5y, outlook.horizon_10y]
+                    .filter(h => h.narrative_mode !== "hidden")
+                    .map(h => (
+                    <div key={h.horizon_label} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-foreground">{h.horizon_label}</span>
+                        <Badge variant={h.outlook_status === "supportive" ? "default" : "secondary"} className="text-[9px]">
+                          {outlookStatusLabel(h.outlook_status)}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground/80">{h.summary}</p>
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                        <span>Direzione: {outlookDirectionLabel(h.outlook_direction)}</span>
+                        <span>Evidenza: {h.evidence_level}</span>
+                      </div>
+                      {h.limitations.length > 0 && (
+                        <p className="text-[10px] text-amber-500/80">{h.limitations[0]}</p>
+                      )}
+                    </div>
+                  ))}
+                  <div className="pt-1 border-t border-border/30 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Pressione potenziale sui valori</span>
+                      <span className="font-medium text-foreground">{outlookDirectionLabel(outlook.outlook_value_pressure.pressure_direction)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Confidenza</span>
+                      <span className="font-medium text-foreground">{outlook.outlook_value_pressure.pressure_confidence}</span>
+                    </div>
+                  </div>
+                  {outlook.outlook_limitations.transparency_notes.map((n, i) => (
                     <p key={i} className="text-xs text-muted-foreground/80 leading-relaxed">{n}</p>
                   ))}
                 </CardContent>
