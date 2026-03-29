@@ -256,6 +256,46 @@ export default function TerritorialReport() {
             {/* Zone Correspondence + Growth Signals */}
             {corr && growth && <GrowthSignalsPanel growth={growth} corr={corr} />}
 
+            {/* Urban Transformations */}
+            {urban && urban.urban_transformation_summary.narrative_mode !== "hidden" && (
+              <Card className="border-border/50">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Construction className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Trasformazioni e opere rilevate</CardTitle>
+                    </div>
+                    <Badge variant={urban.urban_transformation_summary.overall_transformation_signal_status === "supportive" ? "default" : "secondary"} className="text-[10px]">
+                      {transformationStatusLabel(urban.urban_transformation_summary.overall_transformation_signal_status)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-2">
+                  {urban.urban_transformation_signals
+                    .filter(s => s.territorial_relevance !== "not_determinable")
+                    .map(s => (
+                    <div key={s.signal_key} className="flex items-start gap-2 text-sm">
+                      <span className={`text-xs font-bold mt-0.5 ${s.signal_direction === "supportive" ? "text-emerald-500" : "text-muted-foreground"}`}>
+                        {s.signal_direction === "supportive" ? "↑" : "—"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-foreground">{s.signal_label}</span>
+                          <Badge variant="outline" className="text-[9px] py-0">{stageLabel(s.signal_stage)}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground/80">
+                          {proximityLabel(s.proximity_relevance)} · Rilevanza {relevanceLabel(s.territorial_relevance).toLowerCase()} · Evidenza {s.evidence_level}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {urban.urban_transformation_limitations.transparency_notes.map((n, i) => (
+                    <p key={i} className="text-xs text-muted-foreground/80 leading-relaxed">{n}</p>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Sections */}
             <div className="space-y-3">
               {vm.sections.map(s => <ReportSection key={s.key} section={s} />)}
