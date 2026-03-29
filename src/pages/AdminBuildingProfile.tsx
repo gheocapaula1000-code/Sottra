@@ -18,6 +18,7 @@ export default function AdminBuildingProfile() {
   const [istatCode, setIstatCode] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
+  const [address, setAddress] = useState("");
   const [profile, setProfile] = useState<BuildingProfile | null>(null);
   const [vm, setVm] = useState<BuildingReportViewModel | null>(null);
 
