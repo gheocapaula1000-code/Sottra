@@ -4,14 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Search, AlertTriangle, ShieldCheck } from "lucide-react";
+import { MapPin, Search, AlertTriangle, ShieldCheck, Database } from "lucide-react";
 import { badgeVariantClasses } from "@/lib/badgeUtils";
 import {
   resolveAddress,
   streetMatchLabel,
   civicMatchLabel,
   addressQualityLabel,
+  anncsuMatchLabel,
   type AddressResolutionResult,
+  type AnncsuCandidate,
 } from "@/lib/addressResolutionEngine";
 
 export default function AdminAddressResolution() {
@@ -19,14 +21,29 @@ export default function AdminAddressResolution() {
   const [comune, setComune] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
+  const [anncsuJson, setAnncsuJson] = useState("");
   const [result, setResult] = useState<AddressResolutionResult | null>(null);
 
   const run = () => {
+    let anncsuStreetCandidates: AnncsuCandidate[] | undefined;
+    let anncsuCivicCandidates: AnncsuCandidate[] | undefined;
+    if (anncsuJson.trim()) {
+      try {
+        const parsed = JSON.parse(anncsuJson);
+        if (Array.isArray(parsed)) {
+          anncsuStreetCandidates = parsed;
+          anncsuCivicCandidates = parsed.filter((c: AnncsuCandidate) => c.civic_normalized != null);
+        }
+      } catch { /* ignore parse errors */ }
+    }
+
     const res = resolveAddress({
       raw_address: rawAddress,
       comune: comune || undefined,
       lat: lat ? parseFloat(lat) : undefined,
       lng: lng ? parseFloat(lng) : undefined,
+      anncsu_street_candidates: anncsuStreetCandidates,
+      anncsu_civic_candidates: anncsuCivicCandidates,
     });
     setResult(res);
   };
@@ -58,6 +75,12 @@ export default function AdminAddressResolution() {
               <Input placeholder="Lat (opz.)" value={lat} onChange={e => setLat(e.target.value)} />
               <Input placeholder="Lng (opz.)" value={lng} onChange={e => setLng(e.target.value)} />
             </div>
+            <textarea
+              className="w-full border rounded-md p-2 text-xs font-mono min-h-[60px] bg-background text-foreground border-border"
+              placeholder='ANNCSU candidates JSON (opz.) es: [{"street_name":"Roma","street_type":"Via","civic_normalized":"12","comune_istat_code":"015146","ingest_readiness":"ready","ambiguity_flags":[],"esponente":null,"cod_strada":"001","comune_label":"Milano"}]'
+              value={anncsuJson}
+              onChange={e => setAnncsuJson(e.target.value)}
+            />
             <Button onClick={run} className="w-full"><Search className="h-4 w-4 mr-2" />Risolvi indirizzo</Button>
           </CardContent>
         </Card>
@@ -90,6 +113,61 @@ export default function AdminAddressResolution() {
                     <span className="text-amber-600">{result.address_normalization.ambiguity_flags.join(", ")}</span>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* ANNCSU Match */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Database className="h-4 w-4" /> ANNCSU Match
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1.5 text-xs">
+                <Row label="Status ANNCSU" value={anncsuMatchLabel(result.address_resolution.anncsu_match_status)} />
+                <Row label="Candidati ANNCSU" value={String(result.address_resolution.anncsu_candidate_count)} />
+                <Row label="Esattezza strada" value={result.address_resolution.anncsu_street_exactness} />
+                <Row label="Esattezza civico" value={result.address_resolution.anncsu_civic_exactness} />
+                <Row label="Fonte" value={result.address_resolution.matched_by_source || "—"} />
+                <Row label="Catena fonti" value={result.address_resolution.source_chain.join(" → ")} />
+                <div className="pt-2 border-t border-border/40 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Supporto ufficiale strada</span>
+                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${
+                      result.address_resolution.official_street_support
+                        ? "border-emerald-500/30 text-emerald-600"
+                        : "border-red-500/30 text-red-600"
+                    }`}>
+                      {result.address_resolution.official_street_support ? "Sì" : "No"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Supporto ufficiale civico</span>
+                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${
+                      result.address_resolution.official_civic_support
+                        ? "border-emerald-500/30 text-emerald-600"
+                        : "border-red-500/30 text-red-600"
+                    }`}>
+                      {result.address_resolution.official_civic_support ? "Sì" : "No"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Localizzazione precisa</span>
+                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${
+                      result.address_resolution.precise_location_support
+                        ? "border-emerald-500/30 text-emerald-600"
+                        : "border-amber-500/30 text-amber-600"
+                    }`}>
+                      {result.address_resolution.precise_location_support ? "Sì" : "No"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground font-semibold">Building truth</span>
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-red-500/30 text-red-600">
+                      No — non supportata
+                    </Badge>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -135,6 +213,7 @@ export default function AdminAddressResolution() {
                 </div>
                 <Row label="Forza match strada" value={result.address_quality.street_match_strength} />
                 <Row label="Forza match civico" value={result.address_quality.civic_match_strength} />
+                <Row label="Chiarezza fonti" value={result.address_quality.source_chain_clarity} />
                 <Row label="Dipendenza geocoding" value={result.address_quality.geocoding_dependency_level} />
                 <Row label="Rischio sovraprecisione" value={result.address_quality.overprecision_risk} />
                 <Row label="Rischio falsa specificità" value={result.address_quality.false_specificity_risk} />
@@ -149,8 +228,8 @@ export default function AdminAddressResolution() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1.5 text-xs">
-                <Row label="Registro stradario" value={result.address_limitations.missing_official_address_registry ? "Mancante" : "Disponibile"} />
-                <Row label="Registro civici" value={result.address_limitations.missing_civic_registry ? "Mancante" : "Disponibile"} />
+                <Row label="Registro stradario" value={result.address_limitations.missing_official_address_registry ? "Mancante" : "Disponibile (ANNCSU)"} />
+                <Row label="Registro civici" value={result.address_limitations.missing_civic_registry ? "Mancante" : "Disponibile (ANNCSU)"} />
                 <Row label="Link preciso edificio" value={result.address_limitations.no_precise_building_link ? "No" : "Sì"} />
                 {result.address_limitations.transparency_notes.map((n, i) => (
                   <p key={i} className="text-[10px] text-muted-foreground/70 italic">{n}</p>
