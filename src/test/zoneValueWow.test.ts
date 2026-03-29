@@ -62,13 +62,13 @@ function stubCorr(fallbackWeight: "none" | "low" | "medium" | "high" = "none"): 
   } as ZoneCorrespondenceResult;
 }
 
-function stubGrowth(status: "supportive" | "mixed" | "weak" | "insufficient" = "supportive"): ZoneGrowthSignalResult {
+function stubGrowth(status: "supportive" | "mixed" | "weak" | "insufficient" = "supportive"): ZoneGrowthSignalsResult {
   return {
     growth_identity: {} as any,
     growth_signals: [],
     growth_summary: { positive_signal_count: 3, negative_signal_count: 0, mixed_signal_count: 0, weak_signal_count: 0, overall_growth_signal_status: status, narrative_mode: status === "insufficient" ? "hidden" : "full" },
     growth_limitations: { missing_depth: false, comunale_only_bias: false, weak_signal_base: false, blocking_gaps: [], transparency_notes: [] },
-  } as ZoneGrowthSignalResult;
+  } as ZoneGrowthSignalsResult;
 }
 
 /* ═══════════════════════════════════════════════════════════

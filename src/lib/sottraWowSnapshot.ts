@@ -152,8 +152,8 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
   }
 
   return {
-    zona_reale: corr.zone_correspondence.resolved_zone_label,
-    livello_lettura: corr.zone_correspondence.zone_precision_label,
+    zona_reale: corr.zone_identity.geo_label,
+    livello_lettura: corr.zone_identity.zone_type_label,
     valore_al_mq: valMid != null ? fmtEur(valMid) : null,
     valore_range: valRange,
     affidabilita_valore: valueReliabilityLabel(value.value_quality.reliability_status),
