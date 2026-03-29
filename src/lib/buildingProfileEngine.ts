@@ -1026,17 +1026,23 @@ export function buildBuildingReportViewModel(
     fallback_count: bq.fallback_count,
   };
 
-  // Phase 5: address precision panel
+  // Phase 5+ANNCSU: address precision panel
   const ar = bl.address_resolution;
   let address_precision_panel: BuildingReportSectionVM | null = null;
   if (ar && rr.sections.address_precision?.can_render) {
+    const hasOfficialStreet = ar.address_resolution.official_street_support;
+    const hasOfficialCivic = ar.address_resolution.official_civic_support;
     const addrFacts: ReportKeyFact[] = [
       { label: "Indirizzo normalizzato", value: ar.address_identity.normalized_address_string || "—" },
       { label: "Match strada", value: streetMatchLabel(ar.address_resolution.matched_street_status) },
       { label: "Confidenza strada", value: `${Math.round(ar.address_resolution.matched_street_confidence * 100)}%` },
+      { label: "Supporto ufficiale strada", value: hasOfficialStreet ? "Sì (ANNCSU)" : "No" },
       { label: "Match civico", value: ar.civic_resolution.civic_input_present
         ? civicMatchLabel(ar.civic_resolution.civic_match_status) : "Assente" },
-      { label: "Civico = verità stabile?", value: ar.civic_resolution.civic_supported_as_building_truth ? "Sì" : "No" },
+      { label: "Supporto ufficiale civico", value: hasOfficialCivic ? "Sì (ANNCSU)" : "No" },
+      { label: "ANNCSU match", value: anncsuMatchLabel(ar.address_resolution.anncsu_match_status) },
+      { label: "Localizzazione precisa", value: ar.address_resolution.precise_location_support ? "Sì" : "No" },
+      { label: "Verità stabile", value: ar.address_resolution.building_truth_support ? "Sì" : "No — non ancora supportata" },
       { label: "Qualità indirizzo", value: addressQualityLabel(ar.address_quality.overall_address_quality) },
       { label: "Rischio sovraprecisione", value: ar.address_quality.overprecision_risk },
     ];
