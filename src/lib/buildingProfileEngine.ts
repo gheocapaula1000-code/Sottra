@@ -684,8 +684,10 @@ function buildQuality(
   if (!identity.is_building_level_supported) {
     warnings.push("Identificazione edificio non supportata a livello puntuale");
   }
-  if (localization.address_status === "not_introduced_yet") {
-    warnings.push("Layer indirizzo/civico non ancora introdotto");
+  if (localization.address_status === "not_introduced_yet" || localization.address_status === "not_determinable") {
+    warnings.push("Indirizzo non disponibile o non determinabile");
+  } else if (localization.address_status === "approximate") {
+    warnings.push("Indirizzo approssimativo (da testo, non verificato)");
   }
 
   // Transparency: how clear is the data provenance
@@ -713,7 +715,7 @@ function buildLimitations(
   const notes: string[] = [];
 
   const missingAddress = localization.address_status !== "available";
-  const missingCivic = localization.civic_status === "not_introduced_yet";
+  const missingCivic = localization.civic_status !== "available";
   const missingRegistry = true; // No building registry exists yet
   const missingAttributes = true; // No building attributes available
   const missingUnit = true; // No unit-level data
@@ -722,7 +724,7 @@ function buildLimitations(
     notes.push("Indirizzo preciso non disponibile o approssimativo");
   }
   if (missingCivic) {
-    notes.push("Layer via/civico non ancora introdotto nel sistema");
+    notes.push("Civico non disponibile o non verificato contro registro ufficiale");
   }
   if (missingRegistry) {
     gaps.push("Registro edifici non ancora attivo");
@@ -777,7 +779,7 @@ function buildSummary(
 
   const next_best_step = limitations.blocking_gaps.length > 0
     ? `Prossimi passi: ${limitations.blocking_gaps.slice(0, 2).join("; ")}.`
-    : "Profilo territoriale completo. Layer edificio e via/civico previsti nelle prossime fasi.";
+    : "Profilo basato su contesto territoriale. Registro edifici e verifica civici previsti nelle prossime iterazioni.";
 
   return { executive_summary, analytical_summary, safe_user_summary, next_best_step };
 }
@@ -1020,7 +1022,10 @@ export function buildBuildingReportViewModel(
     address_precision_panel = sectionOrNull("address_precision", "Precisione indirizzo", rr,
       addrFacts,
       ar.address_limitations.transparency_notes.slice(0, 3),
-      [{ label: addressQualityLabel(ar.address_quality.overall_address_quality), variant: "partial" as ReportBadge["variant"] }],
+      [{ label: addressQualityLabel(ar.address_quality.overall_address_quality),
+        variant: (ar.address_quality.overall_address_quality === "strong" ? "official"
+          : ar.address_quality.overall_address_quality === "moderate" ? "elaborated"
+          : "partial") as ReportBadge["variant"] }],
     );
   }
 

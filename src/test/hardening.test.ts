@@ -202,3 +202,145 @@ describe("Export safety", () => {
     expect(envExample).not.toContain("Bearer");
   });
 });
+
+/* ── G) Post-Phase-5 Taxonomy & Pipeline Coherence ───── */
+
+import { resolveTerritorialData } from "@/lib/territorialDataBackbone";
+import { buildZoneProfile, buildReportViewModel } from "@/lib/zoneProfileEngine";
+import {
+  buildBuildingProfile,
+  buildBuildingReportViewModel,
+  type FactSupportLevel,
+} from "@/lib/buildingProfileEngine";
+import { resolveAddress } from "@/lib/addressResolutionEngine";
+import {
+  qualityToBadgeVariant,
+  statusToBadgeVariant,
+  supportToBadgeVariant,
+  badgeVariantClasses,
+  type BadgeVariant,
+} from "@/lib/badgeUtils";
+
+function fullPipeline(istat = "015146") {
+  const td = resolveTerritorialData({
+    geo_input: { comune_istat_code: istat },
+    include_placeholders: true,
+  });
+  const zp = buildZoneProfile(td);
+  const zvm = buildReportViewModel(zp, td);
+  const bp = buildBuildingProfile({
+    territorial_data: td,
+    lat: 45.4642,
+    lng: 9.19,
+    address: "Via Roma 12",
+    has_photo: false,
+    identification_confidence: 0.6,
+    identification_mode: "coordinate",
+  });
+  const bvm = buildBuildingReportViewModel(bp, td);
+  return { td, zp, zvm, bp, bvm };
+}
+
+describe("Taxonomy coherence (post-Phase-5)", () => {
+  it("badge variant classes exist for all BadgeVariant values", () => {
+    const variants: BadgeVariant[] = ["official", "elaborated", "partial", "unavailable", "info"];
+    for (const v of variants) {
+      expect(badgeVariantClasses(v).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("qualityToBadgeVariant never promotes territorial_verified to official", () => {
+    expect(qualityToBadgeVariant("territorial_verified")).toBe("elaborated");
+    expect(qualityToBadgeVariant("commercial_verified")).toBe("elaborated");
+    expect(qualityToBadgeVariant("official")).toBe("official");
+  });
+
+  it("statusToBadgeVariant is consistent", () => {
+    expect(statusToBadgeVariant("strong")).toBe("official");
+    expect(statusToBadgeVariant("limited")).toBe("partial");
+    expect(statusToBadgeVariant("insufficient")).toBe("unavailable");
+  });
+
+  it("supportToBadgeVariant maps correctly", () => {
+    expect(supportToBadgeVariant("direct")).toBe("official");
+    expect(supportToBadgeVariant("contextual")).toBe("elaborated");
+    expect(supportToBadgeVariant("derived")).toBe("partial");
+  });
+});
+
+describe("Renderability coherence (post-Phase-5)", () => {
+  it("zone report sections in array are never hidden", () => {
+    const { zvm } = fullPipeline();
+    for (const s of zvm.sections) {
+      expect(s.render_mode).not.toBe("hidden");
+    }
+  });
+
+  it("building report limitations always rendered as full", () => {
+    const { bp } = fullPipeline();
+    expect(bp.building_report_renderability.sections.limitations.render_mode).toBe("full");
+  });
+
+  it("building unsupported_claims always rendered", () => {
+    const { bp } = fullPipeline();
+    expect(bp.building_report_renderability.sections.unsupported_claims.can_render).toBe(true);
+  });
+});
+
+describe("Unsupported claims integrity", () => {
+  it("what_cannot_be_said includes construction year and units", () => {
+    const { bp } = fullPipeline();
+    const claims = bp.building_inferred_bounds.what_cannot_be_said;
+    expect(claims.some(c => c.includes("costruzione"))).toBe(true);
+    expect(claims.some(c => c.includes("unità"))).toBe(true);
+  });
+
+  it("unsupported claims panel has facts in view model", () => {
+    const { bvm } = fullPipeline();
+    expect(bvm.unsupported_claims_panel).not.toBeNull();
+    expect(bvm.unsupported_claims_panel!.facts.length).toBeGreaterThan(0);
+  });
+});
+
+describe("Civic never promoted to building truth", () => {
+  it("civic_supported_as_building_truth is always false", () => {
+    const res = resolveAddress({
+      raw_address: "Via Roma 12",
+      comune: "Milano",
+    });
+    expect(res.civic_resolution.civic_supported_as_building_truth).toBe(false);
+  });
+
+  it("building civic_status is never 'available' with text-only input", () => {
+    const { bp } = fullPipeline();
+    expect(bp.building_localization.civic_status).not.toBe("available");
+  });
+});
+
+describe("Support level coherence end-to-end", () => {
+  it("all building facts have valid and consistent support_level", () => {
+    const { bp } = fullPipeline();
+    const valid: FactSupportLevel[] = ["direct", "contextual", "derived", "unavailable"];
+    const all = [
+      ...bp.building_supported_facts.identification_facts,
+      ...bp.building_supported_facts.localization_facts,
+      ...bp.building_supported_facts.territorial_context_facts,
+    ];
+    for (const f of all) {
+      expect(valid).toContain(f.support_level);
+      if (f.support_level === "direct") expect(f.is_direct).toBe(true);
+      if (f.support_level === "contextual") expect(f.is_contextual).toBe(true);
+    }
+  });
+});
+
+describe("Hidden applied to weak sections", () => {
+  it("address_precision hidden when no address provided", () => {
+    const td = resolveTerritorialData({ geo_input: { comune_istat_code: "015146" } });
+    const bp = buildBuildingProfile({
+      territorial_data: td,
+      identification_mode: "territorial_only",
+    });
+    expect(bp.building_report_renderability.sections.address_precision.render_mode).toBe("hidden");
+  });
+});
