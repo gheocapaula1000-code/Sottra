@@ -306,7 +306,46 @@ export default function TerritorialReport() {
               </Card>
             )}
 
-            {/* Sections */}
+            {/* Attractors & Pressure */}
+            {attractors && attractors.pressure_summary.narrative_mode !== "hidden" && (
+              <Card className="border-border/50">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Magnet className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Attrattori e pressione della zona</CardTitle>
+                    </div>
+                    <Badge variant={attractors.pressure_summary.overall_pressure_signal_status === "supportive" ? "default" : "secondary"} className="text-[10px]">
+                      {pressureStatusLabel(attractors.pressure_summary.overall_pressure_signal_status)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-2">
+                  {attractors.attractor_signals
+                    .filter(s => s.territorial_relevance !== "not_determinable")
+                    .map(s => (
+                    <div key={s.signal_key} className="flex items-start gap-2 text-sm">
+                      <span className={`text-xs font-bold mt-0.5 ${s.signal_direction === "supportive" ? "text-primary" : "text-muted-foreground"}`}>
+                        {s.signal_direction === "supportive" ? "●" : "○"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-foreground">{s.signal_label}</span>
+                          <Badge variant="outline" className="text-[9px] py-0">{attractorFamilyLabel(s.signal_family)}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground/80">
+                          {attractorProximityLabel(s.proximity_relevance)} · Rilevanza {attractorRelevanceLabel(s.territorial_relevance).toLowerCase()} · Intensità {attractorIntensityLabel(s.intensity_hint).toLowerCase()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {attractors.pressure_limitations.transparency_notes.map((n, i) => (
+                    <p key={i} className="text-xs text-muted-foreground/80 leading-relaxed">{n}</p>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             <div className="space-y-3">
               {vm.sections.map(s => <ReportSection key={s.key} section={s} />)}
             </div>
