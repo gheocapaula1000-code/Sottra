@@ -1594,7 +1594,7 @@ const Result = () => {
   // ── WOW Snapshot computation ──
   const pricingData = result.pricing.data as PricingData | null;
   const streetEvidence = identifyData?.streetEvidence;
-  const wowSnapshot: WowSnapshot | null = (() => {
+  const wowAndDiff: { snapshot: WowSnapshot; houseDiff: HouseDifferentiationResult } | null = (() => {
     if (!identifyDone || lowConfidence || identifyFailed) return null;
     try {
       // Stub minimal zone correspondence for snapshot
@@ -1604,7 +1604,6 @@ const Result = () => {
         zone_precision: { precision_status: "medium" as const, sub_comunale_support_status: "unavailable" as const, market_zone_support_status: "direct" as const, territorial_support_status: "partial" as const, max_safe_claim_level: "zona_omi" as const },
         zone_limitations: { missing_sub_comunale: true, market_only_comunale: false, weak_zone_anchor: false, fallback_dominant: false, blocking_gaps: [] as string[], transparency_notes: [] as string[] },
       };
-      // Stub minimal territorial data for value engine
       const block = (avail: string, geo: string) => ({ availability: avail, quality: "official" as const, geo_level: geo, source_key: "live", source_label: "live", is_derived: false, officiality: "official" as const, limitations: [] as string[] });
       const stubTd = {
         territorial_identity: { geo_level: "zona_omi" as const, geo_code: "live", geo_label: identifyData?.address?.split(",").pop()?.trim() ?? "", normalized_path: "", resolution_method: "direct" },
@@ -1612,7 +1611,6 @@ const Result = () => {
       };
       const value = buildZoneValue({ data: stubTd as any, corr: stubCorr as any, omiMin: pricingData?.prezzoMqMin, omiMax: pricingData?.prezzoMqMax, omiGeoLevel: pricingData?.omiGeoLevel, omiPolygonMatch: pricingData?.polygonMatch });
       const reno = buildRenovationEstimate({ zone_geo_code: "live", zone_geo_level: "zona_omi", hasPhoto: true, visibleFloors: streetEvidence?.photoAnalysis?.visibleFloors, buildingType: streetEvidence?.photoAnalysis?.buildingType, facadeConsistencyLevel: streetEvidence?.facadeConsistencyLevel, photoReadability: streetEvidence?.photoAnalysis?.photoReadability, value_per_sqm_mid: value.value_result.value_per_sqm_mid });
-      // Build house differentiation for specificity label
       const hDiff = buildHouseDifferentiation({
         photo_present: true,
         geo_present: hasValidCoords,
@@ -1623,10 +1621,6 @@ const Result = () => {
         building_profile: null,
         identify_hints: identifyData ? {
           confidence: identifyData.confidence ?? 0.5,
-          facade_visible: streetEvidence?.photoAnalysis?.facadeVisible ?? undefined,
-          entrance_visible: streetEvidence?.photoAnalysis?.entranceVisible ?? undefined,
-          civic_visible: streetEvidence?.photoAnalysis?.civicVisible ?? undefined,
-          neighboring_visible: streetEvidence?.photoAnalysis?.neighboringVisible ?? undefined,
         } : null,
       });
       return { snapshot: buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any, specificity_strength: hDiff.specificity.specificity_strength }), houseDiff: hDiff };
