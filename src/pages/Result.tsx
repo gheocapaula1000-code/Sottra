@@ -260,10 +260,18 @@ function WowSnapshotPanel({ snapshot, loading }: { snapshot: WowSnapshot | null;
         <div><span className="text-muted-foreground">Segnali zona</span><p className="font-semibold text-foreground">{snapshot.segnali_zona}</p></div>
       </div>
 
-      {/* Attention signal */}
-      <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3">
-        <span className="text-xs text-muted-foreground">Attenzione area</span>
-        <span className={cn("text-xs font-bold", attnColor)}>{attentionSignalLabel(snapshot.attenzione_area)}</span>
+      {/* Specificity + Attention row */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2">
+          <span className="text-xs text-muted-foreground">Attenzione area</span>
+          <span className={cn("text-xs font-bold", attnColor)}>{attentionSignalLabel(snapshot.attenzione_area)}</span>
+        </div>
+        {snapshot.specificita_immobile && (
+          <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2">
+            <span className="text-xs text-muted-foreground">Specificità</span>
+            <span className="text-xs font-bold text-foreground">{snapshot.specificita_immobile}</span>
+          </div>
+        )}
       </div>
 
       {/* Primary limitation — always visible */}
