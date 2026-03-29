@@ -20,6 +20,8 @@ import type { ZoneCorrespondenceResult } from "@/lib/zoneCorrespondenceEngine";
 export type AttentionSignal = "high" | "medium" | "low" | "insufficient";
 export type SnapshotNarrativeMode = "full" | "partial" | "hidden";
 
+export type SpecificityLabel = "Alta" | "Media" | "Bassa" | "Non sufficiente";
+
 export interface WowSnapshot {
   zona_reale: string;
   livello_lettura: string;
@@ -32,6 +34,7 @@ export interface WowSnapshot {
   attenzione_area: AttentionSignal;
   limite_principale: string;
   narrative_mode: SnapshotNarrativeMode;
+  specificita_immobile: SpecificityLabel | null;
 }
 
 /* ═══════════════════════════════════════════════════════════
