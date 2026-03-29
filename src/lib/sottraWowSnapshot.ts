@@ -156,6 +156,15 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
     narrativeMode = "partial";
   }
 
+  // ── Specificity label ──
+  const specMap: Record<string, SpecificityLabel> = {
+    strong: "Alta",
+    medium: "Media",
+    weak: "Bassa",
+    insufficient: "Non sufficiente",
+  };
+  const specLabel: SpecificityLabel | null = specificity_strength ? (specMap[specificity_strength] ?? null) : null;
+
   return {
     zona_reale: corr.zone_identity.geo_label,
     livello_lettura: corr.zone_identity.zone_type_label,
@@ -168,6 +177,7 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
     attenzione_area: attention,
     limite_principale: limitePrincipale,
     narrative_mode: narrativeMode,
+    specificita_immobile: specLabel,
   };
 }
 
