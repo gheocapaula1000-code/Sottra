@@ -204,11 +204,13 @@ export default function TerritorialReport() {
     const g = buildZoneGrowthSignals(data, c);
     const u = buildUrbanTransformations(data, c, DEMO_URBAN_SIGNALS);
     const a = buildAttractorsPressure(data, c, DEMO_ATTRACTORS);
+    const b = buildZoneBoundaries(data, c);
     setVm(viewModel);
     setCorr(c);
     setGrowth(g);
     setUrban(u);
     setAttractors(a);
+    setBoundaries(b);
   };
 
   return (
