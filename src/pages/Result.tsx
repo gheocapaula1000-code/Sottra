@@ -292,6 +292,68 @@ function WowSnapshotPanel({ snapshot, loading }: { snapshot: WowSnapshot | null;
   );
 }
 
+/* ── House Differentiation Card ──────────────────────── */
+
+function HouseDifferentiationCard({ diff, loading }: { diff: HouseDifferentiationResult | null; loading: boolean }) {
+  if (loading) return <SectionSkeleton />;
+  if (!diff || diff.summary.narrative_mode === "hidden") return null;
+
+  const isPartial = diff.summary.narrative_mode === "partial";
+  const strengthColor = specificityStrengthColor(diff.specificity.specificity_strength);
+
+  return (
+    <Section>
+      <SectionHeader icon={Eye} title="Specificità dell'immobile" badge={isPartial ? "Parziale" : null} />
+
+      {/* Main status */}
+      <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3">
+        <span className="text-xs text-muted-foreground">Differenziazione</span>
+        <span className={cn("text-xs font-bold", strengthColor)}>
+          {specificityStrengthLabel(diff.specificity.specificity_strength)}
+        </span>
+      </div>
+
+      <p className="text-xs text-foreground mb-3">{differentiationStatusLabel(diff.specificity.specificity_status)}</p>
+
+      {/* Separation */}
+      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+        <div>
+          <span className="text-muted-foreground">Separazione</span>
+          <p className="font-semibold text-foreground text-[11px]">{separationLabel(diff.specificity.house_vs_adjacent_separation)}</p>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Claim massimo</span>
+          <p className="font-semibold text-foreground text-[11px]">
+            {diff.specificity.max_safe_claim_level === "building_candidate" ? "Candidato edificio" :
+             diff.specificity.max_safe_claim_level === "address_area" ? "Area indirizzo" : "Solo zona"}
+          </p>
+        </div>
+      </div>
+
+      {/* Visual notes */}
+      {diff.visual_signals.visual_notes.length > 0 && (
+        <div className="space-y-1 mb-3">
+          {diff.visual_signals.visual_notes.map((n, i) => (
+            <p key={i} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+              <Eye className="h-3 w-3 mt-0.5 shrink-0 text-primary/50" />{n}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* Limitations */}
+      {diff.summary.limitations.slice(0, 2).map((l, i) => (
+        <div key={i} className="flex items-start gap-2 text-[10px] text-muted-foreground/70 mb-1">
+          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+          <span>{l}</span>
+        </div>
+      ))}
+
+      <p className="text-[9px] text-muted-foreground/30 mt-2">La differenziazione non equivale a una identificazione catastale</p>
+    </Section>
+  );
+}
+
 /* ── cards ────────────────────────────────────────────── */
 
 function HeaderCard({ photo, identify, loading, lat, lng, lowConfidence }: { photo: string; identify: IdentifyResult | null; loading: boolean; lat: number | null; lng: number | null; lowConfidence: boolean }) {
