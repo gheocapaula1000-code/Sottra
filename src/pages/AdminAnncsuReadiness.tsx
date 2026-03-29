@@ -174,14 +174,13 @@ export default function AdminAnncsuReadiness() {
   // Query stored data
   const handleQuery = async () => {
     if (!queryComune) return;
-    if (queryStreet) {
-      const res = await queryAnncsuStreetCandidates(queryComune, queryStreet, 30);
-      if (!res.ok) { toast.error(res.error); return; }
+    const res = queryStreet
+      ? await queryAnncsuStreetCandidates(queryComune, queryStreet, 30)
+      : await queryAnncsuByComune(queryComune, 30);
+    if (res.ok) {
       setQueryResults(res.records);
     } else {
-      const res = await queryAnncsuByComune(queryComune, 30);
-      if (!res.ok) { toast.error(res.error); return; }
-      setQueryResults(res.records);
+      toast.error((res as { ok: false; error: string }).error);
     }
   };
 
