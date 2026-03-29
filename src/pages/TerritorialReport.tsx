@@ -195,6 +195,7 @@ export default function TerritorialReport() {
   const [urban, setUrban] = useState<UrbanTransformationResult | null>(null);
   const [attractors, setAttractors] = useState<AttractorPressureResult | null>(null);
   const [boundaries, setBoundaries] = useState<ZoneBoundaryResult | null>(null);
+  const [outlook, setOutlook] = useState<ZoneOutlookResult | null>(null);
   const generate = () => {
     const data = resolveTerritorialData({
       geo_input: { comune_istat_code: istatCode },
@@ -206,12 +207,14 @@ export default function TerritorialReport() {
     const u = buildUrbanTransformations(data, c, DEMO_URBAN_SIGNALS);
     const a = buildAttractorsPressure(data, c, DEMO_ATTRACTORS);
     const b = buildZoneBoundaries(data, c);
+    const o = buildZoneOutlook(c, g, u, a);
     setVm(viewModel);
     setCorr(c);
     setGrowth(g);
     setUrban(u);
     setAttractors(a);
     setBoundaries(b);
+    setOutlook(o);
   };
 
   return (
