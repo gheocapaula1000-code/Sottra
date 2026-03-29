@@ -93,6 +93,8 @@ export interface WowSnapshotInput {
   renovation: RenovationResult;
   growth: ZoneGrowthSignalsResult | null;
   corr: ZoneCorrespondenceResult;
+  /** Optional house differentiation specificity strength */
+  specificity_strength?: "strong" | "medium" | "weak" | "insufficient" | null;
 }
 
 export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
