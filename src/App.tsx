@@ -60,6 +60,7 @@ const AdminGeoBackbone = lazyWithRecovery(() => import("./pages/AdminGeoBackbone
 const AdminTerritorialBackbone = lazyWithRecovery(() => import("./pages/AdminTerritorialBackbone"));
 const TerritorialReport = lazyWithRecovery(() => import("./pages/TerritorialReport"));
 const AdminZoneProfile = lazyWithRecovery(() => import("./pages/AdminZoneProfile"));
+const AdminBuildingProfile = lazyWithRecovery(() => import("./pages/AdminBuildingProfile"));
 
 const queryClient = new QueryClient();
 
