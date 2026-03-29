@@ -172,9 +172,10 @@ describe("ANNCSU Match Audit — system readiness", () => {
     expect(a.level).toBe("partially_ready_rare_cases");
   });
 
-  it("ready_but_blocked_by_policy with mostly strong matches", () => {
-    const strong = Array.from({ length: 8 }, () =>
-      resolveWith({ anncsu_street_candidates: [cand()] })
+  it("ready_but_blocked_by_policy with all strong matches and low ambiguity", () => {
+    // All have official street support + no ambiguity
+    const strong = Array.from({ length: 10 }, () =>
+      resolveWith({ anncsu_street_candidates: [cand()], anncsu_civic_candidates: [cand({ civic_normalized: "12" })] })
     );
     const m = computeAuditMetrics(strong);
     const a = assessSystemReadiness(m);
