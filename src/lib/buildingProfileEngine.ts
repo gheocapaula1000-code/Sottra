@@ -276,7 +276,7 @@ export function buildBuildingProfile(input: BuildingProfileInput): BuildingProfi
   const localization = buildLocalization(input, td, zp);
   const context = buildContext(td, zp);
   const facts = buildFacts(input, td, zp, identity, localization);
-  const bounds = buildBounds(td, zp, identity);
+  const bounds = buildBounds(td, zp, identity, localization);
   const quality = buildQuality(td, zp, identity, localization);
   const limitations = buildLimitations(identity, localization);
   const summary = buildSummary(identity, localization, quality, limitations, td);
