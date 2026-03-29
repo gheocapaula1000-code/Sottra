@@ -618,17 +618,28 @@ function buildBounds(
   cannotSay.push("Numero di piani");
   cannotSay.push("Stato di conservazione");
   cannotSay.push("Dettagli catastali puntuali");
-  // Phase 5: update based on address resolution
+  // Phase 5+ANNCSU: update based on address resolution
   const ar = localization.address_resolution;
   if (ar) {
-    if (ar.address_resolution.matched_street_status !== "not_found") {
+    const hasOfficialStreet = ar.address_resolution.official_street_support;
+    const hasOfficialCivic = ar.address_resolution.official_civic_support;
+    
+    if (hasOfficialStreet) {
+      canSay.push("Strada verificata da registro ufficiale ANNCSU");
+    } else if (ar.address_resolution.matched_street_status !== "not_found") {
       canSay.push("Interpretazione indirizzo da testo (non verificata)");
     }
-    if (ar.civic_resolution.civic_input_present) {
+    if (hasOfficialCivic) {
+      canSay.push("Civico supportato da registro ufficiale ANNCSU (non equivale a verità stabile)");
+    } else if (ar.civic_resolution.civic_input_present) {
       canSay.push("Civico estratto dal testo (non verificato come verità stabile)");
     }
-    cannotSay.push("Indirizzo verificato contro registro ufficiale");
-    cannotSay.push("Civico verificato come identificativo stabile");
+    if (ar.address_resolution.precise_location_support) {
+      canSay.push("Localizzazione precisa supportata (strada + civico ufficiali + coordinate)");
+    }
+    // CRITICAL: building truth always unsupported
+    cannotSay.push("Indirizzo verificato come identità definitiva dello stabile");
+    cannotSay.push("Civico verificato come identificativo stabile (ANNCSU da solo non sufficiente)");
   } else {
     cannotSay.push("Indirizzo e civico (layer non ancora applicato)");
   }
