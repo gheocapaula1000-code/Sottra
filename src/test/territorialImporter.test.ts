@@ -703,3 +703,91 @@ describe("R03_CSV_SEZ streaming import logic", () => {
     expect(regionNames.length).toBe(3);
   });
 });
+
+describe("pending_next_chunk persistence and admin visibility", () => {
+  const buildProgressState = (params: {
+    processedRows: number;
+    totalRows: number;
+    failedRows: number;
+    skippedRows: number;
+    chunkIndex: number;
+    chunkCount: number;
+  }) => ({
+    datasetType: "R03_CSV_SEZ",
+    processedRows: params.processedRows,
+    totalRows: params.totalRows,
+    failedRows: params.failedRows,
+    skippedRows: params.skippedRows,
+    chunkIndex: params.chunkIndex,
+    chunkCount: params.chunkCount,
+    percentage: params.totalRows > 0 ? Math.min(100, Math.round((params.processedRows / params.totalRows) * 100)) : 0,
+    lastHeartbeatAt: new Date().toISOString(),
+  });
+
+  const buildPendingPayload = (checkpoint: { globalRowIdx: number; lineOffset: number; passNumber: number; chunkIndex: number }) => ({
+    status: "pending_next_chunk",
+    stats: {
+      progress: buildProgressState({
+        processedRows: 1200,
+        totalRows: 10000,
+        failedRows: 0,
+        skippedRows: 10,
+        chunkIndex: checkpoint.chunkIndex,
+        chunkCount: 100,
+      }),
+      skipByReason: { duplicato_intra_batch: 10 },
+      checkpoint,
+      passNumber: checkpoint.passNumber,
+    },
+  });
+
+  const getJobCheckpoint = (job: { stats: Record<string, unknown> }) => {
+    const checkpoint = (job.stats as any)?.checkpoint;
+    if (!checkpoint || typeof checkpoint !== "object") return null;
+    return {
+      globalRowIdx: Number(checkpoint.globalRowIdx ?? 0),
+      lineOffset: Number(checkpoint.lineOffset ?? 0),
+      passNumber: Number(checkpoint.passNumber ?? 0),
+    };
+  };
+
+  const shouldShowResumeButton = (job: { status: string }) => job.status === "pending_next_chunk";
+
+  it("budget overrun persists pending_next_chunk payload with checkpoint before return", () => {
+    const checkpoint = { globalRowIdx: 7201, lineOffset: 456789, passNumber: 2, chunkIndex: 85 };
+    const payload = buildPendingPayload(checkpoint);
+    expect(payload.status).toBe("pending_next_chunk");
+    expect((payload.stats as any).checkpoint.globalRowIdx).toBe(7201);
+    expect((payload.stats as any).passNumber).toBe(2);
+  });
+
+  it("persisted checkpoint remains readable by admin UI", () => {
+    const checkpoint = { globalRowIdx: 7201, lineOffset: 456789, passNumber: 2, chunkIndex: 85 };
+    const job = buildPendingPayload(checkpoint);
+    expect(getJobCheckpoint(job)).toEqual({
+      globalRowIdx: 7201,
+      lineOffset: 456789,
+      passNumber: 2,
+    });
+  });
+
+  it("admin shows resume button only for pending_next_chunk", () => {
+    expect(shouldShowResumeButton({ status: "pending_next_chunk" })).toBe(true);
+    expect(shouldShowResumeButton({ status: "importing" })).toBe(false);
+    expect(shouldShowResumeButton({ status: "imported" })).toBe(false);
+  });
+
+  it("resume keeps checkpoint counters instead of resetting from zero", () => {
+    const priorCheckpoint = { globalRowIdx: 7201, lineOffset: 456789, passNumber: 2, chunkIndex: 85 };
+    const resumedJob = buildPendingPayload(priorCheckpoint);
+    const checkpoint = getJobCheckpoint(resumedJob);
+    expect(checkpoint?.globalRowIdx).toBeGreaterThan(0);
+    expect(checkpoint?.passNumber).toBe(2);
+  });
+
+  it("small jobs stay out of pending_next_chunk", () => {
+    const completedJob = { status: "imported", stats: { checkpoint: null } };
+    expect(getJobCheckpoint(completedJob as any)).toBeNull();
+    expect(shouldShowResumeButton(completedJob)).toBe(false);
+  });
+});

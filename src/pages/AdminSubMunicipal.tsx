@@ -59,6 +59,16 @@ const getJobProgress = (job: DatasetJob) => {
   };
 };
 
+const getJobCheckpoint = (job: DatasetJob) => {
+  const checkpoint = (job.stats as any)?.checkpoint;
+  if (!checkpoint || typeof checkpoint !== "object") return null;
+  return {
+    globalRowIdx: Number(checkpoint.globalRowIdx ?? 0),
+    lineOffset: Number(checkpoint.lineOffset ?? 0),
+    passNumber: Number(checkpoint.passNumber ?? 0),
+  };
+};
+
 const getElapsedMinutes = (from?: string | null, to?: string | null) => {
   if (!from) return null;
   const start = new Date(from).getTime();
@@ -569,6 +579,7 @@ const AdminSubMunicipal = () => {
               const regioneRilevata = regionInfo?.regioneRilevata;
               const multiWarning = regionInfo?.multiRegioneWarning;
               const progress = getJobProgress(job);
+              const checkpoint = getJobCheckpoint(job);
               const importAgeMinutes = getElapsedMinutes(job.started_at ?? null, job.completed_at);
               const importAgeLabel = getDurationLabel(importAgeMinutes);
               const heartbeatAgeMinutes = getElapsedMinutes(progress?.lastHeartbeatAt ?? job.updated_at ?? null, null);
@@ -617,6 +628,7 @@ const AdminSubMunicipal = () => {
                         <span>{new Date(job.created_at).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}</span>
                         {importAgeLabel && <span>durata: {importAgeLabel}</span>}
                         {job.status === "importing" && heartbeatAgeLabel && <span>heartbeat: {heartbeatAgeLabel} fa</span>}
+                        {job.status === "pending_next_chunk" && checkpoint && <span>checkpoint: riga {checkpoint.globalRowIdx.toLocaleString("it-IT")}</span>}
                         {job.records_imported > 0 && <span className="text-emerald-600">{job.records_imported.toLocaleString("it-IT")} importati</span>}
                         {job.records_skipped > 0 && <span className="text-amber-600">{job.records_skipped.toLocaleString("it-IT")} skipped</span>}
                         {job.records_errors > 0 && <span className="text-destructive">{job.records_errors} errori</span>}
@@ -627,6 +639,13 @@ const AdminSubMunicipal = () => {
                           <span>processed: <strong className="text-foreground">{progress.processedRows.toLocaleString("it-IT")}</strong> / {progress.totalRows.toLocaleString("it-IT")}</span>
                           {progress.failedRows > 0 && <span className="text-destructive">failed rows: {progress.failedRows}</span>}
                           {progress.skippedRows > 0 && <span className="text-amber-600">skipped rows: {progress.skippedRows}</span>}
+                        </div>
+                      )}
+                      {job.status === "pending_next_chunk" && checkpoint && (
+                        <div className="mt-1 text-xs text-blue-700 dark:text-blue-300 flex flex-wrap gap-3">
+                          <span>checkpoint riga: <strong>{checkpoint.globalRowIdx.toLocaleString("it-IT")}</strong></span>
+                          <span>offset: <strong>{checkpoint.lineOffset.toLocaleString("it-IT")}</strong></span>
+                          <span>passaggio: <strong>{checkpoint.passNumber}</strong></span>
                         </div>
                       )}
                       {multiWarning && (
