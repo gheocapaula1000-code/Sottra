@@ -349,6 +349,46 @@ export default function TerritorialReport() {
               </Card>
             )}
 
+            {/* Zone Boundaries */}
+            {boundaries && boundaryNarrativeMode(boundaries) !== "hidden" && (
+              <Card className="border-border/50">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Square className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Confini della zona</CardTitle>
+                    </div>
+                    <Badge variant={boundaries.zone_boundary_identity.boundary_precision_status === "strong" ? "default" : "secondary"} className="text-[10px]">
+                      {boundaryPrecisionLabel(boundaries.zone_boundary_identity.boundary_precision_status)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Perimetro</span>
+                    <span className="font-medium text-foreground">{boundaries.zone_boundary_identity.boundary_label}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Fonte confine</span>
+                    <span className="font-medium text-foreground">{boundarySourceLabel(boundaries.zone_boundary_identity.boundary_source_type)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Modalità</span>
+                    <span className="font-medium text-foreground">{boundaryDisplayModeLabel(boundaries.zone_boundary_geometry.boundary_display_mode)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Attendibilità</span>
+                    <Badge variant={boundaries.zone_boundary_geometry.boundary_confidence === "high" ? "default" : "secondary"} className="text-[10px]">
+                      {boundaryConfidenceLabel(boundaries.zone_boundary_geometry.boundary_confidence)}
+                    </Badge>
+                  </div>
+                  {boundaries.zone_boundary_limitations.transparency_notes.map((n, i) => (
+                    <p key={i} className="text-xs text-muted-foreground/80 leading-relaxed">{n}</p>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             <div className="space-y-3">
               {vm.sections.map(s => <ReportSection key={s.key} section={s} />)}
             </div>
