@@ -15,6 +15,7 @@ import { badgeVariantClasses } from "@/lib/badgeUtils";
 import { buildZoneCorrespondence, type ZoneCorrespondenceResult } from "@/lib/zoneCorrespondenceEngine";
 import { buildZoneGrowthSignals, growthStatusLabel, type ZoneGrowthSignalsResult, type GrowthSignal } from "@/lib/zoneGrowthSignals";
 import { buildUrbanTransformations, transformationStatusLabel, stageLabel, proximityLabel, relevanceLabel, type UrbanTransformationResult, type UrbanTransformationInput } from "@/lib/zoneUrbanTransformations";
+import { buildAttractorsPressure, pressureStatusLabel, attractorFamilyLabel, attractorProximityLabel, attractorRelevanceLabel, attractorIntensityLabel, type AttractorPressureResult, type AttractorInput } from "@/lib/zoneAttractorsPressure";
 import AppHeader from "@/components/AppHeader";
 
 // Synthetic demo signals — in production these come from a real source
