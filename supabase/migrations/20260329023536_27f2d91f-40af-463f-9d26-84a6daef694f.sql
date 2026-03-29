@@ -1,0 +1,2 @@
+ALTER TABLE public.territorial_dataset_jobs DROP CONSTRAINT territorial_dataset_jobs_status_check;
+ALTER TABLE public.territorial_dataset_jobs ADD CONSTRAINT territorial_dataset_jobs_status_check CHECK (status = ANY (ARRAY['uploaded'::text, 'validated'::text, 'validating'::text, 'ready_to_import'::text, 'importing'::text, 'imported'::text, 'failed'::text, 'pending_next_chunk'::text, 'failed_stale'::text]));
