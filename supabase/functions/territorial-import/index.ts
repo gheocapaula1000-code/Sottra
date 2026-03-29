@@ -1408,7 +1408,7 @@ serve(async (req) => {
                 const ascCsv = await ascFile.text();
                 const ascRows = parseCsv(ascCsv);
                 for (const row of ascRows) {
-                  const sez = row["SEZ2021"] || row["SEZ"] || "";
+                  const sez = row["SEZ2021"] || row["SEZ"] || row["SEZ21_ID"] || "";
                   if (!sez) continue;
                   const existing = ascMappings.get(sez) || { asc1: null, asc2: null, asc3: null };
                   const code = row["COD_ASC"] || row["COD_ASC2"] || null;
