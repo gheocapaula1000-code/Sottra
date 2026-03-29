@@ -947,7 +947,7 @@ async function importAscCsv(
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
     const dbRows = chunk.map((r, j) => {
-      const areaCode = r["COD_ASC"] || r["AREA_CODE"] || "";
+      const areaCode = r["COD_ASC"] || r["AREA_CODE"] || r["COD_ASC2"] || "";
       const areaName = r["DEN_ASC"] || r["AREA_NAME"] || "";
       const comCode = r["PRO_COM_T"] || r["PRO_COM"] || "";
       const ascLevel = intSafe(r["LIVELLO"] || r["ASC_LEVEL"]);
