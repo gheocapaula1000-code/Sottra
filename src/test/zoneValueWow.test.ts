@@ -4,7 +4,7 @@ import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovati
 import { buildWowSnapshot } from "@/lib/sottraWowSnapshot";
 import type { TerritorialDataResult } from "@/lib/territorialDataBackbone";
 import type { ZoneCorrespondenceResult } from "@/lib/zoneCorrespondenceEngine";
-import type { ZoneGrowthSignalResult } from "@/lib/zoneGrowthSignals";
+import type { ZoneGrowthSignalsResult } from "@/lib/zoneGrowthSignals";
 
 /* ── Minimal stubs ── */
 
