@@ -1,6 +1,6 @@
 /**
- * Territorial Report Page — Sottra Phase 3
- * Mobile-first, professional zone profile report.
+ * Territorial Report Page — Sottra
+ * Mobile-first, professional zone profile report with correspondence and growth signals.
  */
 
 import { useState } from "react";
@@ -8,10 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MapPin, Shield, Layers, BarChart3, AlertTriangle, Info, ChevronDown, ChevronUp } from "lucide-react";
-import { resolveTerritorialData } from "@/lib/territorialDataBackbone";
+import { MapPin, Shield, Layers, BarChart3, AlertTriangle, Info, ChevronDown, ChevronUp, TrendingUp, Anchor } from "lucide-react";
+import { resolveTerritorialData, type TerritorialDataResult } from "@/lib/territorialDataBackbone";
 import { buildTerritorialReport, type TerritorialReportViewModel, type ReportSectionVM, type ReportBadge, type SectionRenderMode } from "@/lib/zoneProfileEngine";
 import { badgeVariantClasses } from "@/lib/badgeUtils";
+import { buildZoneCorrespondence, type ZoneCorrespondenceResult } from "@/lib/zoneCorrespondenceEngine";
+import { buildZoneGrowthSignals, growthStatusLabel, type ZoneGrowthSignalsResult, type GrowthSignal } from "@/lib/zoneGrowthSignals";
 import AppHeader from "@/components/AppHeader";
 
 const SECTION_ICONS: Record<string, React.ReactNode> = {
@@ -94,9 +96,86 @@ function ReportSection({ section }: { section: ReportSectionVM }) {
   );
 }
 
+function SignalDirectionIcon({ direction }: { direction: GrowthSignal["signal_direction"] }) {
+  const cls = direction === "positive" ? "text-emerald-500" : direction === "negative" ? "text-destructive" : "text-muted-foreground";
+  return <span className={`text-xs font-bold ${cls}`}>{direction === "positive" ? "↑" : direction === "negative" ? "↓" : "—"}</span>;
+}
+
+function GrowthSignalsPanel({ growth, corr }: { growth: ZoneGrowthSignalsResult; corr: ZoneCorrespondenceResult }) {
+  if (growth.growth_summary.narrative_mode === "hidden") return null;
+
+  return (
+    <>
+      {/* Zone Correspondence */}
+      <Card className="border-border/50">
+        <CardHeader className="p-4 pb-2">
+          <div className="flex items-center gap-2">
+            <Anchor className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold">A cosa corrisponde la zona</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 space-y-1.5">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Corrisponde a</span>
+            <span className="font-medium text-foreground">{corr.zone_identity.zone_corresponds_to}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Livello reale</span>
+            <span className="font-medium text-foreground">{corr.zone_identity.zone_type_label}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Solidità ancoraggio</span>
+            <Badge variant={corr.zone_identity.zone_anchor_strength === "strong" ? "default" : "secondary"} className="text-[10px]">
+              {corr.zone_identity.zone_anchor_strength}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Peso fallback</span>
+            <span className="font-medium text-foreground">{corr.zone_correspondence.fallback_weight === "none" ? "Assente" : corr.zone_correspondence.fallback_weight}</span>
+          </div>
+          {corr.zone_limitations.transparency_notes.map((n, i) => (
+            <p key={i} className="text-xs text-muted-foreground/80 leading-relaxed">{n}</p>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Growth Signals */}
+      <Card className="border-border/50">
+        <CardHeader className="p-4 pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-semibold">Segnali della zona</CardTitle>
+            </div>
+            <Badge variant={growth.growth_summary.overall_growth_signal_status === "supportive" ? "default" : "secondary"} className="text-[10px]">
+              {growthStatusLabel(growth.growth_summary.overall_growth_signal_status)}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 space-y-2">
+          {growth.growth_signals.map(s => (
+            <div key={s.signal_key} className="flex items-start gap-2 text-sm">
+              <SignalDirectionIcon direction={s.signal_direction} />
+              <div className="min-w-0 flex-1">
+                <span className="font-medium text-foreground">{s.signal_label}</span>
+                <p className="text-xs text-muted-foreground/80">{s.signal_value}</p>
+              </div>
+            </div>
+          ))}
+          {growth.growth_limitations.transparency_notes.map((n, i) => (
+            <p key={i} className="text-xs text-muted-foreground/80 leading-relaxed">{n}</p>
+          ))}
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
 export default function TerritorialReport() {
   const [istatCode, setIstatCode] = useState("015146");
   const [vm, setVm] = useState<TerritorialReportViewModel | null>(null);
+  const [corr, setCorr] = useState<ZoneCorrespondenceResult | null>(null);
+  const [growth, setGrowth] = useState<ZoneGrowthSignalsResult | null>(null);
 
   const generate = () => {
     const data = resolveTerritorialData({
@@ -104,7 +183,11 @@ export default function TerritorialReport() {
       include_placeholders: true,
     });
     const { viewModel } = buildTerritorialReport(data);
+    const c = buildZoneCorrespondence(data);
+    const g = buildZoneGrowthSignals(data, c);
     setVm(viewModel);
+    setCorr(c);
+    setGrowth(g);
   };
 
   return (
@@ -159,6 +242,9 @@ export default function TerritorialReport() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Zone Correspondence + Growth Signals */}
+            {corr && growth && <GrowthSignalsPanel growth={growth} corr={corr} />}
 
             {/* Sections */}
             <div className="space-y-3">
