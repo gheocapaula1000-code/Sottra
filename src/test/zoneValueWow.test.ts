@@ -37,21 +37,28 @@ function stubTerritorial(geoLevel = "zona_omi"): TerritorialDataResult {
 
 function stubCorr(fallbackWeight: "none" | "low" | "medium" | "high" = "none"): ZoneCorrespondenceResult {
   return {
+    zone_identity: {
+      geo_level_reale: "zona_omi" as any,
+      geo_code: "015146_B1",
+      geo_label: "Milano B1",
+      normalized_path: "Lombardia > Milano",
+      zone_type_label: "Microzona OMI",
+      zone_corresponds_to: "Microzona OMI B1",
+      zone_anchor_strength: "strong",
+    },
     zone_correspondence: {
-      zone_geo_code: "015146_B1",
-      zone_geo_level: "zona_omi" as any,
-      zone_label: "Milano B1",
-      resolved_zone_label: "Milano B1",
-      zone_precision_label: "Microzona OMI",
-      correspondence_quality: "strong",
+      corresponds_to_microzona_omi: true,
+      corresponds_to_asc: false,
+      corresponds_to_section_or_aggregate: false,
+      corresponds_to_comune_only: false,
+      primary_zone_basis: "OMI diretto",
+      secondary_zone_basis: [],
       fallback_used: fallbackWeight !== "none",
       fallback_weight: fallbackWeight,
       false_specificity_risk: fallbackWeight === "high" ? "high" : "none",
-      mapping_method: "direct_omi",
-      transparency_notes: [],
     },
     zone_precision: {} as any,
-    zone_fallback_analysis: {} as any,
+    zone_limitations: { missing_sub_comunale: false, market_only_comunale: false, weak_zone_anchor: false, fallback_dominant: false, blocking_gaps: [], transparency_notes: [] },
   } as ZoneCorrespondenceResult;
 }
 
