@@ -204,6 +204,7 @@ function emptyMetrics(): AuditMetrics {
       blocked_by_missing_building_evidence: 0,
     },
     quality_distribution: {},
+    official_street_support_count: 0,
     high_overprecision_risk_count: 0,
     high_false_specificity_count: 0,
   };
