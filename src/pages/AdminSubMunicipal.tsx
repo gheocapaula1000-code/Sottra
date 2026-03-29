@@ -101,6 +101,7 @@ const STATUS_COLORS: Record<string, string> = {
   validating: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   ready_to_import: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
   importing: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  pending_next_chunk: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
   imported: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   failed: "bg-destructive/10 text-destructive",
 };
