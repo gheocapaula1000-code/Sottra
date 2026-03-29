@@ -713,7 +713,7 @@ function buildLimitations(
   const notes: string[] = [];
 
   const missingAddress = localization.address_status !== "available";
-  const missingCivic = localization.civic_status === "not_introduced_yet";
+  const missingCivic = localization.civic_status !== "available";
   const missingRegistry = true; // No building registry exists yet
   const missingAttributes = true; // No building attributes available
   const missingUnit = true; // No unit-level data
