@@ -1228,8 +1228,8 @@ serve(async (req) => {
             if (!hasSez) missingCritical.push("Colonna sezione (SEZ2021 | SEZ)");
             if (!hasCom) missingCritical.push("Colonna comune (PRO_COM_T | PRO_COM)");
           } else if (dt === "ASC_2021" || dt.startsWith("R03_CSV_ASC")) {
-            const hasAsc = headers.some(h => ["COD_ASC", "AREA_CODE"].includes(h));
-            if (!hasAsc) missingCritical.push("Colonna area (COD_ASC | AREA_CODE)");
+            const hasAsc = headers.some(h => ["COD_ASC", "AREA_CODE", "COD_ASC2"].includes(h));
+            if (!hasAsc) missingCritical.push("Colonna area (COD_ASC | AREA_CODE | COD_ASC2)");
           }
 
           const lightValidation: Record<string, unknown> = {
