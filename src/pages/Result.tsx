@@ -35,6 +35,14 @@ import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib
 import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
 import { buildWowSnapshot, attentionSignalLabel, attentionSignalColor } from "@/lib/sottraWowSnapshot";
 import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
+import {
+  buildHouseDifferentiation,
+  differentiationStatusLabel,
+  specificityStrengthLabel,
+  specificityStrengthColor,
+  separationLabel,
+  type HouseDifferentiationResult,
+} from "@/lib/houseDifferentiationEngine";
 
 /* ── Section-level ErrorBoundary ──────────────────────── */
 
