@@ -239,13 +239,16 @@ function buildDetailedValidation(
 /* ── Import processors ── */
 
 const CHUNK = 500;
-const R03_SEZ_CHUNK = 500; // Smaller chunks for faster heartbeat
+const R03_SEZ_CHUNK = 100; // Small chunks for aggressive checkpoint/heartbeat
 const R03_SEZ_STUCK_TIMEOUT_MINUTES = 20;
 const MAX_IMPORT_ERRORS = 100;
 
-// Time budget: stop processing 8s before the platform kills us (~60s limit)
+// Time budget for general imports
 const TIME_BUDGET_MS = 45_000;
 const TIME_BUDGET_RESERVE_MS = 8_000;
+
+// Aggressive time budget for R03_CSV_SEZ: exit after ~12s to guarantee checkpoint
+const R03_SEZ_TIME_BUDGET_MS = 12_000;
 
 function nowIso() {
   return new Date().toISOString();
