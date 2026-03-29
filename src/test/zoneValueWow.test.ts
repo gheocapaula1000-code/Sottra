@@ -186,3 +186,59 @@ describe("WowSnapshot", () => {
     expect(["full", "partial", "hidden"]).toContain(snap.narrative_mode);
   });
 });
+
+/* ═══════════════════════════════════════════════════════════
+   COMMERCIAL REPORT POLISH TESTS
+   ═══════════════════════════════════════════════════════════ */
+
+describe("CommercialReportPolish", () => {
+  it("wow snapshot includes specificita_immobile field", () => {
+    const value = buildZoneValue({ data: stubTerritorial(), corr: stubCorr(), omiMin: 2800, omiMax: 3500, omiGeoLevel: "microzona_omi", omiPolygonMatch: true });
+    const reno = buildRenovationEstimate({ zone_geo_code: "015146", zone_geo_level: "zona_omi", hasPhoto: true });
+    const snap = buildWowSnapshot({ value, renovation: reno, growth: stubGrowth(), corr: stubCorr(), specificity_strength: "strong" });
+    expect(snap.specificita_immobile).toBe("Alta");
+  });
+
+  it("wow snapshot specificita_immobile is null without input", () => {
+    const value = buildZoneValue({ data: stubTerritorial(), corr: stubCorr(), omiMin: 2800, omiMax: 3500, omiGeoLevel: "microzona_omi", omiPolygonMatch: true });
+    const reno = buildRenovationEstimate({ zone_geo_code: "015146", zone_geo_level: "zona_omi", hasPhoto: true });
+    const snap = buildWowSnapshot({ value, renovation: reno, growth: stubGrowth(), corr: stubCorr() });
+    expect(snap.specificita_immobile).toBeNull();
+  });
+
+  it("limite_principale always present in snapshot", () => {
+    const value = buildZoneValue({ data: stubTerritorial(), corr: stubCorr(), omiMin: 2800, omiMax: 3500, omiGeoLevel: "microzona_omi", omiPolygonMatch: true });
+    const reno = buildRenovationEstimate({ zone_geo_code: "015146", zone_geo_level: "zona_omi", hasPhoto: true });
+    const snap = buildWowSnapshot({ value, renovation: reno, growth: stubGrowth(), corr: stubCorr() });
+    expect(snap.limite_principale).toBeTruthy();
+    expect(snap.limite_principale.length).toBeGreaterThan(5);
+  });
+
+  it("snapshot with high fallback does not claim high attention", () => {
+    const value = buildZoneValue({ data: stubTerritorial("comune"), corr: stubCorr("high"), omiMin: 1500, omiMax: 2000, omiGeoLevel: "comune" });
+    const reno = buildRenovationEstimate({ zone_geo_code: "015146", zone_geo_level: "comune", hasPhoto: false, value_per_sqm_mid: 1750 });
+    const snap = buildWowSnapshot({ value, renovation: reno, growth: stubGrowth("weak"), corr: stubCorr("high") });
+    expect(snap.attenzione_area).not.toBe("high");
+  });
+
+  it("specificita_immobile maps correctly for all strengths", () => {
+    const value = buildZoneValue({ data: stubTerritorial(), corr: stubCorr(), omiMin: 2800, omiMax: 3500, omiGeoLevel: "microzona_omi", omiPolygonMatch: true });
+    const reno = buildRenovationEstimate({ zone_geo_code: "015146", zone_geo_level: "zona_omi", hasPhoto: true });
+    const labels = ["strong", "medium", "weak", "insufficient"] as const;
+    const expected = ["Alta", "Media", "Bassa", "Non sufficiente"];
+    labels.forEach((s, i) => {
+      const snap = buildWowSnapshot({ value, renovation: reno, growth: stubGrowth(), corr: stubCorr(), specificity_strength: s });
+      expect(snap.specificita_immobile).toBe(expected[i]);
+    });
+  });
+
+  it("no regression: outlook engine types are compatible", async () => {
+    const { buildZoneOutlook } = await import("@/lib/zoneOutlookEngine");
+    expect(typeof buildZoneOutlook).toBe("function");
+  });
+
+  it("no regression: house differentiation types are compatible", async () => {
+    const { buildHouseDifferentiation } = await import("@/lib/houseDifferentiationEngine");
+    expect(typeof buildHouseDifferentiation).toBe("function");
+  });
+});

@@ -33,8 +33,9 @@ import AddressOverrideForm from "@/components/AddressOverrideForm";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
 import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib/zoneValueEngine";
 import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
-import { buildWowSnapshot, attentionSignalLabel, attentionSignalColor } from "@/lib/sottraWowSnapshot";
+import { buildWowSnapshot } from "@/lib/sottraWowSnapshot";
 import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
+import { WowPanel } from "@/components/report/WowPanel";
 import {
   buildHouseDifferentiation,
   differentiationStatusLabel,
@@ -225,72 +226,7 @@ function isSectionPublishable(status: string, data: unknown): boolean {
   return true;
 }
 
-/* ── WOW Snapshot Panel ──────────────────────────────── */
-
-function WowSnapshotPanel({ snapshot, loading }: { snapshot: WowSnapshot | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!snapshot || snapshot.narrative_mode === "hidden") return null;
-
-  const isPartial = snapshot.narrative_mode === "partial";
-  const attnColor = attentionSignalColor(snapshot.attenzione_area);
-
-  return (
-    <Section className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-      <div className="flex items-center gap-2.5 mb-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
-          <Zap className="h-4 w-4 text-primary" />
-        </div>
-        <span className="font-semibold text-foreground text-sm tracking-tight">Snapshot Immediato</span>
-        {isPartial && <Badge variant="secondary" className="text-[10px]">Parziale</Badge>}
-      </div>
-
-      {/* Value + Renovation row */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        {snapshot.valore_al_mq && (
-          <div className="rounded-xl bg-background/60 border border-border/40 p-3">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Valore al m²</span>
-            <p className="text-xl font-extrabold text-foreground mt-0.5">{snapshot.valore_al_mq}</p>
-            {snapshot.valore_range && <p className="text-[10px] text-muted-foreground mt-0.5">{snapshot.valore_range}</p>}
-          </div>
-        )}
-        {snapshot.costo_ristrutturazione && (
-          <div className="rounded-xl bg-background/60 border border-border/40 p-3">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Wrench className="h-3 w-3" />Costo ristr.</span>
-            <p className="text-xl font-extrabold text-foreground mt-0.5">{snapshot.costo_ristrutturazione}</p>
-            {snapshot.costo_range && <p className="text-[10px] text-muted-foreground mt-0.5">{snapshot.costo_range}</p>}
-          </div>
-        )}
-      </div>
-
-      {/* Meta row */}
-      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-        <div><span className="text-muted-foreground">Affidabilità</span><p className="font-semibold text-foreground">{snapshot.affidabilita_valore}</p></div>
-        <div><span className="text-muted-foreground">Segnali zona</span><p className="font-semibold text-foreground">{snapshot.segnali_zona}</p></div>
-      </div>
-
-      {/* Specificity + Attention row */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2">
-          <span className="text-xs text-muted-foreground">Attenzione area</span>
-          <span className={cn("text-xs font-bold", attnColor)}>{attentionSignalLabel(snapshot.attenzione_area)}</span>
-        </div>
-        {snapshot.specificita_immobile && (
-          <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2">
-            <span className="text-xs text-muted-foreground">Specificità</span>
-            <span className="text-xs font-bold text-foreground">{snapshot.specificita_immobile}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Primary limitation — always visible */}
-      <div className="flex items-start gap-2 text-[10px] text-muted-foreground/70">
-        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-        <span>{snapshot.limite_principale}</span>
-      </div>
-      <p className="text-[9px] text-muted-foreground/30 mt-2">Snapshot orientativo — non sostituisce una valutazione professionale</p>
-    </Section>
-  );
-}
+/* WowSnapshotPanel removed — replaced by WowPanel component */
 
 /* ── House Differentiation Card ──────────────────────── */
 
@@ -1663,8 +1599,24 @@ const Result = () => {
 
           <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} lowConfidence={lowConfidence} />
 
-          {/* WOW Snapshot — immediate value panel */}
-          <SectionSafe><WowSnapshotPanel snapshot={wowSnapshot} loading={result.pricing.status === "loading"} /></SectionSafe>
+          {/* ═══ WOW PANEL — Tiers 1+2 (colpo d'occhio + decisione) ═══ */}
+          <SectionSafe>
+            <WowPanel
+              snapshot={wowSnapshot}
+              loading={result.pricing.status === "loading"}
+              outlookLabel={null}
+              outlookVariant="muted"
+              alignmentLabel={houseDiff ? (
+                houseDiff.address_alignment.photo_address_alignment === "high_alignment" ? "Forte" :
+                houseDiff.address_alignment.photo_address_alignment === "medium_alignment" ? "Medio" :
+                houseDiff.address_alignment.photo_address_alignment === "low_alignment" ? "Debole" : null
+              ) : null}
+              alignmentVariant={houseDiff ? (
+                houseDiff.address_alignment.photo_address_alignment === "high_alignment" ? "positive" :
+                houseDiff.address_alignment.photo_address_alignment === "medium_alignment" ? "neutral" : "warning"
+              ) : "muted"}
+            />
+          </SectionSafe>
 
           {/* Manual address override — shown after identify success, not during initial scan */}
           {identifyDone && !lowConfidence && !identifyFailed && (
@@ -1693,32 +1645,36 @@ const Result = () => {
 
           {!lowConfidence && !identifyFailed && (
             <>
+              {/* ═══ TIER 2 — Decisione iniziale (7-15s) ═══ */}
+
               {/* A) Profilo Rapido */}
               <SectionSafe><ProfiloRapidoCard data={result.profiloRapido.data as import("@/types/report").ProfiloRapidoData | null} loading={result.profiloRapido.status === "loading"} /></SectionSafe>
 
-              {/* B) Immobile e Facciata */}
-              <SectionSafe><ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} /></SectionSafe>
-
-              {/* B.1) Specificità immobile */}
+              {/* Specificità immobile — emerges early for decision-making */}
               <SectionSafe><HouseDifferentiationCard diff={houseDiff} loading={scanning} /></SectionSafe>
 
-              {/* C) Contesto e Vicinato */}
-              <SectionSafe><ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} /></SectionSafe>
-
-              {/* D) Zona OMI — FROZEN */}
+              {/* Zona OMI — key pricing context */}
               <SectionSafe><OmiCard data={result.omiZone.data as import("@/types").OmiZoneData | null} loading={result.omiZone.status === "loading"} /></SectionSafe>
 
-              {/* E) Servizi e POI */}
-              <SectionSafe><PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} /></SectionSafe>
-
-              {/* F) Mercato live */}
+              {/* Mercato live — pricing supports the snapshot */}
               <SectionSafe><PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} /></SectionSafe>
               <SectionSafe><MarketContextCard data={result.marketContext.data as MarketContextData | null} loading={result.marketContext.status === "loading"} /></SectionSafe>
 
-              {/* G) Posizionamento commerciale */}
+              {/* ═══ TIER 3 — Approfondimento ═══ */}
+
+              {/* Immobile e Facciata */}
+              <SectionSafe><ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} /></SectionSafe>
+
+              {/* Contesto e Vicinato */}
+              <SectionSafe><ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} /></SectionSafe>
+
+              {/* Servizi e POI */}
+              <SectionSafe><PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} /></SectionSafe>
+
+              {/* Posizionamento commerciale */}
               <SectionSafe><PosizionamentoCommercialeCard data={result.posizionamentoCommerciale.data as import("@/types/report").PosizionamentoCommercialeData | null} loading={result.posizionamentoCommerciale.status === "loading"} /></SectionSafe>
 
-              {/* H) Profilo Area */}
+              {/* Profilo Area */}
               <SectionSafe><ProfiloAreaCard data={result.profiloArea.data as import("@/types/report").ProfiloAreaData | null} loading={result.profiloArea.status === "loading"} /></SectionSafe>
 
               {/* Territorial modules */}
@@ -1726,7 +1682,7 @@ const Result = () => {
               <SectionSafe><IstatCard data={result.istatDemographic.data as import("@/types").IstatDemographicData | null} loading={result.istatDemographic.status === "loading"} /></SectionSafe>
               <SectionSafe><TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} /></SectionSafe>
 
-              {/* M) Profilo di Zona — Indice di Vicinato */}
+              {/* Profilo di Zona — Indice di Vicinato */}
               <SectionSafe>
                 <NeighborhoodIndexCard
                   index={calculateNeighborhoodIndex(
@@ -1739,25 +1695,25 @@ const Result = () => {
                 />
               </SectionSafe>
 
-              {/* Tier 2 */}
+              {/* Convergenza + Opportunità */}
               <SectionSafe><ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} /></SectionSafe>
               <SectionSafe><OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} /></SectionSafe>
 
-              {/* I) Scenario 5/10/20 anni */}
+              {/* Scenario temporale */}
               <SectionSafe><ScenarioTemporaleCard data={result.scenarioTemporale.data as import("@/types/report").ScenarioTemporaleData | null} loading={result.scenarioTemporale.status === "loading"} /></SectionSafe>
 
-              {/* Time/infra modules */}
+              {/* Time/infra */}
               <SectionSafe><TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} /></SectionSafe>
               <SectionSafe><InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} /></SectionSafe>
               <SectionSafe><SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} /></SectionSafe>
 
-              {/* J) Sintesi Finale */}
+              {/* Sintesi Finale */}
               <SectionSafe><SintesiFinaleCard data={result.sintesiFinale.data as import("@/types/report").SintesiFinaleData | null} loading={result.sintesiFinale.status === "loading"} /></SectionSafe>
 
-              {/* L) Priorità / Criticità */}
+              {/* Priorità / Criticità */}
               <SectionSafe><PrioritaCriticitaCard data={result.prioritaCriticita.data as PrioritaCriticitaData | null} loading={result.prioritaCriticita.status === "loading"} /></SectionSafe>
 
-              {/* K) Trasparenza Fonti */}
+              {/* Trasparenza Fonti */}
               {!scanning && <SectionSafe><TrasparenzaFontiCard data={buildTrasparenzaFonti(result)} /></SectionSafe>}
 
               {/* Discrete quality footer */}
