@@ -113,6 +113,7 @@ const App = () => (
                     <Route path="/admin/zone-attractors-pressure" element={<ProtectedAdminRoute><AdminZoneAttractorsPressure /></ProtectedAdminRoute>} />
                     <Route path="/admin/zone-boundaries" element={<ProtectedAdminRoute><AdminZoneBoundaries /></ProtectedAdminRoute>} />
                     <Route path="/admin/zone-value" element={<ProtectedAdminRoute><AdminZoneValue /></ProtectedAdminRoute>} />
+                    <Route path="/admin/zone-outlook" element={<ProtectedAdminRoute><AdminZoneOutlook /></ProtectedAdminRoute>} />
                     <Route path="/territorial-report" element={<ProtectedRoute><TerritorialReport /></ProtectedRoute>} />
                     <Route path="/scan" element={<TrialProtectedRoute><Scan /></TrialProtectedRoute>} />
                     <Route path="/result" element={<TrialProtectedRoute><Result /></TrialProtectedRoute>} />

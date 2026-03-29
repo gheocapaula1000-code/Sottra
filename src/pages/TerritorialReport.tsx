@@ -353,6 +353,58 @@ export default function TerritorialReport() {
               </Card>
             )}
 
+            {/* Zone Outlook 2/5/10 */}
+            {outlook && outlookNarrativeMode(outlook) !== "hidden" && (
+              <Card className="border-border/50">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Vista 2 / 5 / 10 anni</CardTitle>
+                    </div>
+                    <Badge variant={outlook.outlook_attention === "high" ? "default" : "secondary"} className="text-[10px]">
+                      {outlookAttentionLabel(outlook.outlook_attention)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-3">
+                  {[outlook.horizon_2y, outlook.horizon_5y, outlook.horizon_10y]
+                    .filter(h => h.narrative_mode !== "hidden")
+                    .map(h => (
+                    <div key={h.horizon_label} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-foreground">{h.horizon_label}</span>
+                        <Badge variant={h.outlook_status === "supportive" ? "default" : "secondary"} className="text-[9px]">
+                          {outlookStatusLabel(h.outlook_status)}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground/80">{h.summary}</p>
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                        <span>Direzione: {outlookDirectionLabel(h.outlook_direction)}</span>
+                        <span>Evidenza: {h.evidence_level}</span>
+                      </div>
+                      {h.limitations.length > 0 && (
+                        <p className="text-[10px] text-amber-500/80">{h.limitations[0]}</p>
+                      )}
+                    </div>
+                  ))}
+                  <div className="pt-1 border-t border-border/30 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Pressione potenziale sui valori</span>
+                      <span className="font-medium text-foreground">{outlookDirectionLabel(outlook.outlook_value_pressure.pressure_direction)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Confidenza</span>
+                      <span className="font-medium text-foreground">{outlook.outlook_value_pressure.pressure_confidence}</span>
+                    </div>
+                  </div>
+                  {outlook.outlook_limitations.transparency_notes.map((n, i) => (
+                    <p key={i} className="text-xs text-muted-foreground/80 leading-relaxed">{n}</p>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Zone Boundaries */}
             {boundaries && boundaryNarrativeMode(boundaries) !== "hidden" && (
               <Card className="border-border/50">

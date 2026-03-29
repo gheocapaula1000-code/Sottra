@@ -21,19 +21,40 @@ function makeCorr(overrides: Partial<{
       zone_anchor_strength: (overrides.anchor ?? "strong") as any,
     },
     zone_correspondence: {
+      corresponds_to_microzona_omi: true,
+      corresponds_to_asc: false,
+      corresponds_to_section_or_aggregate: false,
+      corresponds_to_comune_only: false,
+      primary_zone_basis: "omi_linkage",
+      secondary_zone_basis: [],
+      fallback_used: (overrides.fallback_weight ?? "none") !== "none",
       fallback_weight: (overrides.fallback_weight ?? "none") as any,
-      false_specificity_risk: false,
+      false_specificity_risk: "none" as any,
       max_safe_claim_level: "microzona" as any,
       data_layers_at_zone: [],
       data_layers_at_fallback: [],
     },
-    zone_limitations: { transparency_notes: [], blocking_gaps: [] },
+    zone_precision: {
+      precision_status: "strong",
+      sub_comunale_support_status: "available",
+      market_zone_support_status: "direct",
+      territorial_support_status: "complete",
+      max_safe_claim_level: "microzona" as any,
+    },
+    zone_limitations: {
+      missing_sub_comunale: false,
+      market_only_comunale: false,
+      weak_zone_anchor: false,
+      fallback_dominant: (overrides.fallback_weight === "high"),
+      blocking_gaps: [],
+      transparency_notes: [],
+    },
   };
 }
 
 function makeGrowth(dir: string = "positive", ev: string = "strong"): ZoneGrowthSignalsResult {
   return {
-    growth_identity: {} as any,
+    growth_identity: { zone_geo_code: "015146", zone_geo_level: "microzona" as any, signal_coverage_strength: "strong" },
     growth_signals: [{
       signal_key: "mkt", signal_label: "Market", signal_family: "market",
       signal_value: "ok", signal_direction: dir as any, evidence_level: ev as any,
@@ -45,7 +66,13 @@ function makeGrowth(dir: string = "positive", ev: string = "strong"): ZoneGrowth
       weak_signal_count: 0, overall_growth_signal_status: "supportive",
       narrative_mode: "full",
     },
-    growth_limitations: { sparse_coverage: false, weak_correspondence: false, insufficient_signal_depth: false, blocking_gaps: [], transparency_notes: [] },
+    growth_limitations: {
+      missing_depth: false,
+      comunale_only_bias: false,
+      weak_signal_base: false,
+      blocking_gaps: [],
+      transparency_notes: [],
+    },
   };
 }
 
@@ -115,7 +142,6 @@ describe("zoneOutlookEngine", () => {
     const r = buildZoneOutlook(makeCorr(), makeGrowth(), makeUrban(), makeAttractors());
     expect(r.outlook_value_pressure.pressure_direction).toBeDefined();
     expect(r.outlook_value_pressure.pressure_basis).not.toContain("prezzo futuro");
-    // No numeric price prediction anywhere
     expect(JSON.stringify(r)).not.toMatch(/prezzo.*sar[àa]/i);
   });
 
@@ -137,7 +163,6 @@ describe("zoneOutlookEngine", () => {
       makeUrban(),
       makeAttractors(),
     );
-    // Even with strong signals, comune-only should not claim micro-local precision
     expect(r.outlook_value_pressure.false_specificity_risk).toBe(true);
     expect(r.outlook_limitations.transparency_notes.some(n => n.includes("comunale"))).toBe(true);
   });
