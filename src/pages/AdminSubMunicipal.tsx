@@ -982,23 +982,38 @@ const AdminSubMunicipal = () => {
                   </div>
                 )}
                 <div className="rounded bg-muted/30 border p-2 text-xs text-muted-foreground">
-                  Perimetro: <strong className="text-foreground">solo comuni R03</strong> ({ascValidation.r03ComuniCovered} comuni)
+                  Perimetro: <strong className="text-foreground">solo comuni R03</strong> ({ascValidation.r03ComuniCovered} comuni, {ascValidation.comuniWithAscLayer} con ASC nel layer)
+                  {ascValidation.aggregatesCount > 0 && <> · <strong className="text-emerald-600">{ascValidation.aggregatesCount} aggregati</strong></>}
                 </div>
-                <div className="grid grid-cols-3 gap-3 text-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                   <div><p className="text-xs text-muted-foreground">Sezioni</p><p className="font-bold">{ascValidation.totalSections.toLocaleString("it-IT")}</p></div>
                   <div><p className="text-xs text-muted-foreground">Comuni</p><p className="font-bold">{ascValidation.r03ComuniCovered}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Senza ASC</p><p className="font-bold">{ascValidation.sectionsWithoutAscPct.toFixed(1)}%</p></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Coperte (diretto)</p>
+                    <p className="font-bold">{(ascValidation.sectionsWithAsc1 + ascValidation.sectionsWithAsc2).toLocaleString("it-IT")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Coperte (via comune)</p>
+                    <p className="font-bold text-blue-600">{ascValidation.sectionsWithAscViaComune.toLocaleString("it-IT")} ({ascValidation.sectionsWithAscViaComunePct.toFixed(1)}%)</p>
+                  </div>
+                </div>
+                <div className="rounded bg-muted/30 border p-2 text-xs">
+                  <span className="text-muted-foreground">Senza ASC: </span>
+                  <span className={`font-bold ${ascValidation.sectionsWithoutAscPct < 50 ? "text-emerald-600" : "text-amber-600"}`}>
+                    {ascValidation.sectionsWithoutAscPct.toFixed(1)}%
+                  </span>
+                  <span className="text-muted-foreground ml-2">({(ascValidation.totalSections - ascValidation.sectionsWithAscViaComune - ascValidation.sectionsWithAsc1 - ascValidation.sectionsWithAsc2).toLocaleString("it-IT")} sezioni)</span>
                 </div>
                 {[
                   { label: "ASC1", detail: ascValidation.asc1, pct: ascValidation.sectionsWithAsc1Pct },
                   { label: "ASC2", detail: ascValidation.asc2, pct: ascValidation.sectionsWithAsc2Pct },
                 ].filter(l => l.detail.codesInSections.size > 0).map(({ label, detail, pct }) => (
                   <div key={label} className="rounded border p-2 text-xs space-y-1">
-                    <p className="font-medium text-foreground">{label} — {pct.toFixed(1)}% sezioni coperte</p>
+                    <p className="font-medium text-foreground">{label} — {detail.matched.length} codici match su {detail.codesInSections.size} ({detail.coveragePct.toFixed(1)}%)</p>
                     <div className="grid grid-cols-4 gap-2">
-                      <div><p className="text-muted-foreground">In sezioni</p><p className="font-semibold">{detail.codesInSections.size}</p></div>
+                      <div><p className="text-muted-foreground">Codici</p><p className="font-semibold">{detail.codesInSections.size}</p></div>
                       <div><p className="text-muted-foreground">Nel layer</p><p className="font-semibold">{detail.codesInLayer.size}</p></div>
-                      <div><p className="text-muted-foreground">Match</p><p className={`font-semibold ${detail.coveragePct > 50 ? "text-emerald-600" : "text-amber-600"}`}>{detail.matched.length} ({detail.coveragePct.toFixed(1)}%)</p></div>
+                      <div><p className="text-muted-foreground">Match</p><p className={`font-semibold ${detail.coveragePct > 50 ? "text-emerald-600" : "text-amber-600"}`}>{detail.matched.length}</p></div>
                       <div><p className="text-muted-foreground">Mismatch</p><p className="font-semibold">{detail.unmatchedInSections.length}</p></div>
                     </div>
                   </div>
