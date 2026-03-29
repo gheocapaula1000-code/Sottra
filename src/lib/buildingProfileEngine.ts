@@ -28,6 +28,14 @@ import {
   type ReportBadge,
   type ReportKeyFact,
 } from "@/lib/zoneProfileEngine";
+import {
+  resolveAddress,
+  addressFactSupportLevel,
+  addressQualityLabel,
+  streetMatchLabel,
+  civicMatchLabel,
+  type AddressResolutionResult,
+} from "@/lib/addressResolutionEngine";
 
 /* ═══════════════════════════════════════════════════════════
    SUPPORT LEVEL — direct vs contextual vs derived
