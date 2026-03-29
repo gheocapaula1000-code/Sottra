@@ -355,13 +355,37 @@ function buildLocalization(
   const hasAddress = !!input.address;
 
   const coordStatus: CoordinateStatus = hasCoords ? "available" : "unavailable";
-  const addrStatus: AddressStatus = hasAddress ? "approximate" : "not_introduced_yet";
 
   let method = "territorial_resolution";
   if (hasCoords) method = "coordinate_lookup";
   if (input.has_photo) method = "photo_scan_with_coordinates";
 
   const conf = hasCoords ? 0.7 : 0.3;
+
+  // Phase 5: resolve address if provided
+  let addressRes: AddressResolutionResult | null = null;
+  let addrStatus: AddressStatus = "not_introduced_yet";
+  let civicStatus: AddressStatus = "not_introduced_yet";
+
+  if (hasAddress && input.address) {
+    addressRes = resolveAddress({
+      raw_address: input.address,
+      comune: td.territorial_identity.geo_label || undefined,
+      lat: input.lat,
+      lng: input.lng,
+      resolved_geo_level: td.territorial_identity.geo_level,
+    });
+
+    // Map address quality to status — never "available" without registry
+    const aq = addressRes.address_quality.overall_address_quality;
+    addrStatus = aq === "strong" ? "available"
+      : aq === "moderate" || aq === "weak" ? "approximate"
+      : "not_determinable";
+
+    civicStatus = addressRes.civic_resolution.civic_input_present
+      ? "approximate" // Never "available" — civic is parsed, not verified
+      : "not_determinable";
+  }
 
   return {
     resolved_geo_level: td.territorial_identity.geo_level,
@@ -377,7 +401,8 @@ function buildLocalization(
       ? "ASC disponibile" : null,
     coordinate_status: coordStatus,
     address_status: addrStatus,
-    civic_status: "not_introduced_yet",
+    civic_status: civicStatus,
+    address_resolution: addressRes,
   };
 }
 
