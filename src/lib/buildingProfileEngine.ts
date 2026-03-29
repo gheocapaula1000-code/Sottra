@@ -97,6 +97,8 @@ export interface BuildingLocalization {
   coordinate_status: CoordinateStatus;
   address_status: AddressStatus;
   civic_status: AddressStatus;
+  /** Phase 5: full address resolution layer (null if no address input) */
+  address_resolution: AddressResolutionResult | null;
 }
 
 export interface BuildingContext {
