@@ -30,28 +30,24 @@ export type AuditCaseClass =
 export function classifyCase(r: AddressResolutionResult): AuditCaseClass {
   const ar = r.address_resolution;
   const cr = r.civic_resolution;
-  const q = r.address_quality;
 
   if (ar.resolution_status === "unresolved") return "unresolved";
 
-  if (q.false_specificity_risk === "high" || q.overprecision_risk === "high") {
-    return "risky_false_specificity";
-  }
-
   if (!ar.official_street_support) {
-    return ar.matched_street_status === "not_found" ? "unresolved" : "textual_match_only";
+    if (ar.matched_street_status === "not_found") return "unresolved";
+    return "textual_match_only";
   }
 
-  // Official street support exists
-  if (ar.official_civic_support && !cr.civic_supported_as_building_truth) {
-    return "strong_official_street_and_civic";
-  }
-
+  // Official street support exists — check quality within official matches
   if (ar.anncsu_civic_exactness === "ambiguous") {
     return "official_but_ambiguous";
   }
 
-  if (ar.anncsu_street_exactness === "exact") {
+  if (ar.official_civic_support && !cr.civic_supported_as_building_truth) {
+    return "strong_official_street_and_civic";
+  }
+
+  if (ar.anncsu_street_exactness === "exact" || ar.anncsu_street_exactness === "normalized") {
     return "strong_official_street";
   }
 
