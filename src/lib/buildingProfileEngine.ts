@@ -34,6 +34,7 @@ import {
   addressQualityLabel,
   streetMatchLabel,
   civicMatchLabel,
+  anncsuMatchLabel,
   type AddressResolutionResult,
 } from "@/lib/addressResolutionEngine";
 
@@ -264,6 +265,10 @@ export interface BuildingProfileInput {
   has_photo?: boolean;
   /** Confidence from identification */
   identification_confidence?: number;
+  /** ANNCSU street candidates pre-fetched */
+  anncsu_street_candidates?: import("@/lib/addressResolutionEngine").AnncsuCandidate[];
+  /** ANNCSU civic candidates pre-fetched */
+  anncsu_civic_candidates?: import("@/lib/addressResolutionEngine").AnncsuCandidate[];
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -364,7 +369,7 @@ function buildLocalization(
 
   const conf = hasCoords ? 0.7 : 0.3;
 
-  // Phase 5: resolve address if provided
+  // Phase 5+ANNCSU: resolve address if provided
   let addressRes: AddressResolutionResult | null = null;
   let addrStatus: AddressStatus = "not_introduced_yet";
   let civicStatus: AddressStatus = "not_introduced_yet";
@@ -376,16 +381,21 @@ function buildLocalization(
       lat: input.lat,
       lng: input.lng,
       resolved_geo_level: td.territorial_identity.geo_level,
+      anncsu_street_candidates: input.anncsu_street_candidates,
+      anncsu_civic_candidates: input.anncsu_civic_candidates,
     });
 
-    // Map address quality to status — never "available" without registry
+    // Map address quality to status
     const aq = addressRes.address_quality.overall_address_quality;
-    addrStatus = aq === "strong" ? "available"
-      : aq === "moderate" || aq === "weak" ? "approximate"
+    const hasOfficialStreet = addressRes.address_resolution.official_street_support;
+    addrStatus = aq === "strong" && hasOfficialStreet ? "available"
+      : aq === "strong" || aq === "moderate" || aq === "weak" ? "approximate"
       : "not_determinable";
 
-    civicStatus = addressRes.civic_resolution.civic_input_present
-      ? "approximate" // Never "available" — civic is parsed, not verified
+    // Civic status: official support upgrades to "available" but still NOT building truth
+    const hasOfficialCivic = addressRes.address_resolution.official_civic_support;
+    civicStatus = hasOfficialCivic ? "available"
+      : addressRes.civic_resolution.civic_input_present ? "approximate"
       : "not_determinable";
   }
 
@@ -608,17 +618,28 @@ function buildBounds(
   cannotSay.push("Numero di piani");
   cannotSay.push("Stato di conservazione");
   cannotSay.push("Dettagli catastali puntuali");
-  // Phase 5: update based on address resolution
+  // Phase 5+ANNCSU: update based on address resolution
   const ar = localization.address_resolution;
   if (ar) {
-    if (ar.address_resolution.matched_street_status !== "not_found") {
+    const hasOfficialStreet = ar.address_resolution.official_street_support;
+    const hasOfficialCivic = ar.address_resolution.official_civic_support;
+    
+    if (hasOfficialStreet) {
+      canSay.push("Strada verificata da registro ufficiale ANNCSU");
+    } else if (ar.address_resolution.matched_street_status !== "not_found") {
       canSay.push("Interpretazione indirizzo da testo (non verificata)");
     }
-    if (ar.civic_resolution.civic_input_present) {
+    if (hasOfficialCivic) {
+      canSay.push("Civico supportato da registro ufficiale ANNCSU (non equivale a verità stabile)");
+    } else if (ar.civic_resolution.civic_input_present) {
       canSay.push("Civico estratto dal testo (non verificato come verità stabile)");
     }
-    cannotSay.push("Indirizzo verificato contro registro ufficiale");
-    cannotSay.push("Civico verificato come identificativo stabile");
+    if (ar.address_resolution.precise_location_support) {
+      canSay.push("Localizzazione precisa supportata (strada + civico ufficiali + coordinate)");
+    }
+    // CRITICAL: building truth always unsupported
+    cannotSay.push("Indirizzo verificato come identità definitiva dello stabile");
+    cannotSay.push("Civico verificato come identificativo stabile (ANNCSU da solo non sufficiente)");
   } else {
     cannotSay.push("Indirizzo e civico (layer non ancora applicato)");
   }
@@ -1005,17 +1026,23 @@ export function buildBuildingReportViewModel(
     fallback_count: bq.fallback_count,
   };
 
-  // Phase 5: address precision panel
+  // Phase 5+ANNCSU: address precision panel
   const ar = bl.address_resolution;
   let address_precision_panel: BuildingReportSectionVM | null = null;
   if (ar && rr.sections.address_precision?.can_render) {
+    const hasOfficialStreet = ar.address_resolution.official_street_support;
+    const hasOfficialCivic = ar.address_resolution.official_civic_support;
     const addrFacts: ReportKeyFact[] = [
       { label: "Indirizzo normalizzato", value: ar.address_identity.normalized_address_string || "—" },
       { label: "Match strada", value: streetMatchLabel(ar.address_resolution.matched_street_status) },
       { label: "Confidenza strada", value: `${Math.round(ar.address_resolution.matched_street_confidence * 100)}%` },
+      { label: "Supporto ufficiale strada", value: hasOfficialStreet ? "Sì (ANNCSU)" : "No" },
       { label: "Match civico", value: ar.civic_resolution.civic_input_present
         ? civicMatchLabel(ar.civic_resolution.civic_match_status) : "Assente" },
-      { label: "Civico = verità stabile?", value: ar.civic_resolution.civic_supported_as_building_truth ? "Sì" : "No" },
+      { label: "Supporto ufficiale civico", value: hasOfficialCivic ? "Sì (ANNCSU)" : "No" },
+      { label: "ANNCSU match", value: anncsuMatchLabel(ar.address_resolution.anncsu_match_status) },
+      { label: "Localizzazione precisa", value: ar.address_resolution.precise_location_support ? "Sì" : "No" },
+      { label: "Verità stabile", value: ar.address_resolution.building_truth_support ? "Sì" : "No — non ancora supportata" },
       { label: "Qualità indirizzo", value: addressQualityLabel(ar.address_quality.overall_address_quality) },
       { label: "Rischio sovraprecisione", value: ar.address_quality.overprecision_risk },
     ];

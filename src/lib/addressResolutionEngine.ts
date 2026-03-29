@@ -1,11 +1,15 @@
 /**
- * Address Resolution Engine — Sottra Phase 5
+ * Address Resolution Engine — Sottra Phase 5 + ANNCSU Integration
  *
- * Provides rigorous address/civic normalization and resolution
- * WITHOUT promoting geocoding or text parsing to building truth.
+ * Provides rigorous address/civic normalization and resolution.
+ * When ANNCSU data is provided, uses it as official support source
+ * WITHOUT promoting to building truth automatically.
  *
- * Every match is explicitly qualified with method, confidence,
- * ambiguity level, and support status.
+ * Distinction chain:
+ * 1. official_street_support — street found in ANNCSU
+ * 2. official_civic_support — civic found in ANNCSU
+ * 3. precise_location_support — geo-consistent official match
+ * 4. building_truth_support — ALWAYS FALSE (future policy)
  */
 
 import type { CanonicalGeoLevel } from "@/lib/geoBackbone";
@@ -18,6 +22,8 @@ import type { FactSupportLevel } from "@/lib/buildingProfileEngine";
 
 export type StreetMatchStatus =
   | "exact_match"
+  | "exact_official_match"
+  | "normalized_official_match"
   | "normalized_match"
   | "fuzzy_match"
   | "coordinate_assisted"
@@ -28,6 +34,9 @@ export type StreetMatchStatus =
 
 export type CivicMatchStatus =
   | "exact_match"
+  | "official_exact_match"
+  | "official_candidate_match"
+  | "official_ambiguous"
   | "partial_match"
   | "ambiguous"
   | "not_found"
@@ -43,6 +52,31 @@ export type AddressResolutionStatus =
   | "not_determinable";
 
 export type AmbiguityLevel = "none" | "low" | "medium" | "high" | "critical";
+
+export type AnncsuMatchStatus =
+  | "exact_official_street_match"
+  | "normalized_official_street_match"
+  | "official_street_only"
+  | "official_civic_candidate_match"
+  | "official_civic_ambiguous"
+  | "no_official_match"
+  | "not_determinable";
+
+/* ═══════════════════════════════════════════════════════════
+   ANNCSU CANDIDATE — passed in from query layer
+   ═══════════════════════════════════════════════════════════ */
+
+export interface AnncsuCandidate {
+  street_name: string;
+  street_type: string | null;
+  civic_normalized: string | null;
+  esponente: string | null;
+  cod_strada: string | null;
+  comune_istat_code: string;
+  comune_label: string | null;
+  ingest_readiness: string;
+  ambiguity_flags: string[];
+}
 
 /* ═══════════════════════════════════════════════════════════
    ADDRESS IDENTITY
@@ -85,13 +119,25 @@ export interface AddressResolution {
   matched_street_status: StreetMatchStatus;
   matched_street_name: string | null;
   matched_street_confidence: number;
-  matched_by: "exact" | "normalized" | "fuzzy" | "coordinate_assisted" | "contextual_only" | "none";
+  matched_by: "exact" | "normalized" | "fuzzy" | "coordinate_assisted" | "contextual_only" | "official_exact" | "official_normalized" | "none";
+  matched_by_source: string | null;
   candidate_count: number;
   ambiguity_level: AmbiguityLevel;
   geo_anchor: string | null;
   territorial_anchor: string | null;
   building_anchor: string | null;
   unresolved_reason: string | null;
+  /** ANNCSU integration fields */
+  anncsu_match_status: AnncsuMatchStatus;
+  anncsu_candidate_count: number;
+  anncsu_street_exactness: "exact" | "normalized" | "none";
+  anncsu_civic_exactness: "exact" | "candidate" | "ambiguous" | "none";
+  source_chain: string[];
+  official_street_support: boolean;
+  official_civic_support: boolean;
+  precise_location_support: boolean;
+  /** LOCKED FALSE — future policy required to change */
+  building_truth_support: false;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -202,6 +248,10 @@ export interface AddressResolutionInput {
   lng?: number | null;
   /** Already-resolved geo level from backbone */
   resolved_geo_level?: CanonicalGeoLevel | null;
+  /** ANNCSU candidates pre-fetched from query layer */
+  anncsu_street_candidates?: AnncsuCandidate[];
+  /** ANNCSU civic candidates pre-fetched from query layer */
+  anncsu_civic_candidates?: AnncsuCandidate[];
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -303,7 +353,6 @@ function parseAndNormalize(raw: string, comune?: string | null): ParsedAddress {
   const mainTokens = mainPart.split(/\s+/);
   if (mainTokens.length >= 2) {
     const last = mainTokens[mainTokens.length - 1];
-    // Match patterns like "12", "12A", "12/B", "12bis"
     if (/^\d+[a-zA-Z\/]*$/.test(last) || /^\d+\s*bis$/i.test(last)) {
       houseNumber = last;
       mainTokens.pop();
@@ -354,7 +403,6 @@ function parseAndNormalize(raw: string, comune?: string | null): ParsedAddress {
   for (const ep of extraParts) {
     const lower = ep.toLowerCase();
     if (!/^(sc\.?|scala|int\.?|interno)\s/i.test(lower) && ep !== staircaseRaw && ep !== internalRaw) {
-      // Could be locality or city
       if (!comune || lower !== comune.toLowerCase()) {
         locality = ep;
       }
@@ -370,35 +418,227 @@ function parseAndNormalize(raw: string, comune?: string | null): ParsedAddress {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   ANNCSU MATCHING LOGIC
+   ═══════════════════════════════════════════════════════════ */
+
+interface AnncsuMatchResult {
+  match_status: AnncsuMatchStatus;
+  street_exactness: "exact" | "normalized" | "none";
+  civic_exactness: "exact" | "candidate" | "ambiguous" | "none";
+  candidate_count: number;
+  official_street_support: boolean;
+  official_civic_support: boolean;
+  precise_location_support: boolean;
+  best_street_name: string | null;
+  confidence_boost: number;
+  source_chain: string[];
+}
+
+function normalizeForComparison(s: string): string {
+  return s.toLowerCase().replace(/[''`]/g, "'").replace(/\s+/g, " ").trim();
+}
+
+function matchAnncsu(
+  parsed: ParsedAddress,
+  streetCandidates: AnncsuCandidate[],
+  civicCandidates: AnncsuCandidate[],
+  hasCoords: boolean,
+): AnncsuMatchResult {
+  const noMatch: AnncsuMatchResult = {
+    match_status: "no_official_match",
+    street_exactness: "none",
+    civic_exactness: "none",
+    candidate_count: 0,
+    official_street_support: false,
+    official_civic_support: false,
+    precise_location_support: false,
+    best_street_name: null,
+    confidence_boost: 0,
+    source_chain: ["text_normalization"],
+  };
+
+  if (!parsed.streetName || streetCandidates.length === 0) {
+    return { ...noMatch, match_status: streetCandidates.length === 0 ? "no_official_match" : "not_determinable" };
+  }
+
+  // Filter only ready candidates
+  const readyCandidates = streetCandidates.filter(c =>
+    c.ingest_readiness === "ready" || c.ingest_readiness === "ready_with_warnings"
+  );
+  if (readyCandidates.length === 0) {
+    return { ...noMatch, match_status: "no_official_match" };
+  }
+
+  // Try exact street name match
+  const normalizedInput = normalizeForComparison(parsed.streetName);
+  const exactStreetMatches = readyCandidates.filter(c =>
+    normalizeForComparison(c.street_name) === normalizedInput
+  );
+
+  // Try with type if available
+  let streetExactness: "exact" | "normalized" | "none" = "none";
+  let bestMatches = exactStreetMatches;
+
+  if (exactStreetMatches.length > 0) {
+    // Check if type also matches for true exact
+    if (parsed.streetType) {
+      const typeMatches = exactStreetMatches.filter(c =>
+        c.street_type && normalizeForComparison(c.street_type) === normalizeForComparison(parsed.streetType!)
+      );
+      if (typeMatches.length > 0) {
+        streetExactness = "exact";
+        bestMatches = typeMatches;
+      } else {
+        streetExactness = "normalized";
+      }
+    } else {
+      streetExactness = "normalized";
+    }
+  }
+
+  if (bestMatches.length === 0) {
+    // Try normalized comparison (case-insensitive, accent-insensitive)
+    const normalizedMatches = readyCandidates.filter(c => {
+      const cName = normalizeForComparison(c.street_name);
+      return cName.includes(normalizedInput) || normalizedInput.includes(cName);
+    });
+    if (normalizedMatches.length > 0) {
+      streetExactness = "normalized";
+      bestMatches = normalizedMatches;
+    }
+  }
+
+  if (bestMatches.length === 0) {
+    return noMatch;
+  }
+
+  // Street is officially supported
+  const officialStreetSupport = true;
+  const bestStreetName = bestMatches[0].street_type
+    ? `${bestMatches[0].street_type} ${bestMatches[0].street_name}`
+    : bestMatches[0].street_name;
+
+  // Now check civic
+  let civicExactness: "exact" | "candidate" | "ambiguous" | "none" = "none";
+  let officialCivicSupport = false;
+  let matchStatus: AnncsuMatchStatus = streetExactness === "exact"
+    ? "exact_official_street_match" : "normalized_official_street_match";
+
+  if (parsed.houseNumber && civicCandidates.length > 0) {
+    const normalizedCivic = parsed.houseNumber.toUpperCase().trim();
+    const readyCivics = civicCandidates.filter(c =>
+      (c.ingest_readiness === "ready" || c.ingest_readiness === "ready_with_warnings") &&
+      c.civic_normalized != null
+    );
+
+    const exactCivicMatches = readyCivics.filter(c =>
+      c.civic_normalized!.toUpperCase().trim() === normalizedCivic
+    );
+
+    if (exactCivicMatches.length === 1) {
+      civicExactness = "exact";
+      officialCivicSupport = true;
+      matchStatus = "official_civic_candidate_match";
+    } else if (exactCivicMatches.length > 1) {
+      // Multiple matches (e.g. esponenti) → ambiguous
+      civicExactness = "ambiguous";
+      officialCivicSupport = false;
+      matchStatus = "official_civic_ambiguous";
+    } else {
+      // No exact match, check if any candidates exist for the street
+      if (readyCivics.length > 0) {
+        civicExactness = "candidate";
+        matchStatus = "official_street_only";
+      }
+    }
+  } else if (!parsed.houseNumber) {
+    matchStatus = streetExactness === "exact"
+      ? "exact_official_street_match" : "normalized_official_street_match";
+  } else {
+    matchStatus = "official_street_only";
+  }
+
+  // Precise location: only when exact street + unambiguous civic + coords assist
+  const preciseLocationSupport = officialCivicSupport && civicExactness === "exact" && hasCoords;
+
+  // Confidence boost from ANNCSU
+  let confidenceBoost = 0;
+  if (streetExactness === "exact") confidenceBoost += 0.3;
+  else if (streetExactness === "normalized") confidenceBoost += 0.2;
+  if (civicExactness === "exact") confidenceBoost += 0.15;
+  else if (civicExactness === "candidate") confidenceBoost += 0.05;
+
+  // Multiple street candidates reduce confidence
+  if (bestMatches.length > 3) confidenceBoost *= 0.7;
+
+  const sourceChain = ["text_normalization", "anncsu_official"];
+  if (hasCoords) sourceChain.push("coordinate_assisted");
+
+  return {
+    match_status: matchStatus,
+    street_exactness: streetExactness,
+    civic_exactness: civicExactness,
+    candidate_count: bestMatches.length,
+    official_street_support: officialStreetSupport,
+    official_civic_support: officialCivicSupport,
+    precise_location_support: preciseLocationSupport,
+    best_street_name: bestStreetName,
+    confidence_boost: confidenceBoost,
+    source_chain: sourceChain,
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════
    STREET MATCH LOGIC
    ═══════════════════════════════════════════════════════════ */
 
 function resolveStreetMatch(
   parsed: ParsedAddress,
   hasCoords: boolean,
-): { status: StreetMatchStatus; confidence: number; matchedBy: AddressResolution["matched_by"] } {
-  // Without an official street registry, we can only do text-based normalization
-  // The system is honest about this limitation
-
+  anncsu: AnncsuMatchResult | null,
+): { status: StreetMatchStatus; confidence: number; matchedBy: AddressResolution["matched_by"]; matchedName: string | null } {
   if (!parsed.streetName) {
-    return { status: "not_found", confidence: 0, matchedBy: "none" };
+    return { status: "not_found", confidence: 0, matchedBy: "none", matchedName: null };
   }
 
-  if (!parsed.streetType) {
-    // Street name present but no type — contextual at best
-    if (hasCoords) {
-      return { status: "coordinate_assisted", confidence: 0.3, matchedBy: "coordinate_assisted" };
+  const baseMatchedName = parsed.streetType && parsed.streetName
+    ? `${parsed.streetType} ${parsed.streetName}` : parsed.streetName;
+
+  // With ANNCSU support
+  if (anncsu && anncsu.official_street_support) {
+    if (anncsu.street_exactness === "exact") {
+      const conf = Math.min(0.85, 0.7 + anncsu.confidence_boost);
+      return {
+        status: "exact_official_match",
+        confidence: conf,
+        matchedBy: "official_exact",
+        matchedName: anncsu.best_street_name || baseMatchedName,
+      };
     }
-    return { status: "contextual_only", confidence: 0.2, matchedBy: "contextual_only" };
+    if (anncsu.street_exactness === "normalized") {
+      const conf = Math.min(0.75, 0.55 + anncsu.confidence_boost);
+      return {
+        status: "normalized_official_match",
+        confidence: conf,
+        matchedBy: "official_normalized",
+        matchedName: anncsu.best_street_name || baseMatchedName,
+      };
+    }
   }
 
-  // We have street type + name from text
-  // Without a registry to verify against, this is at best a normalized match
+  // Fallback: text-only resolution (legacy behavior)
+  if (!parsed.streetType) {
+    if (hasCoords) {
+      return { status: "coordinate_assisted", confidence: 0.3, matchedBy: "coordinate_assisted", matchedName: baseMatchedName };
+    }
+    return { status: "contextual_only", confidence: 0.2, matchedBy: "contextual_only", matchedName: baseMatchedName };
+  }
+
   if (hasCoords) {
-    return { status: "coordinate_assisted", confidence: 0.5, matchedBy: "coordinate_assisted" };
+    return { status: "coordinate_assisted", confidence: 0.5, matchedBy: "coordinate_assisted", matchedName: baseMatchedName };
   }
 
-  return { status: "normalized_match", confidence: 0.4, matchedBy: "normalized" };
+  return { status: "normalized_match", confidence: 0.4, matchedBy: "normalized", matchedName: baseMatchedName };
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -408,6 +648,7 @@ function resolveStreetMatch(
 function resolveCivicMatch(
   parsed: ParsedAddress,
   streetConfidence: number,
+  anncsu: AnncsuMatchResult | null,
 ): CivicResolution {
   const civicPresent = !!parsed.houseNumber;
 
@@ -425,11 +666,61 @@ function resolveCivicMatch(
     };
   }
 
-  // Civic is present in text — but without a registry it cannot be verified
   const civicNormalized = parsed.houseNumber!.toUpperCase();
 
-  // CRITICAL RULE: civic text presence ≠ building truth
-  // Without an official civic registry, we can only say "parsed from text"
+  // With ANNCSU civic support
+  if (anncsu && anncsu.official_civic_support && anncsu.civic_exactness === "exact") {
+    const confidence = Math.min(0.7, streetConfidence * 0.85);
+    return {
+      civic_status: "official_exact_match",
+      civic_input_present: true,
+      civic_normalized: civicNormalized,
+      civic_match_status: "official_exact_match",
+      civic_confidence: Math.round(confidence * 100) / 100,
+      civic_ambiguity: "low",
+      civic_supported_as_precise_location: anncsu.precise_location_support,
+      // CRITICAL: NEVER promote to building truth — ANNCSU alone is NOT enough
+      civic_supported_as_building_truth: false,
+      civic_reasoning_summary:
+        `Civico "${civicNormalized}" trovato nel registro ufficiale ANNCSU. Il match ufficiale migliora la classificazione ma non viene promosso a verità sullo stabile. ANNCSU da solo non è sufficiente per determinare l'identità dell'edificio.`,
+    };
+  }
+
+  // ANNCSU ambiguous civic
+  if (anncsu && anncsu.civic_exactness === "ambiguous") {
+    const confidence = Math.min(0.35, streetConfidence * 0.5);
+    return {
+      civic_status: "official_ambiguous",
+      civic_input_present: true,
+      civic_normalized: civicNormalized,
+      civic_match_status: "official_ambiguous",
+      civic_confidence: Math.round(confidence * 100) / 100,
+      civic_ambiguity: "medium",
+      civic_supported_as_precise_location: false,
+      civic_supported_as_building_truth: false,
+      civic_reasoning_summary:
+        `Civico "${civicNormalized}" ha più corrispondenze nel registro ANNCSU (es. esponenti diversi). Match ambiguo, non promosso a verità sullo stabile.`,
+    };
+  }
+
+  // ANNCSU street matched but civic is candidate only (exists in street but different number)
+  if (anncsu && anncsu.official_street_support && anncsu.civic_exactness === "candidate") {
+    const confidence = Math.min(0.4, streetConfidence * 0.6);
+    return {
+      civic_status: "official_candidate_match",
+      civic_input_present: true,
+      civic_normalized: civicNormalized,
+      civic_match_status: "official_candidate_match",
+      civic_confidence: Math.round(confidence * 100) / 100,
+      civic_ambiguity: "medium",
+      civic_supported_as_precise_location: false,
+      civic_supported_as_building_truth: false,
+      civic_reasoning_summary:
+        `Civico "${civicNormalized}" non trovato esattamente nel registro ANNCSU, ma la strada è supportata ufficialmente. Il civico resta classificato come candidato, non viene promosso a verità sullo stabile.`,
+    };
+  }
+
+  // Legacy: no ANNCSU support
   const confidence = Math.min(streetConfidence * 0.8, 0.4);
   const ambiguity: AmbiguityLevel = confidence >= 0.3 ? "medium" : "high";
 
@@ -481,16 +772,23 @@ export function resolveAddress(input: AddressResolutionInput): AddressResolution
     ambiguity_flags: parsed.ambiguityFlags,
   };
 
+  // --- ANNCSU matching ---
+  const anncsuResult = (input.anncsu_street_candidates && input.anncsu_street_candidates.length > 0)
+    ? matchAnncsu(parsed, input.anncsu_street_candidates, input.anncsu_civic_candidates || [], hasCoords)
+    : null;
+
   // --- Street resolution ---
-  const streetMatch = resolveStreetMatch(parsed, hasCoords);
+  const streetMatch = resolveStreetMatch(parsed, hasCoords, anncsuResult);
 
   // --- Civic resolution ---
-  const civic_resolution = resolveCivicMatch(parsed, streetMatch.confidence);
+  const civic_resolution = resolveCivicMatch(parsed, streetMatch.confidence, anncsuResult);
 
   // --- Resolution status ---
   let resolutionStatus: AddressResolutionStatus = "not_determinable";
   if (streetMatch.status === "not_found" && !civic_resolution.civic_input_present) {
     resolutionStatus = "unresolved";
+  } else if (streetMatch.confidence >= 0.6) {
+    resolutionStatus = civic_resolution.civic_confidence >= 0.3 ? "resolved" : "partially_resolved";
   } else if (streetMatch.confidence >= 0.5) {
     resolutionStatus = civic_resolution.civic_confidence >= 0.3 ? "resolved" : "partially_resolved";
   } else if (streetMatch.confidence > 0) {
@@ -505,36 +803,51 @@ export function resolveAddress(input: AddressResolutionInput): AddressResolution
     : parsed.ambiguityFlags.length <= 2 ? "medium"
     : "high";
 
+  const hasAnncsu = anncsuResult != null && anncsuResult.official_street_support;
+
   const address_resolution: AddressResolution = {
     resolution_status: resolutionStatus,
     matched_geo_scope: input.resolved_geo_level || "comune",
     matched_street_status: streetMatch.status,
-    matched_street_name: parsed.streetType && parsed.streetName
-      ? `${parsed.streetType} ${parsed.streetName}` : parsed.streetName,
+    matched_street_name: streetMatch.matchedName,
     matched_street_confidence: streetMatch.confidence,
     matched_by: streetMatch.matchedBy,
-    candidate_count: streetMatch.status !== "not_found" ? 1 : 0,
+    matched_by_source: hasAnncsu ? "anncsu_official" : "text_parsing",
+    candidate_count: anncsuResult ? anncsuResult.candidate_count : (streetMatch.status !== "not_found" ? 1 : 0),
     ambiguity_level: ambiguityLevel,
     geo_anchor: hasCoords ? `${input.lat!.toFixed(4)},${input.lng!.toFixed(4)}` : null,
     territorial_anchor: input.comune || null,
     building_anchor: null, // Never assumed without evidence
     unresolved_reason: streetMatch.status === "not_found"
       ? "Nessun nome strada identificato nell'input" : null,
+    // ANNCSU fields
+    anncsu_match_status: anncsuResult?.match_status ?? "not_determinable",
+    anncsu_candidate_count: anncsuResult?.candidate_count ?? 0,
+    anncsu_street_exactness: anncsuResult?.street_exactness ?? "none",
+    anncsu_civic_exactness: anncsuResult?.civic_exactness ?? "none",
+    source_chain: anncsuResult?.source_chain ?? ["text_normalization"],
+    official_street_support: anncsuResult?.official_street_support ?? false,
+    official_civic_support: anncsuResult?.official_civic_support ?? false,
+    precise_location_support: anncsuResult?.precise_location_support ?? false,
+    building_truth_support: false, // LOCKED
   };
 
   // --- Quality ---
   const streetStrength: AddressQuality["street_match_strength"] =
-    streetMatch.confidence >= 0.5 ? "moderate"
+    hasAnncsu && streetMatch.confidence >= 0.7 ? "strong"
+    : streetMatch.confidence >= 0.5 ? "moderate"
     : streetMatch.confidence > 0 ? "weak"
     : "none";
 
   const civicStrength: AddressQuality["civic_match_strength"] =
-    civic_resolution.civic_confidence >= 0.3 ? "weak" // Never "strong" without registry
+    anncsuResult?.official_civic_support ? "moderate"
+    : civic_resolution.civic_confidence >= 0.3 ? "weak"
     : civic_resolution.civic_input_present ? "weak"
     : "none";
 
   const overallQuality: AddressQuality["overall_address_quality"] =
-    streetStrength === "moderate" && civicStrength !== "none" ? "moderate"
+    streetStrength === "strong" && civicStrength !== "none" ? "strong"
+    : streetStrength === "strong" || (streetStrength === "moderate" && civicStrength !== "none") ? "moderate"
     : streetStrength === "moderate" || streetStrength === "weak" ? "weak"
     : "none";
 
@@ -544,36 +857,48 @@ export function resolveAddress(input: AddressResolutionInput): AddressResolution
   if (parsed.ambiguityFlags.length > 0) {
     warnings.push(`Ambiguità rilevate: ${parsed.ambiguityFlags.join(", ")}`);
   }
-  warnings.push("Nessun registro stradario/civici ufficiale disponibile");
+  if (!hasAnncsu) {
+    warnings.push("Nessun registro stradario/civici ufficiale disponibile per questo comune");
+  }
+  if (hasAnncsu && !anncsuResult?.official_civic_support) {
+    warnings.push("Civico non trovato nel registro ufficiale ANNCSU");
+  }
 
   const address_quality: AddressQuality = {
     overall_address_quality: overallQuality,
     street_match_strength: streetStrength,
     civic_match_strength: civicStrength,
-    source_chain_clarity: "low", // Always low without official registry
+    source_chain_clarity: hasAnncsu ? "high" : "low",
     geocoding_dependency_level: hasCoords ? "medium" : "none",
-    overprecision_risk: civic_resolution.civic_supported_as_building_truth ? "low" : "high",
-    false_specificity_risk: overallQuality === "none" ? "high" : "medium",
+    overprecision_risk: hasAnncsu && anncsuResult?.official_civic_support ? "low" : (civic_resolution.civic_supported_as_building_truth ? "low" : "high"),
+    false_specificity_risk: overallQuality === "none" ? "high" : hasAnncsu ? "low" : "medium",
     key_warnings: warnings,
   };
 
   // --- Limitations ---
+  const hasOfficialRegistry = hasAnncsu;
   const address_limitations: AddressLimitations = {
-    missing_official_address_registry: true, // Project has no official registry
-    missing_civic_registry: true,
+    missing_official_address_registry: !hasOfficialRegistry,
+    missing_civic_registry: !anncsuResult?.official_civic_support,
     ambiguous_street_name: parsed.ambiguityFlags.includes("tipo_strada_mancante"),
-    duplicate_candidates: false,
+    duplicate_candidates: (anncsuResult?.candidate_count ?? 0) > 3,
     geocoding_only: hasCoords && !parsed.streetName,
-    text_only: !hasCoords && !!parsed.streetName,
-    no_precise_building_link: true, // Always true without registry
-    blocking_gaps: [
-      "Registro stradario ufficiale non disponibile",
-      "Registro civici ufficiale non disponibile",
-    ],
+    text_only: !hasCoords && !!parsed.streetName && !hasAnncsu,
+    no_precise_building_link: true, // Always true — ANNCSU alone is NOT building truth
+    blocking_gaps: hasOfficialRegistry
+      ? ["Registro edifici non ancora attivo — ANNCSU supporta solo indirizzo/strada"]
+      : [
+        "Registro stradario ufficiale non disponibile per questo comune",
+        "Registro civici ufficiale non disponibile",
+      ],
     transparency_notes: [
-      "L'indirizzo è stato normalizzato da testo, non verificato contro un registro ufficiale.",
+      hasAnncsu
+        ? "Indirizzo verificato contro il registro ufficiale ANNCSU del comune."
+        : "L'indirizzo è stato normalizzato da testo, non verificato contro un registro ufficiale.",
       civic_resolution.civic_input_present
-        ? "Il civico è stato estratto dal testo ma non è supportato come verità sullo stabile."
+        ? (anncsuResult?.official_civic_support
+          ? "Il civico è supportato ufficialmente da ANNCSU ma NON equivale a verità sullo stabile."
+          : "Il civico è stato estratto dal testo ma non è supportato come verità sullo stabile.")
         : "Nessun civico presente nell'input.",
       hasCoords
         ? "Le coordinate assistono la localizzazione ma non validano l'indirizzo."
@@ -582,32 +907,36 @@ export function resolveAddress(input: AddressResolutionInput): AddressResolution
   };
 
   // --- Summary ---
-  const streetDesc = parsed.streetType && parsed.streetName
-    ? `${parsed.streetType} ${parsed.streetName}`
-    : parsed.streetName || "non identificata";
+  const streetDesc = streetMatch.matchedName || parsed.streetName || "non identificata";
   const civicDesc = parsed.houseNumber || "assente";
+  const officialNote = hasAnncsu ? " (supportato da ANNCSU)" : "";
 
   const executive_summary = resolutionStatus === "resolved" || resolutionStatus === "partially_resolved"
-    ? `Indirizzo interpretato: ${streetDesc} ${civicDesc}${input.comune ? `, ${input.comune}` : ""}. Match ${resolutionStatus === "resolved" ? "parziale con civico" : "solo strada"}.`
+    ? `Indirizzo interpretato: ${streetDesc} ${civicDesc}${input.comune ? `, ${input.comune}` : ""}${officialNote}. Match ${resolutionStatus === "resolved" ? "con civico" : "solo strada"}.`
     : `Indirizzo non risolvibile in modo affidabile dall'input fornito.`;
 
   const analytical_summary = [
     `Input: "${input.raw_address}"`,
     `Strada: ${streetMatch.status} (confidence ${Math.round(streetMatch.confidence * 100)}%)`,
     `Civico: ${civic_resolution.civic_match_status}`,
+    `ANNCSU: ${anncsuResult?.match_status ?? "non disponibile"}`,
     `Ambiguità: ${ambiguityLevel}`,
-    `Registro ufficiale: non disponibile`,
+    `Registro ufficiale: ${hasAnncsu ? "ANNCSU disponibile" : "non disponibile"}`,
   ].join(". ") + ".";
 
   const safe_user_summary = resolutionStatus === "unresolved"
     ? "L'indirizzo fornito non è stato identificato in modo sufficiente."
-    : `L'indirizzo "${parsed.normalized || input.raw_address}" è stato interpretato dal testo. Questa interpretazione non equivale a una verifica ufficiale dell'indirizzo.`;
+    : hasAnncsu
+      ? `L'indirizzo "${parsed.normalized || input.raw_address}" è supportato dal registro ufficiale. Questo conferma la strada${anncsuResult?.official_civic_support ? " e il civico" : ""} ma non equivale a una verifica completa sull'edificio.`
+      : `L'indirizzo "${parsed.normalized || input.raw_address}" è stato interpretato dal testo. Questa interpretazione non equivale a una verifica ufficiale dell'indirizzo.`;
 
   const address_summary: AddressSummary = {
     executive_summary,
     analytical_summary,
     safe_user_summary,
-    next_best_step: "L'introduzione di un registro stradario ufficiale migliorerebbe significativamente la precisione del match indirizzo.",
+    next_best_step: hasAnncsu
+      ? "Il supporto ANNCSU migliora il match strada/civico. Per raggiungere verità piena sullo stabile servono ulteriori registri (catasto, registro edifici)."
+      : "L'introduzione del registro stradario ufficiale ANNCSU migliorerebbe significativamente la precisione del match indirizzo.",
   };
 
   // --- Reportability ---
@@ -621,21 +950,30 @@ export function resolveAddress(input: AddressResolutionInput): AddressResolution
     sections: {
       address_precision: sr(
         hasStreet,
-        hasStreet && streetMatch.confidence >= 0.4 ? "partial" : hasStreet ? "partial" : "hidden",
-        hasStreet ? "Strada identificata dal testo" : "Nessuna strada identificata",
-        "text_parsing",
+        hasStreet && hasAnncsu ? (streetStrength === "strong" ? "full" : "partial")
+          : hasStreet && streetMatch.confidence >= 0.4 ? "partial"
+          : hasStreet ? "partial" : "hidden",
+        hasStreet
+          ? (hasAnncsu ? "Strada verificata da ANNCSU" : "Strada identificata dal testo")
+          : "Nessuna strada identificata",
+        hasAnncsu ? "anncsu_official" : "text_parsing",
       ),
       street_match: sr(
         hasStreet,
-        streetMatch.confidence >= 0.5 ? "partial" : hasStreet ? "partial" : "hidden",
+        hasAnncsu && streetMatch.confidence >= 0.6 ? "full"
+          : streetMatch.confidence >= 0.5 ? "partial"
+          : hasStreet ? "partial" : "hidden",
         hasStreet ? `Match: ${streetMatch.status}` : "Nessun match",
-        "text_normalization",
+        hasAnncsu ? "anncsu_official" : "text_normalization",
       ),
       civic_match: sr(
         hasCivic,
-        hasCivic ? "partial" : "hidden",
-        hasCivic ? "Civico presente ma non verificato" : "Civico assente",
-        "text_parsing",
+        anncsuResult?.official_civic_support ? "full"
+          : hasCivic ? "partial" : "hidden",
+        hasCivic
+          ? (anncsuResult?.official_civic_support ? "Civico supportato da ANNCSU" : "Civico presente ma non verificato")
+          : "Civico assente",
+        anncsuResult?.official_civic_support ? "anncsu_official" : "text_parsing",
       ),
       address_limitations: sr(
         true, "full",
@@ -669,7 +1007,7 @@ export function resolveAddress(input: AddressResolutionInput): AddressResolution
 
 export function addressFactSupportLevel(res: AddressResolutionResult): FactSupportLevel {
   const q = res.address_quality.overall_address_quality;
-  if (q === "strong") return "direct"; // Currently unreachable without registry
+  if (q === "strong") return "direct";
   if (q === "moderate") return "contextual";
   if (q === "weak") return "derived";
   return "unavailable";
@@ -687,6 +1025,8 @@ export function addressQualityLabel(q: AddressQuality["overall_address_quality"]
 export function streetMatchLabel(s: StreetMatchStatus): string {
   switch (s) {
     case "exact_match": return "Match esatto";
+    case "exact_official_match": return "Match ufficiale esatto";
+    case "normalized_official_match": return "Match ufficiale normalizzato";
     case "normalized_match": return "Match normalizzato";
     case "fuzzy_match": return "Match approssimativo";
     case "coordinate_assisted": return "Assistito da coordinate";
@@ -700,11 +1040,26 @@ export function streetMatchLabel(s: StreetMatchStatus): string {
 export function civicMatchLabel(s: CivicMatchStatus): string {
   switch (s) {
     case "exact_match": return "Match esatto";
+    case "official_exact_match": return "Match ufficiale esatto";
+    case "official_candidate_match": return "Candidato ufficiale";
+    case "official_ambiguous": return "Ufficiale ambiguo";
     case "partial_match": return "Match parziale";
     case "ambiguous": return "Ambiguo";
     case "not_found": return "Non trovato";
     case "not_determinable": return "Non determinabile";
     case "not_introduced_from_source": return "Non da fonte ufficiale";
     case "unsupported_claim": return "Affermazione non supportata";
+  }
+}
+
+export function anncsuMatchLabel(s: AnncsuMatchStatus): string {
+  switch (s) {
+    case "exact_official_street_match": return "Strada ufficiale esatta";
+    case "normalized_official_street_match": return "Strada ufficiale normalizzata";
+    case "official_street_only": return "Solo strada ufficiale";
+    case "official_civic_candidate_match": return "Civico candidato ufficiale";
+    case "official_civic_ambiguous": return "Civico ufficiale ambiguo";
+    case "no_official_match": return "Nessun match ufficiale";
+    case "not_determinable": return "Non determinabile";
   }
 }
