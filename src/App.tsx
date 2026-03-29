@@ -57,6 +57,7 @@ const ImportedDraftDetail = lazyWithRecovery(() => import("./pages/ImportedDraft
 const AdminSubMunicipal = lazyWithRecovery(() => import("./pages/AdminSubMunicipal"));
 const AdminDataBackbone = lazyWithRecovery(() => import("./pages/AdminDataBackbone"));
 const AdminGeoBackbone = lazyWithRecovery(() => import("./pages/AdminGeoBackbone"));
+const AdminTerritorialBackbone = lazyWithRecovery(() => import("./pages/AdminTerritorialBackbone"));
 
 const queryClient = new QueryClient();
 
