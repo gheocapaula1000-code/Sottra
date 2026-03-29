@@ -339,11 +339,23 @@ export async function importR03Sections(
 /* ------------------------------------------------------------------ */
 
 export async function fetchR03Stats() {
-  const { data, error } = await supabase
-    .from("census_sections_r03_2021" as any)
-    .select("section_code, comune_istat_code, asc1_code, asc2_code, asc3_code, population_2021, polygon_coords, centroid_lat");
+  const PAGE = 5000;
+  const allData: any[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("census_sections_r03_2021" as any)
+      .select("section_code, comune_istat_code, asc1_code, asc2_code, asc3_code, population_2021, polygon_coords, centroid_lat")
+      .range(from, from + PAGE - 1);
+    if (error || !data || data.length === 0) break;
+    allData.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
 
-  if (error || !data) return null;
+  if (allData.length === 0) return null;
+
+  const data = allData;
 
   const comuniSet = new Set<string>();
   const asc1Set = new Set<string>();
