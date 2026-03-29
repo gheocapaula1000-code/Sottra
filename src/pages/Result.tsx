@@ -1513,6 +1513,31 @@ const Result = () => {
   const publishedCount = completedModules.filter(k => isSectionPublishable(result[k].status, result[k].data)).length;
   const excludedCount = completedModules.length - publishedCount;
 
+  // ── WOW Snapshot computation ──
+  const pricingData = result.pricing.data as PricingData | null;
+  const streetEvidence = identifyData?.streetEvidence;
+  const wowSnapshot: WowSnapshot | null = (() => {
+    if (!identifyDone || lowConfidence || identifyFailed) return null;
+    try {
+      // Stub minimal zone correspondence for snapshot
+      const stubCorr = {
+        zone_identity: { geo_level_reale: "zona_omi" as const, geo_code: pricingData?.omiGeoLevel ?? "unknown", geo_label: identifyData?.address?.split(",").pop()?.trim() ?? "Zona", normalized_path: "", zone_type_label: pricingData?.omiGeoLevel === "microzona_omi" ? "Microzona OMI" : pricingData?.omiGeoLevel === "comune" ? "Livello comunale" : "Zona OMI", zone_corresponds_to: "", zone_anchor_strength: "medium" as const },
+        zone_correspondence: { corresponds_to_microzona_omi: pricingData?.omiGeoLevel === "microzona_omi", corresponds_to_asc: false, corresponds_to_section_or_aggregate: false, corresponds_to_comune_only: pricingData?.omiGeoLevel === "comune", primary_zone_basis: "OMI", secondary_zone_basis: [] as string[], fallback_used: !pricingData?.polygonMatch, fallback_weight: (pricingData?.polygonMatch ? "none" : pricingData?.omiGeoLevel === "comune" ? "high" : "medium") as "none" | "low" | "medium" | "high", false_specificity_risk: (pricingData?.omiGeoLevel === "comune" ? "medium" : "none") as "none" | "low" | "medium" | "high" },
+        zone_precision: { precision_status: "medium" as const, sub_comunale_support_status: "unavailable" as const, market_zone_support_status: "direct" as const, territorial_support_status: "partial" as const, max_safe_claim_level: "zona_omi" as const },
+        zone_limitations: { missing_sub_comunale: true, market_only_comunale: false, weak_zone_anchor: false, fallback_dominant: false, blocking_gaps: [] as string[], transparency_notes: [] as string[] },
+      };
+      // Stub minimal territorial data for value engine
+      const block = (avail: string, geo: string) => ({ availability: avail, quality: "official" as const, geo_level: geo, source_key: "live", source_label: "live", is_derived: false, officiality: "official" as const, limitations: [] as string[] });
+      const stubTd = {
+        territorial_identity: { geo_level: "zona_omi" as const, geo_code: "live", geo_label: identifyData?.address?.split(",").pop()?.trim() ?? "", normalized_path: "", resolution_method: "direct" },
+        territorial_datasets: { demographic: block("unavailable", "unknown"), territorial_structure: block("full", "comune"), sub_municipal: block("unavailable", "unknown"), omi_linkage: block(pricingData ? "full" : "unavailable", "zona_omi"), census_sections: block("unavailable", "unknown"), environmental: block("unavailable", "unknown"), services: block("unavailable", "unknown"), mobility: block("unavailable", "unknown") },
+      };
+      const value = buildZoneValue({ data: stubTd as any, corr: stubCorr as any, omiMin: pricingData?.prezzoMqMin, omiMax: pricingData?.prezzoMqMax, omiGeoLevel: pricingData?.omiGeoLevel, omiPolygonMatch: pricingData?.polygonMatch });
+      const reno = buildRenovationEstimate({ zone_geo_code: "live", zone_geo_level: "zona_omi", hasPhoto: true, visibleFloors: streetEvidence?.photoAnalysis?.visibleFloors, buildingType: streetEvidence?.photoAnalysis?.buildingType, facadeConsistencyLevel: streetEvidence?.facadeConsistencyLevel, photoReadability: streetEvidence?.photoAnalysis?.photoReadability, value_per_sqm_mid: value.value_result.value_per_sqm_mid });
+      return buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any });
+    } catch { return null; }
+  })();
+
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <AppHeader rightContent={
