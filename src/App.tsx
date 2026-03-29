@@ -68,6 +68,7 @@ const AdminAnncsuMatchAudit = lazyWithRecovery(() => import("./pages/AdminAnncsu
 const AdminZoneCorrespondence = lazyWithRecovery(() => import("./pages/AdminZoneCorrespondence"));
 const AdminZoneUrbanTransformations = lazyWithRecovery(() => import("./pages/AdminZoneUrbanTransformations"));
 const AdminZoneAttractorsPressure = lazyWithRecovery(() => import("./pages/AdminZoneAttractorsPressure"));
+const AdminZoneBoundaries = lazyWithRecovery(() => import("./pages/AdminZoneBoundaries"));
 
 const queryClient = new QueryClient();
 
