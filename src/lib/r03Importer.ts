@@ -87,6 +87,11 @@ export interface AscValidationReport {
   sectionsWithAsc2Pct: number;
   sectionsWithoutAscPct: number;
   warnings: string[];
+  /** Comune-based coverage (fallback used by aggregator) */
+  sectionsWithAscViaComune: number;
+  sectionsWithAscViaComunePct: number;
+  comuniWithAscLayer: number;
+  aggregatesCount: number;
   /** Legacy compat */
   ascCodesInSections: Set<string>;
   ascCodesInLayer: Set<string>;
