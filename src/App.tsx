@@ -57,6 +57,7 @@ const ImportedDraftDetail = lazyWithRecovery(() => import("./pages/ImportedDraft
 const AdminSubMunicipal = lazyWithRecovery(() => import("./pages/AdminSubMunicipal"));
 const AdminDataBackbone = lazyWithRecovery(() => import("./pages/AdminDataBackbone"));
 const AdminGeoBackbone = lazyWithRecovery(() => import("./pages/AdminGeoBackbone"));
+const AdminTerritorialBackbone = lazyWithRecovery(() => import("./pages/AdminTerritorialBackbone"));
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,7 @@ const App = () => (
                     <Route path="/admin/sub-municipal" element={<ProtectedAdminRoute><AdminSubMunicipal /></ProtectedAdminRoute>} />
                     <Route path="/admin/data-backbone" element={<ProtectedAdminRoute><AdminDataBackbone /></ProtectedAdminRoute>} />
                     <Route path="/admin/geo-backbone" element={<ProtectedAdminRoute><AdminGeoBackbone /></ProtectedAdminRoute>} />
+                    <Route path="/admin/territorial-backbone" element={<ProtectedAdminRoute><AdminTerritorialBackbone /></ProtectedAdminRoute>} />
                     <Route path="/scan" element={<TrialProtectedRoute><Scan /></TrialProtectedRoute>} />
                     <Route path="/result" element={<TrialProtectedRoute><Result /></TrialProtectedRoute>} />
                     <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
