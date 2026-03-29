@@ -774,10 +774,10 @@ async function importR03SezStreaming(
       if (chunkRows.length >= R03_SEZ_CHUNK) {
         await flushChunk();
 
-        // ── TIME BUDGET CHECK after each flushed chunk ──
+        // ── AGGRESSIVE TIME BUDGET CHECK after each flushed chunk ──
         const elapsed = Date.now() - startTimeMs;
-        if (elapsed > TIME_BUDGET_MS - TIME_BUDGET_RESERVE_MS) {
-          // Save checkpoint and pause
+        if (elapsed > R03_SEZ_TIME_BUDGET_MS) {
+          // Save checkpoint and pause — exit well before platform limit
           paused = true;
           pauseCheckpoint = {
             lineOffset: lineStart,
@@ -787,15 +787,14 @@ async function importR03SezStreaming(
             failed,
             skipByReason: { ...skipByReason },
             regionsFound: [...regionsFound],
-            errors: errors.slice(-20), // Keep last 20 errors
+            errors: errors.slice(-20),
             warnings: [...warnings],
             chunkIndex,
             passNumber,
           };
           logStep("time_budget_pause", {
             elapsedMs: elapsed,
-            budgetMs: TIME_BUDGET_MS,
-            reserveMs: TIME_BUDGET_RESERVE_MS,
+            budgetMs: R03_SEZ_TIME_BUDGET_MS,
             rowsProcessedThisPass: globalRowIdx - (checkpoint?.globalRowIdx ?? 0),
             totalRowsProcessed: globalRowIdx,
             totalLines,
