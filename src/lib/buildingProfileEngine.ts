@@ -264,6 +264,10 @@ export interface BuildingProfileInput {
   has_photo?: boolean;
   /** Confidence from identification */
   identification_confidence?: number;
+  /** ANNCSU street candidates pre-fetched */
+  anncsu_street_candidates?: import("@/lib/addressResolutionEngine").AnncsuCandidate[];
+  /** ANNCSU civic candidates pre-fetched */
+  anncsu_civic_candidates?: import("@/lib/addressResolutionEngine").AnncsuCandidate[];
 }
 
 /* ═══════════════════════════════════════════════════════════
