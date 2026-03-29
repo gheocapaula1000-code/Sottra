@@ -226,72 +226,7 @@ function isSectionPublishable(status: string, data: unknown): boolean {
   return true;
 }
 
-/* ── WOW Snapshot Panel ──────────────────────────────── */
-
-function WowSnapshotPanel({ snapshot, loading }: { snapshot: WowSnapshot | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!snapshot || snapshot.narrative_mode === "hidden") return null;
-
-  const isPartial = snapshot.narrative_mode === "partial";
-  const attnColor = attentionSignalColor(snapshot.attenzione_area);
-
-  return (
-    <Section className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-      <div className="flex items-center gap-2.5 mb-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
-          <Zap className="h-4 w-4 text-primary" />
-        </div>
-        <span className="font-semibold text-foreground text-sm tracking-tight">Snapshot Immediato</span>
-        {isPartial && <Badge variant="secondary" className="text-[10px]">Parziale</Badge>}
-      </div>
-
-      {/* Value + Renovation row */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        {snapshot.valore_al_mq && (
-          <div className="rounded-xl bg-background/60 border border-border/40 p-3">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Valore al m²</span>
-            <p className="text-xl font-extrabold text-foreground mt-0.5">{snapshot.valore_al_mq}</p>
-            {snapshot.valore_range && <p className="text-[10px] text-muted-foreground mt-0.5">{snapshot.valore_range}</p>}
-          </div>
-        )}
-        {snapshot.costo_ristrutturazione && (
-          <div className="rounded-xl bg-background/60 border border-border/40 p-3">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Wrench className="h-3 w-3" />Costo ristr.</span>
-            <p className="text-xl font-extrabold text-foreground mt-0.5">{snapshot.costo_ristrutturazione}</p>
-            {snapshot.costo_range && <p className="text-[10px] text-muted-foreground mt-0.5">{snapshot.costo_range}</p>}
-          </div>
-        )}
-      </div>
-
-      {/* Meta row */}
-      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-        <div><span className="text-muted-foreground">Affidabilità</span><p className="font-semibold text-foreground">{snapshot.affidabilita_valore}</p></div>
-        <div><span className="text-muted-foreground">Segnali zona</span><p className="font-semibold text-foreground">{snapshot.segnali_zona}</p></div>
-      </div>
-
-      {/* Specificity + Attention row */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2">
-          <span className="text-xs text-muted-foreground">Attenzione area</span>
-          <span className={cn("text-xs font-bold", attnColor)}>{attentionSignalLabel(snapshot.attenzione_area)}</span>
-        </div>
-        {snapshot.specificita_immobile && (
-          <div className="flex items-center justify-between rounded-lg bg-background/40 border border-border/30 px-3 py-2">
-            <span className="text-xs text-muted-foreground">Specificità</span>
-            <span className="text-xs font-bold text-foreground">{snapshot.specificita_immobile}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Primary limitation — always visible */}
-      <div className="flex items-start gap-2 text-[10px] text-muted-foreground/70">
-        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-        <span>{snapshot.limite_principale}</span>
-      </div>
-      <p className="text-[9px] text-muted-foreground/30 mt-2">Snapshot orientativo — non sostituisce una valutazione professionale</p>
-    </Section>
-  );
-}
+/* WowSnapshotPanel removed — replaced by WowPanel component */
 
 /* ── House Differentiation Card ──────────────────────── */
 
