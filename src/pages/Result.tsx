@@ -1699,6 +1699,9 @@ const Result = () => {
               {/* B) Immobile e Facciata */}
               <SectionSafe><ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} /></SectionSafe>
 
+              {/* B.1) Specificità immobile */}
+              <SectionSafe><HouseDifferentiationCard diff={houseDiff} loading={scanning} /></SectionSafe>
+
               {/* C) Contesto e Vicinato */}
               <SectionSafe><ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} /></SectionSafe>
 
