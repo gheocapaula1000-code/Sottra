@@ -244,7 +244,7 @@ export function WowPanel({
             <p className={cn(
               "text-sm font-bold mt-0.5",
               isDecisive && snapshot.affidabilita_valore === "Alta" ? "text-emerald-400" : "text-foreground",
-            )}>{snapshot.affidabilita_valore}</p>
+            )}>{toneReliabilityLabel(snapshot.affidabilita_valore)}</p>
           </div>
           {snapshot.costo_ristrutturazione ? (
             <div className="rounded-xl bg-background/60 border border-border/40 p-3">
