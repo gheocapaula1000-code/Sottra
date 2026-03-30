@@ -152,7 +152,7 @@ export function WowPanel({
   const isDecisive = isStrong || isSolid;
 
   // In decisive cases, the header label is more assertive
-  const headerLabel = isStrong ? "Analisi Forte" : isSolid ? "Analisi Discreta" : "Snapshot Immediato";
+  const headerLabel = caseResult ? toneCaseStrengthLabel(caseResult.identity.overall_case_strength) : "Snapshot immediato";
 
   // Border color boost for strong cases
   const borderCls = isStrong
