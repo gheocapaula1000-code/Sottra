@@ -110,7 +110,7 @@ describe("strongCaseEvaluator", () => {
     const r = evaluateStrongCase(baseInput({
       snapshot: baseSnapshot({
         affidabilita_valore: "Bassa",
-        limite_principale: "Dato riferito al livello comunale",
+        limite_principale: "Lettura ancora a livello comunale",
       }),
     }));
     expect(r.limiters.comune_only_bias).toBe(true);
