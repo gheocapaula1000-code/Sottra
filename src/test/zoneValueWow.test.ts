@@ -316,7 +316,6 @@ describe("GeoPriorityEnforcement", () => {
   });
 
   it("strong case evaluator does not penalize for comune_only_bias when zone is fine", () => {
-    const { evaluateStrongCase } = require("@/lib/strongCaseEvaluator");
     const fineSnap = buildWowSnapshot({
       value: buildZoneValue({ data: stubTerritorial(), corr: stubCorr(), omiMin: 2800, omiMax: 3500, omiGeoLevel: "microzona_omi", omiPolygonMatch: true }),
       renovation: buildRenovationEstimate({ zone_geo_code: "015146", zone_geo_level: "zona_omi", hasPhoto: true, facadeConsistencyLevel: "good" }),
