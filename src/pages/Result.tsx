@@ -44,6 +44,7 @@ import {
   separationLabel,
   type HouseDifferentiationResult,
 } from "@/lib/houseDifferentiationEngine";
+import { evaluateStrongCase, type StrongCaseResult } from "@/lib/strongCaseEvaluator";
 
 /* ── Section-level ErrorBoundary ──────────────────────── */
 
