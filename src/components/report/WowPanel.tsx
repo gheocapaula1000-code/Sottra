@@ -64,7 +64,7 @@ function SpecificityBadge({ label }: { label: SpecificityLabel }) {
       "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold leading-tight",
       specBg[label],
     )}>
-      <Eye className="h-3 w-3" />{label}
+      <Eye className="h-3 w-3" />{toneSpecificityLabel(label)}
     </span>
   );
 }
