@@ -123,15 +123,15 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
   // ── Zone signals label ──
   let segnaliLabel: string;
   if (!growth || growth.growth_summary.narrative_mode === "hidden") {
-    segnaliLabel = "Non sufficienti";
+    segnaliLabel = "Non ancora disponibili";
   } else if (growthStatus === "supportive") {
-    segnaliLabel = "Segnali convergenti favorevoli";
+    segnaliLabel = "Convergenti e favorevoli";
   } else if (growthStatus === "mixed") {
-    segnaliLabel = "Quadro misto";
+    segnaliLabel = "Quadro composito";
   } else if (growthStatus === "weak") {
-    segnaliLabel = "Segnali deboli";
+    segnaliLabel = "In fase di formazione";
   } else {
-    segnaliLabel = "Insufficienti";
+    segnaliLabel = "Non ancora disponibili";
   }
 
   // ── Primary limitation ──
