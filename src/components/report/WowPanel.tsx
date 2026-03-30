@@ -102,7 +102,7 @@ function StrengthHighlights({ strengths }: { strengths: string[] }) {
     <div className="flex flex-wrap gap-1.5 mt-2">
       {strengths.slice(0, 3).map((s, i) => (
         <span key={i} className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-          <CheckCircle2 className="h-3 w-3" />{s}
+          <CheckCircle2 className="h-3 w-3" />{toneStrengthLine(s)}
         </span>
       ))}
     </div>
