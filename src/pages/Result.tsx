@@ -1570,7 +1570,7 @@ const Result = () => {
   // ── WOW Snapshot computation ──
   const pricingData = result.pricing.data as PricingData | null;
   const streetEvidence = identifyData?.streetEvidence;
-  const wowAndDiff: { snapshot: WowSnapshot; houseDiff: HouseDifferentiationResult } | null = (() => {
+  const wowAndDiff: { snapshot: WowSnapshot; houseDiff: HouseDifferentiationResult; caseResult: StrongCaseResult } | null = (() => {
     if (!identifyDone || lowConfidence || identifyFailed) return null;
     try {
       // Stub minimal zone correspondence for snapshot
@@ -1599,12 +1599,21 @@ const Result = () => {
           confidence: identifyData.confidence ?? 0.5,
         } : null,
       });
-      return { snapshot: buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any, specificity_strength: hDiff.specificity.specificity_strength, specificity_status: hDiff.specificity.specificity_status }), houseDiff: hDiff };
+      const snap = buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any, specificity_strength: hDiff.specificity.specificity_strength, specificity_status: hDiff.specificity.specificity_status });
+      const caseRes = evaluateStrongCase({
+        snapshot: snap,
+        house_specificity_strength: hDiff.specificity.specificity_strength,
+        alignment_status: hDiff.address_alignment.diagnostics.overall_alignment_status,
+        outlook_status: null,
+        boundary_available: false,
+      });
+      return { snapshot: snap, houseDiff: hDiff, caseResult: caseRes };
     } catch { return null; }
   })();
 
   const wowSnapshot = wowAndDiff?.snapshot ?? null;
   const houseDiff = wowAndDiff?.houseDiff ?? null;
+  const caseResult = wowAndDiff?.caseResult ?? null;
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
