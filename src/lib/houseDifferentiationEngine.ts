@@ -1,5 +1,5 @@
 /**
- * House Differentiation Engine — Sottra
+ * House Differentiation Engine — Sottra (Boosted)
  *
  * Evaluates how well a photographed building can be distinguished
  * from adjacent ones, using photo, geo, address, and zone data.
@@ -9,16 +9,20 @@
  * - "strong_building_candidate" ≠ verified building truth
  * - No invented cadastral/legal/structural data
  * - No false specificity from fallback or ambiguous signals
+ * - strong candidate requires CONVERGENCE of multiple signal sources
+ * - NO single-source promotion
  */
 
 /* ═══════════════════════════════════════════════════════════
-   STATUS TAXONOMY
+   STATUS TAXONOMY (Boosted — finer granularity)
    ═══════════════════════════════════════════════════════════ */
 
 export type OverallDifferentiationStatus =
   | "strong_building_candidate"
+  | "building_candidate_with_limited_ambiguity"
   | "building_candidate_with_ambiguity"
   | "address_supported_but_visually_ambiguous"
+  | "visually_ambiguous_context"
   | "zone_only_context"
   | "not_determinable";
 
@@ -26,7 +30,8 @@ export type SpecificityStrength = "strong" | "medium" | "weak" | "insufficient";
 
 export type HouseVsAdjacentSeparation =
   | "likely_distinct"
-  | "partially_distinct"
+  | "moderately_distinct"
+  | "weakly_distinct"
   | "visually_ambiguous"
   | "contiguous_context_only"
   | "not_determinable";
@@ -39,6 +44,8 @@ export type AlignmentLevel =
   | "low_alignment"
   | "conflicting_alignment"
   | "insufficient_alignment";
+
+export type SignalStrength = "strong" | "medium" | "weak" | "not_determinable";
 
 export type SignalType =
   | "direct_visual_signal"
@@ -62,6 +69,31 @@ export interface HouseDiffIdentity {
   differentiation_scope_label: string;
 }
 
+/** Boosted visual structure signals */
+export interface VisualStructureSignals {
+  single_facade_likelihood: SignalStrength;
+  multi_facade_likelihood: SignalStrength;
+  continuous_building_row_presence: SignalStrength;
+  detached_building_likelihood: SignalStrength;
+  entrance_prominence: SignalStrength;
+  gate_or_access_visibility: SignalStrength;
+  civic_plate_visibility: SignalStrength;
+  storefront_or_signage_presence: SignalStrength;
+  corner_building_hint: SignalStrength;
+  frontage_clarity: SignalStrength;
+}
+
+/** Context separation signals */
+export interface ContextSeparationSignals {
+  neighboring_buildings_count_hint: "none" | "few" | "many" | "not_determinable";
+  left_right_boundary_clarity: SignalStrength;
+  facade_width_hint: "narrow" | "medium" | "wide" | "not_determinable";
+  immediate_context_clutter: "low" | "medium" | "high" | "not_determinable";
+  visual_focus_strength: SignalStrength;
+  likely_same_building_extent: SignalStrength;
+  likely_adjacent_building_confusion: SignalStrength;
+}
+
 export interface HouseDiffVisualSignals {
   facade_detected: boolean;
   frontage_detected: boolean;
@@ -72,6 +104,21 @@ export interface HouseDiffVisualSignals {
   neighboring_buildings_presence: "none_visible" | "visible_distinct" | "visible_contiguous" | "not_assessable";
   visual_uniqueness_status: VisualUniquenessStatus;
   visual_notes: string[];
+  /** Boosted structure signals */
+  structure: VisualStructureSignals;
+  /** Boosted context separation */
+  context_separation: ContextSeparationSignals;
+}
+
+/** Boosted alignment diagnostics */
+export interface AlignmentDiagnostics {
+  photo_geo_alignment: AlignmentLevel;
+  photo_address_alignment: AlignmentLevel;
+  geo_address_alignment: AlignmentLevel;
+  anncsu_photo_alignment: AlignmentLevel;
+  overall_alignment_status: AlignmentLevel;
+  alignment_conflict_flags: string[];
+  alignment_notes: string[];
 }
 
 export interface HouseDiffAddressAlignment {
@@ -82,6 +129,8 @@ export interface HouseDiffAddressAlignment {
   anncsu_alignment_status: "aligned" | "partial" | "none" | "not_available";
   address_specificity_level: "civic" | "street" | "zone" | "none";
   address_alignment_notes: string[];
+  /** Boosted alignment diagnostics */
+  diagnostics: AlignmentDiagnostics;
 }
 
 export interface HouseDiffSpecificity {
@@ -116,18 +165,11 @@ export interface HouseDifferentiationResult {
    ═══════════════════════════════════════════════════════════ */
 
 export interface HouseDifferentiationInput {
-  /** Photo data URL present */
   photo_present: boolean;
-  /** GPS coordinates present */
   geo_present: boolean;
-  /** Lat for proximity checks */
   lat: number | null;
   lng: number | null;
-
-  /** Address from identification */
   address_raw: string | null;
-
-  /** From AddressResolutionEngine */
   address_resolution: {
     street_match_status: string;
     civic_match_status: string;
@@ -138,16 +180,12 @@ export interface HouseDifferentiationInput {
     overall_address_quality: string;
     false_specificity_risk: string;
   } | null;
-
-  /** From BuildingProfileEngine — subset */
   building_profile: {
     building_truth_supported: boolean;
     address_fact_level: string;
     zone_geo_level: string;
     zone_geo_code: string;
   } | null;
-
-  /** From identify API — visual hints */
   identify_hints: {
     confidence: number;
     building_type?: string | null;
@@ -165,14 +203,13 @@ export interface HouseDifferentiationInput {
 
 export function buildHouseDifferentiation(input: HouseDifferentiationInput): HouseDifferentiationResult {
   const {
-    photo_present, geo_present, lat, lng,
+    photo_present, geo_present,
     address_raw, address_resolution, building_profile, identify_hints,
   } = input;
 
   const zoneCode = building_profile?.zone_geo_code ?? "unknown";
   const zoneLevel = building_profile?.zone_geo_level ?? "unknown";
 
-  // ── Identity ──
   const identity: HouseDiffIdentity = {
     zone_geo_code: zoneCode,
     zone_geo_level: zoneLevel,
@@ -182,16 +219,9 @@ export function buildHouseDifferentiation(input: HouseDifferentiationInput): Hou
     differentiation_scope_label: buildScopeLabel(photo_present, geo_present, !!address_raw),
   };
 
-  // ── Visual Signals ──
   const visual = buildVisualSignals(identify_hints, photo_present);
-
-  // ── Address Alignment ──
   const alignment = buildAddressAlignment(address_resolution, geo_present, photo_present, visual);
-
-  // ── Specificity ──
-  const specificity = buildSpecificity(visual, alignment, address_resolution);
-
-  // ── Summary ──
+  const specificity = buildSpecificity(visual, alignment, address_resolution, photo_present, geo_present);
   const summary = buildSummary(specificity, visual, alignment);
 
   return { identity, visual_signals: visual, address_alignment: alignment, specificity, summary };
@@ -215,10 +245,31 @@ function buildVisualSignals(
   hints: HouseDifferentiationInput["identify_hints"],
   photoPresent: boolean,
 ): HouseDiffVisualSignals {
+  const nullStructure: VisualStructureSignals = {
+    single_facade_likelihood: "not_determinable",
+    multi_facade_likelihood: "not_determinable",
+    continuous_building_row_presence: "not_determinable",
+    detached_building_likelihood: "not_determinable",
+    entrance_prominence: "not_determinable",
+    gate_or_access_visibility: "not_determinable",
+    civic_plate_visibility: "not_determinable",
+    storefront_or_signage_presence: "not_determinable",
+    corner_building_hint: "not_determinable",
+    frontage_clarity: "not_determinable",
+  };
+  const nullContext: ContextSeparationSignals = {
+    neighboring_buildings_count_hint: "not_determinable",
+    left_right_boundary_clarity: "not_determinable",
+    facade_width_hint: "not_determinable",
+    immediate_context_clutter: "not_determinable",
+    visual_focus_strength: "not_determinable",
+    likely_same_building_extent: "not_determinable",
+    likely_adjacent_building_confusion: "not_determinable",
+  };
+
   if (!photoPresent || !hints) {
     return {
-      facade_detected: false,
-      frontage_detected: false,
+      facade_detected: false, frontage_detected: false,
       entrance_visibility_status: "not_assessable",
       civic_visibility_status: "not_assessable",
       signage_visibility_status: "not_assessable",
@@ -226,6 +277,7 @@ function buildVisualSignals(
       neighboring_buildings_presence: "not_assessable",
       visual_uniqueness_status: "not_assessable",
       visual_notes: ["Foto non disponibile — segnali visivi non valutabili"],
+      structure: nullStructure, context_separation: nullContext,
     };
   }
 
@@ -239,7 +291,7 @@ function buildVisualSignals(
   const edgeConf = Math.min(confidence, 1);
   const notes: string[] = [];
 
-  // Determine visual uniqueness
+  // Visual uniqueness
   let uniqueness: VisualUniquenessStatus = "not_assessable";
   if (facade && edgeConf >= 0.6 && !neighboring) {
     uniqueness = "unique";
@@ -249,16 +301,62 @@ function buildVisualSignals(
     uniqueness = "ambiguous";
     notes.push("Facciata rilevata ma con confidenza visiva limitata");
   } else {
-    uniqueness = "not_assessable";
     notes.push("Facciata non chiaramente rilevata");
   }
 
-  if (neighboring) {
-    notes.push("Edifici adiacenti visibili nella foto");
-  }
-  if (civic) {
-    notes.push("Numero civico visibile nella foto");
-  }
+  if (neighboring) notes.push("Edifici adiacenti visibili nella foto");
+  if (civic) notes.push("Numero civico visibile nella foto");
+
+  // ── Boosted structure signals ──
+  const structure: VisualStructureSignals = {
+    single_facade_likelihood:
+      facade && !neighboring && edgeConf >= 0.6 ? "strong" :
+      facade && !neighboring ? "medium" :
+      facade && neighboring ? "weak" : "not_determinable",
+    multi_facade_likelihood:
+      neighboring && facade ? "medium" :
+      neighboring ? "strong" : "not_determinable",
+    continuous_building_row_presence:
+      neighboring ? "medium" : "not_determinable",
+    detached_building_likelihood:
+      facade && !neighboring && edgeConf >= 0.7 ? "strong" :
+      facade && !neighboring && edgeConf >= 0.5 ? "medium" : "not_determinable",
+    entrance_prominence:
+      entrance ? (edgeConf >= 0.6 ? "strong" : "medium") : "not_determinable",
+    gate_or_access_visibility:
+      entrance ? "medium" : "not_determinable",
+    civic_plate_visibility:
+      civic ? "strong" : "not_determinable",
+    storefront_or_signage_presence:
+      signage ? "medium" : "not_determinable",
+    corner_building_hint: "not_determinable", // requires multi-angle — never invent
+    frontage_clarity:
+      facade && edgeConf >= 0.7 ? "strong" :
+      facade && edgeConf >= 0.4 ? "medium" :
+      facade ? "weak" : "not_determinable",
+  };
+
+  // ── Context separation ──
+  const contextSep: ContextSeparationSignals = {
+    neighboring_buildings_count_hint:
+      !neighboring ? "none" :
+      edgeConf < 0.5 ? "many" : "few",
+    left_right_boundary_clarity:
+      !neighboring && facade && edgeConf >= 0.6 ? "strong" :
+      facade && edgeConf >= 0.4 ? "medium" : "weak",
+    facade_width_hint: "not_determinable", // can't estimate real width from photo
+    immediate_context_clutter:
+      neighboring && edgeConf < 0.5 ? "high" :
+      neighboring ? "medium" : "low",
+    visual_focus_strength:
+      facade && edgeConf >= 0.7 && !neighboring ? "strong" :
+      facade && edgeConf >= 0.4 ? "medium" : "weak",
+    likely_same_building_extent:
+      facade && !neighboring ? "strong" : "weak",
+    likely_adjacent_building_confusion:
+      neighboring && !civic ? "strong" :
+      neighboring && civic ? "medium" : "not_determinable",
+  };
 
   return {
     facade_detected: facade,
@@ -270,6 +368,8 @@ function buildVisualSignals(
     neighboring_buildings_presence: neighboring ? "visible_contiguous" : (facade ? "none_visible" : "not_assessable"),
     visual_uniqueness_status: uniqueness,
     visual_notes: notes,
+    structure,
+    context_separation: contextSep,
   };
 }
 
@@ -280,14 +380,23 @@ function buildAddressAlignment(
   visual: HouseDiffVisualSignals,
 ): HouseDiffAddressAlignment {
   if (!ar) {
+    const emptyDiag: AlignmentDiagnostics = {
+      photo_geo_alignment: geoPresent && photoPresent ? "medium_alignment" : "insufficient_alignment",
+      photo_address_alignment: "insufficient_alignment",
+      geo_address_alignment: geoPresent ? "medium_alignment" : "insufficient_alignment",
+      anncsu_photo_alignment: "insufficient_alignment",
+      overall_alignment_status: "insufficient_alignment",
+      alignment_conflict_flags: [],
+      alignment_notes: ["Risoluzione indirizzo non disponibile"],
+    };
     return {
-      street_support_status: "none",
-      civic_support_status: "none",
+      street_support_status: "none", civic_support_status: "none",
       photo_address_alignment: "insufficient_alignment",
       geo_address_alignment: geoPresent ? "medium_alignment" : "insufficient_alignment",
       anncsu_alignment_status: "not_available",
       address_specificity_level: "none",
       address_alignment_notes: ["Risoluzione indirizzo non disponibile"],
+      diagnostics: emptyDiag,
     };
   }
 
@@ -301,7 +410,7 @@ function buildAddressAlignment(
     ar.civic_match_status.includes("candidate") ? "candidate" :
     ar.civic_match_status === "not_found" ? "none" : "weak";
 
-  // Photo-address alignment depends on visual civic visibility + address quality
+  // Photo-address alignment — STRICTER
   let photoAlign: AlignmentLevel = "insufficient_alignment";
   if (photoPresent && visual.civic_visibility_status === "visible" && civicSupport !== "none") {
     photoAlign = "high_alignment";
@@ -326,18 +435,84 @@ function buildAddressAlignment(
     ar.official_street_support && ar.official_civic_support ? "aligned" :
     ar.official_street_support ? "partial" : "none";
 
-  // Address specificity level
+  // ANNCSU-photo alignment — new
+  let anncsuPhotoAlign: AlignmentLevel = "insufficient_alignment";
+  if (anncsu === "aligned" && visual.civic_visibility_status === "visible") {
+    anncsuPhotoAlign = "high_alignment";
+  } else if (anncsu === "partial" && visual.facade_detected) {
+    anncsuPhotoAlign = "medium_alignment";
+  } else if (anncsu !== "not_available" && anncsu !== "none") {
+    anncsuPhotoAlign = "low_alignment";
+  }
+
+  // Photo-geo alignment
+  let photoGeoAlign: AlignmentLevel = "insufficient_alignment";
+  if (photoPresent && geoPresent && visual.facade_detected && ar.overall_address_quality === "strong") {
+    photoGeoAlign = "high_alignment";
+  } else if (photoPresent && geoPresent && visual.facade_detected) {
+    photoGeoAlign = "medium_alignment";
+  } else if (photoPresent && geoPresent) {
+    photoGeoAlign = "low_alignment";
+  }
+
+  // Address specificity
   const addrSpec: HouseDiffAddressAlignment["address_specificity_level"] =
     civicSupport === "official" || civicSupport === "candidate" ? "civic" :
     streetSupport !== "none" ? "street" : "none";
 
-  const notes: string[] = [];
+  // ── Conflict detection ──
+  const conflictFlags: string[] = [];
+  const diagNotes: string[] = [];
+
   if (ar.false_specificity_risk === "high") {
-    notes.push("Rischio di falsa specificità elevato — indirizzo da trattare con cautela");
+    conflictFlags.push("false_specificity_risk_high");
+    diagNotes.push("Rischio di falsa specificità elevato — indirizzo da trattare con cautela");
   }
   if (ar.ambiguity_level === "high" || ar.ambiguity_level === "critical") {
-    notes.push("Ambiguità alta nella risoluzione dell'indirizzo");
+    conflictFlags.push("address_ambiguity_high");
+    diagNotes.push("Ambiguità alta nella risoluzione dell'indirizzo");
   }
+  // Conflicting: photo facade detected but geo/address weak
+  if (visual.facade_detected && geoAlign === "low_alignment" && photoAlign === "low_alignment") {
+    conflictFlags.push("photo_strong_address_weak");
+    diagNotes.push("Foto mostra facciata ma l'indirizzo è debole");
+  }
+  // Conflicting: address strong but photo vague
+  if (!visual.facade_detected && geoAlign === "high_alignment") {
+    conflictFlags.push("address_strong_photo_vague");
+    diagNotes.push("Indirizzo forte ma la foto non mostra facciata chiara");
+  }
+
+  // ── Overall alignment — requires convergence ──
+  const alignScores: number[] = [
+    photoAlign === "high_alignment" ? 3 : photoAlign === "medium_alignment" ? 2 : photoAlign === "low_alignment" ? 1 : 0,
+    geoAlign === "high_alignment" ? 3 : geoAlign === "medium_alignment" ? 2 : geoAlign === "low_alignment" ? 1 : 0,
+    anncsuPhotoAlign === "high_alignment" ? 3 : anncsuPhotoAlign === "medium_alignment" ? 2 : anncsuPhotoAlign === "low_alignment" ? 1 : 0,
+    photoGeoAlign === "high_alignment" ? 3 : photoGeoAlign === "medium_alignment" ? 2 : photoGeoAlign === "low_alignment" ? 1 : 0,
+  ];
+  const avgAlign = alignScores.reduce((a, b) => a + b, 0) / alignScores.length;
+  let overallAlign: AlignmentLevel;
+  if (conflictFlags.length > 0 && avgAlign < 2) {
+    overallAlign = "conflicting_alignment";
+  } else if (avgAlign >= 2.5) {
+    overallAlign = "high_alignment";
+  } else if (avgAlign >= 1.5) {
+    overallAlign = "medium_alignment";
+  } else if (avgAlign >= 0.5) {
+    overallAlign = "low_alignment";
+  } else {
+    overallAlign = "insufficient_alignment";
+  }
+
+  const diagnostics: AlignmentDiagnostics = {
+    photo_geo_alignment: photoGeoAlign,
+    photo_address_alignment: photoAlign,
+    geo_address_alignment: geoAlign,
+    anncsu_photo_alignment: anncsuPhotoAlign,
+    overall_alignment_status: overallAlign,
+    alignment_conflict_flags: conflictFlags,
+    alignment_notes: diagNotes,
+  };
 
   return {
     street_support_status: streetSupport,
@@ -346,7 +521,8 @@ function buildAddressAlignment(
     geo_address_alignment: geoAlign,
     anncsu_alignment_status: anncsu,
     address_specificity_level: addrSpec,
-    address_alignment_notes: notes,
+    address_alignment_notes: diagNotes,
+    diagnostics,
   };
 }
 
@@ -354,54 +530,97 @@ function buildSpecificity(
   visual: HouseDiffVisualSignals,
   alignment: HouseDiffAddressAlignment,
   ar: HouseDifferentiationInput["address_resolution"],
+  photoPresent: boolean,
+  geoPresent: boolean,
 ): HouseDiffSpecificity {
-  // Score: visual signals + address alignment
-  let score = 0;
+  // ── CONVERGENCE-based scoring ──
+  // Three independent signal sources: visual, address, geo-alignment
+  let visualScore = 0;   // max ~5
+  let addressScore = 0;  // max ~4
+  let alignScore = 0;    // max ~3
 
-  // Visual contribution (max 5)
-  if (visual.facade_detected) score += 1;
-  if (visual.frontage_detected) score += 1;
-  if (visual.civic_visibility_status === "visible") score += 1;
-  if (visual.entrance_visibility_status === "visible") score += 1;
-  if (visual.visual_uniqueness_status === "unique") score += 1;
-  else if (visual.visual_uniqueness_status === "partially_unique") score += 0.5;
+  // Visual contribution
+  if (visual.facade_detected) visualScore += 1;
+  if (visual.frontage_detected) visualScore += 0.5;
+  if (visual.civic_visibility_status === "visible") visualScore += 1.5;
+  if (visual.entrance_visibility_status === "visible") visualScore += 0.5;
+  if (visual.visual_uniqueness_status === "unique") visualScore += 1.5;
+  else if (visual.visual_uniqueness_status === "partially_unique") visualScore += 0.5;
 
-  // Address contribution (max 4)
-  if (alignment.civic_support_status === "official") score += 2;
-  else if (alignment.civic_support_status === "candidate") score += 1;
-  if (alignment.street_support_status === "official") score += 1;
-  if (alignment.anncsu_alignment_status === "aligned") score += 1;
+  // Structure bonus
+  if (visual.structure.single_facade_likelihood === "strong") visualScore += 0.5;
+  if (visual.context_separation.visual_focus_strength === "strong") visualScore += 0.5;
 
-  // Alignment bonus (max 2)
-  if (alignment.photo_address_alignment === "high_alignment") score += 1;
-  if (alignment.geo_address_alignment === "high_alignment") score += 1;
+  // Address contribution
+  if (alignment.civic_support_status === "official") addressScore += 2;
+  else if (alignment.civic_support_status === "candidate") addressScore += 1;
+  if (alignment.street_support_status === "official") addressScore += 1;
+  if (alignment.anncsu_alignment_status === "aligned") addressScore += 1;
 
-  // Penalties
-  if (visual.neighboring_buildings_presence === "visible_contiguous") score -= 1.5;
-  if (ar?.false_specificity_risk === "high") score -= 2;
-  if (ar?.ambiguity_level === "high" || ar?.ambiguity_level === "critical") score -= 1;
+  // Alignment contribution
+  const diag = alignment.diagnostics;
+  if (diag.overall_alignment_status === "high_alignment") alignScore += 3;
+  else if (diag.overall_alignment_status === "medium_alignment") alignScore += 2;
+  else if (diag.overall_alignment_status === "low_alignment") alignScore += 1;
+
+  // ── PENALTIES ──
+  // Contiguous buildings
+  if (visual.neighboring_buildings_presence === "visible_contiguous") {
+    visualScore -= 1.5;
+  }
+  // Adjacent building confusion
+  if (visual.context_separation.likely_adjacent_building_confusion === "strong") {
+    visualScore -= 1;
+  }
+  // Context clutter
+  if (visual.context_separation.immediate_context_clutter === "high") {
+    visualScore -= 0.5;
+  }
+  // False specificity risk
+  if (ar?.false_specificity_risk === "high") addressScore -= 2;
+  if (ar?.ambiguity_level === "high" || ar?.ambiguity_level === "critical") addressScore -= 1;
+  // Conflict penalty
+  if (diag.alignment_conflict_flags.length > 0) alignScore -= 1;
 
   // Clamp
-  score = Math.max(score, 0);
+  visualScore = Math.max(visualScore, 0);
+  addressScore = Math.max(addressScore, 0);
+  alignScore = Math.max(alignScore, 0);
+
+  const totalScore = visualScore + addressScore + alignScore;
+
+  // ── CONVERGENCE CHECK — no single-source promotion ──
+  const sourcesAboveThreshold =
+    (visualScore >= 2 ? 1 : 0) +
+    (addressScore >= 2 ? 1 : 0) +
+    (alignScore >= 1.5 ? 1 : 0);
 
   // Determine status
   let status: OverallDifferentiationStatus;
   let strength: SpecificityStrength;
   let separation: HouseVsAdjacentSeparation;
 
-  if (score >= 7) {
+  if (totalScore >= 8 && sourcesAboveThreshold >= 2) {
     status = "strong_building_candidate";
     strength = "strong";
     separation = "likely_distinct";
-  } else if (score >= 5) {
+  } else if (totalScore >= 6 && sourcesAboveThreshold >= 2) {
+    status = "building_candidate_with_limited_ambiguity";
+    strength = "medium";
+    separation = "moderately_distinct";
+  } else if (totalScore >= 5) {
     status = "building_candidate_with_ambiguity";
     strength = "medium";
-    separation = "partially_distinct";
-  } else if (score >= 3) {
+    separation = "weakly_distinct";
+  } else if (totalScore >= 3) {
     status = "address_supported_but_visually_ambiguous";
     strength = "weak";
     separation = "visually_ambiguous";
-  } else if (score >= 1) {
+  } else if (totalScore >= 1.5) {
+    status = "visually_ambiguous_context";
+    strength = "weak";
+    separation = "visually_ambiguous";
+  } else if (totalScore >= 0.5) {
     status = "zone_only_context";
     strength = "insufficient";
     separation = "contiguous_context_only";
@@ -411,18 +630,54 @@ function buildSpecificity(
     separation = "not_determinable";
   }
 
-  // Override: if neighboring buildings are contiguous and no civic visible, cap at ambiguity
+  // ══ ANTI-FALSE-DISTINCTION OVERRIDES ══
+
+  // 1. Contiguous + no civic visible = cap at ambiguity
   if (visual.neighboring_buildings_presence === "visible_contiguous" &&
       visual.civic_visibility_status !== "visible" &&
-      status === "strong_building_candidate") {
+      (status === "strong_building_candidate" || status === "building_candidate_with_limited_ambiguity")) {
     status = "building_candidate_with_ambiguity";
     strength = "medium";
-    separation = "partially_distinct";
+    separation = "weakly_distinct";
+  }
+
+  // 2. Multiple buildings in frame + weak visual focus = downgrade
+  if (visual.context_separation.likely_adjacent_building_confusion === "strong" &&
+      visual.context_separation.visual_focus_strength !== "strong") {
+    if (status === "strong_building_candidate" || status === "building_candidate_with_limited_ambiguity") {
+      status = "building_candidate_with_ambiguity";
+      strength = "medium";
+      separation = "weakly_distinct";
+    }
+  }
+
+  // 3. Visual focus weak = never strong candidate
+  if (visual.context_separation.visual_focus_strength === "weak" &&
+      status === "strong_building_candidate") {
+    status = "building_candidate_with_limited_ambiguity";
+    strength = "medium";
+    separation = "moderately_distinct";
+  }
+
+  // 4. Photo present but no facade = cap
+  if (photoPresent && !visual.facade_detected &&
+      (status === "strong_building_candidate" || status === "building_candidate_with_limited_ambiguity")) {
+    status = "address_supported_but_visually_ambiguous";
+    strength = "weak";
+    separation = "visually_ambiguous";
+  }
+
+  // 5. Single-source promotion block (ANNCSU alone, geo alone, photo alone)
+  if (sourcesAboveThreshold < 2 &&
+      (status === "strong_building_candidate" || status === "building_candidate_with_limited_ambiguity")) {
+    status = "building_candidate_with_ambiguity";
+    strength = "medium";
+    separation = "weakly_distinct";
   }
 
   const falseRisk: "low" | "medium" | "high" =
-    score >= 7 ? "low" :
-    score >= 4 ? "medium" : "high";
+    status === "strong_building_candidate" && sourcesAboveThreshold >= 2 ? "low" :
+    totalScore >= 5 ? "medium" : "high";
 
   return {
     specificity_status: status,
@@ -434,6 +689,7 @@ function buildSpecificity(
     false_specificity_risk: falseRisk,
     max_safe_claim_level:
       status === "strong_building_candidate" ? "building_candidate" :
+      status === "building_candidate_with_limited_ambiguity" ? "building_candidate" :
       status === "building_candidate_with_ambiguity" ? "address_area" :
       "zone_only",
   };
@@ -446,13 +702,14 @@ function buildSummary(
 ): HouseDiffSummary {
   const status = specificity.specificity_status;
 
-  // Reasoning
   const reasonParts: string[] = [];
   if (visual.facade_detected) reasonParts.push("facciata rilevata");
   if (visual.civic_visibility_status === "visible") reasonParts.push("civico visibile");
   if (alignment.anncsu_alignment_status === "aligned") reasonParts.push("supporto ANNCSU coerente");
   if (visual.neighboring_buildings_presence === "visible_contiguous") reasonParts.push("edifici contigui visibili");
-  if (alignment.photo_address_alignment === "high_alignment") reasonParts.push("allineamento foto-indirizzo alto");
+  if (alignment.diagnostics.overall_alignment_status === "high_alignment") reasonParts.push("allineamento convergente alto");
+  if (visual.structure.single_facade_likelihood === "strong") reasonParts.push("facciata singola probabile");
+  if (alignment.diagnostics.alignment_conflict_flags.length > 0) reasonParts.push("conflitti di allineamento rilevati");
 
   const reasoning = reasonParts.length > 0
     ? `Valutazione basata su: ${reasonParts.join(", ")}`
@@ -460,9 +717,9 @@ function buildSummary(
 
   // Narrative mode
   let narrativeMode: DifferentiationNarrativeMode;
-  if (status === "strong_building_candidate" || status === "building_candidate_with_ambiguity") {
+  if (status === "strong_building_candidate" || status === "building_candidate_with_limited_ambiguity" || status === "building_candidate_with_ambiguity") {
     narrativeMode = "full";
-  } else if (status === "address_supported_but_visually_ambiguous" || status === "zone_only_context") {
+  } else if (status === "address_supported_but_visually_ambiguous" || status === "visually_ambiguous_context" || status === "zone_only_context") {
     narrativeMode = "partial";
   } else {
     narrativeMode = "hidden";
@@ -474,8 +731,14 @@ function buildSummary(
   if (visual.neighboring_buildings_presence === "visible_contiguous") {
     limitations.push("Edifici contigui rendono la distinzione più complessa");
   }
+  if (visual.context_separation.likely_adjacent_building_confusion === "strong") {
+    limitations.push("Possibile confusione con edifici adiacenti");
+  }
   if (alignment.civic_support_status === "none") {
     limitations.push("Nessun supporto civico nella risoluzione indirizzo");
+  }
+  if (alignment.diagnostics.alignment_conflict_flags.length > 0) {
+    limitations.push("Conflitti di allineamento tra foto, geo e indirizzo");
   }
   if (specificity.false_specificity_risk === "high") {
     limitations.push("Rischio di falsa specificità — il risultato resta prevalentemente di zona");
@@ -485,8 +748,12 @@ function buildSummary(
   return {
     overall_differentiation_status: status,
     differentiation_reasoning: reasoning,
-    usable_for_building_level_review: status === "strong_building_candidate" || status === "building_candidate_with_ambiguity",
-    still_zone_dominant: status === "zone_only_context" || status === "not_determinable",
+    usable_for_building_level_review:
+      status === "strong_building_candidate" ||
+      status === "building_candidate_with_limited_ambiguity" ||
+      status === "building_candidate_with_ambiguity",
+    still_zone_dominant:
+      status === "zone_only_context" || status === "visually_ambiguous_context" || status === "not_determinable",
     narrative_mode: narrativeMode,
     limitations,
   };
@@ -499,8 +766,10 @@ function buildSummary(
 export function differentiationStatusLabel(s: OverallDifferentiationStatus): string {
   const m: Record<OverallDifferentiationStatus, string> = {
     strong_building_candidate: "Immobile probabilmente distinto",
+    building_candidate_with_limited_ambiguity: "Candidato con ambiguità limitata",
     building_candidate_with_ambiguity: "Candidato con ambiguità",
     address_supported_but_visually_ambiguous: "Indirizzo supportato, visivamente ambiguo",
+    visually_ambiguous_context: "Contesto visivamente ambiguo",
     zone_only_context: "Lettura prevalentemente di zona",
     not_determinable: "Non determinabile",
   };
@@ -530,7 +799,8 @@ export function specificityStrengthColor(s: SpecificityStrength): string {
 export function separationLabel(s: HouseVsAdjacentSeparation): string {
   const m: Record<HouseVsAdjacentSeparation, string> = {
     likely_distinct: "Probabilmente distinto dal contesto adiacente",
-    partially_distinct: "Parzialmente distinto",
+    moderately_distinct: "Moderatamente distinto",
+    weakly_distinct: "Debolmente distinto",
     visually_ambiguous: "Visivamente ambiguo tra edifici vicini",
     contiguous_context_only: "Contesto contiguo — distinzione non possibile",
     not_determinable: "Non determinabile",
