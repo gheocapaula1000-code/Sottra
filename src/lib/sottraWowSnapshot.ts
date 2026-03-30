@@ -25,6 +25,10 @@ export type SpecificityLabel = "Alta" | "Medio-alta" | "Media" | "Bassa" | "Non 
 export interface WowSnapshot {
   zona_reale: string;
   livello_lettura: string;
+  /** Label describing the geographic level of the value shown */
+  livello_valore: string;
+  /** Whether value is based on a fine zone (not just comune) */
+  valore_zona_fine: boolean;
   valore_al_mq: string | null;
   valore_range: string | null;
   affidabilita_valore: string;
@@ -173,9 +177,20 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
     }
   }
 
+  // ── Value level label ──
+  const primaryLevel = value.value_result.primary_basis_level;
+  const isZonaFine = primaryLevel !== "comune" && primaryLevel !== "non_determinato" && !value.value_quality.comune_only_bias;
+  const livelloValore = isZonaFine
+    ? value.value_identity.value_scope_label
+    : value.value_quality.comune_only_bias
+      ? "Riferimento comunale"
+      : value.value_identity.value_scope_label;
+
   return {
     zona_reale: corr.zone_identity.geo_label,
     livello_lettura: corr.zone_identity.zone_type_label,
+    livello_valore: livelloValore,
+    valore_zona_fine: isZonaFine,
     valore_al_mq: valMid != null ? fmtEur(valMid) : null,
     valore_range: valRange,
     affidabilita_valore: valueReliabilityLabel(value.value_quality.reliability_status),

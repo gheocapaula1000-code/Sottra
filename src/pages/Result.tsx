@@ -1574,11 +1574,23 @@ const Result = () => {
     if (!identifyDone || lowConfidence || identifyFailed) return null;
     try {
       // Stub minimal zone correspondence for snapshot
+      const omiLevel = pricingData?.omiGeoLevel;
+      const isMicrozona = omiLevel === "microzona_omi";
+      const isZonaSpecifica = omiLevel === "zona_specifica" || omiLevel === "quartiere";
+      const isComuneLevel = omiLevel === "comune" || !omiLevel;
+      const zoneTypeLabel = isMicrozona ? "Microzona OMI" : isZonaSpecifica ? (omiLevel === "zona_specifica" ? "Zona OMI specifica" : "Zona OMI quartiere") : isComuneLevel ? "Livello comunale" : "Zona OMI";
+      const geoLevelReale = isMicrozona || isZonaSpecifica ? "zona_omi" as const : "comune" as const;
+      const anchorStr = isMicrozona ? "strong" as const : isZonaSpecifica ? "medium" as const : "weak" as const;
+      const precisionStr = isMicrozona ? "strong" as const : isZonaSpecifica ? "medium" as const : "weak" as const;
+      const marketSupport = isMicrozona || isZonaSpecifica ? "direct" as const : "fallback" as const;
+      const maxClaim = isMicrozona || isZonaSpecifica ? "zona_omi" as const : "comune" as const;
+      const fbWeight = (pricingData?.polygonMatch ? "none" : isComuneLevel ? "high" : "medium") as "none" | "low" | "medium" | "high";
+      const fsRisk = (isComuneLevel ? "medium" : "none") as "none" | "low" | "medium" | "high";
       const stubCorr = {
-        zone_identity: { geo_level_reale: "zona_omi" as const, geo_code: pricingData?.omiGeoLevel ?? "unknown", geo_label: identifyData?.address?.split(",").pop()?.trim() ?? "Zona", normalized_path: "", zone_type_label: pricingData?.omiGeoLevel === "microzona_omi" ? "Microzona OMI" : pricingData?.omiGeoLevel === "comune" ? "Livello comunale" : "Zona OMI", zone_corresponds_to: "", zone_anchor_strength: "medium" as const },
-        zone_correspondence: { corresponds_to_microzona_omi: pricingData?.omiGeoLevel === "microzona_omi", corresponds_to_asc: false, corresponds_to_section_or_aggregate: false, corresponds_to_comune_only: pricingData?.omiGeoLevel === "comune", primary_zone_basis: "OMI", secondary_zone_basis: [] as string[], fallback_used: !pricingData?.polygonMatch, fallback_weight: (pricingData?.polygonMatch ? "none" : pricingData?.omiGeoLevel === "comune" ? "high" : "medium") as "none" | "low" | "medium" | "high", false_specificity_risk: (pricingData?.omiGeoLevel === "comune" ? "medium" : "none") as "none" | "low" | "medium" | "high" },
-        zone_precision: { precision_status: "medium" as const, sub_comunale_support_status: "unavailable" as const, market_zone_support_status: "direct" as const, territorial_support_status: "partial" as const, max_safe_claim_level: "zona_omi" as const },
-        zone_limitations: { missing_sub_comunale: true, market_only_comunale: false, weak_zone_anchor: false, fallback_dominant: false, blocking_gaps: [] as string[], transparency_notes: [] as string[] },
+        zone_identity: { geo_level_reale: geoLevelReale, geo_code: pricingData?.omiGeoLevel ?? "unknown", geo_label: identifyData?.address?.split(",").pop()?.trim() ?? "Zona", normalized_path: "", zone_type_label: zoneTypeLabel, zone_corresponds_to: "", zone_anchor_strength: anchorStr },
+        zone_correspondence: { corresponds_to_microzona_omi: isMicrozona, corresponds_to_asc: false, corresponds_to_section_or_aggregate: false, corresponds_to_comune_only: isComuneLevel, primary_zone_basis: isMicrozona ? "Microzona OMI" : isZonaSpecifica ? "Zona OMI" : "Livello comunale", secondary_zone_basis: isComuneLevel ? [] as string[] : ["Contesto comunale"], fallback_used: !pricingData?.polygonMatch, fallback_weight: fbWeight, false_specificity_risk: fsRisk },
+        zone_precision: { precision_status: precisionStr, sub_comunale_support_status: "unavailable" as const, market_zone_support_status: marketSupport, territorial_support_status: "partial" as const, max_safe_claim_level: maxClaim },
+        zone_limitations: { missing_sub_comunale: true, market_only_comunale: isComuneLevel, weak_zone_anchor: isComuneLevel, fallback_dominant: false, blocking_gaps: [] as string[], transparency_notes: isComuneLevel ? ["Lettura a livello comunale — la zona specifica potrebbe variare"] : [] as string[] },
       };
       const block = (avail: string, geo: string) => ({ availability: avail, quality: "official" as const, geo_level: geo, source_key: "live", source_label: "live", is_derived: false, officiality: "official" as const, limitations: [] as string[] });
       const stubTd = {

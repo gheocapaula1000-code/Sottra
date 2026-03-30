@@ -40,6 +40,10 @@ export interface ValueResult {
   fallback_used: boolean;
   fallback_weight: "none" | "low" | "medium" | "high";
   false_specificity_risk: "none" | "low" | "medium" | "high";
+  /** The finest level actually used as primary data basis */
+  primary_basis_level: CanonicalGeoLevel;
+  /** Secondary/fallback level used, null if none */
+  secondary_basis_level: CanonicalGeoLevel | null;
 }
 
 export interface ValueQuality {
@@ -205,6 +209,8 @@ export function buildZoneValue(input: ValueEngineInput): ZoneValueResult {
       fallback_used: fallbackWeight !== "none",
       fallback_weight: fallbackWeight,
       false_specificity_risk: falseSpecRisk,
+      primary_basis_level: geoLevel,
+      secondary_basis_level: comuneOnlyBias ? null : (basisType === "comunale" || basisType === "fallback") ? "comune" : null,
     },
     value_quality: {
       market_support_status: marketSupport,
