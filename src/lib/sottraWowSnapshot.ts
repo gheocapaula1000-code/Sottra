@@ -20,7 +20,7 @@ import type { ZoneCorrespondenceResult } from "@/lib/zoneCorrespondenceEngine";
 export type AttentionSignal = "high" | "medium" | "low" | "insufficient";
 export type SnapshotNarrativeMode = "full" | "partial" | "hidden";
 
-export type SpecificityLabel = "Alta" | "Media" | "Bassa" | "Non sufficiente";
+export type SpecificityLabel = "Alta" | "Medio-alta" | "Media" | "Bassa" | "Non sufficiente";
 
 export interface WowSnapshot {
   zona_reale: string;
@@ -95,10 +95,12 @@ export interface WowSnapshotInput {
   corr: ZoneCorrespondenceResult;
   /** Optional house differentiation specificity strength */
   specificity_strength?: "strong" | "medium" | "weak" | "insufficient" | null;
+  /** Optional overall differentiation status for finer mapping */
+  specificity_status?: string | null;
 }
 
 export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
-  const { value, renovation, growth, corr, specificity_strength } = input;
+  const { value, renovation, growth, corr, specificity_strength, specificity_status } = input;
 
   const valMode = valueNarrativeMode(value);
   const renMode = renovationNarrativeMode(renovation);
@@ -156,14 +158,20 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
     narrativeMode = "partial";
   }
 
-  // ── Specificity label ──
-  const specMap: Record<string, SpecificityLabel> = {
-    strong: "Alta",
-    medium: "Media",
-    weak: "Bassa",
-    insufficient: "Non sufficiente",
-  };
-  const specLabel: SpecificityLabel | null = specificity_strength ? (specMap[specificity_strength] ?? null) : null;
+  // ── Specificity label — finer 5-level mapping ──
+  let specLabel: SpecificityLabel | null = null;
+  if (specificity_strength) {
+    if (specificity_strength === "strong") {
+      specLabel = "Alta";
+    } else if (specificity_strength === "medium") {
+      // Distinguish "Medio-alta" from "Media" using status
+      specLabel = specificity_status === "building_candidate_with_limited_ambiguity" ? "Medio-alta" : "Media";
+    } else if (specificity_strength === "weak") {
+      specLabel = "Bassa";
+    } else {
+      specLabel = "Non sufficiente";
+    }
+  }
 
   return {
     zona_reale: corr.zone_identity.geo_label,

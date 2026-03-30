@@ -44,6 +44,7 @@ function AttentionBadge({ signal }: { signal: AttentionSignal }) {
 
 const specBg: Record<SpecificityLabel, string> = {
   Alta: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400",
+  "Medio-alta": "bg-emerald-500/10 border-emerald-500/25 text-emerald-400",
   Media: "bg-primary/15 border-primary/30 text-primary",
   Bassa: "bg-amber-500/15 border-amber-500/30 text-amber-400",
   "Non sufficiente": "bg-muted border-border text-muted-foreground",
