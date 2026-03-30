@@ -1664,6 +1664,7 @@ const Result = () => {
                 houseDiff.address_alignment.photo_address_alignment === "high_alignment" ? "positive" :
                 houseDiff.address_alignment.photo_address_alignment === "medium_alignment" ? "neutral" : "warning"
               ) : "muted"}
+              caseResult={caseResult}
             />
           </SectionSafe>
 
