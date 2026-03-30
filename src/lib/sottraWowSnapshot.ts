@@ -95,6 +95,8 @@ export interface WowSnapshotInput {
   corr: ZoneCorrespondenceResult;
   /** Optional house differentiation specificity strength */
   specificity_strength?: "strong" | "medium" | "weak" | "insufficient" | null;
+  /** Optional overall differentiation status for finer mapping */
+  specificity_status?: string | null;
 }
 
 export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
