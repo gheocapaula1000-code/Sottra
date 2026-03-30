@@ -139,13 +139,13 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
   if (valMode === "hidden") {
     limitePrincipale = "Valore al mq non disponibile per questa zona";
   } else if (value.value_quality.comune_only_bias) {
-    limitePrincipale = "Dato riferito al livello comunale — la zona specifica potrebbe variare";
+    limitePrincipale = "Lettura ancora a livello comunale — la zona specifica potrebbe variare";
   } else if (value.value_result.fallback_weight === "high") {
-    limitePrincipale = "Forte componente di fallback — precisione ridotta";
+    limitePrincipale = "Componente di contesto ampio presente — precisione da contestualizzare";
   } else if (renMode === "hidden") {
     limitePrincipale = "Stima costi ristrutturazione non disponibile";
   } else {
-    limitePrincipale = "Le stime non sostituiscono una valutazione professionale";
+    limitePrincipale = "Le stime offrono un orientamento — per decisioni importanti, consultare un professionista";
   }
 
   // ── Narrative mode ──
