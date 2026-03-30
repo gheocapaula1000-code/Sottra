@@ -123,15 +123,15 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
   // ── Zone signals label ──
   let segnaliLabel: string;
   if (!growth || growth.growth_summary.narrative_mode === "hidden") {
-    segnaliLabel = "Non sufficienti";
+    segnaliLabel = "Non ancora disponibili";
   } else if (growthStatus === "supportive") {
-    segnaliLabel = "Segnali convergenti favorevoli";
+    segnaliLabel = "Convergenti e favorevoli";
   } else if (growthStatus === "mixed") {
-    segnaliLabel = "Quadro misto";
+    segnaliLabel = "Quadro composito";
   } else if (growthStatus === "weak") {
-    segnaliLabel = "Segnali deboli";
+    segnaliLabel = "In fase di formazione";
   } else {
-    segnaliLabel = "Insufficienti";
+    segnaliLabel = "Non ancora disponibili";
   }
 
   // ── Primary limitation ──
@@ -139,13 +139,13 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
   if (valMode === "hidden") {
     limitePrincipale = "Valore al mq non disponibile per questa zona";
   } else if (value.value_quality.comune_only_bias) {
-    limitePrincipale = "Dato riferito al livello comunale — la zona specifica potrebbe variare";
+    limitePrincipale = "Lettura ancora a livello comunale — la zona specifica potrebbe variare";
   } else if (value.value_result.fallback_weight === "high") {
-    limitePrincipale = "Forte componente di fallback — precisione ridotta";
+    limitePrincipale = "Componente di contesto ampio presente — precisione da contestualizzare";
   } else if (renMode === "hidden") {
     limitePrincipale = "Stima costi ristrutturazione non disponibile";
   } else {
-    limitePrincipale = "Le stime non sostituiscono una valutazione professionale";
+    limitePrincipale = "Le stime offrono un orientamento — per decisioni importanti, consultare un professionista";
   }
 
   // ── Narrative mode ──
@@ -195,10 +195,10 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
 
 export function attentionSignalLabel(s: AttentionSignal): string {
   const m: Record<AttentionSignal, string> = {
-    high: "Merita attenzione",
-    medium: "Da valutare",
-    low: "Elementi limitati",
-    insufficient: "Dati insufficienti",
+    high: "Prioritaria",
+    medium: "Interessante",
+    low: "Selettiva",
+    insufficient: "Da verificare",
   };
   return m[s];
 }

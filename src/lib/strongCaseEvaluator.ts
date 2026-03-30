@@ -168,20 +168,20 @@ export function evaluateStrongCase(input: StrongCaseInput): StrongCaseResult {
 
   // ── Strengths (human-readable, for UI) ──
   const strengths: string[] = [];
-  if (flags.strong_zone_read) strengths.push("Zona letta con buona profondità");
-  if (flags.strong_value_read) strengths.push("Valore con buona affidabilità");
-  if (flags.strong_outlook_read) strengths.push("Outlook supportato da segnali coerenti");
-  if (flags.strong_house_candidate) strengths.push("Immobile distinguibile dal contesto vicino");
-  if (flags.fallback_under_control) strengths.push("Fallback sotto controllo");
+  if (flags.strong_zone_read) strengths.push("Lettura zona solida");
+  if (flags.strong_value_read) strengths.push("Valore affidabile");
+  if (flags.strong_outlook_read) strengths.push("Prospettiva ben supportata");
+  if (flags.strong_house_candidate) strengths.push("Immobile distinto");
+  if (flags.fallback_under_control) strengths.push("Base dati ben calibrata");
 
   // ── Top limiter ──
   let top_limiter: string | null = null;
-  if (limiters.fallback_dominant) top_limiter = "Fallback elevato — precisione ridotta";
-  else if (limiters.comune_only_bias) top_limiter = "Lettura ancora prevalentemente comunale";
-  else if (limiters.insufficient_signal_depth) top_limiter = "Profondità segnali insufficiente";
-  else if (limiters.weak_house_alignment) top_limiter = "Allineamento foto/indirizzo debole";
-  else if (limiters.ambiguity_penalty) top_limiter = "Specificità immobile ancora ambigua";
-  else if (limiters.missing_boundary) top_limiter = "Perimetro zona non disponibile";
+  if (limiters.fallback_dominant) top_limiter = "Componente di contesto ampio — precisione da contestualizzare";
+  else if (limiters.comune_only_bias) top_limiter = "Lettura ancora a livello comunale";
+  else if (limiters.insufficient_signal_depth) top_limiter = "Profondità segnali ancora da consolidare";
+  else if (limiters.weak_house_alignment) top_limiter = "Allineamento foto/indirizzo da verificare";
+  else if (limiters.ambiguity_penalty) top_limiter = "Specificità immobile da confermare";
+  else if (limiters.missing_boundary) top_limiter = "Perimetro zona non disponibile a questo livello";
 
   return {
     identity: {
@@ -205,10 +205,10 @@ export function evaluateStrongCase(input: StrongCaseInput): StrongCaseResult {
 
 export function caseStrengthLabel(s: OverallCaseStrength): string {
   const m: Record<OverallCaseStrength, string> = {
-    strong_case: "Lettura solida",
-    solid_case: "Lettura discreta",
-    mixed_case: "Quadro misto",
-    weak_case: "Elementi limitati",
+    strong_case: "Analisi solida",
+    solid_case: "Analisi discreta",
+    mixed_case: "Quadro composito",
+    weak_case: "Quadro da consolidare",
   };
   return m[s];
 }

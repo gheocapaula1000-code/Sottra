@@ -11,9 +11,9 @@ function baseSnapshot(overrides: Partial<WowSnapshot> = {}): WowSnapshot {
     affidabilita_valore: "Alta",
     costo_ristrutturazione: "€ 45.000",
     costo_range: "€ 35.000 – € 55.000",
-    segnali_zona: "Segnali convergenti favorevoli",
+    segnali_zona: "Convergenti e favorevoli",
     attenzione_area: "high",
-    limite_principale: "Le stime non sostituiscono una valutazione professionale",
+    limite_principale: "Le stime offrono un orientamento — per decisioni importanti, consultare un professionista",
     narrative_mode: "full",
     specificita_immobile: "Alta",
     ...overrides,
@@ -66,7 +66,7 @@ describe("strongCaseEvaluator", () => {
       snapshot: baseSnapshot({
         affidabilita_valore: "Non determinabile",
         attenzione_area: "high",
-        limite_principale: "Forte componente di fallback — precisione ridotta",
+        limite_principale: "Componente di contesto ampio presente — precisione da contestualizzare",
       }),
     }));
     expect(r.identity.overall_case_strength).not.toBe("strong_case");
@@ -95,8 +95,8 @@ describe("strongCaseEvaluator", () => {
 
   it("strengths list is populated for strong case", () => {
     const r = evaluateStrongCase(baseInput());
-    expect(r.strengths).toContain("Valore con buona affidabilità");
-    expect(r.strengths).toContain("Zona letta con buona profondità");
+    expect(r.strengths).toContain("Valore affidabile");
+    expect(r.strengths).toContain("Lettura zona solida");
   });
 
   it("top_limiter present for fallback_dominant", () => {
@@ -110,7 +110,7 @@ describe("strongCaseEvaluator", () => {
     const r = evaluateStrongCase(baseInput({
       snapshot: baseSnapshot({
         affidabilita_valore: "Bassa",
-        limite_principale: "Dato riferito al livello comunale",
+        limite_principale: "Lettura ancora a livello comunale",
       }),
     }));
     expect(r.limiters.comune_only_bias).toBe(true);

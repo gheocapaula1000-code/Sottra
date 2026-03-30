@@ -18,8 +18,13 @@ import {
   MapPin, Eye, ShieldCheck, ArrowUpRight, CheckCircle2,
 } from "lucide-react";
 import type { WowSnapshot, AttentionSignal, SpecificityLabel } from "@/lib/sottraWowSnapshot";
-import { attentionSignalLabel, attentionSignalColor } from "@/lib/sottraWowSnapshot";
+import { attentionSignalColor } from "@/lib/sottraWowSnapshot";
 import type { OverallCaseStrength, StrongCaseResult } from "@/lib/strongCaseEvaluator";
+import {
+  toneAttentionLabel, toneSpecificityLabel, toneReliabilityLabel,
+  toneCaseStrengthLabel, toneStrengthLine, toneLimiteLabel,
+  toneSegnaliLabel,
+} from "@/lib/reportToneMap";
 
 /* ── Attention badge ─────────────────────────────────── */
 
@@ -38,7 +43,7 @@ function AttentionBadge({ signal }: { signal: AttentionSignal }) {
       attentionSignalColor(signal),
     )}>
       {signal === "high" && <ArrowUpRight className="h-3 w-3" />}
-      {attentionSignalLabel(signal)}
+      {toneAttentionLabel(signal)}
     </span>
   );
 }
@@ -59,7 +64,7 @@ function SpecificityBadge({ label }: { label: SpecificityLabel }) {
       "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold leading-tight",
       specBg[label],
     )}>
-      <Eye className="h-3 w-3" />{label}
+      <Eye className="h-3 w-3" />{toneSpecificityLabel(label)}
     </span>
   );
 }
@@ -83,9 +88,9 @@ function StatusChip({ label, value, variant }: { label: string; value: string; v
 
 function fallbackLabel(snapshot: WowSnapshot): { text: string; variant: "positive" | "neutral" | "warning" | "muted" } {
   const aff = snapshot.affidabilita_valore;
-  if (aff === "Alta") return { text: "Basso", variant: "positive" };
-  if (aff === "Media") return { text: "Medio", variant: "neutral" };
-  if (aff === "Bassa") return { text: "Alto", variant: "warning" };
+  if (aff === "Alta") return { text: "Contenuto", variant: "positive" };
+  if (aff === "Media") return { text: "Presente", variant: "neutral" };
+  if (aff === "Bassa") return { text: "Rilevante", variant: "warning" };
   return { text: "Non det.", variant: "muted" };
 }
 
@@ -97,7 +102,7 @@ function StrengthHighlights({ strengths }: { strengths: string[] }) {
     <div className="flex flex-wrap gap-1.5 mt-2">
       {strengths.slice(0, 3).map((s, i) => (
         <span key={i} className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-          <CheckCircle2 className="h-3 w-3" />{s}
+          <CheckCircle2 className="h-3 w-3" />{toneStrengthLine(s)}
         </span>
       ))}
     </div>
@@ -147,7 +152,7 @@ export function WowPanel({
   const isDecisive = isStrong || isSolid;
 
   // In decisive cases, the header label is more assertive
-  const headerLabel = isStrong ? "Analisi Forte" : isSolid ? "Analisi Discreta" : "Snapshot Immediato";
+  const headerLabel = caseResult ? toneCaseStrengthLabel(caseResult.identity.overall_case_strength) : "Snapshot immediato";
 
   // Border color boost for strong cases
   const borderCls = isStrong
@@ -225,7 +230,7 @@ export function WowPanel({
           <span className={cn(
             "text-[10px] leading-relaxed",
             isStrong ? "text-muted-foreground/60" : "text-muted-foreground",
-          )}>{snapshot.limite_principale}</span>
+          )}>{toneLimiteLabel(snapshot.limite_principale)}</span>
         </div>
       </div>
 
@@ -239,7 +244,7 @@ export function WowPanel({
             <p className={cn(
               "text-sm font-bold mt-0.5",
               isDecisive && snapshot.affidabilita_valore === "Alta" ? "text-emerald-400" : "text-foreground",
-            )}>{snapshot.affidabilita_valore}</p>
+            )}>{toneReliabilityLabel(snapshot.affidabilita_valore)}</p>
           </div>
           {snapshot.costo_ristrutturazione ? (
             <div className="rounded-xl bg-background/60 border border-border/40 p-3">
@@ -259,7 +264,7 @@ export function WowPanel({
         <div className="flex items-center gap-2">
           <TrendingUp className="h-3.5 w-3.5 text-primary/50 shrink-0" />
           <span className="text-[11px] text-muted-foreground">Segnali zona:</span>
-          <span className="text-[11px] font-semibold text-foreground">{snapshot.segnali_zona}</span>
+          <span className="text-[11px] font-semibold text-foreground">{toneSegnaliLabel(snapshot.segnali_zona)}</span>
         </div>
 
         {/* ── Micro-riga contestuale ── */}
