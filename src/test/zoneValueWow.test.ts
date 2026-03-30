@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { buildZoneValue, valueNarrativeMode } from "@/lib/zoneValueEngine";
 import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
 import { buildWowSnapshot } from "@/lib/sottraWowSnapshot";
+import { evaluateStrongCase } from "@/lib/strongCaseEvaluator";
 import type { TerritorialDataResult } from "@/lib/territorialDataBackbone";
 import type { ZoneCorrespondenceResult } from "@/lib/zoneCorrespondenceEngine";
 import type { ZoneGrowthSignalsResult } from "@/lib/zoneGrowthSignals";
