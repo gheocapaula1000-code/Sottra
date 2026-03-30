@@ -1598,7 +1598,7 @@ const Result = () => {
           confidence: identifyData.confidence ?? 0.5,
         } : null,
       });
-      return { snapshot: buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any, specificity_strength: hDiff.specificity.specificity_strength }), houseDiff: hDiff };
+      return { snapshot: buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any, specificity_strength: hDiff.specificity.specificity_strength, specificity_status: hDiff.specificity.specificity_status }), houseDiff: hDiff };
     } catch { return null; }
   })();
 
