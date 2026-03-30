@@ -185,7 +185,9 @@ export function buildZoneValue(input: ValueEngineInput): ZoneValueResult {
   else if (basisType === "comunale") marketSupport = "limited";
   else marketSupport = "unavailable";
 
-  const comuneOnlyBias = basisType === "comunale" || basisType === "fallback";
+  // comune_only_bias is true ONLY when the actual data basis is comunale or fallback
+  // If omiGeoLevel indicates a fine zone (zona_specifica, quartiere, microzona_omi), bias is false
+  const comuneOnlyBias = (basisType === "comunale" || basisType === "fallback") && omiGeoLevel !== "zona_specifica" && omiGeoLevel !== "quartiere" && omiGeoLevel !== "microzona_omi";
   const localSupport = basisType === "microzona_omi" || basisType === "zona_omi";
 
   // ── Reliability ──
