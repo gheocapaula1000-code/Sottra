@@ -87,7 +87,7 @@ export function buildSottraExportPayload(input: SottraExportInput): CommercialBr
     attention_area: attentionMap[input.wow.attenzione_area] ?? "insufficient",
     main_limit: input.wow.limite_principale,
     fallback_weight: input.fallback_weight ?? "medium",
-    false_specificity_risk: input.house_diff?.specificity.false_specificity_risk ?? false,
+    false_specificity_risk: input.house_diff?.specificity.false_specificity_risk !== "low",
   };
 
   // Parse value range from wow snapshot
