@@ -88,9 +88,9 @@ function StatusChip({ label, value, variant }: { label: string; value: string; v
 
 function fallbackLabel(snapshot: WowSnapshot): { text: string; variant: "positive" | "neutral" | "warning" | "muted" } {
   const aff = snapshot.affidabilita_valore;
-  if (aff === "Alta") return { text: "Basso", variant: "positive" };
-  if (aff === "Media") return { text: "Medio", variant: "neutral" };
-  if (aff === "Bassa") return { text: "Alto", variant: "warning" };
+  if (aff === "Alta") return { text: "Contenuto", variant: "positive" };
+  if (aff === "Media") return { text: "Presente", variant: "neutral" };
+  if (aff === "Bassa") return { text: "Rilevante", variant: "warning" };
   return { text: "Non det.", variant: "muted" };
 }
 
