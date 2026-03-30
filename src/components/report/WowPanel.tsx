@@ -43,7 +43,7 @@ function AttentionBadge({ signal }: { signal: AttentionSignal }) {
       attentionSignalColor(signal),
     )}>
       {signal === "high" && <ArrowUpRight className="h-3 w-3" />}
-      {attentionSignalLabel(signal)}
+      {toneAttentionLabel(signal)}
     </span>
   );
 }
