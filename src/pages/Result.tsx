@@ -251,31 +251,70 @@ function HouseDifferentiationCard({ diff, loading }: { diff: HouseDifferentiatio
 
       <p className="text-xs text-foreground mb-3">{differentiationStatusLabel(diff.specificity.specificity_status)}</p>
 
-      {/* Separation */}
-      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-        <div>
-          <span className="text-muted-foreground">Separazione</span>
-          <p className="font-semibold text-foreground text-[11px]">{separationLabel(diff.specificity.house_vs_adjacent_separation)}</p>
+      {/* Sub-blocks: Facade, Address, Adjacent risk, Result */}
+      <div className="space-y-2 mb-3">
+        {/* Facciata e fronte */}
+        <div className="rounded-lg bg-background/30 border border-border/20 px-3 py-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Facciata e fronte edificio</p>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Facciata</span>
+            <span className="font-medium text-foreground">{diff.visual_signals.facade_detected ? "Rilevata" : "Non rilevata"}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Fronte chiaro</span>
+            <span className="font-medium text-foreground">{diff.visual_signals.frontage_detected ? "Sì" : "No"}</span>
+          </div>
+          {diff.visual_signals.structure.single_facade_likelihood !== "not_determinable" && (
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">Facciata singola</span>
+              <span className={cn("font-medium",
+                diff.visual_signals.structure.single_facade_likelihood === "strong" ? "text-emerald-400" :
+                diff.visual_signals.structure.single_facade_likelihood === "medium" ? "text-primary" : "text-amber-400"
+              )}>{diff.visual_signals.structure.single_facade_likelihood === "strong" ? "Probabile" : diff.visual_signals.structure.single_facade_likelihood === "medium" ? "Possibile" : "Poco probabile"}</span>
+            </div>
+          )}
         </div>
-        <div>
-          <span className="text-muted-foreground">Claim massimo</span>
-          <p className="font-semibold text-foreground text-[11px]">
-            {diff.specificity.max_safe_claim_level === "building_candidate" ? "Candidato edificio" :
-             diff.specificity.max_safe_claim_level === "address_area" ? "Area indirizzo" : "Solo zona"}
-          </p>
+
+        {/* Coerenza via/civico */}
+        <div className="rounded-lg bg-background/30 border border-border/20 px-3 py-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Coerenza con via/civico</p>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Via</span>
+            <span className="font-medium text-foreground">{diff.address_alignment.street_support_status === "official" ? "Ufficiale" : diff.address_alignment.street_support_status === "none" ? "Non disponibile" : "Parziale"}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Civico</span>
+            <span className="font-medium text-foreground">{diff.address_alignment.civic_support_status === "official" ? "Ufficiale" : diff.address_alignment.civic_support_status === "none" ? "Non disponibile" : "Parziale"}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Allineamento</span>
+            <span className={cn("font-medium",
+              diff.address_alignment.diagnostics.overall_alignment_status === "high_alignment" ? "text-emerald-400" :
+              diff.address_alignment.diagnostics.overall_alignment_status === "medium_alignment" ? "text-primary" :
+              diff.address_alignment.diagnostics.overall_alignment_status === "conflicting_alignment" ? "text-destructive" : "text-amber-400"
+            )}>{diff.address_alignment.diagnostics.overall_alignment_status === "high_alignment" ? "Alto" :
+                diff.address_alignment.diagnostics.overall_alignment_status === "medium_alignment" ? "Medio" :
+                diff.address_alignment.diagnostics.overall_alignment_status === "conflicting_alignment" ? "Conflitto" : "Basso"}</span>
+          </div>
+        </div>
+
+        {/* Rischio confusione adiacenti */}
+        <div className="rounded-lg bg-background/30 border border-border/20 px-3 py-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Rischio confusione con adiacenti</p>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Separazione</span>
+            <span className="font-medium text-foreground text-right">{separationLabel(diff.specificity.house_vs_adjacent_separation)}</span>
+          </div>
+          {diff.visual_signals.context_separation.likely_adjacent_building_confusion !== "not_determinable" && (
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">Confusione probabile</span>
+              <span className={cn("font-medium",
+                diff.visual_signals.context_separation.likely_adjacent_building_confusion === "strong" ? "text-amber-400" : "text-primary"
+              )}>{diff.visual_signals.context_separation.likely_adjacent_building_confusion === "strong" ? "Alta" : "Moderata"}</span>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Visual notes */}
-      {diff.visual_signals.visual_notes.length > 0 && (
-        <div className="space-y-1 mb-3">
-          {diff.visual_signals.visual_notes.map((n, i) => (
-            <p key={i} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
-              <Eye className="h-3 w-3 mt-0.5 shrink-0 text-primary/50" />{n}
-            </p>
-          ))}
-        </div>
-      )}
 
       {/* Limitations */}
       {diff.summary.limitations.slice(0, 2).map((l, i) => (
