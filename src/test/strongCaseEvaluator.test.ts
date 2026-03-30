@@ -113,6 +113,7 @@ describe("strongCaseEvaluator", () => {
       snapshot: baseSnapshot({
         affidabilita_valore: "Bassa",
         limite_principale: "Lettura ancora a livello comunale",
+        valore_zona_fine: false,
       }),
     }));
     expect(r.limiters.comune_only_bias).toBe(true);
