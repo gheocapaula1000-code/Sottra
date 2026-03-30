@@ -18,8 +18,13 @@ import {
   MapPin, Eye, ShieldCheck, ArrowUpRight, CheckCircle2,
 } from "lucide-react";
 import type { WowSnapshot, AttentionSignal, SpecificityLabel } from "@/lib/sottraWowSnapshot";
-import { attentionSignalLabel, attentionSignalColor } from "@/lib/sottraWowSnapshot";
+import { attentionSignalColor } from "@/lib/sottraWowSnapshot";
 import type { OverallCaseStrength, StrongCaseResult } from "@/lib/strongCaseEvaluator";
+import {
+  toneAttentionLabel, toneSpecificityLabel, toneReliabilityLabel,
+  toneCaseStrengthLabel, toneStrengthLine, toneLimiteLabel,
+  toneSegnaliLabel,
+} from "@/lib/reportToneMap";
 
 /* ── Attention badge ─────────────────────────────────── */
 
