@@ -205,10 +205,10 @@ export function evaluateStrongCase(input: StrongCaseInput): StrongCaseResult {
 
 export function caseStrengthLabel(s: OverallCaseStrength): string {
   const m: Record<OverallCaseStrength, string> = {
-    strong_case: "Lettura solida",
-    solid_case: "Lettura discreta",
-    mixed_case: "Quadro misto",
-    weak_case: "Elementi limitati",
+    strong_case: "Analisi solida",
+    solid_case: "Analisi discreta",
+    mixed_case: "Quadro composito",
+    weak_case: "Quadro da consolidare",
   };
   return m[s];
 }
