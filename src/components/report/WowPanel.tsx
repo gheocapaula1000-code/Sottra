@@ -192,7 +192,15 @@ export function WowPanel({
         <div className="flex items-end justify-between gap-3 flex-wrap">
           {snapshot.valore_al_mq ? (
             <div>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Valore al m²</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Valore al m²</span>
+                {snapshot.valore_zona_fine && (
+                  <span className="text-[9px] text-emerald-400/80 font-medium">· {snapshot.livello_valore}</span>
+                )}
+                {!snapshot.valore_zona_fine && snapshot.livello_valore && (
+                  <span className="text-[9px] text-amber-400/80 font-medium">· {snapshot.livello_valore}</span>
+                )}
+              </div>
               <span className={cn(
                 "text-2xl sm:text-3xl font-extrabold leading-none",
                 isStrong ? "text-emerald-400" : "text-foreground",
