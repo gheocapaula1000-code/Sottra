@@ -266,3 +266,75 @@ describe("CommercialReportPolish", () => {
     expect(READINESS_STATE.device_tested).toBe(false);
   });
 });
+
+/* ═══════════════════════════════════════════════════════════
+   GEO PRIORITY ENFORCEMENT TESTS
+   ═══════════════════════════════════════════════════════════ */
+
+describe("GeoPriorityEnforcement", () => {
+  it("microzona available → primary_basis_level is zona_omi, not comune", () => {
+    const r = buildZoneValue({ data: stubTerritorial(), corr: stubCorr(), omiMin: 2800, omiMax: 3500, omiGeoLevel: "microzona_omi", omiPolygonMatch: true });
+    expect(r.value_result.primary_basis_level).toBe("zona_omi");
+    expect(r.value_quality.comune_only_bias).toBe(false);
+    expect(r.value_identity.value_basis_type).toBe("microzona_omi");
+  });
+
+  it("zona_specifica available → primary_basis_level is zona_omi, not comune", () => {
+    const r = buildZoneValue({ data: stubTerritorial(), corr: stubCorr(), omiMin: 2000, omiMax: 3000, omiGeoLevel: "zona_specifica" });
+    expect(r.value_result.primary_basis_level).toBe("zona_omi");
+    expect(r.value_quality.comune_only_bias).toBe(false);
+    expect(r.value_identity.value_basis_type).toBe("zona_omi");
+  });
+
+  it("comunale-only OMI → primary_basis_level is comune", () => {
+    const r = buildZoneValue({ data: stubTerritorial("comune"), corr: stubCorr("medium"), omiMin: 1800, omiMax: 2500, omiGeoLevel: "comune" });
+    expect(r.value_result.primary_basis_level).toBe("comune");
+    expect(r.value_quality.comune_only_bias).toBe(true);
+  });
+
+  it("snapshot with microzona does not say 'comunale' in limite_principale", () => {
+    const value = buildZoneValue({ data: stubTerritorial(), corr: stubCorr(), omiMin: 2800, omiMax: 3500, omiGeoLevel: "microzona_omi", omiPolygonMatch: true });
+    const reno = buildRenovationEstimate({ zone_geo_code: "015146", zone_geo_level: "zona_omi", hasPhoto: true });
+    const snap = buildWowSnapshot({ value, renovation: reno, growth: stubGrowth(), corr: stubCorr() });
+    expect(snap.limite_principale).not.toContain("comunale");
+    expect(snap.valore_zona_fine).toBe(true);
+    expect(snap.livello_valore).toContain("Microzona");
+  });
+
+  it("snapshot with comunale-only correctly flags comunale in limit", () => {
+    const comuneCorr = {
+      ...stubCorr("high"),
+      zone_identity: { ...stubCorr("high").zone_identity, geo_level_reale: "comune" as const },
+      zone_correspondence: { ...stubCorr("high").zone_correspondence, corresponds_to_comune_only: true },
+    };
+    const value = buildZoneValue({ data: stubTerritorial("comune"), corr: comuneCorr as any, omiMin: 1800, omiMax: 2500, omiGeoLevel: "comune" });
+    const reno = buildRenovationEstimate({ zone_geo_code: "015146", zone_geo_level: "comune", hasPhoto: true });
+    const snap = buildWowSnapshot({ value, renovation: reno, growth: stubGrowth("weak"), corr: comuneCorr as any });
+    expect(snap.limite_principale).toContain("comunale");
+    expect(snap.valore_zona_fine).toBe(false);
+  });
+
+  it("strong case evaluator does not penalize for comune_only_bias when zone is fine", () => {
+    const { evaluateStrongCase } = require("@/lib/strongCaseEvaluator");
+    const fineSnap = buildWowSnapshot({
+      value: buildZoneValue({ data: stubTerritorial(), corr: stubCorr(), omiMin: 2800, omiMax: 3500, omiGeoLevel: "microzona_omi", omiPolygonMatch: true }),
+      renovation: buildRenovationEstimate({ zone_geo_code: "015146", zone_geo_level: "zona_omi", hasPhoto: true, facadeConsistencyLevel: "good" }),
+      growth: stubGrowth("supportive"),
+      corr: stubCorr(),
+      specificity_strength: "strong",
+    });
+    const result = evaluateStrongCase({
+      snapshot: fineSnap,
+      house_specificity_strength: "strong",
+      alignment_status: "high_alignment",
+      outlook_status: "supportive",
+      boundary_available: true,
+    });
+    expect(result.limiters.comune_only_bias).toBe(false);
+  });
+
+  it("value engine sets secondary_basis_level to null for fine-zone primary", () => {
+    const r = buildZoneValue({ data: stubTerritorial(), corr: stubCorr(), omiMin: 2800, omiMax: 3500, omiGeoLevel: "microzona_omi", omiPolygonMatch: true });
+    expect(r.value_result.secondary_basis_level).toBeNull();
+  });
+});
