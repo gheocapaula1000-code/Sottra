@@ -230,7 +230,7 @@ export function WowPanel({
           <span className={cn(
             "text-[10px] leading-relaxed",
             isStrong ? "text-muted-foreground/60" : "text-muted-foreground",
-          )}>{snapshot.limite_principale}</span>
+          )}>{toneLimiteLabel(snapshot.limite_principale)}</span>
         </div>
       </div>
 
