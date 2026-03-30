@@ -225,7 +225,7 @@ export function buildZoneValue(input: ValueEngineInput): ZoneValueResult {
       fallback_weight: fallbackWeight,
       false_specificity_risk: falseSpecRisk,
       primary_basis_level: geoLevel,
-      secondary_basis_level: comuneOnlyBias ? null : (basisType === "comunale" || basisType === "fallback") ? "comune" : null,
+      secondary_basis_level: geoLevel !== "comune" && geoLevel !== "non_determinato" ? "comune" : null,
     },
     value_quality: {
       market_support_status: marketSupport,
