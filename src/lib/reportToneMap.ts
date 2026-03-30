@@ -158,6 +158,24 @@ export function toneLimiteLabel(raw: string): string {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   PRIMARY / SECONDARY ZONE BASIS LABELS
+   ═══════════════════════════════════════════════════════════ */
+
+export function tonePrimaryBasisLabel(level: string | null | undefined): string {
+  if (!level) return "Non disponibile";
+  if (level === "zona_omi") return "Valore riferito alla zona reale";
+  if (level === "sub_comunale") return "Lettura principale sub-comunale";
+  if (level === "comune") return "Riferimento comunale";
+  return level;
+}
+
+export function toneSecondaryBasisLabel(level: string | null | undefined): string {
+  if (!level) return "";
+  if (level === "comune") return "Contesto comunale di confronto";
+  return `Riferimento più ampio: ${level}`;
+}
+
+/* ═══════════════════════════════════════════════════════════
    SEGNALI ZONA
    ═══════════════════════════════════════════════════════════ */
 
