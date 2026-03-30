@@ -25,6 +25,10 @@ export type SpecificityLabel = "Alta" | "Medio-alta" | "Media" | "Bassa" | "Non 
 export interface WowSnapshot {
   zona_reale: string;
   livello_lettura: string;
+  /** Label describing the geographic level of the value shown */
+  livello_valore: string;
+  /** Whether value is based on a fine zone (not just comune) */
+  valore_zona_fine: boolean;
   valore_al_mq: string | null;
   valore_range: string | null;
   affidabilita_valore: string;
