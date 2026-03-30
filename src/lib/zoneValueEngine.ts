@@ -40,6 +40,10 @@ export interface ValueResult {
   fallback_used: boolean;
   fallback_weight: "none" | "low" | "medium" | "high";
   false_specificity_risk: "none" | "low" | "medium" | "high";
+  /** The finest level actually used as primary data basis */
+  primary_basis_level: CanonicalGeoLevel;
+  /** Secondary/fallback level used, null if none */
+  secondary_basis_level: CanonicalGeoLevel | null;
 }
 
 export interface ValueQuality {
