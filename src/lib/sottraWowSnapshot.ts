@@ -195,10 +195,10 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
 
 export function attentionSignalLabel(s: AttentionSignal): string {
   const m: Record<AttentionSignal, string> = {
-    high: "Merita attenzione",
-    medium: "Da valutare",
-    low: "Elementi limitati",
-    insufficient: "Dati insufficienti",
+    high: "Prioritaria",
+    medium: "Interessante",
+    low: "Selettiva",
+    insufficient: "Da verificare",
   };
   return m[s];
 }
