@@ -158,14 +158,20 @@ export function buildWowSnapshot(input: WowSnapshotInput): WowSnapshot {
     narrativeMode = "partial";
   }
 
-  // ── Specificity label ──
-  const specMap: Record<string, SpecificityLabel> = {
-    strong: "Alta",
-    medium: "Media",
-    weak: "Bassa",
-    insufficient: "Non sufficiente",
-  };
-  const specLabel: SpecificityLabel | null = specificity_strength ? (specMap[specificity_strength] ?? null) : null;
+  // ── Specificity label — finer 5-level mapping ──
+  let specLabel: SpecificityLabel | null = null;
+  if (specificity_strength) {
+    if (specificity_strength === "strong") {
+      specLabel = "Alta";
+    } else if (specificity_strength === "medium") {
+      // Distinguish "Medio-alta" from "Media" using status
+      specLabel = specificity_status === "building_candidate_with_limited_ambiguity" ? "Medio-alta" : "Media";
+    } else if (specificity_strength === "weak") {
+      specLabel = "Bassa";
+    } else {
+      specLabel = "Non sufficiente";
+    }
+  }
 
   return {
     zona_reale: corr.zone_identity.geo_label,
