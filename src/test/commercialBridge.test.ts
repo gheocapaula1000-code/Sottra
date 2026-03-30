@@ -16,6 +16,8 @@ import type { HouseDifferentiationResult } from "@/lib/houseDifferentiationEngin
 const mockWow: WowSnapshot = {
   zona_reale: "Zona B1 — Centro",
   livello_lettura: "Microzona OMI",
+  livello_valore: "Microzona OMI",
+  valore_zona_fine: true,
   valore_al_mq: "€ 2.500",
   valore_range: "€ 2.200 – € 2.800",
   affidabilita_valore: "Buona affidabilità",

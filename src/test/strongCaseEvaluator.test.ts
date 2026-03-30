@@ -6,6 +6,8 @@ function baseSnapshot(overrides: Partial<WowSnapshot> = {}): WowSnapshot {
   return {
     zona_reale: "Centro Storico",
     livello_lettura: "Microzona OMI",
+    livello_valore: "Microzona OMI",
+    valore_zona_fine: true,
     valore_al_mq: "€ 2.500",
     valore_range: "€ 2.000 – € 3.000",
     affidabilita_valore: "Alta",
