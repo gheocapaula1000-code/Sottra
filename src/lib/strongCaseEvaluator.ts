@@ -129,7 +129,7 @@ export function evaluateStrongCase(input: StrongCaseInput): StrongCaseResult {
   // ── Limiters ──
   const limiters: StrongCaseLimiters = {
     missing_boundary: !boundary_available,
-    comune_only_bias: snapshot.affidabilita_valore === "Bassa" || snapshot.limite_principale.includes("comunale"),
+    comune_only_bias: !snapshot.valore_zona_fine && (snapshot.affidabilita_valore === "Bassa" || snapshot.limite_principale.includes("comunale")),
     weak_house_alignment: alignment_status === "low_alignment" || alignment_status === "conflicting_alignment" || alignment_status === "insufficient_alignment",
     fallback_dominant: fallback_penalty === "high",
     insufficient_signal_depth: zone_strength === "insufficient" || value_strength === "insufficient",
