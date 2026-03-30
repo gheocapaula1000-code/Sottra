@@ -12,6 +12,7 @@ import {
   narrativeModeLabel,
   type HouseDifferentiationResult,
   type HouseDifferentiationInput,
+  type SignalStrength,
 } from "@/lib/houseDifferentiationEngine";
 import { cn } from "@/lib/utils";
 
@@ -24,10 +25,16 @@ function Field({ label, value, className }: { label: string; value: string; clas
   );
 }
 
+function SignalRow({ label, value }: { label: string; value: SignalStrength }) {
+  const color = value === "strong" ? "text-emerald-400" : value === "medium" ? "text-primary" : value === "weak" ? "text-amber-400" : "text-muted-foreground";
+  return <Field label={label} value={value} className={color} />;
+}
+
 export default function AdminHouseDifferentiation() {
   const [confidence, setConfidence] = useState("0.75");
   const [facadeVisible, setFacadeVisible] = useState(true);
   const [civicVisible, setCivicVisible] = useState(true);
+  const [entranceVisible, setEntranceVisible] = useState(false);
   const [neighboringVisible, setNeighboringVisible] = useState(false);
   const [officialStreet, setOfficialStreet] = useState(true);
   const [officialCivic, setOfficialCivic] = useState(true);
@@ -60,7 +67,7 @@ export default function AdminHouseDifferentiation() {
       identify_hints: {
         confidence: parseFloat(confidence) || 0.5,
         facade_visible: facadeVisible,
-        entrance_visible: false,
+        entrance_visible: entranceVisible,
         civic_visible: civicVisible,
         neighboring_visible: neighboringVisible,
       },
@@ -88,20 +95,21 @@ export default function AdminHouseDifferentiation() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {[
+            {([
               ["Facciata", facadeVisible, setFacadeVisible],
               ["Civico", civicVisible, setCivicVisible],
+              ["Ingresso", entranceVisible, setEntranceVisible],
               ["Adiacenti", neighboringVisible, setNeighboringVisible],
               ["ANNCSU via", officialStreet, setOfficialStreet],
               ["ANNCSU civico", officialCivic, setOfficialCivic],
-            ].map(([label, val, setter]) => (
+            ] as [string, boolean, (v: boolean) => void][]).map(([label, val, setter]) => (
               <Badge
-                key={label as string}
-                variant={(val as boolean) ? "default" : "secondary"}
+                key={label}
+                variant={val ? "default" : "secondary"}
                 className="cursor-pointer text-[10px]"
-                onClick={() => (setter as (v: boolean) => void)(!(val as boolean))}
+                onClick={() => setter(!val)}
               >
-                {label as string}: {(val as boolean) ? "Sì" : "No"}
+                {label}: {val ? "Sì" : "No"}
               </Badge>
             ))}
           </div>
@@ -123,27 +131,52 @@ export default function AdminHouseDifferentiation() {
               <Field label="Zona dominante" value={r.summary.still_zone_dominant ? "Sì" : "No"} />
             </div>
 
-            {/* Visual */}
+            {/* Boosted Structure Signals */}
             <div className="rounded-xl border border-border/60 bg-card p-4 space-y-1">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Segnali visivi</p>
-              <Field label="Facciata" value={r.visual_signals.facade_detected ? "Rilevata" : "Non rilevata"} />
-              <Field label="Fronte strada" value={r.visual_signals.frontage_detected ? "Rilevato" : "Non rilevato"} />
-              <Field label="Civico visibile" value={r.visual_signals.civic_visibility_status} />
-              <Field label="Ingresso" value={r.visual_signals.entrance_visibility_status} />
-              <Field label="Edifici adiacenti" value={r.visual_signals.neighboring_buildings_presence} />
-              <Field label="Unicità visiva" value={r.visual_signals.visual_uniqueness_status} />
-              <Field label="Edge confidence" value={r.visual_signals.building_edge_confidence.toFixed(2)} />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Segnali struttura</p>
+              <SignalRow label="Facciata singola" value={r.visual_signals.structure.single_facade_likelihood} />
+              <SignalRow label="Multi-facciata" value={r.visual_signals.structure.multi_facade_likelihood} />
+              <SignalRow label="Schiera continua" value={r.visual_signals.structure.continuous_building_row_presence} />
+              <SignalRow label="Edificio isolato" value={r.visual_signals.structure.detached_building_likelihood} />
+              <SignalRow label="Ingresso prominente" value={r.visual_signals.structure.entrance_prominence} />
+              <SignalRow label="Civico visibile" value={r.visual_signals.structure.civic_plate_visibility} />
+              <SignalRow label="Insegna/attività" value={r.visual_signals.structure.storefront_or_signage_presence} />
+              <SignalRow label="Chiarezza fronte" value={r.visual_signals.structure.frontage_clarity} />
             </div>
 
-            {/* Alignment */}
+            {/* Context Separation */}
             <div className="rounded-xl border border-border/60 bg-card p-4 space-y-1">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Allineamento</p>
-              <Field label="Via (supporto)" value={r.address_alignment.street_support_status} />
-              <Field label="Civico (supporto)" value={r.address_alignment.civic_support_status} />
-              <Field label="Foto ↔ indirizzo" value={r.address_alignment.photo_address_alignment} />
-              <Field label="Geo ↔ indirizzo" value={r.address_alignment.geo_address_alignment} />
-              <Field label="ANNCSU" value={r.address_alignment.anncsu_alignment_status} />
-              <Field label="Livello specificità" value={r.address_alignment.address_specificity_level} />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Separazione contesto</p>
+              <Field label="Adiacenti" value={r.visual_signals.context_separation.neighboring_buildings_count_hint} />
+              <SignalRow label="Confini L/R" value={r.visual_signals.context_separation.left_right_boundary_clarity} />
+              <Field label="Disordine contesto" value={r.visual_signals.context_separation.immediate_context_clutter} />
+              <SignalRow label="Focus visivo" value={r.visual_signals.context_separation.visual_focus_strength} />
+              <SignalRow label="Confusione adiacenti" value={r.visual_signals.context_separation.likely_adjacent_building_confusion} />
+            </div>
+
+            {/* Alignment Diagnostics */}
+            <div className="rounded-xl border border-border/60 bg-card p-4 space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Diagnostica allineamento</p>
+              <Field label="Foto ↔ Geo" value={r.address_alignment.diagnostics.photo_geo_alignment} />
+              <Field label="Foto ↔ Indirizzo" value={r.address_alignment.diagnostics.photo_address_alignment} />
+              <Field label="Geo ↔ Indirizzo" value={r.address_alignment.diagnostics.geo_address_alignment} />
+              <Field label="ANNCSU ↔ Foto" value={r.address_alignment.diagnostics.anncsu_photo_alignment} />
+              <Field label="Overall" value={r.address_alignment.diagnostics.overall_alignment_status} />
+              {r.address_alignment.diagnostics.alignment_conflict_flags.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-[10px] text-muted-foreground font-semibold">Conflitti:</p>
+                  {r.address_alignment.diagnostics.alignment_conflict_flags.map((f, i) => (
+                    <p key={i} className="text-[10px] text-amber-400">• {f}</p>
+                  ))}
+                </div>
+              )}
+              {r.address_alignment.diagnostics.alignment_notes.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {r.address_alignment.diagnostics.alignment_notes.map((n, i) => (
+                    <p key={i} className="text-[10px] text-muted-foreground">• {n}</p>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Limitations */}
