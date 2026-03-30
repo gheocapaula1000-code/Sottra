@@ -264,7 +264,7 @@ export function WowPanel({
         <div className="flex items-center gap-2">
           <TrendingUp className="h-3.5 w-3.5 text-primary/50 shrink-0" />
           <span className="text-[11px] text-muted-foreground">Segnali zona:</span>
-          <span className="text-[11px] font-semibold text-foreground">{snapshot.segnali_zona}</span>
+          <span className="text-[11px] font-semibold text-foreground">{toneSegnaliLabel(snapshot.segnali_zona)}</span>
         </div>
 
         {/* ── Micro-riga contestuale ── */}
