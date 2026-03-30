@@ -130,11 +130,24 @@ export function buildZoneValue(input: ValueEngineInput): ZoneValueResult {
     geoLevel = "zona_omi";
     scopeLabel = `Zona OMI (${omiGeoLevel === "zona_specifica" ? "specifica" : "quartiere"})`;
     sourceBasis = "Quotazione OMI zona";
-  } else if (hasOmiPricing) {
+  } else if (hasOmiPricing && omiGeoLevel === "comune") {
     basisType = "comunale";
     geoLevel = "comune";
     scopeLabel = "Valore comunale OMI";
     sourceBasis = "Quotazione OMI a livello comunale";
+  } else if (hasOmiPricing) {
+    // omiGeoLevel unknown or non_determinato but pricing exists — check if polygon match hints at fine zone
+    if (omiPolygonMatch) {
+      basisType = "zona_omi";
+      geoLevel = "zona_omi";
+      scopeLabel = "Zona OMI";
+      sourceBasis = "Quotazione OMI zona con match poligono";
+    } else {
+      basisType = "comunale";
+      geoLevel = "comune";
+      scopeLabel = "Valore comunale OMI";
+      sourceBasis = "Quotazione OMI a livello comunale";
+    }
   } else if (hasOmi) {
     basisType = "fallback";
     geoLevel = "comune";
