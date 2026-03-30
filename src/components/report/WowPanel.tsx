@@ -6,17 +6,20 @@
  *  Tier 2 (15s) — affidabilità, costi ristr., segnali, outlook micro-riga
  *  Tier 3       — detail sections below (handled by parent)
  *
- * No engine changes. Presentation only.
+ * Strong-case boost: when the evaluator says strong/solid, the panel
+ * renders with more decisive language & visual emphasis while keeping
+ * the limite_principale always visible.
  */
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertTriangle, Zap, Wrench, TrendingUp,
-  MapPin, Eye, ShieldCheck, ArrowUpRight,
+  MapPin, Eye, ShieldCheck, ArrowUpRight, CheckCircle2,
 } from "lucide-react";
 import type { WowSnapshot, AttentionSignal, SpecificityLabel } from "@/lib/sottraWowSnapshot";
 import { attentionSignalLabel, attentionSignalColor } from "@/lib/sottraWowSnapshot";
+import type { OverallCaseStrength, StrongCaseResult } from "@/lib/strongCaseEvaluator";
 
 /* ── Attention badge ─────────────────────────────────── */
 
@@ -86,6 +89,21 @@ function fallbackLabel(snapshot: WowSnapshot): { text: string; variant: "positiv
   return { text: "Non det.", variant: "muted" };
 }
 
+/* ── Strong-case strength highlights ─────────────────── */
+
+function StrengthHighlights({ strengths }: { strengths: string[] }) {
+  if (strengths.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-2">
+      {strengths.slice(0, 3).map((s, i) => (
+        <span key={i} className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+          <CheckCircle2 className="h-3 w-3" />{s}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /* ── Exported panel ──────────────────────────────────── */
 
 export interface WowPanelProps {
@@ -100,6 +118,8 @@ export interface WowPanelProps {
   /** Optional boundary label */
   boundaryLabel?: string | null;
   boundaryVariant?: "positive" | "neutral" | "warning" | "muted";
+  /** Strong case evaluation result */
+  caseResult?: StrongCaseResult | null;
 }
 
 export function WowPanel({
@@ -107,6 +127,7 @@ export function WowPanel({
   outlookLabel, outlookVariant = "muted",
   alignmentLabel, alignmentVariant = "muted",
   boundaryLabel, boundaryVariant = "muted",
+  caseResult,
 }: WowPanelProps) {
   if (loading) {
     return (
@@ -121,18 +142,37 @@ export function WowPanel({
 
   const isPartial = snapshot.narrative_mode === "partial";
   const fb = fallbackLabel(snapshot);
+  const isStrong = caseResult?.identity.overall_case_strength === "strong_case";
+  const isSolid = caseResult?.identity.overall_case_strength === "solid_case";
+  const isDecisive = isStrong || isSolid;
+
+  // In decisive cases, the header label is more assertive
+  const headerLabel = isStrong ? "Analisi Forte" : isSolid ? "Analisi Discreta" : "Snapshot Immediato";
+
+  // Border color boost for strong cases
+  const borderCls = isStrong
+    ? "border-emerald-500/30"
+    : isSolid
+      ? "border-primary/25"
+      : "border-primary/20";
+  const gradientCls = isStrong
+    ? "from-emerald-500/8 to-transparent"
+    : "from-primary/5 to-transparent";
 
   return (
-    <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent overflow-hidden">
+    <div className={cn("rounded-2xl border bg-gradient-to-br overflow-hidden", borderCls, gradientCls)}>
 
       {/* ═══ TIER 1 — Colpo d'occhio (3 seconds) ═══ */}
       <div className="px-5 pt-5 pb-4">
         {/* Header row */}
         <div className="flex items-center gap-2 mb-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15">
-            <Zap className="h-3.5 w-3.5 text-primary" />
+          <div className={cn(
+            "flex h-7 w-7 items-center justify-center rounded-lg",
+            isStrong ? "bg-emerald-500/15" : "bg-primary/15",
+          )}>
+            <Zap className={cn("h-3.5 w-3.5", isStrong ? "text-emerald-400" : "text-primary")} />
           </div>
-          <span className="font-semibold text-foreground text-sm tracking-tight">Snapshot Immediato</span>
+          <span className="font-semibold text-foreground text-sm tracking-tight">{headerLabel}</span>
           {isPartial && <Badge variant="secondary" className="text-[9px] py-0">Parziale</Badge>}
         </div>
 
@@ -148,7 +188,10 @@ export function WowPanel({
           {snapshot.valore_al_mq ? (
             <div>
               <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Valore al m²</span>
-              <span className="text-2xl sm:text-3xl font-extrabold text-foreground leading-none">{snapshot.valore_al_mq}</span>
+              <span className={cn(
+                "text-2xl sm:text-3xl font-extrabold leading-none",
+                isStrong ? "text-emerald-400" : "text-foreground",
+              )}>{snapshot.valore_al_mq}</span>
               {snapshot.valore_range && (
                 <span className="text-[10px] text-muted-foreground block mt-0.5">{snapshot.valore_range}</span>
               )}
@@ -165,10 +208,24 @@ export function WowPanel({
           </div>
         </div>
 
-        {/* Limite principale — ALWAYS visible */}
-        <div className="flex items-start gap-1.5 mt-3 rounded-lg bg-background/40 border border-border/30 px-3 py-2">
-          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0 text-amber-400/70" />
-          <span className="text-[10px] text-muted-foreground leading-relaxed">{snapshot.limite_principale}</span>
+        {/* Strength highlights — only for decisive cases */}
+        {isDecisive && caseResult && <StrengthHighlights strengths={caseResult.strengths} />}
+
+        {/* Limite principale — ALWAYS visible, but visually secondary in strong cases */}
+        <div className={cn(
+          "flex items-start gap-1.5 mt-3 rounded-lg border px-3 py-2",
+          isStrong
+            ? "bg-background/20 border-border/20"
+            : "bg-background/40 border-border/30",
+        )}>
+          <AlertTriangle className={cn(
+            "h-3 w-3 mt-0.5 shrink-0",
+            isStrong ? "text-muted-foreground/50" : "text-amber-400/70",
+          )} />
+          <span className={cn(
+            "text-[10px] leading-relaxed",
+            isStrong ? "text-muted-foreground/60" : "text-muted-foreground",
+          )}>{snapshot.limite_principale}</span>
         </div>
       </div>
 
@@ -179,7 +236,10 @@ export function WowPanel({
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-background/60 border border-border/40 p-3">
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Affidabilità</span>
-            <p className="text-sm font-bold text-foreground mt-0.5">{snapshot.affidabilita_valore}</p>
+            <p className={cn(
+              "text-sm font-bold mt-0.5",
+              isDecisive && snapshot.affidabilita_valore === "Alta" ? "text-emerald-400" : "text-foreground",
+            )}>{snapshot.affidabilita_valore}</p>
           </div>
           {snapshot.costo_ristrutturazione ? (
             <div className="rounded-xl bg-background/60 border border-border/40 p-3">
