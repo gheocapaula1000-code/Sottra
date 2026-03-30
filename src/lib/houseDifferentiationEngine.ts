@@ -441,7 +441,7 @@ function buildAddressAlignment(
     anncsuPhotoAlign = "high_alignment";
   } else if (anncsu === "partial" && visual.facade_detected) {
     anncsuPhotoAlign = "medium_alignment";
-  } else if (anncsu !== "not_available" && anncsu !== "none") {
+  } else if (anncsu !== "none") {
     anncsuPhotoAlign = "low_alignment";
   }
 
