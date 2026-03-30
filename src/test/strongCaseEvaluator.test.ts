@@ -95,8 +95,8 @@ describe("strongCaseEvaluator", () => {
 
   it("strengths list is populated for strong case", () => {
     const r = evaluateStrongCase(baseInput());
-    expect(r.strengths).toContain("Valore con buona affidabilità");
-    expect(r.strengths).toContain("Zona letta con buona profondità");
+    expect(r.strengths).toContain("Valore affidabile");
+    expect(r.strengths).toContain("Lettura zona solida");
   });
 
   it("top_limiter present for fallback_dominant", () => {
