@@ -130,11 +130,24 @@ export function buildZoneValue(input: ValueEngineInput): ZoneValueResult {
     geoLevel = "zona_omi";
     scopeLabel = `Zona OMI (${omiGeoLevel === "zona_specifica" ? "specifica" : "quartiere"})`;
     sourceBasis = "Quotazione OMI zona";
-  } else if (hasOmiPricing) {
+  } else if (hasOmiPricing && omiGeoLevel === "comune") {
     basisType = "comunale";
     geoLevel = "comune";
     scopeLabel = "Valore comunale OMI";
     sourceBasis = "Quotazione OMI a livello comunale";
+  } else if (hasOmiPricing) {
+    // omiGeoLevel unknown or non_determinato but pricing exists — check if polygon match hints at fine zone
+    if (omiPolygonMatch) {
+      basisType = "zona_omi";
+      geoLevel = "zona_omi";
+      scopeLabel = "Zona OMI";
+      sourceBasis = "Quotazione OMI zona con match poligono";
+    } else {
+      basisType = "comunale";
+      geoLevel = "comune";
+      scopeLabel = "Valore comunale OMI";
+      sourceBasis = "Quotazione OMI a livello comunale";
+    }
   } else if (hasOmi) {
     basisType = "fallback";
     geoLevel = "comune";
@@ -172,7 +185,9 @@ export function buildZoneValue(input: ValueEngineInput): ZoneValueResult {
   else if (basisType === "comunale") marketSupport = "limited";
   else marketSupport = "unavailable";
 
-  const comuneOnlyBias = basisType === "comunale" || basisType === "fallback";
+  // comune_only_bias is true ONLY when the actual data basis is comunale or fallback
+  // If omiGeoLevel indicates a fine zone (zona_specifica, quartiere, microzona_omi), bias is false
+  const comuneOnlyBias = (basisType === "comunale" || basisType === "fallback") && omiGeoLevel !== "zona_specifica" && omiGeoLevel !== "quartiere" && omiGeoLevel !== "microzona_omi";
   const localSupport = basisType === "microzona_omi" || basisType === "zona_omi";
 
   // ── Reliability ──
@@ -210,7 +225,7 @@ export function buildZoneValue(input: ValueEngineInput): ZoneValueResult {
       fallback_weight: fallbackWeight,
       false_specificity_risk: falseSpecRisk,
       primary_basis_level: geoLevel,
-      secondary_basis_level: comuneOnlyBias ? null : (basisType === "comunale" || basisType === "fallback") ? "comune" : null,
+      secondary_basis_level: geoLevel !== "comune" && geoLevel !== "non_determinato" ? "comune" : null,
     },
     value_quality: {
       market_support_status: marketSupport,

@@ -226,8 +226,10 @@ export function buildZoneOutlook(
   urban: UrbanTransformationResult | null,
   attractors: AttractorPressureResult | null,
 ): ZoneOutlookResult {
-  const comuneOnly = corr.zone_correspondence.fallback_weight === "high"
-    || corr.zone_identity.geo_level_reale === "comune";
+  // comuneOnly is true ONLY when the actual geo level is comune — not just because fallback_weight is high
+  // A zona_omi with high fallback_weight is still a zone-level reading, not a comune reading
+  const comuneOnly = corr.zone_identity.geo_level_reale === "comune"
+    || corr.zone_identity.geo_level_reale === "non_determinato";
   const fbPenalty = corr.zone_correspondence.fallback_weight === "high" ? 0.25
     : corr.zone_correspondence.fallback_weight === "medium" ? 0.12
     : corr.zone_correspondence.fallback_weight === "low" ? 0.05

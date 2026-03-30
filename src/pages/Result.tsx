@@ -1577,14 +1577,15 @@ const Result = () => {
       const omiLevel = pricingData?.omiGeoLevel;
       const isMicrozona = omiLevel === "microzona_omi";
       const isZonaSpecifica = omiLevel === "zona_specifica" || omiLevel === "quartiere";
-      const isComuneLevel = omiLevel === "comune" || !omiLevel;
+      const isFineZone = isMicrozona || isZonaSpecifica;
+      const isComuneLevel = !isFineZone && (omiLevel === "comune" || !omiLevel);
       const zoneTypeLabel = isMicrozona ? "Microzona OMI" : isZonaSpecifica ? (omiLevel === "zona_specifica" ? "Zona OMI specifica" : "Zona OMI quartiere") : isComuneLevel ? "Livello comunale" : "Zona OMI";
-      const geoLevelReale = isMicrozona || isZonaSpecifica ? "zona_omi" as const : "comune" as const;
+      const geoLevelReale = isFineZone ? "zona_omi" as const : "comune" as const;
       const anchorStr = isMicrozona ? "strong" as const : isZonaSpecifica ? "medium" as const : "weak" as const;
       const precisionStr = isMicrozona ? "strong" as const : isZonaSpecifica ? "medium" as const : "weak" as const;
-      const marketSupport = isMicrozona || isZonaSpecifica ? "direct" as const : "fallback" as const;
-      const maxClaim = isMicrozona || isZonaSpecifica ? "zona_omi" as const : "comune" as const;
-      const fbWeight = (pricingData?.polygonMatch ? "none" : isComuneLevel ? "high" : "medium") as "none" | "low" | "medium" | "high";
+      const marketSupport = isFineZone ? "direct" as const : "fallback" as const;
+      const maxClaim = isFineZone ? "zona_omi" as const : "comune" as const;
+      const fbWeight = (pricingData?.polygonMatch ? "none" : isComuneLevel ? "high" : isFineZone ? "low" : "medium") as "none" | "low" | "medium" | "high";
       const fsRisk = (isComuneLevel ? "medium" : "none") as "none" | "low" | "medium" | "high";
       const stubCorr = {
         zone_identity: { geo_level_reale: geoLevelReale, geo_code: pricingData?.omiGeoLevel ?? "unknown", geo_label: identifyData?.address?.split(",").pop()?.trim() ?? "Zona", normalized_path: "", zone_type_label: zoneTypeLabel, zone_corresponds_to: "", zone_anchor_strength: anchorStr },
