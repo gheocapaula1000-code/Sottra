@@ -241,4 +241,28 @@ describe("CommercialReportPolish", () => {
     const { buildHouseDifferentiation } = await import("@/lib/houseDifferentiationEngine");
     expect(typeof buildHouseDifferentiation).toBe("function");
   });
+
+  it("segnali zona uses premium tone (no 'deboli' or 'insufficienti')", () => {
+    const value = buildZoneValue({ data: stubTerritorial(), corr: stubCorr(), omiMin: 2800, omiMax: 3500, omiGeoLevel: "microzona_omi", omiPolygonMatch: true });
+    const reno = buildRenovationEstimate({ zone_geo_code: "015146", zone_geo_level: "zona_omi", hasPhoto: true });
+    const snapWeak = buildWowSnapshot({ value, renovation: reno, growth: stubGrowth("weak"), corr: stubCorr() });
+    expect(snapWeak.segnali_zona).not.toContain("deboli");
+    expect(snapWeak.segnali_zona).not.toContain("Insufficienti");
+    const snapNone = buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr() });
+    expect(snapNone.segnali_zona).not.toContain("sufficienti");
+  });
+
+  it("limite_principale uses constructive phrasing", () => {
+    const value = buildZoneValue({ data: stubTerritorial("comune"), corr: stubCorr("high"), omiMin: 1800, omiMax: 2500, omiGeoLevel: "comune" });
+    const reno = buildRenovationEstimate({ zone_geo_code: "015146", zone_geo_level: "comune", hasPhoto: true });
+    const snap = buildWowSnapshot({ value, renovation: reno, growth: stubGrowth(), corr: stubCorr("high") });
+    expect(snap.limite_principale).not.toContain("Forte componente di fallback");
+  });
+
+  it("readiness state is set correctly", async () => {
+    const { READINESS_STATE } = await import("@/lib/buildInfo");
+    expect(READINESS_STATE.ready_for_device_validation).toBe(true);
+    expect(READINESS_STATE.engines_modified).toBe(false);
+    expect(READINESS_STATE.device_tested).toBe(false);
+  });
 });

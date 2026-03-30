@@ -77,7 +77,7 @@ function StatusChip({ label, value, variant }: { label: string; value: string; v
     : variant === "neutral" ? "text-primary"
     : "text-muted-foreground";
   return (
-    <div className="flex items-center justify-between text-[11px] gap-2">
+    <div className="flex items-center justify-between text-[11px] gap-2 min-w-0">
       <span className="text-muted-foreground truncate">{label}</span>
       <span className={cn("font-semibold whitespace-nowrap", cls)}>{value}</span>
     </div>

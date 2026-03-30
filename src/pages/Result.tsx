@@ -1656,9 +1656,9 @@ const Result = () => {
               outlookLabel={null}
               outlookVariant="muted"
               alignmentLabel={houseDiff ? (
-                houseDiff.address_alignment.photo_address_alignment === "high_alignment" ? "Forte" :
-                houseDiff.address_alignment.photo_address_alignment === "medium_alignment" ? "Medio" :
-                houseDiff.address_alignment.photo_address_alignment === "low_alignment" ? "Debole" : null
+                houseDiff.address_alignment.photo_address_alignment === "high_alignment" ? "Coerente" :
+                houseDiff.address_alignment.photo_address_alignment === "medium_alignment" ? "Parziale" :
+                houseDiff.address_alignment.photo_address_alignment === "low_alignment" ? "Da verificare" : null
               ) : null}
               alignmentVariant={houseDiff ? (
                 houseDiff.address_alignment.photo_address_alignment === "high_alignment" ? "positive" :
