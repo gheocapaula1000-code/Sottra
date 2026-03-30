@@ -66,7 +66,7 @@ describe("strongCaseEvaluator", () => {
       snapshot: baseSnapshot({
         affidabilita_valore: "Non determinabile",
         attenzione_area: "high",
-        limite_principale: "Forte componente di fallback — precisione ridotta",
+        limite_principale: "Componente di contesto ampio presente — precisione da contestualizzare",
       }),
     }));
     expect(r.identity.overall_case_strength).not.toBe("strong_case");
