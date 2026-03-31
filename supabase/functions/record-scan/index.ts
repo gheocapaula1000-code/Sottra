@@ -43,8 +43,10 @@ serve(async (req) => {
 
     const user = userData.user;
 
-    // Owner/admin bypass — don't consume scans
-    if (isOwnerEmail(user.email)) {
+    // Owner bypass — don't consume scans (server-side table check)
+    let isOwner = false;
+    try { isOwner = await isOwnerById(user.id); } catch { /* non-blocking */ }
+    if (isOwner) {
       return new Response(JSON.stringify({ recorded: false, bypassed: true, scans_used: 0, max_scans: 999 }), {
         headers: { ...cors, "Content-Type": "application/json" },
         status: 200,
