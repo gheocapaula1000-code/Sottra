@@ -27,7 +27,9 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const isOwner = isOwnerEmail(user.email);
+    // Check owner via server-side table
+    let isOwner = false;
+    try { isOwner = await isOwnerById(user.id); } catch { /* non-blocking */ }
 
     let isDbAdmin = false;
     if (!isOwner) {
