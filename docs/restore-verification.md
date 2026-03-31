@@ -1,56 +1,89 @@
 # Sottra — Restore & Verification Procedures
 
+## Verification Status Definitions
+
+- **✅ Verified** — Automated test or script confirms the condition.
+- **🔍 Manual** — Requires human verification (smoke test, visual check).
+- **❌ Not Verified** — No automated check exists; must be added or performed manually.
+
+---
+
 ## After Code Restore / Rollback
 
-1. **Verify build**: `npm run build` must succeed
-2. **Run tests**: `npm test` — all must pass
-3. **Check config.toml**: Ensure edge function JWT settings are `verify_jwt = false`
-4. **Check .env**: Only contains `VITE_SUPABASE_*` and `VITE_USE_MOCK=false`
-5. **Verify secrets**: All required secrets exist in Lovable Cloud:
-   - `CORE_API_URL`
-   - `AI_CORE_SECRET` or `CORE_API_KEY`
-   - `STRIPE_SECRET_KEY` (optional)
-   - `SUPABASE_SERVICE_ROLE_KEY`
+| Check | Method | Status |
+|-------|--------|--------|
+| Build succeeds | `npm run build` | ✅ Automated (CI) |
+| All tests pass | `npm test` | ✅ Automated (CI) |
+| Type safety | `npm run typecheck` | ✅ Automated (CI) |
+| config.toml JWT settings | `verify_jwt = false` for all functions | ✅ Verified in repo |
+| .env contains only `VITE_SUPABASE_*` | Lovable-managed, not editable | ✅ Platform-managed |
+| No secrets in source | `verify:secrets` script | ✅ Automated (CI) |
+| No secrets in dist/ | `verify:package` script | ✅ Automated (CI) |
+| Required secrets present | Manual check in Lovable Cloud | 🔍 Manual |
+
+### Required Secrets (verify in Lovable Cloud)
+
+| Secret | Required | Purpose |
+|--------|----------|---------|
+| `CORE_API_URL` | Yes | Central Core endpoint |
+| `CORE_API_KEY` | Yes | Central Core auth |
+| `ADMIN_BOOTSTRAP_EMAILS` | Yes | Owner/admin bootstrap |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Admin DB operations |
+| `COMMERCIAL_BYPASS_EMAILS` | Yes | Commercial access bypass |
+| `STRIPE_SECRET_KEY` | Optional | Billing (UI auto-detects) |
+| `STRIPE_WEBHOOK_SECRET` | Optional | Stripe webhook signature |
+| `ALLOWED_ORIGINS` | Optional | CORS allowlist + Stripe return URLs |
 
 ## After Database Schema Change
 
-1. Verify `user_trials` table has columns: `user_id, scans_used, max_scans, trial_end, trial_start`
-2. Verify `scan_events` table has unique constraint on `(user_id, scan_id)`
-3. Verify `user_roles` table exists with `app_role` enum
-4. Verify `has_role()` function exists (SECURITY DEFINER)
-5. Verify `record_scan()` function exists (SECURITY DEFINER)
-6. Verify `handle_new_user_trial()` trigger on `auth.users`
+| Check | Verification |
+|-------|-------------|
+| `user_trials` has required columns | `psql` or Lovable Cloud backend view |
+| `scan_events` unique constraint on `(user_id, scan_id)` | Check via `\d scan_events` |
+| `user_roles` table with `app_role` enum | Check via `\d user_roles` |
+| `has_role()` SECURITY DEFINER function | `\df has_role` |
+| `record_scan()` SECURITY DEFINER function | `\df record_scan` |
+| `is_owner()` SECURITY DEFINER function | `\df is_owner` |
+| `handle_new_user_trial()` trigger on `auth.users` | Check trigger list |
 
-## Smoke Test Sequence
+## Smoke Test Sequence (🔍 Manual)
 
-1. Open app → landing page loads
-2. Login with test account
-3. Dashboard loads without errors
-4. Navigate to `/scan`
-5. Take photo → identification starts
-6. Report renders with real data sections
+1. Open app → landing page loads without JS errors
+2. Login with bootstrap account → dashboard loads
+3. Check admin panel access → `/admin/diagnostics` reachable
+4. Navigate to `/scan` → camera/photo works
+5. Complete scan → report renders with real data
+6. Verify primary zone basis ≠ comunale when zone data exists
 7. Save to history → appears in `/history`
-8. Admin: access `/admin/diagnostics` → Core status visible
+8. Logout → redirect to login
 
-## Edge Function Health
+## Edge Function Health Verification
 
 ```bash
+# Requires valid Bearer token
 # Check core-proxy
-curl -X POST https://<project>.supabase.co/functions/v1/core-proxy \
+curl -s -X POST https://<project>.supabase.co/functions/v1/core-proxy \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"endpoint":"/health","method":"GET"}'
+  -d '{"endpoint":"/health","method":"GET"}' | jq .
 
-# Check diagnostics
-curl https://<project>.supabase.co/functions/v1/diagnostics \
-  -H "Authorization: Bearer <token>"
+# Check diagnostics (admin only)
+curl -s https://<project>.supabase.co/functions/v1/diagnostics \
+  -H "Authorization: Bearer <token>" | jq .
+
+# Check subscription
+curl -s https://<project>.supabase.co/functions/v1/check-subscription \
+  -H "Authorization: Bearer <token>" | jq .ok
 ```
 
 ## Known Recovery Scenarios
 
-| Issue | Resolution |
-|---|---|
-| Blank dashboard | Check SubscriptionContext — verify `check-subscription` returns HTTP 200 |
-| Scan credits not counting | Verify `record_scan` function and `scan_events` unique constraint |
-| Trial not created | Check `handle_new_user_trial` trigger on `auth.users` |
-| Core proxy 503 | Verify `CORE_API_URL` and `AI_CORE_SECRET` secrets |
+| Issue | Diagnosis | Resolution | Verified |
+|-------|-----------|------------|----------|
+| Blank dashboard | `check-subscription` not returning HTTP 200 | Check edge function logs | ✅ SubscriptionContext has fallback |
+| Scan credits not counting | `record_scan` function error | Verify `scan_events` unique constraint | ✅ Idempotent by design |
+| Trial not created | `handle_new_user_trial` trigger missing | Check trigger; `check-subscription` auto-creates | ✅ Resilience fallback |
+| Core proxy 503 | `CORE_API_URL` or `CORE_API_KEY` missing | Update secrets in Lovable Cloud | ✅ Graceful 503 response |
+| Owner bypass not working | `isOwnerEmail()` used instead of `isOwnerById()` | Fixed: all functions now use table-based check | ✅ Fixed |
+| Stripe checkout fails | `STRIPE_SECRET_KEY` missing | `isBillingActive()` returns false, CTA hidden | ✅ Graceful degradation |
+| Chunk load error after deploy | Stale SW cache | `recoverFromChunkError()` clears cache + reloads | ✅ Automated recovery |

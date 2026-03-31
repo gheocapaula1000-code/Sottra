@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
-import { isOwnerEmail } from "../_shared/ownerUtils.ts";
+import { isOwnerById } from "../_shared/ownerUtils.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 serve(async (req) => {
@@ -27,7 +27,9 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const isOwner = isOwnerEmail(user.email);
+    // Check owner via server-side table
+    let isOwner = false;
+    try { isOwner = await isOwnerById(user.id); } catch { /* non-blocking */ }
 
     let isDbAdmin = false;
     if (!isOwner) {
