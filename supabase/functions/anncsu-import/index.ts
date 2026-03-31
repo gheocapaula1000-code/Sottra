@@ -184,13 +184,47 @@ serve(async (req) => {
   if (cors) return cors;
 
   try {
-    const { action, job_id, offset, source_version, source_date } = await req.json();
+    // ── Auth: require admin or owner ──
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return json({ ok: false, error: "Missing authorization" }, 401);
+    }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { persistSession: false } },
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    });
+    const token = authHeader.replace("Bearer ", "").trim();
+    const { data: userData, error: userError } = await userClient.auth.getUser(token);
+    if (userError || !userData?.user) {
+      return json({ ok: false, error: "Auth failed" }, 401);
+    }
+
+    // Check admin role or owner
+    const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userData.user.id)
+      .eq("role", "admin")
+      .limit(1);
+
+    const { data: ownerData } = await supabase
+      .from("owner_access")
+      .select("id")
+      .eq("user_id", userData.user.id)
+      .limit(1);
+
+    if ((!roleData || roleData.length === 0) && (!ownerData || ownerData.length === 0)) {
+      return json({ ok: false, error: "Forbidden — admin or owner required" }, 403);
+    }
+
+    const { action, job_id, offset, source_version, source_date } = await req.json();
 
     /* ── VALIDATE: dry-run parse from storage ── */
     if (action === "validate") {
