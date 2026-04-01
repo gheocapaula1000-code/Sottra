@@ -32,6 +32,7 @@ import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/
 import AddressOverrideForm from "@/components/AddressOverrideForm";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
 import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib/zoneValueEngine";
+import { resolveGeoContext } from "@/lib/reportMapper";
 import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
 import { buildWowSnapshot } from "@/lib/sottraWowSnapshot";
 import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
