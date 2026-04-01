@@ -2,7 +2,7 @@ import { useEffect, useRef, Component, type ReactNode, type ErrorInfo } from "re
 import AppHeader from "@/components/AppHeader";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Bookmark, TrendingUp, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers, Camera, CheckCircle2, BarChart3, Gem, Zap, Wrench } from "lucide-react";
-import { useScanHistory } from "@/contexts/ScanHistoryContext";
+import { useScanHistory, compressToThumbnail, serializeResult } from "@/contexts/ScanHistoryContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { isValidGps, isValidImageDataUrl } from "@/lib/imageUtils";
