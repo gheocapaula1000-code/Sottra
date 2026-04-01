@@ -1,14 +1,15 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import type { ScanResult, SectionState } from "@/types";
 
 /**
- * Scan history — stores ONLY non-sensitive metadata.
- * No photos, no full addresses, no precise coordinates.
+ * Scan history — stores structured scan results for real report reopening.
+ * Photos are stored as compressed thumbnails to fit localStorage constraints.
  */
 
 export interface SavedScan {
   id: string;
-  /** Short locality label (city/zone), NOT full address */
+  /** Short locality label (city/zone) */
   locality: string;
   date: string;
   moodScore: number | null;
@@ -16,6 +17,17 @@ export interface SavedScan {
     score: number | null;
     band: string | null;
   } | null;
+  /** GPS coordinates — needed to reopen report */
+  lat: number | null;
+  lng: number | null;
+  /** Compressed photo thumbnail (small JPEG) — may be null if storage failed */
+  photoThumbnail: string | null;
+  /** Full scan result snapshot — enables real report reopening */
+  resultSnapshot: Partial<ScanResult> | null;
+  /** Geo level used for the primary reading */
+  primaryGeoLevel: string | null;
+  /** Whether the report is fully restorable */
+  restorable: boolean;
 }
 
 interface ScanHistoryContextType {
@@ -27,10 +39,62 @@ interface ScanHistoryContextType {
 }
 
 const STORAGE_KEY = "sottra_scan_history";
-const LEGACY_KEY = "sottra_scan_history"; // same key, legacy format cleaned on load
-const MAX_SCANS = 10;
+const MAX_SCANS = 5; // Reduced from 10 to fit full results in localStorage
 
-/* ── Legacy migration: strip PII from old entries ─────── */
+/* ── Thumbnail compression ─────────────────────────────── */
+
+/**
+ * Compress a photo to a small thumbnail for localStorage storage.
+ * Target: ~30-50KB JPEG to keep total storage manageable.
+ */
+function compressToThumbnail(photoDataUrl: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 320;
+        let w = img.width;
+        let h = img.height;
+        if (w > h) { h = Math.round(h * (MAX_DIM / w)); w = MAX_DIM; }
+        else { w = Math.round(w * (MAX_DIM / h)); h = MAX_DIM; }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.5));
+      };
+      img.onerror = () => resolve(null);
+      img.src = photoDataUrl;
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+/* ── Serialization helpers ─────────────────────────────── */
+
+/**
+ * Serialize a ScanResult for storage, stripping non-essential fields
+ * to reduce localStorage footprint.
+ */
+function serializeResult(result: Partial<ScanResult>): Partial<ScanResult> | null {
+  try {
+    const serializable: Record<string, SectionState> = {};
+    for (const [key, section] of Object.entries(result)) {
+      const s = section as SectionState;
+      if (s && s.status === "success" && s.data != null) {
+        serializable[key] = { status: "success", data: s.data, message: null };
+      }
+    }
+    // Test if it can be stringified
+    JSON.stringify(serializable);
+    return serializable as Partial<ScanResult>;
+  } catch {
+    return null;
+  }
+}
+
+/* ── Legacy migration ─────────────────────────────────── */
 
 interface LegacyEntry {
   id?: string;
@@ -43,16 +107,19 @@ interface LegacyEntry {
   moodScore?: number | null;
   convergenzaTerritoriale?: Record<string, unknown> | null;
   scanResult?: unknown;
+  // New fields that may or may not be present
+  photoThumbnail?: string | null;
+  resultSnapshot?: unknown;
+  primaryGeoLevel?: string | null;
+  restorable?: boolean;
 }
 
 function migrateLegacy(raw: unknown[]): SavedScan[] {
   return raw
     .filter((e): e is LegacyEntry => !!e && typeof e === "object")
     .map((entry) => {
-      // Derive locality from old address if present (take city-level only)
       let locality = entry.locality ?? "";
       if (!locality && entry.address) {
-        // Attempt to extract city from comma-separated address
         const parts = entry.address.split(",").map((p: string) => p.trim());
         locality = parts.length >= 2 ? parts[parts.length - 2] : parts[0] ?? "";
       }
@@ -69,6 +136,12 @@ function migrateLegacy(raw: unknown[]): SavedScan[] {
               band: typeof ct.band === "string" ? ct.band : null,
             }
           : null,
+        lat: typeof entry.lat === "number" ? entry.lat : null,
+        lng: typeof entry.lng === "number" ? entry.lng : null,
+        photoThumbnail: typeof entry.photoThumbnail === "string" ? entry.photoThumbnail : null,
+        resultSnapshot: entry.resultSnapshot as Partial<ScanResult> | null ?? null,
+        primaryGeoLevel: typeof entry.primaryGeoLevel === "string" ? entry.primaryGeoLevel : null,
+        restorable: typeof entry.restorable === "boolean" ? entry.restorable : false,
       };
     })
     .slice(0, MAX_SCANS);
@@ -81,16 +154,15 @@ function loadFromStorage(): SavedScan[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
 
-    // Detect legacy format (has photo/address/lat/lng fields)
+    // Detect legacy format (has photo/address/scanResult fields but no resultSnapshot)
     const isLegacy = parsed.some(
-      (e: Record<string, unknown>) => e && ("photo" in e || "lat" in e || "scanResult" in e),
+      (e: Record<string, unknown>) => e && ("photo" in e || "scanResult" in e) && !("restorable" in e),
     );
 
     if (isLegacy) {
       const migrated = migrateLegacy(parsed);
-      // Overwrite with clean data immediately
       saveToStorage(migrated);
-      console.info("[ScanHistory] Migrated legacy entries — PII removed");
+      console.info("[ScanHistory] Migrated legacy entries");
       return migrated;
     }
 
@@ -104,7 +176,17 @@ function saveToStorage(scans: SavedScan[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(scans));
   } catch {
-    // localStorage full — drop oldest and retry
+    // localStorage full — try dropping result snapshots from oldest scans
+    if (scans.length > 1) {
+      const trimmed = scans.map((s, i) => 
+        i >= 2 ? { ...s, resultSnapshot: null, restorable: false } : s
+      );
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+        return;
+      } catch { /* fall through */ }
+    }
+    // Last resort: drop oldest
     if (scans.length > 1) {
       saveToStorage(scans.slice(0, -1));
     }
@@ -116,13 +198,13 @@ const ScanHistoryContext = createContext<ScanHistoryContextType | null>(null);
 export function ScanHistoryProvider({ children }: { children: ReactNode }) {
   const [scans, setScans] = useState<SavedScan[]>(loadFromStorage);
 
-  // One-time cleanup on mount: purge any leftover legacy keys
+  // One-time cleanup on mount
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(LEGACY_KEY);
+      const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.some((e: Record<string, unknown>) => "photo" in e || "lat" in e)) {
+        if (Array.isArray(parsed) && parsed.some((e: Record<string, unknown>) => "photo" in e && !("restorable" in e))) {
           const migrated = migrateLegacy(parsed);
           saveToStorage(migrated);
           setScans(migrated);
@@ -173,3 +255,5 @@ export function useScanHistory() {
   if (!ctx) throw new Error("useScanHistory must be used within ScanHistoryProvider");
   return ctx;
 }
+
+export { compressToThumbnail, serializeResult };

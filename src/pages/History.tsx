@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Trash2, Camera } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Camera, MapPin, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,7 +19,22 @@ function formatDate(iso: string) {
 
 const History = () => {
   const navigate = useNavigate();
-  const { scans, clearAll } = useScanHistory();
+  const { scans, clearAll, removeScan } = useScanHistory();
+
+  const handleOpenScan = (scan: typeof scans[number]) => {
+    // If the scan is restorable and has a photo + coordinates, reopen the real report
+    if (scan.restorable && scan.resultSnapshot && scan.photoThumbnail && scan.lat != null && scan.lng != null) {
+      navigate("/result", {
+        state: {
+          photo: scan.photoThumbnail,
+          lat: scan.lat,
+          lng: scan.lng,
+          savedResult: scan.resultSnapshot,
+        },
+      });
+    }
+    // Otherwise, show that the result is not restorable — don't fake a redirect
+  };
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -59,24 +74,61 @@ const History = () => {
             </div>
           ) : (
             scans.map((scan) => (
-              <button
-                key={scan.id}
-                onClick={() => navigate("/scan")}
-                className="flex w-full items-center gap-3 rounded-xl bg-card border border-border p-3 text-left active:bg-secondary transition-colors"
-              >
-                <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <Camera className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm font-semibold text-foreground truncate">{scan.locality || "Posizione non disponibile"}</p>
-                  <p className="text-xs text-muted-foreground">{formatDate(scan.date)}</p>
-                </div>
-                {scan.moodScore != null && (
-                  <Badge variant={scoreVariant(scan.moodScore)} className="shrink-0 text-xs">
-                    {scan.moodScore}
-                  </Badge>
-                )}
-              </button>
+              <div key={scan.id} className="relative">
+                <button
+                  onClick={() => handleOpenScan(scan)}
+                  disabled={!scan.restorable}
+                  className="flex w-full items-center gap-3 rounded-xl bg-card border border-border p-3 text-left active:bg-secondary transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {/* Thumbnail or placeholder */}
+                  <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                    {scan.photoThumbnail ? (
+                      <img src={scan.photoThumbnail} alt="" className="h-full w-full object-cover rounded-lg" />
+                    ) : (
+                      <Camera className="h-6 w-6 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-sm font-semibold text-foreground truncate">{scan.locality || "Posizione non disponibile"}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">{formatDate(scan.date)}</p>
+                      {scan.primaryGeoLevel && (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-medium ${
+                          scan.primaryGeoLevel === "zona_omi" || scan.primaryGeoLevel === "microzona_omi"
+                            ? "bg-emerald-500/10 text-emerald-400"
+                            : scan.primaryGeoLevel === "comune"
+                              ? "bg-amber-500/10 text-amber-400"
+                              : "bg-muted text-muted-foreground"
+                        }`}>
+                          {scan.primaryGeoLevel === "zona_omi" ? "Zona OMI" :
+                           scan.primaryGeoLevel === "microzona_omi" ? "Microzona" :
+                           scan.primaryGeoLevel === "comune" ? "Comunale" :
+                           scan.primaryGeoLevel}
+                        </span>
+                      )}
+                    </div>
+                    {!scan.restorable && (
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
+                        <AlertTriangle className="h-2.5 w-2.5" />
+                        <span>Risultato non più ricostruibile</span>
+                      </div>
+                    )}
+                  </div>
+                  {scan.convergenzaTerritoriale?.score != null && (
+                    <Badge variant={scoreVariant(scan.convergenzaTerritoriale.score)} className="shrink-0 text-xs">
+                      {scan.convergenzaTerritoriale.score}
+                    </Badge>
+                  )}
+                </button>
+                {/* Remove single scan */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeScan(scan.id); }}
+                  className="absolute top-2 right-2 h-6 w-6 flex items-center justify-center rounded-full bg-background/80 text-muted-foreground hover:text-destructive transition-colors"
+                  aria-label="Rimuovi scansione"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
             ))
           )}
         </div>
