@@ -32,6 +32,7 @@ import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/
 import AddressOverrideForm from "@/components/AddressOverrideForm";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
 import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib/zoneValueEngine";
+import { resolveGeoContext } from "@/lib/reportMapper";
 import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
 import { buildWowSnapshot } from "@/lib/sottraWowSnapshot";
 import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
@@ -373,9 +374,30 @@ function PricingCard({ data, loading }: { data: PricingData | null; loading: boo
   const hasMediaZona = data.mediaZona != null;
   const hasTrend = data.trend5Anni != null;
 
+  // Determine if pricing data is municipal-level (false specificity guard)
+  const effectiveGeoLevel = data.omiGeoLevel ?? (data.polygonMatch ? "microzona_omi" : "comune");
+  const isComuneLevel = effectiveGeoLevel === "comune" || (!data.polygonMatch && !data.omiGeoLevel);
+  const isFineZone = effectiveGeoLevel === "microzona_omi" || effectiveGeoLevel === "zona_specifica" || effectiveGeoLevel === "quartiere";
+
   return (
     <Section>
-      <SectionHeader icon={TrendingUp} title="Prezzi di Mercato" />
+      <SectionHeader icon={TrendingUp} title={isComuneLevel ? "Prezzi di Mercato (comunale)" : "Prezzi di Mercato"} />
+      {/* Geo-level context — prevents false specificity */}
+      {isFineZone && (
+        <div className="flex items-center gap-1.5 mb-3">
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+            <CheckCircle2 className="h-3 w-3" />Dato di zona
+          </span>
+        </div>
+      )}
+      {isComuneLevel && (
+        <div className="flex items-start gap-2 rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2 mb-3">
+          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-400" />
+          <p className="text-[10px] text-amber-400">
+            Dato riferito al livello comunale — la zona specifica potrebbe presentare valori diversi
+          </p>
+        </div>
+      )}
       <div className="flex items-baseline gap-1.5 mb-3">
         <span className="text-3xl font-extrabold text-foreground tracking-tight">{fmtEur(data.prezzoMq)}</span>
         <span className="text-sm text-muted-foreground font-medium">/m²</span>
@@ -387,14 +409,14 @@ function PricingCard({ data, loading }: { data: PricingData | null; loading: boo
         </div>
         {hasMediaZona && (
           <div className="rounded-lg bg-muted/50 px-3 py-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Media zona</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{isComuneLevel ? "Media comunale" : "Media zona"}</span>
             <p className="font-semibold text-foreground text-sm mt-0.5">{fmtEur(data.mediaZona)}</p>
           </div>
         )}
       </div>
       {hasTrend && (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Trend 5 anni</span>
+          <span className="text-muted-foreground">Trend 5 anni{isComuneLevel ? " (comunale)" : ""}</span>
           <span className={cn("font-bold", data.trend5Anni! >= 0 ? "text-emerald-400" : "text-destructive")}>
             {data.trend5Anni! > 0 ? "+" : ""}{fmt(data.trend5Anni)}%
           </span>
@@ -1798,10 +1820,9 @@ const Result = () => {
           const convergenza = result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null;
           const thumbnail = await compressToThumbnail(state.photo);
           const snapshot = serializeResult(result);
-          const omiGeo = pricingData?.omiGeoLevel ?? null;
-          const primaryGeo = omiGeo === "microzona_omi" ? "microzona_omi"
-            : omiGeo === "zona_specifica" || omiGeo === "quartiere" ? "zona_omi"
-            : omiGeo === "comune" ? "comune" : null;
+          // Use resolveGeoContext for consistency with report display
+          const geo = resolveGeoContext(result);
+          const primaryGeo = geo.geoLevel !== "non_determinato" ? geo.geoLevel : null;
           saveScan({
             locality: identifyData.address
               ? identifyData.address.split(",").slice(-2, -1)[0]?.trim() || "Posizione sconosciuta"
