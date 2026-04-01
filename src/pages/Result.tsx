@@ -1819,10 +1819,9 @@ const Result = () => {
           const convergenza = result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null;
           const thumbnail = await compressToThumbnail(state.photo);
           const snapshot = serializeResult(result);
-          const omiGeo = pricingData?.omiGeoLevel ?? null;
-          const primaryGeo = omiGeo === "microzona_omi" ? "microzona_omi"
-            : omiGeo === "zona_specifica" || omiGeo === "quartiere" ? "zona_omi"
-            : omiGeo === "comune" ? "comune" : null;
+          // Use resolveGeoContext for consistency with report display
+          const geo = resolveGeoContext(result);
+          const primaryGeo = geo.geoLevel !== "non_determinato" ? geo.geoLevel : null;
           saveScan({
             locality: identifyData.address
               ? identifyData.address.split(",").slice(-2, -1)[0]?.trim() || "Posizione sconosciuta"
