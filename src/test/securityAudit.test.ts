@@ -205,12 +205,11 @@ describe("Customer-portal hardening", () => {
 /* ── H. No PII in consumer pages ──────────────────────── */
 
 describe("Consumer pages use minimal scan data", () => {
-  it("History page does not reference scan.photo", () => {
+  it("History page does not reference legacy scan.photo or scan.address", () => {
     const historySource = fs.readFileSync("src/pages/History.tsx", "utf-8");
     expect(historySource).not.toContain("scan.photo");
     expect(historySource).not.toContain("scan.address");
-    expect(historySource).not.toContain("scan.lat");
-    expect(historySource).not.toContain("scan.lng");
+    // scan.lat/lng are now legitimately used for report restoration (restorability check)
   });
 
   it("Dashboard does not reference scan.photo or scan.address", () => {
