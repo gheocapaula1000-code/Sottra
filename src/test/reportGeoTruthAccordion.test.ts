@@ -66,8 +66,7 @@ describe("Report Geo Truth & Accordion", () => {
     });
 
     it("accordion weak sections are marked when pricing is comunale", () => {
-      // Simulate the isWeak logic used in accordion items
-      const pricingData = { polygonMatch: false, omiGeoLevel: "comune" as const };
+      const pricingData = { polygonMatch: false, omiGeoLevel: "comune" as string };
       const isWeak = !pricingData.polygonMatch && (!pricingData.omiGeoLevel || pricingData.omiGeoLevel === "comune");
       expect(isWeak).toBe(true);
     });
