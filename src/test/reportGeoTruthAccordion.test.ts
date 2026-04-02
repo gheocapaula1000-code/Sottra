@@ -72,7 +72,7 @@ describe("Report Geo Truth & Accordion", () => {
     });
 
     it("accordion sections are NOT weak when pricing has polygon match", () => {
-      const pricingData = { polygonMatch: true, omiGeoLevel: "microzona_omi" as const };
+      const pricingData = { polygonMatch: true, omiGeoLevel: "microzona_omi" as string };
       const isWeak = !pricingData.polygonMatch && (!pricingData.omiGeoLevel || pricingData.omiGeoLevel === "comune");
       expect(isWeak).toBe(false);
     });
