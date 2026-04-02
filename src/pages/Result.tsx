@@ -31,6 +31,7 @@ import {
 import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/types/report";
 import AddressOverrideForm from "@/components/AddressOverrideForm";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
+import { GeoLevelHeroBanner, ReportAccordionItem, resolveReportGeoStatus } from "@/components/report/ReportAccordion";
 import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib/zoneValueEngine";
 import { resolveGeoContext } from "@/lib/reportMapper";
 import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
