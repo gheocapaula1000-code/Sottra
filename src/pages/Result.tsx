@@ -31,6 +31,7 @@ import {
 import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/types/report";
 import AddressOverrideForm from "@/components/AddressOverrideForm";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
+import { GeoLevelHeroBanner, ReportAccordionItem, resolveReportGeoStatus } from "@/components/report/ReportAccordion";
 import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib/zoneValueEngine";
 import { resolveGeoContext } from "@/lib/reportMapper";
 import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
@@ -1683,6 +1684,25 @@ const Result = () => {
 
           <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} lowConfidence={lowConfidence} />
 
+          {/* ═══ HERO GEO-LEVEL BANNER — verità del dato immediata ═══ */}
+          {identifyDone && !lowConfidence && !identifyFailed && (() => {
+            const _pd = result.pricing.data as PricingData | null;
+            const _istat = result.istatDemographic.data as import("@/types").IstatDemographicData | null;
+            const geoStatus = resolveReportGeoStatus(
+              _pd?.omiGeoLevel,
+              _pd?.polygonMatch,
+              _istat?.geoLevel,
+            );
+            const _omi = result.omiZone.data as import("@/types").OmiZoneData | null;
+            return (
+              <GeoLevelHeroBanner
+                status={geoStatus}
+                zoneLabel={_omi?.zonaOmiLabel ?? _istat?.geoLabel ?? null}
+                comuneLabel={_omi?.comuneLabel ?? _istat?.comuneLabel ?? identifyData?.address?.split(",").pop()?.trim() ?? null}
+              />
+            );
+          })()}
+
           {/* ═══ WOW PANEL — Tiers 1+2 (colpo d'occhio + decisione) ═══ */}
           <SectionSafe>
             <WowPanel
@@ -1730,76 +1750,145 @@ const Result = () => {
 
           {!lowConfidence && !identifyFailed && (
             <>
-              {/* ═══ TIER 2 — Decisione iniziale (7-15s) ═══ */}
-
-              {/* A) Profilo Rapido */}
+              {/* ═══ ALWAYS OPEN — Profilo Rapido + Specificità ═══ */}
               <SectionSafe><ProfiloRapidoCard data={result.profiloRapido.data as import("@/types/report").ProfiloRapidoData | null} loading={result.profiloRapido.status === "loading"} /></SectionSafe>
-
-              {/* Specificità immobile — emerges early for decision-making */}
               <SectionSafe><HouseDifferentiationCard diff={houseDiff} loading={scanning} /></SectionSafe>
 
-              {/* Zona OMI — key pricing context */}
-              <SectionSafe><OmiCard data={result.omiZone.data as import("@/types").OmiZoneData | null} loading={result.omiZone.status === "loading"} /></SectionSafe>
+              {/* ═══ ACCORDION SECTIONS — Mobile-first collapsible ═══ */}
 
-              {/* Mercato live — pricing supports the snapshot */}
-              <SectionSafe><PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} /></SectionSafe>
-              <SectionSafe><MarketContextCard data={result.marketContext.data as MarketContextData | null} loading={result.marketContext.status === "loading"} /></SectionSafe>
+              {/* Zona OMI — always open */}
+              <SectionSafe>
+                <ReportAccordionItem id="omi" title="Quotazioni OMI" icon={TrendingUp} defaultOpen>
+                  <OmiCard data={result.omiZone.data as import("@/types").OmiZoneData | null} loading={result.omiZone.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
 
-              {/* ═══ TIER 3 — Approfondimento ═══ */}
+              {/* Prezzi di Mercato — always open */}
+              <SectionSafe>
+                <ReportAccordionItem id="pricing" title="Prezzi di Mercato" icon={TrendingUp} defaultOpen
+                  isWeak={(() => { const _p = result.pricing.data as PricingData | null; return !_p?.polygonMatch && (!_p?.omiGeoLevel || _p?.omiGeoLevel === "comune"); })()}>
+                  <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
+
+              {/* Mercato Locale */}
+              <SectionSafe>
+                <ReportAccordionItem id="market" title="Mercato Locale" icon={BarChart3} defaultOpen={false}>
+                  <MarketContextCard data={result.marketContext.data as MarketContextData | null} loading={result.marketContext.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
 
               {/* Immobile e Facciata */}
-              <SectionSafe><ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} /></SectionSafe>
+              <SectionSafe>
+                <ReportAccordionItem id="facciata" title="Immobile e Facciata" icon={Eye} defaultOpen={false}>
+                  <ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
 
               {/* Contesto e Vicinato */}
-              <SectionSafe><ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} /></SectionSafe>
+              <SectionSafe>
+                <ReportAccordionItem id="contesto" title="Contesto e Vicinato" icon={Compass} defaultOpen={false}>
+                  <ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
 
               {/* Servizi e POI */}
-              <SectionSafe><PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} /></SectionSafe>
+              <SectionSafe>
+                <ReportAccordionItem id="poi" title="Servizi e POI" icon={MapPin} defaultOpen={false}>
+                  <PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
 
-              {/* Posizionamento commerciale */}
-              <SectionSafe><PosizionamentoCommercialeCard data={result.posizionamentoCommerciale.data as import("@/types/report").PosizionamentoCommercialeData | null} loading={result.posizionamentoCommerciale.status === "loading"} /></SectionSafe>
+              {/* Posizionamento Commerciale */}
+              <SectionSafe>
+                <ReportAccordionItem id="commerciale" title="Posizionamento Commerciale" icon={Target} defaultOpen={false}>
+                  <PosizionamentoCommercialeCard data={result.posizionamentoCommerciale.data as import("@/types/report").PosizionamentoCommercialeData | null} loading={result.posizionamentoCommerciale.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
 
               {/* Profilo Area */}
-              <SectionSafe><ProfiloAreaCard data={result.profiloArea.data as import("@/types/report").ProfiloAreaData | null} loading={result.profiloArea.status === "loading"} /></SectionSafe>
-
-              {/* Territorial modules */}
-              <SectionSafe><RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} /></SectionSafe>
-              <SectionSafe><IstatCard data={result.istatDemographic.data as import("@/types").IstatDemographicData | null} loading={result.istatDemographic.status === "loading"} /></SectionSafe>
-              <SectionSafe><TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} /></SectionSafe>
-
-              {/* Profilo di Zona — Indice di Vicinato */}
               <SectionSafe>
-                <NeighborhoodIndexCard
-                  index={calculateNeighborhoodIndex(
-                    result.poiEnrichment.data as PoiEnrichmentData | null,
-                    result.istatDemographic.data as import("@/types").IstatDemographicData | null,
-                    result.rischioZona.data as RischioZonaData | null,
-                    result.omiZone.data as import("@/types").OmiZoneData | null,
-                  )}
-                  loading={scanning}
-                />
+                <ReportAccordionItem id="area" title="Profilo Area" icon={Layers} defaultOpen={false}>
+                  <ProfiloAreaCard data={result.profiloArea.data as import("@/types/report").ProfiloAreaData | null} loading={result.profiloArea.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
+
+              {/* Rischio Zona */}
+              <SectionSafe>
+                <ReportAccordionItem id="rischio" title="Rischio Zona" icon={AlertTriangle} defaultOpen={false}>
+                  <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
+
+              {/* Dati Demografici */}
+              <SectionSafe>
+                <ReportAccordionItem id="istat" title="Dati Demografici" icon={Users} defaultOpen={false}
+                  isWeak={(() => { const _i = result.istatDemographic.data as import("@/types").IstatDemographicData | null; return !_i?.geoLevel || _i?.geoLevel === "comune" || _i?.geoLevel === "area_vasta"; })()}>
+                  <IstatCard data={result.istatDemographic.data as import("@/types").IstatDemographicData | null} loading={result.istatDemographic.status === "loading"} />
+                  <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
+
+              {/* Profilo di Zona */}
+              <SectionSafe>
+                <ReportAccordionItem id="vicinato" title="Profilo di Zona" icon={Layers} defaultOpen={false}>
+                  <NeighborhoodIndexCard
+                    index={calculateNeighborhoodIndex(
+                      result.poiEnrichment.data as PoiEnrichmentData | null,
+                      result.istatDemographic.data as import("@/types").IstatDemographicData | null,
+                      result.rischioZona.data as RischioZonaData | null,
+                      result.omiZone.data as import("@/types").OmiZoneData | null,
+                    )}
+                    loading={scanning}
+                  />
+                </ReportAccordionItem>
               </SectionSafe>
 
               {/* Convergenza + Opportunità */}
-              <SectionSafe><ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} /></SectionSafe>
-              <SectionSafe><OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} /></SectionSafe>
+              <SectionSafe>
+                <ReportAccordionItem id="convergenza" title="Convergenza e Opportunità" icon={Zap} defaultOpen={false}>
+                  <ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} />
+                  <div className="mt-3" />
+                  <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
 
-              {/* Scenario temporale */}
-              <SectionSafe><ScenarioTemporaleCard data={result.scenarioTemporale.data as import("@/types/report").ScenarioTemporaleData | null} loading={result.scenarioTemporale.status === "loading"} /></SectionSafe>
+              {/* Scenario e Proiezioni */}
+              <SectionSafe>
+                <ReportAccordionItem id="scenario" title="Scenario e Proiezioni" icon={Rocket} defaultOpen={false}>
+                  <ScenarioTemporaleCard data={result.scenarioTemporale.data as import("@/types/report").ScenarioTemporaleData | null} loading={result.scenarioTemporale.status === "loading"} />
+                  <div className="mt-3" />
+                  <TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
 
-              {/* Time/infra */}
-              <SectionSafe><TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} /></SectionSafe>
-              <SectionSafe><InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} /></SectionSafe>
-              <SectionSafe><SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} /></SectionSafe>
+              {/* Infrastrutture e Sviluppo */}
+              <SectionSafe>
+                <ReportAccordionItem id="infra" title="Infrastrutture e Sviluppo" icon={Construction} defaultOpen={false}>
+                  <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} />
+                  <div className="mt-3" />
+                  <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
 
-              {/* Sintesi Finale */}
+              {/* Sintesi Finale — always open */}
               <SectionSafe><SintesiFinaleCard data={result.sintesiFinale.data as import("@/types/report").SintesiFinaleData | null} loading={result.sintesiFinale.status === "loading"} /></SectionSafe>
 
               {/* Priorità / Criticità */}
-              <SectionSafe><PrioritaCriticitaCard data={result.prioritaCriticita.data as PrioritaCriticitaData | null} loading={result.prioritaCriticita.status === "loading"} /></SectionSafe>
+              <SectionSafe>
+                <ReportAccordionItem id="priorita" title="Priorità e Criticità" icon={AlertTriangle} defaultOpen={false}>
+                  <PrioritaCriticitaCard data={result.prioritaCriticita.data as PrioritaCriticitaData | null} loading={result.prioritaCriticita.status === "loading"} />
+                </ReportAccordionItem>
+              </SectionSafe>
 
               {/* Trasparenza Fonti */}
-              {!scanning && <SectionSafe><TrasparenzaFontiCard data={buildTrasparenzaFonti(result)} /></SectionSafe>}
+              {!scanning && (
+                <SectionSafe>
+                  <ReportAccordionItem id="fonti" title="Fonti e Metodologia" icon={ShieldCheck} defaultOpen={false}>
+                    <TrasparenzaFontiCard data={buildTrasparenzaFonti(result)} />
+                  </ReportAccordionItem>
+                </SectionSafe>
+              )}
 
               {/* Discrete quality footer */}
               {!scanning && <ReportFooter excludedCount={excludedCount} totalPublished={publishedCount} />}
