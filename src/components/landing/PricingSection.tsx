@@ -78,11 +78,11 @@ export default function PricingSection() {
             Piani chiari, senza sorprese
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" } as React.CSSProperties}>
-            3 giorni di prova con 5 scansioni incluse.
-            Nessuna carta di credito, nessun dato bancario, nessuna disdetta.
+            Prova gratuita iniziale: 3 giorni, 5 scansioni, accesso completo.
+            Nessuna carta di credito richiesta.
           </p>
           <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground sm:text-sm">
-            Se non ti abboni, non succede nulla. Paghi solo se scegli di continuare.
+            Al termine del trial serve un abbonamento attivo per continuare. Nessun piano gratuito permanente.
           </p>
         </div>
 

@@ -172,7 +172,7 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
             {billingReady && (
               <>
                 {/* Annual toggle — only shown when real annual price IDs exist */}
-                {hasAnyAnnualPrice && (
+                {HAS_REAL_ANNUAL_PRICES && (
                   <div className="mt-8 inline-flex items-center rounded-full border border-border bg-muted/50 p-1">
                     <button className="rounded-full px-4 py-1.5 text-sm font-medium bg-background text-foreground shadow-sm">
                       Mensile
