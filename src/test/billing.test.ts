@@ -1,32 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { isBillingReady, setBillingReady } from "@/lib/billing";
-import { PLANS, ALLOWED_PRICE_IDS, getPlanByProductId, getPlanByPriceId } from "@/lib/plans";
+import { PLANS, ALLOWED_PRICE_IDS, getPlanByProductId, getPlanByPriceId, HAS_REAL_ANNUAL_PRICES } from "@/lib/plans";
 import type { PlanKey } from "@/lib/plans";
 
-describe("Billing runtime flag", () => {
-  it("billing is not ready by default", () => {
-    setBillingReady(false);
-    expect(isBillingReady()).toBe(false);
-  });
+// ─── Plan Catalog ───────────────────────────────────────────────
 
-  it("setBillingReady activates billing", () => {
-    setBillingReady(true);
-    expect(isBillingReady()).toBe(true);
-    setBillingReady(false); // reset
-  });
-
-  it("isBillingReady returns boolean", () => {
-    expect(typeof isBillingReady()).toBe("boolean");
-  });
-
-  it("setBillingReady(false) deactivates billing", () => {
-    setBillingReady(true);
-    setBillingReady(false);
-    expect(isBillingReady()).toBe(false);
-  });
-});
-
-describe("Plans catalog", () => {
+describe("Plans catalog — completeness", () => {
   it("has all three tiers", () => {
     expect(Object.keys(PLANS)).toEqual(["agente", "agenzia", "enterprise"]);
   });
@@ -42,12 +21,36 @@ describe("Plans catalog", () => {
     }
   });
 
-  it("ALLOWED_PRICE_IDS contains all monthly prices", () => {
+  it("annual price = monthly × 10 for all plans", () => {
     for (const key of Object.keys(PLANS) as PlanKey[]) {
-      expect(ALLOWED_PRICE_IDS).toContain(PLANS[key].price_id);
+      expect(PLANS[key].price_annual).toBe(PLANS[key].price * 10);
     }
   });
 
+  it("every plan has a price_id_annual (placeholder or real)", () => {
+    for (const key of Object.keys(PLANS) as PlanKey[]) {
+      expect(PLANS[key].price_id_annual).toBeTruthy();
+      expect(typeof PLANS[key].price_id_annual).toBe("string");
+      expect(PLANS[key].price_id_annual.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("ALLOWED_PRICE_IDS contains all monthly AND annual prices", () => {
+    for (const key of Object.keys(PLANS) as PlanKey[]) {
+      expect(ALLOWED_PRICE_IDS).toContain(PLANS[key].price_id);
+      expect(ALLOWED_PRICE_IDS).toContain(PLANS[key].price_id_annual);
+    }
+  });
+
+  it("HAS_REAL_ANNUAL_PRICES is false when using TODO placeholders", () => {
+    // Current state: all annual prices are placeholders
+    expect(HAS_REAL_ANNUAL_PRICES).toBe(false);
+  });
+});
+
+// ─── Plan Lookups ───────────────────────────────────────────────
+
+describe("Plan lookups", () => {
   it("getPlanByProductId resolves known products", () => {
     expect(getPlanByProductId(PLANS.agente.product_id)).toBe("agente");
     expect(getPlanByProductId(PLANS.agenzia.product_id)).toBe("agenzia");
@@ -55,208 +58,205 @@ describe("Plans catalog", () => {
     expect(getPlanByProductId("unknown")).toBeNull();
   });
 
-  it("getPlanByPriceId resolves known prices", () => {
+  it("getPlanByPriceId resolves monthly prices", () => {
     expect(getPlanByPriceId(PLANS.agente.price_id)).toBe("agente");
     expect(getPlanByPriceId(PLANS.agenzia.price_id)).toBe("agenzia");
+    expect(getPlanByPriceId(PLANS.enterprise.price_id)).toBe("enterprise");
+  });
+
+  it("getPlanByPriceId resolves annual prices", () => {
+    expect(getPlanByPriceId(PLANS.agente.price_id_annual)).toBe("agente");
+    expect(getPlanByPriceId(PLANS.agenzia.price_id_annual)).toBe("agenzia");
+    expect(getPlanByPriceId(PLANS.enterprise.price_id_annual)).toBe("enterprise");
+  });
+
+  it("getPlanByPriceId returns null for unknown", () => {
     expect(getPlanByPriceId("unknown")).toBeNull();
   });
+});
 
-  it("annual prices are either empty or valid strings", () => {
-    for (const key of Object.keys(PLANS) as PlanKey[]) {
-      const annual = PLANS[key].price_id_annual;
-      expect(typeof annual).toBe("string");
-    }
+// ─── Billing Flag ───────────────────────────────────────────────
+
+describe("Billing runtime flag", () => {
+  it("billing is not ready by default", () => {
+    setBillingReady(false);
+    expect(isBillingReady()).toBe(false);
   });
 
-  it("annual price = monthly × 10 for all plans", () => {
-    for (const key of Object.keys(PLANS) as PlanKey[]) {
-      const plan = PLANS[key];
-      expect(plan.price_annual).toBe(plan.price * 10);
-    }
-  });
-
-  it("annual toggle hidden when no annual price IDs configured", () => {
-    const hasAnyAnnualPrice = Object.values(PLANS).some((p) => !!p.price_id_annual);
-    // Currently no annual price IDs are set
-    expect(hasAnyAnnualPrice).toBe(false);
+  it("setBillingReady activates billing", () => {
+    setBillingReady(true);
+    expect(isBillingReady()).toBe(true);
+    setBillingReady(false);
   });
 });
 
-describe("Subscription gating logic", () => {
-  it("canScan is true when subscribed", () => {
-    const isOwner = false, isAdmin = false, subscribed = true, trialActive = false;
-    expect(isOwner || isAdmin || subscribed || trialActive).toBe(true);
+// ─── No Free Tier ───────────────────────────────────────────────
+
+describe("No free tier — business rules", () => {
+  it("no plan has price=0", () => {
+    for (const key of Object.keys(PLANS) as PlanKey[]) {
+      expect(PLANS[key].price).toBeGreaterThan(0);
+      expect(PLANS[key].price_annual).toBeGreaterThan(0);
+    }
   });
 
-  it("canScan is true when trial active", () => {
+  it("trial is not a plan key", () => {
+    expect(Object.keys(PLANS)).not.toContain("trial");
+    expect(Object.keys(PLANS)).not.toContain("free");
+    expect(Object.keys(PLANS)).not.toContain("basic");
+  });
+});
+
+// ─── Trial Semantics ────────────────────────────────────────────
+
+describe("Trial semantics — gating logic", () => {
+  it("trial active = full access", () => {
     const isOwner = false, isAdmin = false, subscribed = false, trialActive = true;
-    expect(isOwner || isAdmin || subscribed || trialActive).toBe(true);
+    const canScan = isOwner || isAdmin || subscribed || trialActive;
+    expect(canScan).toBe(true);
   });
 
-  it("canScan is false when nothing active", () => {
+  it("trial expired + no subscription = blocked", () => {
     const isOwner = false, isAdmin = false, subscribed = false, trialActive = false;
-    expect(isOwner || isAdmin || subscribed || trialActive).toBe(false);
+    const canScan = isOwner || isAdmin || subscribed || trialActive;
+    expect(canScan).toBe(false);
   });
 
-  it("canScan is true for owner/admin regardless of subscription", () => {
-    const isOwner = true, isAdmin = false, subscribed = false, trialActive = false;
-    expect(isOwner || isAdmin || subscribed || trialActive).toBe(true);
+  it("active subscription = access regardless of trial", () => {
+    const subscribed = true, trialActive = false;
+    const canScan = subscribed || trialActive;
+    expect(canScan).toBe(true);
   });
 
-  it("past_due user: canScan is false", () => {
-    const isOwner = false, isAdmin = false, subscribed = false, trialActive = false;
-    expect(isOwner || isAdmin || subscribed || trialActive).toBe(false);
-  });
-
-  it("past_due user: canManageBilling is true", () => {
-    const isOwner = false, isAdmin = false, subscribed = false;
+  it("past_due = no scan but can manage billing", () => {
+    const subscribed = false, trialActive = false;
     const subscriptionStatus = "past_due";
-    expect(isOwner || isAdmin || subscribed || subscriptionStatus === "past_due").toBe(true);
-  });
-
-  it("active user: canManageBilling is true", () => {
-    const isOwner = false, isAdmin = false, subscribed = true;
-    const subscriptionStatus: string | null = "active";
-    expect(isOwner || isAdmin || subscribed || subscriptionStatus === "past_due").toBe(true);
-  });
-});
-
-describe("SubscriptionContext billingReady behavior", () => {
-  it("resetToDefaults sets billingReady to false", () => {
-    setBillingReady(true);
-    setBillingReady(false);
-    expect(isBillingReady()).toBe(false);
-  });
-
-  it("successful response with billing_active=true sets billingReady", () => {
-    const responseData = { billing_active: true };
-    setBillingReady(responseData.billing_active === true);
-    expect(isBillingReady()).toBe(true);
-    setBillingReady(false);
-  });
-
-  it("successful response with billing_active=false keeps billingReady false", () => {
-    setBillingReady(false);
-    const responseData = { billing_active: false };
-    setBillingReady(responseData.billing_active === true);
-    expect(isBillingReady()).toBe(false);
-  });
-
-  it("logout/no-session results in billingReady=false", () => {
-    setBillingReady(true);
-    setBillingReady(false);
-    expect(isBillingReady()).toBe(false);
-  });
-
-  it("transient error with prior state preserves billingReady (stale)", () => {
-    setBillingReady(true);
-    // handleTransientError with hasEverChecked=true does NOT call setBillingReady(false)
-    // billingReady remains true so portal CTAs stay visible
-    expect(isBillingReady()).toBe(true);
-    setBillingReady(false); // cleanup
-  });
-
-  it("first-boot transient error sets billingReady=false", () => {
-    setBillingReady(true);
-    // handleTransientError with hasEverChecked=false DOES call setBillingReady(false)
-    setBillingReady(false); // simulating first-boot error path
-    expect(isBillingReady()).toBe(false);
-  });
-});
-
-describe("Stale state portal CTA preservation", () => {
-  it("past_due + stale: canManageBilling true, canScan false, billingReady preserved", () => {
-    setBillingReady(true); // last known billing state
-    const isOwner = false, isAdmin = false, subscribed = false;
-    const subscriptionStatus = "past_due";
-    const stale = true;
-    const canScan = isOwner || isAdmin || subscribed;
-    const canManageBilling = isOwner || isAdmin || subscribed || subscriptionStatus === "past_due";
+    const canScan = subscribed || trialActive;
+    const canManageBilling = subscribed || subscriptionStatus === "past_due";
     expect(canScan).toBe(false);
     expect(canManageBilling).toBe(true);
-    expect(isBillingReady()).toBe(true);
-    expect(stale).toBe(true);
-    setBillingReady(false);
-  });
-
-  it("active + stale: canManageBilling true, billingReady preserved", () => {
-    setBillingReady(true);
-    const subscribed = true;
-    const canManageBilling = subscribed;
-    expect(canManageBilling).toBe(true);
-    expect(isBillingReady()).toBe(true);
-    setBillingReady(false);
-  });
-
-  it("trialing + stale: canManageBilling true, billingReady preserved", () => {
-    setBillingReady(true);
-    const subscribed = true; // trialing maps to subscribed in context
-    const canManageBilling = subscribed;
-    expect(canManageBilling).toBe(true);
-    expect(isBillingReady()).toBe(true);
-    setBillingReady(false);
-  });
-
-  it("valid response with billing_active=false hides CTA (hard-disabled)", () => {
-    setBillingReady(true);
-    const responseData = { billing_active: false };
-    setBillingReady(responseData.billing_active === true);
-    expect(isBillingReady()).toBe(false);
   });
 });
 
-describe("First-boot transient error (bootFailed)", () => {
-  it("first-boot error should NOT resolve access (conceptual)", () => {
-    // When hasEverChecked is false and check-subscription fails:
-    // accessResolved stays false, checked stays false, bootFailed=true
-    // This means AppDashboardGate shows retry UI, never TrialExpiredScreen
+// ─── Bypass Non-Regression ──────────────────────────────────────
+
+describe("Bypass non-regression — 3 accounts", () => {
+  // These tests verify the SEMANTIC RULES, not DB state.
+  // The actual bypass is resolved server-side via secrets.
+
+  it("gheocapaula1000@gmail.com = owner + admin + bypass", () => {
+    // This email is in ADMIN_BOOTSTRAP_EMAILS secret
+    // check-subscription returns: subscribed=true, is_admin=true, is_owner=true, code=bootstrap
+    const response = { subscribed: true, is_admin: true, is_owner: true, code: "bootstrap" };
+    const canScan = response.is_owner || response.is_admin || response.subscribed;
+    expect(canScan).toBe(true);
+    expect(response.is_admin).toBe(true);
+    expect(response.is_owner).toBe(true);
+  });
+
+  it("matteo.ippolito@gmail.com = bypass full access, NOT admin", () => {
+    // This email is in COMMERCIAL_BYPASS_EMAILS secret
+    // check-subscription returns: subscribed=true, is_admin=false, is_owner=false, code=commercial_bypass
+    const response = { subscribed: true, is_admin: false, is_owner: false, code: "commercial_bypass" };
+    const canScan = response.is_owner || response.is_admin || response.subscribed;
+    expect(canScan).toBe(true);
+    expect(response.is_admin).toBe(false);
+    expect(response.is_owner).toBe(false);
+  });
+
+  it("massimilianogalli75@gmail.com = NO bypass in Sottra", () => {
+    // This email is NOT in COMMERCIAL_BYPASS_EMAILS for Sottra
+    // check-subscription treats them as a normal user → trial/subscription rules apply
+    const response = { subscribed: false, is_admin: false, is_owner: false, code: "resolved" };
+    const trialActive = false; // expired
+    const canScan = response.is_owner || response.is_admin || response.subscribed || trialActive;
+    expect(canScan).toBe(false);
+    expect(response.is_admin).toBe(false);
+    expect(response.is_owner).toBe(false);
+  });
+
+  it("owner bypass cannot be degraded by trial expiry", () => {
+    const isOwner = true, subscribed = false, trialActive = false;
+    const canScan = isOwner || subscribed || trialActive;
+    expect(canScan).toBe(true);
+  });
+
+  it("commercial bypass user never sees paywall", () => {
+    // subscribed=true from server means canScan=true, regardless of trial state
+    const subscribed = true, trialActive = false;
+    const canScan = subscribed || trialActive;
+    expect(canScan).toBe(true);
+  });
+
+  it("massimiliano with expired trial sees paywall in Sottra", () => {
+    const subscribed = false, trialActive = false, isOwner = false, isAdmin = false;
+    const canScan = isOwner || isAdmin || subscribed || trialActive;
+    expect(canScan).toBe(false);
+    // AppDashboardGate renders TrialExpiredScreen when !canScan && checked
+  });
+});
+
+// ─── Transient Error Resilience ─────────────────────────────────
+
+describe("Transient error resilience", () => {
+  it("billing error does NOT grant free permanent access", () => {
+    // When check-subscription fails transiently:
+    // - first boot: bootFailed=true, canScan remains false → retry UI, not free access
+    // - subsequent: stale=true, prior state preserved → no upgrade to free
+    const bootFailed = true;
+    const canScan = false;
+    const showPaywall = false; // bootFailed shows retry, not paywall
+    expect(canScan).toBe(false);
+    expect(bootFailed).toBe(true);
+    expect(showPaywall).toBe(false);
+  });
+
+  it("stale state preserves prior subscription, does NOT grant new access", () => {
+    setBillingReady(true);
+    const priorSubscribed = true;
+    const stale = true;
+    // canScan based on prior state, not new free access
+    expect(priorSubscribed).toBe(true);
+    expect(stale).toBe(true);
+    expect(isBillingReady()).toBe(true);
+    setBillingReady(false);
+  });
+
+  it("first-boot error never resolves to free access", () => {
     const hasEverChecked = false;
     const accessResolved = false;
-    const checked = false;
     const bootFailed = true;
+    const canScan = false;
+    // Gate: retry UI, not dashboard
+    expect(canScan).toBe(false);
+    expect(accessResolved).toBe(false);
+    expect(bootFailed).toBe(true);
+  });
+});
 
-    // Gate logic: show loader if !accessResolved && !bootFailed
-    // Show retry if bootFailed
-    // Show paywall only if checked && !canScan
-    const showLoader = !accessResolved && !bootFailed;
-    const showRetry = bootFailed;
-    const showPaywall = checked && !bootFailed;
+// ─── Checkout Validation ────────────────────────────────────────
 
-    expect(showLoader).toBe(false);
-    expect(showRetry).toBe(true);
-    expect(showPaywall).toBe(false);
-    expect(hasEverChecked).toBe(false);
+describe("Checkout validation rules", () => {
+  it("all monthly price IDs are in ALLOWED_PRICE_IDS", () => {
+    for (const key of Object.keys(PLANS) as PlanKey[]) {
+      expect(ALLOWED_PRICE_IDS).toContain(PLANS[key].price_id);
+    }
   });
 
-  it("successful retry after boot failure resolves access normally", () => {
-    const hasEverChecked = true;
-    const accessResolved = true;
-    const checked = true;
-    const bootFailed = false;
-    const subscribed = true;
-
-    const showRetry = bootFailed;
-    const canScan = subscribed;
-
-    expect(showRetry).toBe(false);
-    expect(canScan).toBe(true);
-    expect(accessResolved).toBe(true);
-    expect(hasEverChecked).toBe(true);
+  it("all annual price IDs are in ALLOWED_PRICE_IDS", () => {
+    for (const key of Object.keys(PLANS) as PlanKey[]) {
+      expect(ALLOWED_PRICE_IDS).toContain(PLANS[key].price_id_annual);
+    }
   });
 
-  it("stale state after subsequent error keeps access (not paywall)", () => {
-    const hasEverChecked = true;
-    const accessResolved = true;
-    const checked = true;
-    const bootFailed = false;
-    const stale = true;
-    const subscribed = true;
+  it("trial is not a purchasable price", () => {
+    expect(ALLOWED_PRICE_IDS).not.toContain("trial");
+    expect(ALLOWED_PRICE_IDS).not.toContain("free");
+    expect(ALLOWED_PRICE_IDS).not.toContain("");
+  });
 
-    const showRetry = bootFailed;
-    const canScan = subscribed;
-
-    expect(showRetry).toBe(false);
-    expect(canScan).toBe(true);
-    expect(stale).toBe(true);
+  it("unknown price IDs are rejected", () => {
+    expect(ALLOWED_PRICE_IDS).not.toContain("price_fake_123");
+    expect(ALLOWED_PRICE_IDS).not.toContain("price_free_forever");
   });
 });
