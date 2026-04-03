@@ -45,8 +45,7 @@ const planMeta: Record<PlanKey, { users: string; scans: string; popular: boolean
   enterprise: { users: "10 account inclusi", scans: "800 scansioni/mese", popular: false },
 };
 
-/** True if at least one plan has a real annual price ID configured */
-const hasAnyAnnualPrice = Object.values(PLANS).some((p) => !!p.price_id_annual);
+import { HAS_REAL_ANNUAL_PRICES } from "@/lib/plans";
 
 interface TrialExpiredScreenProps {
   scansUsed: number;
@@ -173,7 +172,7 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
             {billingReady && (
               <>
                 {/* Annual toggle — only shown when real annual price IDs exist */}
-                {hasAnyAnnualPrice && (
+                {HAS_REAL_ANNUAL_PRICES && (
                   <div className="mt-8 inline-flex items-center rounded-full border border-border bg-muted/50 p-1">
                     <button className="rounded-full px-4 py-1.5 text-sm font-medium bg-background text-foreground shadow-sm">
                       Mensile

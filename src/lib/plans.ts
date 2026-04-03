@@ -4,7 +4,9 @@ export const PLANS = {
   agente: {
     product_id: "prod_U6V2uqzObgPxBE",
     price_id: "price_1T8I2gGWMFww3yH4Vs2tABV7",
-    price_id_annual: "", // To be set when annual pricing is created in Stripe
+    // TODO: Create annual price in Stripe Dashboard for Agente (€1.290/anno)
+    // then replace this placeholder with the real price_xxx ID
+    price_id_annual: "price_agente_annual_TODO",
     name: "Agente",
     price: 129,
     price_annual: 1290, // 129 × 10
@@ -13,7 +15,9 @@ export const PLANS = {
   agenzia: {
     product_id: "prod_U6V4rSHgXTbtnY",
     price_id: "price_1T8I4iGWMFww3yH4om3bi9ru",
-    price_id_annual: "",
+    // TODO: Create annual price in Stripe Dashboard for Agenzia (€3.490/anno)
+    // then replace this placeholder with the real price_xxx ID
+    price_id_annual: "price_agenzia_annual_TODO",
     name: "Agenzia",
     price: 349,
     price_annual: 3490, // 349 × 10
@@ -22,7 +26,9 @@ export const PLANS = {
   enterprise: {
     product_id: "prod_U6V6LGKnn1SyT3",
     price_id: "price_1T8I6OGWMFww3yH4RyBCJmXL",
-    price_id_annual: "",
+    // TODO: Create annual price in Stripe Dashboard for Enterprise (€7.490/anno)
+    // then replace this placeholder with the real price_xxx ID
+    price_id_annual: "price_enterprise_annual_TODO",
     name: "Enterprise",
     price: 749,
     price_annual: 7490, // 749 × 10
@@ -35,6 +41,11 @@ export type PlanKey = keyof typeof PLANS;
 /** All allowed Stripe price IDs — used for server-side validation */
 export const ALLOWED_PRICE_IDS: readonly string[] = Object.values(PLANS).flatMap(
   (p) => [p.price_id, p.price_id_annual].filter(Boolean),
+);
+
+/** True when at least one annual price is a real Stripe ID (not a TODO placeholder) */
+export const HAS_REAL_ANNUAL_PRICES: boolean = Object.values(PLANS).some(
+  (p) => !!p.price_id_annual && !p.price_id_annual.includes("_TODO"),
 );
 
 export function getPlanByProductId(productId: string): PlanKey | null {

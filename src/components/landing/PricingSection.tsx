@@ -23,7 +23,7 @@ const plans = [
       "Visualizzazione in-app",
       "Dispositivo vincolato per durata abbonamento",
     ],
-    cta: "Prova gratis 3 giorni",
+    cta: "Inizia la prova gratuita",
     popular: false,
   },
   {
@@ -43,7 +43,7 @@ const plans = [
       "Dispositivo vincolato per durata abbonamento",
     ],
     extra: "Agente aggiuntivo: €49/mese (+80 scansioni)",
-    cta: "Prova gratis 3 giorni",
+    cta: "Inizia la prova gratuita",
     popular: true,
   },
   {
@@ -62,7 +62,7 @@ const plans = [
       "Supporto prioritario",
     ],
     extra: "Agente aggiuntivo: €39/mese (sconto rispetto ai €49 standard)",
-    cta: "Prova gratis 3 giorni",
+    cta: "Inizia la prova gratuita",
     popular: false,
   },
 ];
@@ -78,11 +78,11 @@ export default function PricingSection() {
             Piani chiari, senza sorprese
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" } as React.CSSProperties}>
-            3 giorni di prova con 5 scansioni incluse.
-            Nessuna carta di credito, nessun dato bancario, nessuna disdetta.
+            Prova gratuita iniziale: 3 giorni, 5 scansioni, accesso completo.
+            Nessuna carta di credito richiesta.
           </p>
           <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground sm:text-sm">
-            Se non ti abboni, non succede nulla. Paghi solo se scegli di continuare.
+            Al termine del trial serve un abbonamento attivo per continuare. Nessun piano gratuito permanente.
           </p>
         </div>
 
@@ -118,7 +118,7 @@ export default function PricingSection() {
               </div>
 
               <p className="mt-2 text-xs text-muted-foreground">
-                Prova inclusa · Paghi solo dopo
+                Prova gratuita inclusa · Al termine serve un abbonamento attivo
               </p>
 
               <div className="mt-3 flex flex-wrap gap-2">
