@@ -62,7 +62,7 @@ const plans = [
       "Supporto prioritario",
     ],
     extra: "Agente aggiuntivo: €39/mese (sconto rispetto ai €49 standard)",
-    cta: "Prova gratis 3 giorni",
+    cta: "Inizia la prova gratuita",
     popular: false,
   },
 ];
