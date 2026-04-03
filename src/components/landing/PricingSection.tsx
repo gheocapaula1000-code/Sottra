@@ -43,7 +43,7 @@ const plans = [
       "Dispositivo vincolato per durata abbonamento",
     ],
     extra: "Agente aggiuntivo: €49/mese (+80 scansioni)",
-    cta: "Prova gratis 3 giorni",
+    cta: "Inizia la prova gratuita",
     popular: true,
   },
   {
