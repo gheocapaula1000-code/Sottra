@@ -45,8 +45,7 @@ const planMeta: Record<PlanKey, { users: string; scans: string; popular: boolean
   enterprise: { users: "10 account inclusi", scans: "800 scansioni/mese", popular: false },
 };
 
-/** True if at least one plan has a real annual price ID configured */
-const hasAnyAnnualPrice = Object.values(PLANS).some((p) => !!p.price_id_annual);
+import { HAS_REAL_ANNUAL_PRICES } from "@/lib/plans";
 
 interface TrialExpiredScreenProps {
   scansUsed: number;
