@@ -23,7 +23,7 @@ const plans = [
       "Visualizzazione in-app",
       "Dispositivo vincolato per durata abbonamento",
     ],
-    cta: "Prova gratis 3 giorni",
+    cta: "Inizia la prova gratuita",
     popular: false,
   },
   {
