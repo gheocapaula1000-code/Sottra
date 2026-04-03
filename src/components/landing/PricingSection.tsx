@@ -118,7 +118,7 @@ export default function PricingSection() {
               </div>
 
               <p className="mt-2 text-xs text-muted-foreground">
-                Prova inclusa · Paghi solo dopo
+                Prova gratuita inclusa · Al termine serve un abbonamento attivo
               </p>
 
               <div className="mt-3 flex flex-wrap gap-2">
