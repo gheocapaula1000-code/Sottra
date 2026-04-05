@@ -60,7 +60,7 @@ const AdminDashboard = () => {
       } />
 
       {/* Content */}
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-safe">
         <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-6">Pannello Amministrazione</h1>
 
         {loading && (

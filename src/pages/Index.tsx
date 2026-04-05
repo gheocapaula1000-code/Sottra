@@ -30,7 +30,7 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-svh bg-background overflow-x-hidden">
+    <div className="min-h-dvh bg-background overflow-x-hidden">
       <HeroSection />
       <ValueModules />
       <MultiLevel />
