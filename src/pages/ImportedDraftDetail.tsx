@@ -111,7 +111,7 @@ export default function ImportedDraftDetail() {
 
   if (!record) {
     return (
-      <div className="min-h-svh bg-background">
+      <div className="min-h-dvh bg-background pb-safe">
         <AppHeader />
         <div className="max-w-2xl mx-auto px-4 py-12 text-center">
           <p className="text-muted-foreground">Bozza non trovata.</p>
