@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 
 const Loader = () => (
-  <div className="flex min-h-svh items-center justify-center bg-background">
+  <div className="flex min-h-dvh items-center justify-center bg-background">
     <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
   </div>
 );
