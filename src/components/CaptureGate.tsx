@@ -68,7 +68,7 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
   ];
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-background" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+    <div className="fixed-safe flex flex-col bg-background overflow-y-auto">
       {/* Top spacer */}
       <div className="flex-1 min-h-[60px]" />
 
