@@ -25,7 +25,7 @@ export default function AdminZoneProfile() {
   };
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-dvh bg-background">
       <AppHeader />
       <main className="mx-auto max-w-3xl px-4 py-6 space-y-4">
         <h1 className="text-lg font-bold text-foreground">Admin — Zone Profile Engine</h1>

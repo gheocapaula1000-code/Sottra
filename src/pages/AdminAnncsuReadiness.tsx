@@ -185,7 +185,7 @@ export default function AdminAnncsuReadiness() {
   };
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-dvh bg-background">
       <AppHeader />
       <main className="container mx-auto max-w-4xl px-4 py-6 space-y-6">
         <div>

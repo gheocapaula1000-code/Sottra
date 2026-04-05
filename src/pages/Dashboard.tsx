@@ -69,7 +69,7 @@ const Dashboard = () => {
       : "Attivo";
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       {/* ── Header ── */}
       <AppHeader rightContent={
         <>
@@ -94,7 +94,7 @@ const Dashboard = () => {
       } />
 
       {/* ── Main ── */}
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-6">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-8 pb-safe space-y-6">
 
         {/* ── Title row + CTA ── */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">

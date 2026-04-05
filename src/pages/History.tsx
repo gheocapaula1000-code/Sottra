@@ -37,7 +37,7 @@ const History = () => {
   };
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       <AppHeader rightContent={
         <>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)} aria-label="Indietro">
@@ -52,7 +52,7 @@ const History = () => {
       } />
 
       <ScrollArea className="flex-1">
-        <div className="px-5 pb-10 pt-4 space-y-4">
+        <div className="px-5 pb-10 pb-safe pt-4 space-y-4">
           <div>
             <h1 className="text-xl font-bold text-foreground tracking-tight">Cronologia</h1>
             <p className="text-xs text-muted-foreground mt-0.5">

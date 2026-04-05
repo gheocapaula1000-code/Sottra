@@ -40,7 +40,7 @@ class ErrorBoundary extends Component<Props, State> {
       // While recovery reload is in progress, show spinner
       if (this.state.recovering) {
         return (
-          <div className="flex min-h-svh items-center justify-center bg-background">
+          <div className="flex min-h-dvh items-center justify-center bg-background">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
           </div>
         );
@@ -49,7 +49,7 @@ class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6 text-center">
+        <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 mb-4">
             <span className="text-2xl">⚠️</span>
           </div>

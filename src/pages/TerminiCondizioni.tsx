@@ -6,7 +6,7 @@ const TerminiCondizioni = () => {
   const e = LEGAL_ENTITY;
 
   return (
-    <div className="min-h-svh bg-background px-6 py-10">
+    <div className="min-h-dvh bg-background px-6 py-10 pt-safe pb-safe">
       <div className="mx-auto max-w-2xl">
         <button onClick={() => navigate(-1)} className="mb-6 text-sm text-muted-foreground hover:text-foreground transition-colors">← Torna indietro</button>
 

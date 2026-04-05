@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 
 const Loader = () => (
-  <div className="flex min-h-svh items-center justify-center bg-background">
+  <div className="flex min-h-dvh items-center justify-center bg-background">
     <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
   </div>
 );
@@ -133,7 +133,7 @@ const BootFailedRetry = ({
   const label = DIAGNOSTIC_LABELS[displayCode] ?? displayCode;
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background px-6 py-safe text-center">
       <p className="text-muted-foreground">
         Impossibile verificare lo stato del tuo account. Potrebbe essere un problema temporaneo.
       </p>

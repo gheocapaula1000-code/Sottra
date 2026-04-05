@@ -78,7 +78,7 @@ export default function AdminHouseDifferentiation() {
   const r = result;
 
   return (
-    <div className="flex flex-col min-h-svh bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       <AppHeader />
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 max-w-lg mx-auto w-full">
         {/* Controls */}

@@ -409,7 +409,7 @@ const AdminSubMunicipal = () => {
   const isR03Present = r03Stats && r03Stats.totalSections > 0;
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-dvh bg-background">
       <AppHeader />
       <main className="container max-w-4xl py-8 space-y-6">
         <div className="flex items-center justify-between">

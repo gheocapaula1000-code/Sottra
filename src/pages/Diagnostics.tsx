@@ -58,7 +58,7 @@ export default function Diagnostics() {
   const healthPass = data?.health === "PASS";
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-dvh bg-background pb-safe">
       <AppHeader rightContent={
         <>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/app")} aria-label="Indietro">
