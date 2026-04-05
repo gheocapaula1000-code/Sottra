@@ -53,7 +53,7 @@ const ResetPassword = () => {
 
   if (!ready) {
     return (
-      <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6">
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-safe">
         <div className="w-full max-w-sm space-y-6 text-center">
           <SottraMark size="lg" textOnly />
           <p className="text-sm text-muted-foreground">Verifica del link in corso…</p>
