@@ -69,7 +69,7 @@ const Dashboard = () => {
       : "Attivo";
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       {/* ── Header ── */}
       <AppHeader rightContent={
         <>
