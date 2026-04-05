@@ -82,7 +82,7 @@ export default function AdminAnncsuMatchAudit() {
   };
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-dvh bg-background">
       <AppHeader />
       <main className="container max-w-4xl py-6 space-y-6">
         <h1 className="text-2xl font-bold text-foreground">ANNCSU Match Quality Audit</h1>

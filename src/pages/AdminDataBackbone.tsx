@@ -161,7 +161,7 @@ const AdminDataBackbone = () => {
   const summary = summarizeRegistry(entries);
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-dvh bg-background">
       <AppHeader />
       <main className="container max-w-5xl py-8 space-y-6">
         <div className="flex items-center justify-between">

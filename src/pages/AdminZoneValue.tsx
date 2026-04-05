@@ -38,7 +38,7 @@ export default function AdminZoneValue() {
   };
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-dvh bg-background">
       <AppHeader />
       <main className="container mx-auto px-4 py-6 max-w-3xl space-y-6">
         <h1 className="text-xl font-bold text-foreground">Admin — Valore Zona & WOW Snapshot</h1>

@@ -136,7 +136,7 @@ const AdminTerritorialBackbone = () => {
   };
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-dvh bg-background">
       <AppHeader />
       <main className="container max-w-4xl py-6 space-y-4 px-4">
         {/* Header */}

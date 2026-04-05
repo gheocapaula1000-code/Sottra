@@ -1557,7 +1557,7 @@ const Result = () => {
 
   if (!hasValidPhoto) {
     return (
-      <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6 text-center">
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 text-center">
         <p className="text-muted-foreground">Nessuna immagine disponibile.</p>
         <Button variant="outline" className="mt-4" onClick={() => navigate("/scan")}>Vai alla scansione</Button>
       </div>
@@ -1566,7 +1566,7 @@ const Result = () => {
 
   if (!hasValidCoords) {
     return (
-      <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6 text-center">
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 mb-4">
           <MapPin className="h-8 w-8 text-destructive" />
         </div>
@@ -1652,7 +1652,7 @@ const Result = () => {
   const caseResult = wowAndDiff?.caseResult ?? null;
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       <AppHeader rightContent={
         <>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/scan")} aria-label="Indietro">

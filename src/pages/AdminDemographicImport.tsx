@@ -412,7 +412,7 @@ const AdminDemographicImport = () => {
   };
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       <AppHeader rightContent={
         <>
           <span className="text-xs font-semibold text-primary">Admin</span>

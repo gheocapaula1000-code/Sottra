@@ -16,7 +16,7 @@ export default function HeroSection() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative min-h-svh flex flex-col overflow-hidden px-5 pt-[env(safe-area-inset-top,0px)] sm:px-10 lg:px-20">
+    <section className="relative min-h-dvh flex flex-col overflow-hidden px-5 pt-[env(safe-area-inset-top,0px)] sm:px-10 lg:px-20">
       {/* Ambient glow */}
       <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[420px] w-[660px] rounded-full bg-primary/8 blur-[140px]" />
 

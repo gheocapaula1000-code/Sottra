@@ -269,7 +269,7 @@ export default function AdminOmiKmlIngest() {
   const hasSavedState = !!loadImportState();
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       <AppHeader
         rightContent={
           <>

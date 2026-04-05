@@ -122,7 +122,7 @@ export default function AdminOmiIngest() {
   const lastDb = results.filter(r => r.database).pop()?.database;
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       <AppHeader rightContent={
         <>
           <span className="text-xs font-semibold text-primary">Admin OMI</span>
