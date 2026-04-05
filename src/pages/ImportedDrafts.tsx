@@ -19,7 +19,7 @@ export default function ImportedDrafts() {
   }, []);
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-dvh bg-background pb-safe">
       <AppHeader />
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         <div className="flex items-center justify-between">

@@ -125,7 +125,7 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
   };
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6 py-12">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-12 py-safe">
       <div className="mx-auto max-w-4xl text-center">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
           <AlertTriangle className="h-7 w-7 text-primary" />

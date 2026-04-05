@@ -131,7 +131,7 @@ export default function ImportedDraftDetail() {
   const _originMap = record.origin_map ?? {};
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-dvh bg-background pb-safe">
       <AppHeader />
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 pb-24">
         {/* Back + header */}

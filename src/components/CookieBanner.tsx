@@ -21,7 +21,7 @@ export default function CookieBanner() {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[9999] border-t border-border bg-card/95 backdrop-blur-sm px-4 py-4 shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 z-[9999] border-t border-border bg-card/95 backdrop-blur-sm px-4 py-4 pb-safe shadow-lg">
       <div className="mx-auto flex max-w-xl flex-col sm:flex-row items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground text-center sm:text-left">
           Questo sito utilizza cookie tecnici per garantire il corretto funzionamento.
