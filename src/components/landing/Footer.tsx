@@ -3,7 +3,7 @@ import SottraMark from "@/components/SottraMark";
 
 export default function Footer() {
   return (
-    <footer className="border-t border-border px-5 py-10 sm:px-10 lg:px-20">
+    <footer className="border-t border-border px-5 py-10 pb-safe sm:px-10 lg:px-20">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 text-center">
         <SottraMark size="sm" />
         <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground sm:text-sm">
