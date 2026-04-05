@@ -29,7 +29,7 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-safe">
       <div className="w-full max-w-sm space-y-8">
         <div className="flex flex-col items-center gap-2">
           <SottraMark size="lg" textOnly />

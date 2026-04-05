@@ -301,7 +301,7 @@ const Scan = () => {
 
         {/* Bottom controls */}
         {cameraState === "active" && shootPhase === "idle" && (
-          <div className="z-10 flex items-center justify-center gap-8 pb-[max(env(safe-area-inset-bottom,24px),24px)] pt-4 px-6">
+          <div className="z-10 flex items-center justify-center gap-8 pb-safe pt-4 px-6" style={{ paddingBottom: 'max(var(--safe-bottom), 24px)' }}>
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors active:bg-white/20"
