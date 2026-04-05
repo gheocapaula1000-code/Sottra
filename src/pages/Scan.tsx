@@ -240,7 +240,7 @@ const Scan = () => {
       {/* Overlay UI */}
       <div className="absolute inset-0 flex flex-col">
         {/* Header */}
-        <header className="z-10 flex items-center justify-between px-5 pt-[env(safe-area-inset-top,12px)] pb-2">
+        <header className="z-10 flex items-center justify-between px-5 pt-safe pb-2">
           <span className="text-base font-bold text-white/90 drop-shadow">Sottra</span>
           <button onClick={() => { streamRef.current?.getTracks().forEach((t) => t.stop()); navigate("/"); }} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
             <X className="h-5 w-5 text-white" />
