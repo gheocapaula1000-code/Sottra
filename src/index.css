@@ -141,4 +141,18 @@
     padding-left: var(--safe-left);
     padding-right: var(--safe-right);
   }
+
+  /* Safe-area-aware max-height for modals / dialogs / popovers */
+  .max-h-screen-safe {
+    max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 2rem);
+  }
+
+  /* Touch-friendly close/action button sizing */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
