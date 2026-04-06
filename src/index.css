@@ -94,6 +94,18 @@
     scroll-margin-bottom: 120px;
   }
 
+  /* Global minimum touch target for interactive elements */
+  button, [role="button"], a, [type="checkbox"], [type="radio"], summary {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Exclude icon-only buttons and inline links from width constraint */
+  a:not([class*="btn"]):not([class*="button"]) {
+    min-width: unset;
+    min-height: unset;
+  }
+
   /* Word break safety for long addresses/coordinates */
   .break-anywhere {
     overflow-wrap: anywhere;
@@ -128,5 +140,19 @@
     padding-bottom: var(--safe-bottom);
     padding-left: var(--safe-left);
     padding-right: var(--safe-right);
+  }
+
+  /* Safe-area-aware max-height for modals / dialogs / popovers */
+  .max-h-screen-safe {
+    max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 2rem);
+  }
+
+  /* Touch-friendly close/action button sizing */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
