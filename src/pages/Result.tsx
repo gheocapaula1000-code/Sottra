@@ -210,6 +210,31 @@ function ScoreArc({ value, size = 88, stroke = 7 }: { value: number; size?: numb
   );
 }
 
+/** Qualitative badge to replace ScoreArc in elaborated indices */
+function QualitativeBadge({ band, bandLabels, subtitle }: { band: string | null; bandLabels: Record<string, string>; subtitle?: string }) {
+  const label = band ? bandLabels[band] ?? band : "Non determinato";
+  const badgeColors: Record<string, string> = {
+    molto_forte: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    forte: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+    elevata: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    significativa: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+    interessante: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+    moderata: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    contenuta: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    debole: "bg-stone-500/10 text-muted-foreground border-stone-500/20",
+    limitata: "bg-stone-500/10 text-muted-foreground border-stone-500/20",
+  };
+  const colorClass = band ? badgeColors[band] ?? "bg-muted text-muted-foreground border-border" : "bg-muted text-muted-foreground border-border";
+  return (
+    <div className="mb-4">
+      <span className={cn("inline-flex items-center rounded-md border px-3 py-1.5 text-xs font-semibold", colorClass)}>
+        {label}
+      </span>
+      {subtitle && <p className="text-[10px] text-muted-foreground/60 mt-1.5">{subtitle}</p>}
+    </div>
+  );
+}
+
 function MiniBar({ label, value, max = 100 }: { label: string; value: number; max?: number }) {
   const pct = Math.min((value / max) * 100, 100);
   return (
@@ -327,7 +352,7 @@ function HouseDifferentiationCard({ diff, loading }: { diff: HouseDifferentiatio
         </div>
       ))}
 
-      <p className="text-[9px] text-muted-foreground/30 mt-2">La differenziazione non equivale a una identificazione catastale</p>
+      <p className="text-[11px] text-muted-foreground/60 mt-2">La differenziazione non equivale a una identificazione catastale</p>
     </Section>
   );
 }
@@ -450,16 +475,14 @@ function ConvergenzaTerritorialeCard({ data, loading }: { data: ConvergenzaTerri
   return (
     <Section gradient={data.band ? bandColors[data.band] ?? "" : ""}>
       <SectionHeader icon={Layers} title="Convergenza Territoriale" badge={data.band ? bandLabels[data.band] : null} />
-      <div className="flex items-center gap-4 mb-4">
-        <ScoreArc value={data.score} />
-        <div className="flex-1 space-y-1">
-          {data.convergenceLevel && (
-            <div className="flex items-center gap-2 text-xs"><span className="text-muted-foreground">Convergenza</span><span className="font-semibold text-foreground">{convergenceLabels[data.convergenceLevel] ?? data.convergenceLevel}</span></div>
-          )}
-          {data.coverageLevel && (
-            <div className="flex items-center gap-2 text-xs"><span className="text-muted-foreground">Copertura dati</span><span className="font-semibold text-foreground">{coverageLabels[data.coverageLevel] ?? data.coverageLevel}</span></div>
-          )}
-        </div>
+      <QualitativeBadge band={data.band} bandLabels={bandLabels} subtitle="Valutazione sintetica Sottra" />
+      <div className="space-y-1 mb-4">
+        {data.convergenceLevel && (
+          <div className="flex items-center gap-2 text-xs"><span className="text-muted-foreground">Convergenza</span><span className="font-semibold text-foreground">{convergenceLabels[data.convergenceLevel] ?? data.convergenceLevel}</span></div>
+        )}
+        {data.coverageLevel && (
+          <div className="flex items-center gap-2 text-xs"><span className="text-muted-foreground">Copertura dati</span><span className="font-semibold text-foreground">{coverageLabels[data.coverageLevel] ?? data.coverageLevel}</span></div>
+        )}
       </div>
 
       {positiveSignals.length > 0 && (
@@ -492,7 +515,7 @@ function ConvergenzaTerritorialeCard({ data, loading }: { data: ConvergenzaTerri
         </div>
       )}
       <SourceTag meta={data} />
-      <p className="text-[9px] text-muted-foreground/30 mt-1">Indice di convergenza elaborato — non costituisce consulenza</p>
+      <p className="text-[11px] text-muted-foreground/60 mt-1">Indice di convergenza elaborato — non costituisce consulenza</p>
     </Section>
   );
 }
@@ -654,17 +677,12 @@ function OpportunityCard({ data, loading }: { data: OpportunityData | null; load
   return (
     <Section gradient={effectiveBand ? bandColors[effectiveBand] ?? "" : ""}>
       <SectionHeader icon={Target} title="Indice Opportunità" badge={effectiveBand ? bandLabels[effectiveBand] : (data.quadrante ?? null)} />
-      <div className="flex items-center gap-4 mb-4">
-        <ScoreArc value={scoreValue} />
-        <p className="text-xs text-muted-foreground leading-relaxed flex-1">
-          {scoreValue >= 70
-            ? "Segnali convergenti rilevanti. Fattori favorevoli che meritano attenzione."
-            : scoreValue >= 45
-              ? "Quadro interessante. Elementi da valutare con attenzione."
-              : "Potenziale contenuto. Elementi da monitorare nel tempo."
-          }
-        </p>
-      </div>
+      <QualitativeBadge band={effectiveBand} bandLabels={bandLabels} subtitle="Indice elaborato Sottra" />
+      {observation && (
+        <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3">
+          <p className="text-xs text-foreground/80 leading-relaxed italic">"{observation}"</p>
+        </div>
+      )}
 
       {drivers.length > 0 && (
         <div className="space-y-1.5 mb-3">
@@ -721,18 +739,29 @@ function TimeViewCard({ data, loading }: { data: TimeViewData | null; loading: b
         <p className="text-xs text-muted-foreground mb-3">Orizzonte: <span className="font-semibold text-foreground">{data.scenarioHorizon}</span></p>
       )}
 
+      {data.scenarioBand && (
+        <QualitativeBadge
+          band={data.scenarioBand}
+          bandLabels={bandLabels}
+          subtitle="Proiezione indicativa — scenario orientativo, non previsione"
+        />
+      )}
+
       {data.previsione5Anni != null && (
-        <div className="grid grid-cols-3 gap-2 text-center mb-4 rounded-xl bg-background/40 border border-border/30 p-3">
-          {[
-            { label: "5 anni", value: data.previsione5Anni },
-            { label: "10 anni", value: data.previsione10Anni },
-            { label: "20 anni", value: data.previsione20Anni },
-          ].map((item, i) => (
-            <div key={i}>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</span>
-              <p className="font-extrabold text-foreground text-xl mt-0.5">{fmt(item.value)}%</p>
-            </div>
-          ))}
+        <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2.5 mb-4">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Stima indicativa di variazione</p>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            {[
+              { label: "5a", value: data.previsione5Anni },
+              { label: "10a", value: data.previsione10Anni },
+              { label: "20a", value: data.previsione20Anni },
+            ].filter(item => item.value != null).map((item, i) => (
+              <div key={i} className="flex items-baseline gap-1">
+                <span>{item.label}:</span>
+                <span className="font-medium text-foreground/70 text-xs">~{fmt(item.value)}%</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -769,7 +798,7 @@ function TimeViewCard({ data, loading }: { data: TimeViewData | null; loading: b
 
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mb-1">{data.confidenceReason}</p>}
       <SourceTag meta={data} />
-      <p className="text-[9px] text-muted-foreground/30 mt-1">Le proiezioni sono indicative e non costituiscono consulenza finanziaria</p>
+      <p className="text-[11px] text-muted-foreground/60 mt-1">Le proiezioni sono indicative e non costituiscono consulenza finanziaria</p>
     </Section>
   );
 }
@@ -802,19 +831,7 @@ function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; 
     <Section gradient={data.infrastructureBand ? bandColors[data.infrastructureBand] ?? "" : ""}>
       <SectionHeader icon={Construction} title="Infrastrutture e Reti" badge={data.infrastructureBand ? bandLabels[data.infrastructureBand] : null} />
 
-      {data.infrastructureScore != null && (
-        <div className="flex items-center gap-4 mb-4">
-          <ScoreArc value={data.infrastructureScore} />
-          <p className="text-xs text-muted-foreground leading-relaxed flex-1">
-            {data.infrastructureScore >= 70
-              ? "Segnali infrastrutturali rilevanti. Contesto sostenuto da interventi e reti significativi."
-              : data.infrastructureScore >= 45
-                ? "Supporti infrastrutturali da non sottovalutare. Territorio con trasformazioni concrete."
-                : "Contesto infrastrutturale contenuto. Margini di sviluppo da monitorare."
-            }
-          </p>
-        </div>
-      )}
+      <QualitativeBadge band={data.infrastructureBand} bandLabels={bandLabels} subtitle="Valutazione sintetica Sottra" />
 
       {drivers.length > 0 && (
         <div className="space-y-1.5 mb-3">
@@ -938,19 +955,7 @@ function SviluppoAreaCard({ data, loading }: { data: SviluppoAreaData | null; lo
     <Section gradient={data.areaDevelopmentBand ? bandColors[data.areaDevelopmentBand] ?? "" : ""}>
       <SectionHeader icon={Compass} title="Dinamica Territoriale" badge={data.areaDevelopmentBand ? bandLabels[data.areaDevelopmentBand] : null} />
 
-      {data.areaDevelopmentScore != null && (
-        <div className="flex items-center gap-4 mb-4">
-          <ScoreArc value={data.areaDevelopmentScore} />
-          <p className="text-xs text-muted-foreground leading-relaxed flex-1">
-            {data.areaDevelopmentScore >= 70
-              ? "Territorio con elementi di evoluzione concreti. Segnali da valutare seriamente."
-              : data.areaDevelopmentScore >= 45
-                ? "Contesto con fattori di trasformazione rilevanti. Zona da monitorare."
-                : "Area con segnali contenuti. Contesto attuale stabile."
-            }
-          </p>
-        </div>
-      )}
+      <QualitativeBadge band={data.areaDevelopmentBand} bandLabels={bandLabels} subtitle="Indice elaborato Sottra" />
 
       {topSignals.length > 0 && (
         <div className="space-y-2 mb-3">
@@ -1397,7 +1402,7 @@ function NeighborhoodIndexCard({ index, loading }: { index: NeighborhoodIndex | 
         ))}
       </div>
 
-      <p className="text-[9px] text-muted-foreground/30">{index.disclaimer}</p>
+      <p className="text-[11px] text-muted-foreground/60">{index.disclaimer}</p>
     </Section>
   );
 }
