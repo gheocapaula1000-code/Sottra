@@ -1046,7 +1046,7 @@ function MarketContextCard({ data, loading }: { data: MarketContextData | null; 
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mt-2">{data.confidenceReason}</p>}
       <SourceTag meta={data} />
       {isPartial && (
-        <p className="text-[9px] text-muted-foreground/30 mt-1">
+        <p className="text-[11px] text-muted-foreground/60 mt-1">
           {data.marketCoverageLevel === "scarsa"
             ? "Dati di mercato limitati per questa zona — valori puramente indicativi"
             : "Analisi basata su copertura parziale — dati indicativi"}
