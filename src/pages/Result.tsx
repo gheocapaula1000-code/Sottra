@@ -709,7 +709,7 @@ function OpportunityCard({ data, loading }: { data: OpportunityData | null; load
       )}
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mb-1">{data.confidenceReason}</p>}
       <SourceTag meta={data} />
-      <p className="text-[9px] text-muted-foreground/30 mt-1">Indice elaborato — non costituisce consulenza finanziaria</p>
+      <p className="text-[11px] text-muted-foreground/60 mt-1">Indice elaborato — non costituisce consulenza finanziaria</p>
     </Section>
   );
 }
