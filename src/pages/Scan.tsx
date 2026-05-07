@@ -269,10 +269,10 @@ const Scan = () => {
                 type="text"
                 value={manualAddress}
                 onChange={(e) => setManualAddress(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (manualAddress.trim()) fileInputRef.current?.click(); } }}
                 placeholder="es. Via Roma 15, Padova"
                 autoComplete="street-address"
-                className="w-full h-11 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 px-3 text-[16px] outline-none focus:ring-2 focus:ring-primary"
+                style={{ backgroundColor: "#ffffff", color: "#111111" }}
+                className="w-full h-11 rounded-lg px-3 text-[16px] outline-none focus:ring-2 focus:ring-primary"
               />
               <button
                 type="button"
