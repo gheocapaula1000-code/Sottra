@@ -227,6 +227,17 @@ export function ScanHistoryProvider({ children }: { children: ReactNode }) {
       saveToStorage(updated);
       return updated;
     });
+    supabase.functions.invoke("sottra", {
+      body: {
+        route: "scan/save",
+        address: scan.locality,
+        comune: scan.locality,
+        lat: scan.lat,
+        lng: scan.lng,
+        photo_thumbnail: scan.photoThumbnail,
+        result_snapshot: scan.resultSnapshot,
+      },
+    }).catch(() => {});
   }, []);
 
   const removeScan = useCallback((id: string) => {
