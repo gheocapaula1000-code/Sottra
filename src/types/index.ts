@@ -397,6 +397,10 @@ export interface ScanResult {
   subMunicipalMatch: SectionState<SubMunicipalMatchData>;
   offmarket?: SectionState<OffmarketData>;
   zoneIntelligence?: SectionState<ZoneIntelligenceData>;
+  listings?: SectionState<ListingsData>;
+  condominio?: SectionState<CondominioData>;
+  storicoTransazioni?: SectionState<StoricoTransazioniData>;
+  moodScore?: SectionState<MoodScoreData>;
   /* ── New report engine sections (Phase 1 — framework only) ── */
   profiloRapido: SectionState<import("@/types/report").ProfiloRapidoData>;
   immobileFacciata: SectionState<import("@/types/report").ImmobileFacciataData>;
