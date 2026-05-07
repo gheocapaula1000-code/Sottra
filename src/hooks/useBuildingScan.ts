@@ -256,7 +256,7 @@ export function useBuildingScan() {
 
       // Phase 2: Map real data to report sections using reducer action
       // The MAP_REPORT action reads current state inside the reducer
-      dispatch({ type: "MAP_REPORT", lat, lng });
+      dispatch({ type: "MAP_REPORT", lat: finalLat, lng: finalLng });
     };
 
     await runPipeline();
