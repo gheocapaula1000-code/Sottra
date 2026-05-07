@@ -19,6 +19,10 @@ const MODULES: (keyof ScanResult)[] = [
   "subMunicipalMatch",
   "offmarket",
   "zoneIntelligence",
+  "listings",
+  "condominio",
+  "storicoTransazioni",
+  "moodScore",
   // Report engine sections — populated by MAP_REPORT action after data modules complete
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
