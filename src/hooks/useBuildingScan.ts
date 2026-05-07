@@ -1,5 +1,5 @@
 import { useReducer, useState, useCallback, useRef } from "react";
-import { identifyBuilding, getPricing, getOffmarket, getZoneIntelligence } from "@/services/scan";
+import { identifyBuilding, getPricing, getOffmarket, getZoneIntelligence, getListings, getCondominio, getStoricoTransazioni, getMoodScore } from "@/services/scan";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
 import { fetchProSources } from "@/services/proSources";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,10 @@ const MODULES: (keyof ScanResult)[] = [
   "subMunicipalMatch",
   "offmarket",
   "zoneIntelligence",
+  "listings",
+  "condominio",
+  "storicoTransazioni",
+  "moodScore",
   // Report engine sections — populated by MAP_REPORT action after data modules complete
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
@@ -188,6 +192,10 @@ export function useBuildingScan() {
         getConvergenzaTerritoriale(lat, lng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
         getOffmarket(lat, lng, comuneFromAddr, provinciaFromAddr).then(resolve("offmarket")).catch(reject("offmarket")),
         getZoneIntelligence(lat, lng, comuneFromAddr, provinciaFromAddr, address || undefined).then(resolve("zoneIntelligence")).catch(reject("zoneIntelligence")),
+        getListings(address, comuneFromAddr, lat, lng).then(resolve("listings")).catch(reject("listings")),
+        getCondominio(address, comuneFromAddr, lat, lng).then(resolve("condominio")).catch(reject("condominio")),
+        getStoricoTransazioni(address, comuneFromAddr).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
+        getMoodScore(lat, lng).then(resolve("moodScore")).catch(reject("moodScore")),
         // Pro Sources (POI, OMI, ISTAT) — non-blocking
         fetchProSources(lat, lng).then((proData) => {
           set("poiEnrichment", {

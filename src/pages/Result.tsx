@@ -1689,6 +1689,188 @@ function ZoneIntelligenceSection({ data, loading }: { data: import("@/types").Zo
   );
 }
 
+function ListingsSection({ data, loading }: { data: import("@/types").ListingsData | null; loading: boolean }) {
+  const annunci = data?.annunci ?? [];
+  const totale = data?.totale ?? annunci.length;
+  return (
+    <ReportAccordionItem id="listings" title="Annunci attivi nella zona" icon={Gem} defaultOpen={false}>
+      <div className="space-y-3 min-w-0">
+        {loading && <Skeleton className="h-16 w-full" />}
+        {!loading && totale === 0 && (
+          <p className="text-xs text-muted-foreground leading-relaxed">Nessun annuncio attivo rilevato per questa zona.</p>
+        )}
+        {!loading && totale > 0 && (
+          <>
+            <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+              <Badge variant="outline" className="text-[10px]">{totale} {totale === 1 ? "annuncio" : "annunci"}</Badge>
+              {typeof data?.prezzo_medio_mq === "number" && (
+                <Badge variant="outline" className="text-[10px]">Media: {Math.round(data.prezzo_medio_mq)} €/m²</Badge>
+              )}
+              {typeof data?.prezzo_min_mq === "number" && typeof data?.prezzo_max_mq === "number" && (
+                <Badge variant="outline" className="text-[10px]">Range: {Math.round(data.prezzo_min_mq)}–{Math.round(data.prezzo_max_mq)} €/m²</Badge>
+              )}
+            </div>
+            <div className="space-y-2">
+              {annunci.slice(0, 8).map((a, i) => (
+                <div key={i} className="rounded-xl border border-border/60 bg-card/40 p-3 min-w-0">
+                  {a.titolo && <p className="text-sm font-medium text-foreground leading-tight break-words">{toText(a.titolo)}</p>}
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[11px] text-muted-foreground">
+                    {typeof a.prezzo === "number" && <span>{a.prezzo.toLocaleString("it-IT")} €</span>}
+                    {typeof a.superficie_mq === "number" && <span>{a.superficie_mq} m²</span>}
+                    {typeof a.prezzo_mq === "number" && <span>{Math.round(a.prezzo_mq)} €/m²</span>}
+                    {a.locali && <span>{toText(String(a.locali))} locali</span>}
+                  </div>
+                  {a.indirizzo && <p className="text-[11px] text-muted-foreground/80 mt-1 break-words">{toText(a.indirizzo)}</p>}
+                  {(a.fonte || a.url) && (
+                    <p className="text-[10px] text-muted-foreground/70 mt-1.5">
+                      {a.url ? (
+                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                          {toText(a.fonte || a.url)}
+                        </a>
+                      ) : toText(a.fonte || "")}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </ReportAccordionItem>
+  );
+}
+
+function CondominioSection({ data, loading }: { data: import("@/types").CondominioData | null; loading: boolean }) {
+  const hasData = !!data && (data.amministratore || data.numero_unita || data.anno_costruzione || data.classe_energetica || (data.segnali && data.segnali.length > 0));
+  return (
+    <ReportAccordionItem id="condominio" title="Condominio" icon={Gem} defaultOpen={false}>
+      <div className="space-y-3 min-w-0">
+        {loading && <Skeleton className="h-16 w-full" />}
+        {!loading && !hasData && (
+          <p className="text-xs text-muted-foreground leading-relaxed">Nessun dato condominiale disponibile.</p>
+        )}
+        {!loading && hasData && data && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            {data.amministratore && <div><span className="text-muted-foreground">Amministratore: </span><span className="text-foreground break-words">{toText(data.amministratore)}</span></div>}
+            {data.contatti && <div><span className="text-muted-foreground">Contatti: </span><span className="text-foreground break-words">{toText(data.contatti)}</span></div>}
+            {typeof data.numero_unita === "number" && <div><span className="text-muted-foreground">Unità: </span><span className="text-foreground">{data.numero_unita}</span></div>}
+            {typeof data.anno_costruzione === "number" && <div><span className="text-muted-foreground">Anno costruzione: </span><span className="text-foreground">{data.anno_costruzione}</span></div>}
+            {data.classe_energetica && <div><span className="text-muted-foreground">Classe energetica: </span><span className="text-foreground">{toText(data.classe_energetica)}</span></div>}
+            {typeof data.spese_annue === "number" && <div><span className="text-muted-foreground">Spese annue: </span><span className="text-foreground">{data.spese_annue.toLocaleString("it-IT")} €</span></div>}
+            {data.note && <div className="sm:col-span-2 text-muted-foreground leading-relaxed break-words">{toText(data.note)}</div>}
+          </div>
+        )}
+        {!loading && data?.segnali && data.segnali.length > 0 && (
+          <ul className="space-y-1">
+            {data.segnali.map((s, i) => (
+              <li key={i} className="text-xs text-foreground">• {toText(s.label)}{s.valore ? `: ${toText(s.valore)}` : ""}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </ReportAccordionItem>
+  );
+}
+
+function StoricoTransazioniSection({ data, loading }: { data: import("@/types").StoricoTransazioniData | null; loading: boolean }) {
+  const transazioni = data?.transazioni ?? [];
+  const totale = data?.totale ?? transazioni.length;
+  return (
+    <ReportAccordionItem id="storico-transazioni" title="Storico transazioni" icon={Gem} defaultOpen={false}>
+      <div className="space-y-3 min-w-0">
+        {loading && <Skeleton className="h-16 w-full" />}
+        {!loading && totale === 0 && (
+          <p className="text-xs text-muted-foreground leading-relaxed">Nessuna transazione storica disponibile.</p>
+        )}
+        {!loading && totale > 0 && (
+          <>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="text-[10px]">{totale} {totale === 1 ? "transazione" : "transazioni"}</Badge>
+              {typeof data?.prezzo_medio_mq === "number" && (
+                <Badge variant="outline" className="text-[10px]">Media: {Math.round(data.prezzo_medio_mq)} €/m²</Badge>
+              )}
+              {typeof data?.variazione_percentuale === "number" && (
+                <Badge variant="outline" className="text-[10px]">Variazione: {data.variazione_percentuale > 0 ? "+" : ""}{data.variazione_percentuale.toFixed(1)}%</Badge>
+              )}
+              {data?.periodo && <Badge variant="outline" className="text-[10px]">{toText(data.periodo)}</Badge>}
+            </div>
+            <div className="space-y-2">
+              {transazioni.slice(0, 10).map((t, i) => (
+                <div key={i} className="rounded-xl border border-border/60 bg-card/40 p-3 min-w-0">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-foreground">
+                    {t.data && <span className="text-muted-foreground">{toText(t.data)}</span>}
+                    {typeof t.prezzo === "number" && <span className="font-medium">{t.prezzo.toLocaleString("it-IT")} €</span>}
+                    {typeof t.superficie_mq === "number" && <span>{t.superficie_mq} m²</span>}
+                    {typeof t.prezzo_mq === "number" && <span>{Math.round(t.prezzo_mq)} €/m²</span>}
+                    {t.tipologia && <span className="text-muted-foreground">{toText(t.tipologia)}</span>}
+                  </div>
+                  {t.fonte && <p className="text-[10px] text-muted-foreground/70 mt-1">{toText(t.fonte)}</p>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </ReportAccordionItem>
+  );
+}
+
+function MoodScoreSection({ data, loading }: { data: import("@/types").MoodScoreData | null; loading: boolean }) {
+  const hasData = !!data && (typeof data.score === "number" || data.observation || (data.drivers && data.drivers.length > 0));
+  const bandClass = (band?: string | null): string => {
+    const b = (band ?? "").toLowerCase();
+    if (b.includes("molto_pos")) return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+    if (b.includes("pos")) return "bg-emerald-500/10 text-emerald-300 border-emerald-500/20";
+    if (b.includes("neutr")) return "bg-muted text-muted-foreground border-border";
+    if (b.includes("molto_neg")) return "bg-red-500/15 text-red-400 border-red-500/30";
+    if (b.includes("neg")) return "bg-orange-500/15 text-orange-400 border-orange-500/30";
+    return "bg-muted text-muted-foreground border-border";
+  };
+  return (
+    <ReportAccordionItem id="mood-score" title="Percezione di zona" icon={Zap} defaultOpen={false}>
+      <div className="space-y-3 min-w-0">
+        {loading && <Skeleton className="h-16 w-full" />}
+        {!loading && !hasData && (
+          <p className="text-xs text-muted-foreground leading-relaxed">Percezione di zona non disponibile.</p>
+        )}
+        {!loading && hasData && data && (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              {typeof data.score === "number" && (
+                <span className="text-2xl font-semibold text-foreground">{Math.round(data.score)}</span>
+              )}
+              {data.band && (
+                <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-medium", bandClass(data.band))}>
+                  {toText(data.sentimentLabel || data.band)}
+                </span>
+              )}
+            </div>
+            {data.observation && (
+              <p className="text-xs text-foreground leading-relaxed break-words">{toText(data.observation)}</p>
+            )}
+            {data.drivers && data.drivers.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wide mb-1">Punti di forza</p>
+                <ul className="space-y-0.5">
+                  {data.drivers.map((d, i) => <li key={i} className="text-xs text-foreground">• {toText(d)}</li>)}
+                </ul>
+              </div>
+            )}
+            {data.risks && data.risks.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold text-orange-400 uppercase tracking-wide mb-1">Punti di attenzione</p>
+                <ul className="space-y-0.5">
+                  {data.risks.map((r, i) => <li key={i} className="text-xs text-foreground">• {toText(r)}</li>)}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </ReportAccordionItem>
+  );
+}
+
 const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -2043,6 +2225,22 @@ const Result = () => {
               {/* Intelligenza di Zona */}
               <SectionSafe>
                 <ZoneIntelligenceSection data={result.zoneIntelligence?.data as import("@/types").ZoneIntelligenceData | null} loading={result.zoneIntelligence?.status === "loading"} />
+              </SectionSafe>
+
+              <SectionSafe>
+                <ListingsSection data={result.listings?.data as import("@/types").ListingsData | null} loading={result.listings?.status === "loading"} />
+              </SectionSafe>
+
+              <SectionSafe>
+                <CondominioSection data={result.condominio?.data as import("@/types").CondominioData | null} loading={result.condominio?.status === "loading"} />
+              </SectionSafe>
+
+              <SectionSafe>
+                <StoricoTransazioniSection data={result.storicoTransazioni?.data as import("@/types").StoricoTransazioniData | null} loading={result.storicoTransazioni?.status === "loading"} />
+              </SectionSafe>
+
+              <SectionSafe>
+                <MoodScoreSection data={result.moodScore?.data as import("@/types").MoodScoreData | null} loading={result.moodScore?.status === "loading"} />
               </SectionSafe>
 
               {/* Sintesi Finale — always open */}
