@@ -172,6 +172,17 @@ export function useBuildingScan() {
       const comuneFromAddr = addrParts.length >= 2 ? addrParts[addrParts.length - 2] : undefined;
       const provinciaFromAddr = addrParts.length >= 1 ? addrParts[addrParts.length - 1] : undefined;
 
+      // Use comune/address derived from identify result (with safe fallbacks)
+      const identifyAny = identifyData as unknown as Record<string, unknown>;
+      const comuneFromIdentify = (identifyAny.comune as string | undefined)
+        ?? (typeof identifyData.address === "string"
+          ? identifyData.address.split(",").slice(-2, -1)[0]?.trim()
+          : undefined)
+        ?? comuneFromAddr;
+      const addressFromIdentify = (identifyAny.resolvedAddress as string | undefined)
+        ?? identifyData.address
+        ?? address;
+
       // Set report sections to loading during data fetch
       const reportModules: (keyof ScanResult)[] = [
         "profiloRapido", "immobileFacciata", "contestoVicinato",
