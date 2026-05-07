@@ -1996,6 +1996,45 @@ const Result = () => {
   const publishedCount = completedModules.filter(k => isSectionPublishable(result[k].status, result[k].data)).length;
   const excludedCount = completedModules.length - publishedCount;
 
+  const handleShare = async () => {
+    const addr = result?.identify?.data?.resolvedAddress
+      ?? result?.identify?.data?.address
+      ?? state?.manualAddress
+      ?? "Indirizzo non disponibile";
+
+    const prezzo = result?.pricing?.data?.prezzoMedioMq
+      ?? result?.market?.data?.prezzoMedioMq
+      ?? null;
+
+    const zona = result?.pricing?.data?.zonaOmi
+      ?? result?.identify?.data?.zonaOmi
+      ?? null;
+
+    const rischio = result?.rischioZona?.data?.livelloRischio
+      ?? result?.rischioZona?.data?.livello
+      ?? null;
+
+    const opportunity = result?.opportunity?.data?.score ?? null;
+
+    const lines = [
+      `📍 ${addr}`,
+      prezzo ? `💶 ${prezzo} €/m²` : null,
+      zona ? `🏘️ Zona OMI: ${zona}` : null,
+      opportunity ? `📊 Opportunità: ${opportunity}/100` : null,
+      rischio ? `⚠️ Rischio: ${rischio}` : null,
+      `🔍 Analisi Sottra — sottra.app`,
+    ].filter(Boolean).join("\n");
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Report Sottra", text: lines });
+      } else {
+        await navigator.clipboard.writeText(lines);
+        toast({ title: "Copiato!", description: "Report copiato negli appunti." });
+      }
+    } catch {}
+  };
+
   // ── WOW Snapshot computation ──
   const pricingData = result.pricing.data as PricingData | null;
   const streetEvidence = identifyData?.streetEvidence;
