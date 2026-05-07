@@ -1996,6 +1996,45 @@ const Result = () => {
   const publishedCount = completedModules.filter(k => isSectionPublishable(result[k].status, result[k].data)).length;
   const excludedCount = completedModules.length - publishedCount;
 
+  const handleShare = async () => {
+    const addr = (result?.identify?.data as any)?.resolvedAddress
+      ?? result?.identify?.data?.address
+      ?? state?.manualAddress
+      ?? "Indirizzo non disponibile";
+
+    const prezzo = (result?.pricing?.data as any)?.prezzoMedioMq
+      ?? (result as any)?.market?.data?.prezzoMedioMq
+      ?? null;
+
+    const zona = (result?.pricing?.data as any)?.zonaOmi
+      ?? (result?.identify?.data as any)?.zonaOmi
+      ?? null;
+
+    const rischio = (result?.rischioZona?.data as any)?.livelloRischio
+      ?? (result?.rischioZona?.data as any)?.livello
+      ?? null;
+
+    const opportunity = result?.opportunity?.data?.score ?? null;
+
+    const lines = [
+      `📍 ${addr}`,
+      prezzo ? `💶 ${prezzo} €/m²` : null,
+      zona ? `🏘️ Zona OMI: ${zona}` : null,
+      opportunity ? `📊 Opportunità: ${opportunity}/100` : null,
+      rischio ? `⚠️ Rischio: ${rischio}` : null,
+      `🔍 Analisi Sottra — sottra.app`,
+    ].filter(Boolean).join("\n");
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Report Sottra", text: lines });
+      } else {
+        await navigator.clipboard.writeText(lines);
+        toast({ title: "Copiato!", description: "Report copiato negli appunti." });
+      }
+    } catch {}
+  };
+
   // ── WOW Snapshot computation ──
   const pricingData = result.pricing.data as PricingData | null;
   const streetEvidence = identifyData?.streetEvidence;
@@ -2341,34 +2380,7 @@ const Result = () => {
 
       {/* Share Report Button */}
       <button
-        onClick={async () => {
-          const pricingD = result.pricing?.data as PricingData | null;
-          const marketD = result.marketContext?.data as { prezzoMedioMq?: number } | null;
-          const opportunityD = result.opportunity?.data as { score?: number } | null;
-          const rischioD = result.rischioZona?.data as { livello?: string } | null;
-          const valore = (pricingD as unknown as { estimatedValue?: number })?.estimatedValue ?? marketD?.prezzoMedioMq ?? "—";
-          const zonaOmi = (pricingD as unknown as { zonaOmi?: string })?.zonaOmi ?? "—";
-          const shareText = [
-            `📍 ${identifyData?.address ?? "Indirizzo non disponibile"}`,
-            `💶 Valore stimato: ${valore} €/m²`,
-            `🏘️ Zona OMI: ${zonaOmi}`,
-            `📊 Opportunità: ${opportunityD?.score ?? "—"}/100`,
-            `⚠️ Rischio zona: ${rischioD?.livello ?? "—"}`,
-            `🔍 Analisi Sottra — sottra.app`,
-          ].filter(Boolean).join("\n");
-          try {
-            if (navigator.share) {
-              await navigator.share({ title: "Report Sottra", text: shareText });
-            } else {
-              await navigator.clipboard.writeText(shareText);
-              toast({ title: "Copiato!", description: "Report copiato negli appunti." });
-            }
-          } catch (err) {
-            if ((err as Error)?.name !== "AbortError") {
-              console.error("[SHARE] failed:", err);
-            }
-          }
-        }}
+        onClick={handleShare}
         className="fixed bottom-16 left-4 right-4 h-12 rounded-2xl bg-blue-600 text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-lg z-40"
       >
         <Share2 className="h-5 w-5" />
