@@ -23,6 +23,7 @@ const Scan = () => {
   const [shootPhase, setShootPhase] = useState<ShootPhase>("idle");
   const [freezeFrame, setFreezeFrame] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(true);
+  const [manualAddress, setManualAddress] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Start camera only when moving past gate
@@ -94,6 +95,15 @@ const Scan = () => {
         return;
       }
 
+      const trimmedAddr = manualAddress.trim();
+
+      // If user provided manual address, skip GPS and rely on backend geocoding.
+      if (trimmedAddr.length >= 3) {
+        devLog("manual address provided, skipping GPS:", trimmedAddr);
+        navigate("/result", { state: { photo, lat: 0, lng: 0, manualAddress: trimmedAddr } });
+        return;
+      }
+
       setShootPhase("gps");
       devLog("gps acquisition started");
 
@@ -121,7 +131,7 @@ const Scan = () => {
         { enableHighAccuracy: true, timeout: 8000 }
       );
     },
-    [navigate, toast]
+    [navigate, toast, manualAddress]
   );
 
   const retryGps = useCallback(() => {
@@ -247,7 +257,29 @@ const Scan = () => {
           </button>
         </header>
 
-        {/* Center: viewfinder or fallback */}
+        {/* Prominent manual address input — visible BEFORE shooting */}
+        {shootPhase === "idle" && (
+          <div className="z-10 px-4 pb-2">
+            <div className="rounded-2xl bg-black/55 backdrop-blur-md border border-white/15 p-3 shadow-lg">
+              <label htmlFor="scan-manual-address" className="block text-[13px] font-semibold text-white mb-1.5">
+                📍 Dove si trova l'immobile?
+              </label>
+              <input
+                id="scan-manual-address"
+                type="text"
+                value={manualAddress}
+                onChange={(e) => setManualAddress(e.target.value)}
+                placeholder="es. Via Roma 15, Padova"
+                autoComplete="street-address"
+                className="w-full h-11 rounded-lg bg-white/95 text-foreground placeholder:text-muted-foreground px-3 text-[16px] outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="mt-1.5 text-[11px] text-white/60 leading-snug">
+                Inserisci l'indirizzo per analisi precisa anche da desktop. Senza indirizzo verrà usato il GPS.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-1 flex-col items-center justify-center">
           {cameraState === "active" && shootPhase === "idle" && (
             <>

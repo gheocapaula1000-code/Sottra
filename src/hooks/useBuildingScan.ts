@@ -84,12 +84,15 @@ export function useBuildingScan() {
   const [manualAddress, setManualAddress] = useState<ManualAddressInput | null>(null);
   const scanIdRef = useRef<string | null>(null);
 
-  const scan = useCallback(async (photo: string, lat: number, lng: number) => {
+  const scan = useCallback(async (photo: string, lat: number, lng: number, manualAddrInput?: string) => {
     const scanId = crypto.randomUUID();
     scanIdRef.current = scanId;
 
     setScanning(true);
     dispatch({ type: "START_SCAN" });
+    if (manualAddrInput && manualAddrInput.trim()) {
+      setManualAddress({ via: manualAddrInput.trim(), civico: "", cap: "", comune: "", provincia: "" });
+    }
 
     const set = (key: keyof ScanResult, value: SectionState) =>
       dispatch({ type: "SET", key, value });
@@ -105,7 +108,7 @@ export function useBuildingScan() {
 
     const runPipeline = async () => {
       // Step 1: Identify building
-      const idRes = await identifyBuilding(photo, lat, lng);
+      const idRes = await identifyBuilding(photo, lat, lng, manualAddrInput);
       set("identify", {
         status: idRes.error ? "error" : "success",
         data: idRes.data,
@@ -153,7 +156,8 @@ export function useBuildingScan() {
 
       // Step 3: Launch all modules in parallel (Core V3 + Pro Sources)
       const identifyData = idRes.data as IdentifyResult;
-      const address = identifyData.address ?? "";
+      // Manual address takes precedence over identify-derived address
+      const address = (manualAddrInput && manualAddrInput.trim()) || identifyData.address || "";
       const confidence = identifyData.confidence ?? undefined;
 
       // Derive comune/provincia from address tail (last two CSV segments) as fallback

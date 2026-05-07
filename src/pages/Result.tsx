@@ -1524,7 +1524,7 @@ function ReportFooter({ excludedCount, totalPublished }: { excludedCount: number
 
 /* ── page ─────────────────────────────────────────────── */
 
-interface ResultState { photo: string; lat: number | null; lng: number | null; savedResult?: Partial<ScanResult>; }
+interface ResultState { photo: string; lat: number | null; lng: number | null; manualAddress?: string; savedResult?: Partial<ScanResult>; }
 
 const LOW_CONFIDENCE_THRESHOLD = 0.4;
 
@@ -1699,7 +1699,8 @@ const Result = () => {
   const started = useRef(false);
 
   const hasValidPhoto = isValidImageDataUrl(state?.photo);
-  const hasValidCoords = isValidGps(state?.lat, state?.lng);
+  const hasManualAddress = !!(state?.manualAddress && state.manualAddress.trim().length >= 3);
+  const hasValidCoords = isValidGps(state?.lat, state?.lng) || hasManualAddress;
   const hasSavedResult = state?.savedResult != null && Object.keys(state.savedResult).length > 0;
 
   useEffect(() => {
@@ -1715,7 +1716,7 @@ const Result = () => {
 
     if (!hasValidPhoto || !hasValidCoords) return;
     devLog("identify start", { lat: state!.lat, lng: state!.lng });
-    scan(state!.photo, state!.lat!, state!.lng!);
+    scan(state!.photo, state!.lat!, state!.lng!, state?.manualAddress);
   }, [state, scan, restoreResult, hasValidPhoto, hasValidCoords, hasSavedResult]);
 
   if (!hasValidPhoto) {
