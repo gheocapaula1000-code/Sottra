@@ -1612,7 +1612,82 @@ function OffmarketSection({ data, loading }: { data: import("@/types").Offmarket
   );
 }
 
-const Result = () => {
+function ZoneIntelligenceSection({ data, loading }: { data: import("@/types").ZoneIntelligenceData | null; loading: boolean }) {
+  const risultati = data?.risultati ?? [];
+
+  const inferCategoria = (r: import("@/types").ZoneIntelligenceResult): string => {
+    if (r.categoria) return r.categoria;
+    const q = (r.query ?? "").toLowerCase();
+    if (q.includes("notizie") || q.includes("notizia")) return "Notizie Recenti";
+    if (q.includes("aste") || q.includes("asta")) return "Aste e Procedure";
+    if (q.includes("variante") || q.includes("urbanistic")) return "Urbanistica";
+    return "Approfondimento";
+  };
+
+  const truncate = (s: string, n = 40) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+
+  return (
+    <ReportAccordionItem id="zone-intelligence" title="Intelligenza di Zona" icon={Zap} defaultOpen={false}>
+      <div className="space-y-3 min-w-0">
+        {loading && (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        )}
+
+        {!loading && risultati.length === 0 && (
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Nessuna notizia recente disponibile per questa zona
+          </p>
+        )}
+
+        {!loading && risultati.length > 0 && (
+          <div className="space-y-3">
+            {risultati.map((r, i) => {
+              const fonti = (r.fonti ?? []).slice(0, 3);
+              return (
+                <div key={i} className="rounded-xl border border-border/60 bg-card/40 p-3 min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-primary/80 mb-1.5">
+                    {inferCategoria(r)}
+                  </p>
+                  {r.risposta && (
+                    <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                      {toText(r.risposta)}
+                    </p>
+                  )}
+                  {fonti.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {fonti.map((f, j) => (
+                        <li key={j} className="text-[11px] min-w-0">
+                          <a
+                            href={f.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline break-all"
+                          >
+                            • {truncate(toText(f.title || f.url || ""), 40)}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <Badge variant="outline" className="text-[10px] border-border/60 text-muted-foreground">
+            Powered by Perplexity
+          </Badge>
+        </div>
+      </div>
+    </ReportAccordionItem>
+  );
+}
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as ResultState | null;
@@ -1960,6 +2035,11 @@ const Result = () => {
               {/* Segnali Off-Market */}
               <SectionSafe>
                 <OffmarketSection data={result.offmarket?.data as import("@/types").OffmarketData | null} loading={result.offmarket?.status === "loading"} />
+              </SectionSafe>
+
+              {/* Intelligenza di Zona */}
+              <SectionSafe>
+                <ZoneIntelligenceSection data={result.zoneIntelligence?.data as import("@/types").ZoneIntelligenceData | null} loading={result.zoneIntelligence?.status === "loading"} />
               </SectionSafe>
 
               {/* Sintesi Finale — always open */}
