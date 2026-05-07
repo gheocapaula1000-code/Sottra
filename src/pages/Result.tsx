@@ -529,9 +529,9 @@ function RischioZonaCard({ data, loading }: { data: RischioZonaData | null; load
   return (
     <Section>
       <SectionHeader icon={AlertTriangle} title="Rischio Zona" />
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-4 min-w-0">
         <ScoreArc value={data.scoreRischio} />
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm flex-1">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm flex-1 min-w-0">
           <div><span className="text-[10px] text-muted-foreground uppercase tracking-wider">Idrogeologico</span><p className={cn("font-semibold capitalize text-sm", data.idrogeologico ? lc[data.idrogeologico] : "text-muted-foreground")}>{data.idrogeologico ?? "—"}</p></div>
           <div><span className="text-[10px] text-muted-foreground uppercase tracking-wider">Sismico</span><p className={cn("font-semibold text-sm", data.sismico ? lc[data.sismico] : "text-muted-foreground")}>{data.sismico ? data.sismico.replace("zona", "Zona ") : "—"}</p></div>
           <div><span className="text-[10px] text-muted-foreground uppercase tracking-wider">Inquinamento</span><p className={cn("font-semibold capitalize text-sm", data.inquinamento ? lc[data.inquinamento] : "text-muted-foreground")}>{data.inquinamento ?? "—"}</p></div>
