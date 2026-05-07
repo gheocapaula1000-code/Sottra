@@ -183,6 +183,12 @@ export function useBuildingScan() {
         ?? identifyData.address
         ?? address;
 
+      // If lat/lng missing (manual address flow), use resolved coords from identify
+      const resolvedLat = identifyAny.resolvedLat as number | undefined;
+      const resolvedLng = identifyAny.resolvedLng as number | undefined;
+      const finalLat = ((!lat || lat === 0) && typeof resolvedLat === "number") ? resolvedLat : lat;
+      const finalLng = ((!lng || lng === 0) && typeof resolvedLng === "number") ? resolvedLng : lng;
+
       // Set report sections to loading during data fetch
       const reportModules: (keyof ScanResult)[] = [
         "profiloRapido", "immobileFacciata", "contestoVicinato",
