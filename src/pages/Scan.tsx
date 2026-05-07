@@ -271,7 +271,7 @@ const Scan = () => {
                 onChange={(e) => setManualAddress(e.target.value)}
                 placeholder="es. Via Roma 15, Padova"
                 autoComplete="street-address"
-                style={{ backgroundColor: "#ffffff", color: "#111111" }}
+                style={{ backgroundColor: "#ffffff", color: "#1a1a1a", caretColor: "#1a1a1a" }}
                 className="w-full h-11 rounded-lg px-3 text-[16px] outline-none focus:ring-2 focus:ring-primary"
               />
               <button
