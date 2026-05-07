@@ -35,6 +35,26 @@ const History = () => {
   const navigate = useNavigate();
   const { scans, clearAll, removeScan } = useScanHistory();
 
+  const { data: cloudScans = [] } = useQuery<CloudScan[]>({
+    queryKey: ["sottra-cloud-scans"],
+    queryFn: async () => {
+      const { data } = await (supabase as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            order: (c: string, o: { ascending: boolean }) => {
+              limit: (n: number) => Promise<{ data: CloudScan[] | null }>;
+            };
+          };
+        };
+      })
+        .from("sottra_scans")
+        .select("id, address, comune, lat, lng, zona_omi, created_at, result_snapshot, photo_thumbnail")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data ?? [];
+    },
+  });
+
   const handleOpenScan = (scan: typeof scans[number]) => {
     // If the scan is restorable and has a photo + coordinates, reopen the real report
     if (scan.restorable && scan.resultSnapshot && scan.photoThumbnail && scan.lat != null && scan.lng != null) {
@@ -48,6 +68,17 @@ const History = () => {
       });
     }
     // Otherwise, show that the result is not restorable — don't fake a redirect
+  };
+
+  const handleOpenCloudScan = (scan: CloudScan) => {
+    navigate("/result", {
+      state: {
+        savedResult: scan.result_snapshot,
+        lat: scan.lat,
+        lng: scan.lng,
+        photo: scan.photo_thumbnail ?? undefined,
+      },
+    });
   };
 
   return (
