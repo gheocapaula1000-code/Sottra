@@ -2243,6 +2243,10 @@ const Result = () => {
                 <MoodScoreSection data={result.moodScore?.data as import("@/types").MoodScoreData | null} loading={result.moodScore?.status === "loading"} />
               </SectionSafe>
 
+              <SectionSafe>
+                <EnergySection data={result.energy?.data as import("@/types").EnergyData | null} loading={result.energy?.status === "loading"} />
+              </SectionSafe>
+
               {/* Sintesi Finale — always open */}
               <SectionSafe><SintesiFinaleCard data={result.sintesiFinale.data as import("@/types/report").SintesiFinaleData | null} loading={result.sintesiFinale.status === "loading"} /></SectionSafe>
 
