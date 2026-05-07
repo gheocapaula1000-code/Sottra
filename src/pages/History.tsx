@@ -106,6 +106,52 @@ const History = () => {
                 : `${scans.length} ${scans.length === 1 ? "scansione" : "scansioni"} effettuate`}
             </p>
           </div>
+
+          {cloudScans.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Cloud className="h-3.5 w-3.5 text-muted-foreground" />
+                <h2 className="text-sm font-semibold text-foreground">Salvate nel cloud</h2>
+                <span className="text-[10px] text-muted-foreground">({cloudScans.length})</span>
+              </div>
+              {cloudScans.map((scan) => (
+                <div
+                  key={scan.id}
+                  className="flex items-center gap-3 rounded-xl bg-card border border-border p-3 min-w-0 overflow-hidden"
+                >
+                  <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                    {scan.photo_thumbnail ? (
+                      <img src={scan.photo_thumbnail} alt="" className="h-full w-full object-cover rounded-lg" />
+                    ) : (
+                      <MapPin className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {scan.address || scan.comune || "Posizione non disponibile"}
+                    </p>
+                    {scan.comune && scan.address && scan.comune !== scan.address && (
+                      <p className="text-[11px] text-muted-foreground truncate">{scan.comune}</p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground">{formatDate(scan.created_at)}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 h-8 text-xs"
+                    onClick={() => handleOpenCloudScan(scan)}
+                    disabled={!scan.result_snapshot}
+                  >
+                    Riapri
+                  </Button>
+                </div>
+              ))}
+              {scans.length > 0 && (
+                <h2 className="text-sm font-semibold text-foreground pt-3">In questo dispositivo</h2>
+              )}
+            </div>
+          )}
+
           {scans.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
