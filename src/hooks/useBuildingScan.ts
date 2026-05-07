@@ -23,6 +23,8 @@ const MODULES: (keyof ScanResult)[] = [
   "condominio",
   "storicoTransazioni",
   "moodScore",
+  "energy",
+  "neighborhood",
   // Report engine sections — populated by MAP_REPORT action after data modules complete
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
