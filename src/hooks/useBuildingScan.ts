@@ -198,6 +198,9 @@ export function useBuildingScan() {
         getCondominio(address, comuneFromAddr, lat, lng).then(resolve("condominio")).catch(reject("condominio")),
         getStoricoTransazioni(address, comuneFromAddr).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
         getMoodScore(lat, lng).then(resolve("moodScore")).catch(reject("moodScore")),
+        getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy")),
+        getNeighborhood(lat, lng, address).then(resolve("neighborhood")).catch(reject("neighborhood")),
+        getPoiEnrichment(lat, lng, address).then(resolve("poiEnrichment")).catch(reject("poiEnrichment")),
         // Pro Sources (POI, OMI, ISTAT) — non-blocking
         fetchProSources(lat, lng).then((proData) => {
           set("poiEnrichment", {
