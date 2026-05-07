@@ -1997,21 +1997,21 @@ const Result = () => {
   const excludedCount = completedModules.length - publishedCount;
 
   const handleShare = async () => {
-    const addr = result?.identify?.data?.resolvedAddress
+    const addr = (result?.identify?.data as any)?.resolvedAddress
       ?? result?.identify?.data?.address
       ?? state?.manualAddress
       ?? "Indirizzo non disponibile";
 
-    const prezzo = result?.pricing?.data?.prezzoMedioMq
-      ?? result?.market?.data?.prezzoMedioMq
+    const prezzo = (result?.pricing?.data as any)?.prezzoMedioMq
+      ?? (result as any)?.market?.data?.prezzoMedioMq
       ?? null;
 
-    const zona = result?.pricing?.data?.zonaOmi
-      ?? result?.identify?.data?.zonaOmi
+    const zona = (result?.pricing?.data as any)?.zonaOmi
+      ?? (result?.identify?.data as any)?.zonaOmi
       ?? null;
 
-    const rischio = result?.rischioZona?.data?.livelloRischio
-      ?? result?.rischioZona?.data?.livello
+    const rischio = (result?.rischioZona?.data as any)?.livelloRischio
+      ?? (result?.rischioZona?.data as any)?.livello
       ?? null;
 
     const opportunity = result?.opportunity?.data?.score ?? null;
