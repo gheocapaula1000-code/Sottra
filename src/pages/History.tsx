@@ -1,10 +1,24 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Trash2, Camera, MapPin, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Camera, MapPin, AlertTriangle, Cloud } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
+import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
+
+interface CloudScan {
+  id: string;
+  address: string | null;
+  comune: string | null;
+  lat: number | null;
+  lng: number | null;
+  zona_omi: string | null;
+  created_at: string;
+  result_snapshot: unknown;
+  photo_thumbnail: string | null;
+}
 
 function scoreVariant(score: number): "default" | "secondary" | "destructive" {
   if (score >= 60) return "default";
@@ -21,6 +35,26 @@ const History = () => {
   const navigate = useNavigate();
   const { scans, clearAll, removeScan } = useScanHistory();
 
+  const { data: cloudScans = [] } = useQuery<CloudScan[]>({
+    queryKey: ["sottra-cloud-scans"],
+    queryFn: async () => {
+      const { data } = await (supabase as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            order: (c: string, o: { ascending: boolean }) => {
+              limit: (n: number) => Promise<{ data: CloudScan[] | null }>;
+            };
+          };
+        };
+      })
+        .from("sottra_scans")
+        .select("id, address, comune, lat, lng, zona_omi, created_at, result_snapshot, photo_thumbnail")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data ?? [];
+    },
+  });
+
   const handleOpenScan = (scan: typeof scans[number]) => {
     // If the scan is restorable and has a photo + coordinates, reopen the real report
     if (scan.restorable && scan.resultSnapshot && scan.photoThumbnail && scan.lat != null && scan.lng != null) {
@@ -34,6 +68,17 @@ const History = () => {
       });
     }
     // Otherwise, show that the result is not restorable — don't fake a redirect
+  };
+
+  const handleOpenCloudScan = (scan: CloudScan) => {
+    navigate("/result", {
+      state: {
+        savedResult: scan.result_snapshot,
+        lat: scan.lat,
+        lng: scan.lng,
+        photo: scan.photo_thumbnail ?? undefined,
+      },
+    });
   };
 
   return (
@@ -61,6 +106,52 @@ const History = () => {
                 : `${scans.length} ${scans.length === 1 ? "scansione" : "scansioni"} effettuate`}
             </p>
           </div>
+
+          {cloudScans.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Cloud className="h-3.5 w-3.5 text-muted-foreground" />
+                <h2 className="text-sm font-semibold text-foreground">Salvate nel cloud</h2>
+                <span className="text-[10px] text-muted-foreground">({cloudScans.length})</span>
+              </div>
+              {cloudScans.map((scan) => (
+                <div
+                  key={scan.id}
+                  className="flex items-center gap-3 rounded-xl bg-card border border-border p-3 min-w-0 overflow-hidden"
+                >
+                  <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                    {scan.photo_thumbnail ? (
+                      <img src={scan.photo_thumbnail} alt="" className="h-full w-full object-cover rounded-lg" />
+                    ) : (
+                      <MapPin className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {scan.address || scan.comune || "Posizione non disponibile"}
+                    </p>
+                    {scan.comune && scan.address && scan.comune !== scan.address && (
+                      <p className="text-[11px] text-muted-foreground truncate">{scan.comune}</p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground">{formatDate(scan.created_at)}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 h-8 text-xs"
+                    onClick={() => handleOpenCloudScan(scan)}
+                    disabled={!scan.result_snapshot}
+                  >
+                    Riapri
+                  </Button>
+                </div>
+              ))}
+              {scans.length > 0 && (
+                <h2 className="text-sm font-semibold text-foreground pt-3">In questo dispositivo</h2>
+              )}
+            </div>
+          )}
+
           {scans.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">

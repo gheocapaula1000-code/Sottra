@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type { ScanResult, SectionState } from "@/types";
 
 /**
@@ -226,6 +227,17 @@ export function ScanHistoryProvider({ children }: { children: ReactNode }) {
       saveToStorage(updated);
       return updated;
     });
+    supabase.functions.invoke("sottra", {
+      body: {
+        route: "scan/save",
+        address: scan.locality,
+        comune: scan.locality,
+        lat: scan.lat,
+        lng: scan.lng,
+        photo_thumbnail: scan.photoThumbnail,
+        result_snapshot: scan.resultSnapshot,
+      },
+    }).catch(() => {});
   }, []);
 
   const removeScan = useCallback((id: string) => {
