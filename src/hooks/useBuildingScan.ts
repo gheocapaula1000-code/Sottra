@@ -172,6 +172,17 @@ export function useBuildingScan() {
       const comuneFromAddr = addrParts.length >= 2 ? addrParts[addrParts.length - 2] : undefined;
       const provinciaFromAddr = addrParts.length >= 1 ? addrParts[addrParts.length - 1] : undefined;
 
+      // Use comune/address derived from identify result (with safe fallbacks)
+      const identifyAny = identifyData as unknown as Record<string, unknown>;
+      const comuneFromIdentify = (identifyAny.comune as string | undefined)
+        ?? (typeof identifyData.address === "string"
+          ? identifyData.address.split(",").slice(-2, -1)[0]?.trim()
+          : undefined)
+        ?? comuneFromAddr;
+      const addressFromIdentify = (identifyAny.resolvedAddress as string | undefined)
+        ?? identifyData.address
+        ?? address;
+
       // Set report sections to loading during data fetch
       const reportModules: (keyof ScanResult)[] = [
         "profiloRapido", "immobileFacciata", "contestoVicinato",
@@ -193,11 +204,11 @@ export function useBuildingScan() {
         getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
         getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
         getConvergenzaTerritoriale(lat, lng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
-        getOffmarket(lat, lng, comuneFromAddr, provinciaFromAddr).then(resolve("offmarket")).catch(reject("offmarket")),
-        getZoneIntelligence(lat, lng, comuneFromAddr, provinciaFromAddr, address || undefined).then(resolve("zoneIntelligence")).catch(reject("zoneIntelligence")),
-        getListings(address, comuneFromAddr, lat, lng).then(resolve("listings")).catch(reject("listings")),
-        getCondominio(address, comuneFromAddr, lat, lng).then(resolve("condominio")).catch(reject("condominio")),
-        getStoricoTransazioni(address, comuneFromAddr).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
+        getOffmarket(lat, lng, comuneFromIdentify, provinciaFromAddr).then(resolve("offmarket")).catch(reject("offmarket")),
+        getZoneIntelligence(lat, lng, comuneFromIdentify, provinciaFromAddr, addressFromIdentify || undefined).then(resolve("zoneIntelligence")).catch(reject("zoneIntelligence")),
+        getListings(addressFromIdentify, comuneFromIdentify, lat, lng).then(resolve("listings")).catch(reject("listings")),
+        getCondominio(addressFromIdentify, comuneFromIdentify, lat, lng).then(resolve("condominio")).catch(reject("condominio")),
+        getStoricoTransazioni(addressFromIdentify, comuneFromIdentify).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
         getMoodScore(lat, lng).then(resolve("moodScore")).catch(reject("moodScore")),
         getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy")),
         getNeighborhood(lat, lng, address).then(resolve("neighborhood")).catch(reject("neighborhood")),
