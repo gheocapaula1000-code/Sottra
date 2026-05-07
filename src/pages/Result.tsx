@@ -1699,7 +1699,8 @@ const Result = () => {
   const started = useRef(false);
 
   const hasValidPhoto = isValidImageDataUrl(state?.photo);
-  const hasValidCoords = isValidGps(state?.lat, state?.lng);
+  const hasManualAddress = !!(state?.manualAddress && state.manualAddress.trim().length >= 3);
+  const hasValidCoords = isValidGps(state?.lat, state?.lng) || hasManualAddress;
   const hasSavedResult = state?.savedResult != null && Object.keys(state.savedResult).length > 0;
 
   useEffect(() => {
