@@ -95,6 +95,15 @@ const Scan = () => {
         return;
       }
 
+      const trimmedAddr = manualAddress.trim();
+
+      // If user provided manual address, skip GPS and rely on backend geocoding.
+      if (trimmedAddr.length >= 3) {
+        devLog("manual address provided, skipping GPS:", trimmedAddr);
+        navigate("/result", { state: { photo, lat: 0, lng: 0, manualAddress: trimmedAddr } });
+        return;
+      }
+
       setShootPhase("gps");
       devLog("gps acquisition started");
 
@@ -122,7 +131,7 @@ const Scan = () => {
         { enableHighAccuracy: true, timeout: 8000 }
       );
     },
-    [navigate, toast]
+    [navigate, toast, manualAddress]
   );
 
   const retryGps = useCallback(() => {
