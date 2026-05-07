@@ -108,7 +108,7 @@ export function useBuildingScan() {
 
     const runPipeline = async () => {
       // Step 1: Identify building
-      const idRes = await identifyBuilding(photo, lat, lng);
+      const idRes = await identifyBuilding(photo, lat, lng, manualAddrInput);
       set("identify", {
         status: idRes.error ? "error" : "success",
         data: idRes.data,
