@@ -1,5 +1,5 @@
 import { useReducer, useState, useCallback, useRef } from "react";
-import { identifyBuilding, getPricing, getOffmarket, getZoneIntelligence, getListings, getCondominio, getStoricoTransazioni, getMoodScore } from "@/services/scan";
+import { identifyBuilding, getPricing, getOffmarket, getZoneIntelligence, getListings, getCondominio, getStoricoTransazioni, getMoodScore, getEnergy, getNeighborhood, getPoiEnrichment } from "@/services/scan";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
 import { fetchProSources } from "@/services/proSources";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,8 @@ const MODULES: (keyof ScanResult)[] = [
   "condominio",
   "storicoTransazioni",
   "moodScore",
+  "energy",
+  "neighborhood",
   // Report engine sections — populated by MAP_REPORT action after data modules complete
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
@@ -196,6 +198,9 @@ export function useBuildingScan() {
         getCondominio(address, comuneFromAddr, lat, lng).then(resolve("condominio")).catch(reject("condominio")),
         getStoricoTransazioni(address, comuneFromAddr).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
         getMoodScore(lat, lng).then(resolve("moodScore")).catch(reject("moodScore")),
+        getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy")),
+        getNeighborhood(lat, lng, address).then(resolve("neighborhood")).catch(reject("neighborhood")),
+        getPoiEnrichment(lat, lng, address).then(resolve("poiEnrichment")).catch(reject("poiEnrichment")),
         // Pro Sources (POI, OMI, ISTAT) — non-blocking
         fetchProSources(lat, lng).then((proData) => {
           set("poiEnrichment", {

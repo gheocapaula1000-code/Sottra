@@ -1871,6 +1871,64 @@ function MoodScoreSection({ data, loading }: { data: import("@/types").MoodScore
   );
 }
 
+function EnergySection({ data, loading }: { data: import("@/types").EnergyData | null; loading: boolean }) {
+  const hasData = !!data && (data.classeEnergetica || data.epglKwhM2Anno || data.annoCostruzione || data.tipoRiscaldamento);
+  const classClass = (cls?: string | null): string => {
+    const c = (cls ?? "").toUpperCase().trim();
+    if (c.startsWith("A")) return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+    if (c === "B" || c === "C") return "bg-lime-500/15 text-lime-400 border-lime-500/30";
+    if (c === "D" || c === "E") return "bg-yellow-500/15 text-yellow-400 border-yellow-500/30";
+    if (c === "F" || c === "G") return "bg-red-500/15 text-red-400 border-red-500/30";
+    return "bg-muted text-muted-foreground border-border";
+  };
+  return (
+    <ReportAccordionItem id="energy" title="Profilo energetico stimato" icon={Zap} defaultOpen={false}>
+      <div className="space-y-3 min-w-0">
+        {loading && <Skeleton className="h-16 w-full" />}
+        {!loading && !hasData && (
+          <p className="text-xs text-muted-foreground leading-relaxed">Profilo energetico non disponibile per questa zona.</p>
+        )}
+        {!loading && hasData && data && (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              {data.classeEnergetica && (
+                <span className={cn("inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-semibold", classClass(data.classeEnergetica))}>
+                  Classe {toText(data.classeEnergetica)}
+                </span>
+              )}
+              {typeof data.epglKwhM2Anno === "number" && (
+                <span className="text-xs text-muted-foreground break-words">
+                  EPgl ~ <span className="text-foreground font-medium">{Math.round(data.epglKwhM2Anno)}</span> kWh/m²anno
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              {typeof data.annoCostruzione === "number" && (
+                <div className="min-w-0">
+                  <span className="text-muted-foreground">Anno costruzione: </span>
+                  <span className="text-foreground font-medium">{data.annoCostruzione}</span>
+                </div>
+              )}
+              {data.tipoRiscaldamento && (
+                <div className="min-w-0 break-words">
+                  <span className="text-muted-foreground">Riscaldamento: </span>
+                  <span className="text-foreground font-medium">{toText(data.tipoRiscaldamento)}</span>
+                </div>
+              )}
+            </div>
+            {data.note && (
+              <p className="text-xs text-foreground leading-relaxed break-words">{toText(data.note)}</p>
+            )}
+            <p className="text-[10px] text-muted-foreground italic leading-relaxed border-t border-border pt-2">
+              Stima da caratteristiche tipologiche della zona — non sostituisce APE ufficiale.
+            </p>
+          </>
+        )}
+      </div>
+    </ReportAccordionItem>
+  );
+}
+
 const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -2179,13 +2237,13 @@ const Result = () => {
               <SectionSafe>
                 <ReportAccordionItem id="vicinato" title="Profilo di Zona" icon={Layers} defaultOpen={false}>
                   <NeighborhoodIndexCard
-                    index={calculateNeighborhoodIndex(
+                    index={(result.neighborhood?.data as unknown as NeighborhoodIndex | null) ?? calculateNeighborhoodIndex(
                       result.poiEnrichment.data as PoiEnrichmentData | null,
                       result.istatDemographic.data as import("@/types").IstatDemographicData | null,
                       result.rischioZona.data as RischioZonaData | null,
                       result.omiZone.data as import("@/types").OmiZoneData | null,
                     )}
-                    loading={scanning}
+                    loading={result.neighborhood?.status === "loading"}
                   />
                 </ReportAccordionItem>
               </SectionSafe>
@@ -2241,6 +2299,10 @@ const Result = () => {
 
               <SectionSafe>
                 <MoodScoreSection data={result.moodScore?.data as import("@/types").MoodScoreData | null} loading={result.moodScore?.status === "loading"} />
+              </SectionSafe>
+
+              <SectionSafe>
+                <EnergySection data={result.energy?.data as import("@/types").EnergyData | null} loading={result.energy?.status === "loading"} />
               </SectionSafe>
 
               {/* Sintesi Finale — always open */}

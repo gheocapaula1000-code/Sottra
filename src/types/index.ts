@@ -401,6 +401,8 @@ export interface ScanResult {
   condominio?: SectionState<CondominioData>;
   storicoTransazioni?: SectionState<StoricoTransazioniData>;
   moodScore?: SectionState<MoodScoreData>;
+  energy?: SectionState<EnergyData>;
+  neighborhood?: SectionState<NeighborhoodData>;
   /* ── New report engine sections (Phase 1 — framework only) ── */
   profiloRapido: SectionState<import("@/types/report").ProfiloRapidoData>;
   immobileFacciata: SectionState<import("@/types/report").ImmobileFacciataData>;
@@ -538,6 +540,23 @@ export interface MoodScoreData extends SourceMetadata {
   sentimentLabel?: string | null;
   drivers?: string[] | null;
   risks?: string[] | null;
+  observation?: string | null;
+}
+
+/** Energy — stima classe energetica e consumi */
+export interface EnergyData extends SourceMetadata {
+  classeEnergetica?: string | null;
+  epglKwhM2Anno?: number | null;
+  annoCostruzione?: number | null;
+  tipoRiscaldamento?: string | null;
+  note?: string | null;
+}
+
+/** Neighborhood — indice di zona pre-calcolato lato server */
+export interface NeighborhoodData extends SourceMetadata {
+  score?: number | null;
+  band?: string | null;
+  dimensions?: Record<string, number | null> | null;
   observation?: string | null;
 }
 
