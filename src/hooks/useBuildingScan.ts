@@ -88,6 +88,7 @@ export function useBuildingScan() {
   const [limitReached, setLimitReached] = useState(false);
   const [refining, setRefining] = useState(false);
   const [manualAddress, setManualAddress] = useState<ManualAddressInput | null>(null);
+  const [forceShowResult, setForceShowResult] = useState(false);
   const scanIdRef = useRef<string | null>(null);
 
   const scan = useCallback(async (photo: string, lat: number, lng: number, manualAddrInput?: string) => {
@@ -340,6 +341,8 @@ export function useBuildingScan() {
     refineAddress,
     scanId: scanIdRef.current,
     restoreResult,
-    reset: () => { dispatch({ type: "RESET_IDLE" }); setScanning(false); setLimitReached(false); setRefining(false); setManualAddress(null); },
+    forceShowResult,
+    setForceShowResult,
+    reset: () => { dispatch({ type: "RESET_IDLE" }); setScanning(false); setLimitReached(false); setRefining(false); setManualAddress(null); setForceShowResult(false); },
   };
 }
