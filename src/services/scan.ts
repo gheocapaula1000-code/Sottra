@@ -1,7 +1,9 @@
 import { coreRequest, isError } from "./api";
 
-export async function identifyBuilding(photo: string, lat: number, lng: number) {
-  const res = await coreRequest("/scan/identify", "POST", { lat, lng, photo }, 15000);
+export async function identifyBuilding(photo: string, lat: number, lng: number, address?: string) {
+  const body: Record<string, unknown> = { lat, lng, photo };
+  if (address && address.trim()) body.address = address.trim();
+  const res = await coreRequest("/scan/identify", "POST", body, 15000);
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
