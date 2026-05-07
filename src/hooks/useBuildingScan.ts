@@ -183,6 +183,12 @@ export function useBuildingScan() {
         ?? identifyData.address
         ?? address;
 
+      // If lat/lng missing (manual address flow), use resolved coords from identify
+      const resolvedLat = identifyAny.resolvedLat as number | undefined;
+      const resolvedLng = identifyAny.resolvedLng as number | undefined;
+      const finalLat = ((!lat || lat === 0) && typeof resolvedLat === "number") ? resolvedLat : lat;
+      const finalLng = ((!lng || lng === 0) && typeof resolvedLng === "number") ? resolvedLng : lng;
+
       // Set report sections to loading during data fetch
       const reportModules: (keyof ScanResult)[] = [
         "profiloRapido", "immobileFacciata", "contestoVicinato",
@@ -196,25 +202,25 @@ export function useBuildingScan() {
       await Promise.allSettled([
         // Core V3 modules
         ...(address ? [getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing"))] : []),
-        getMarketContext(lat, lng, address || undefined).then(resolve("marketContext")).catch(reject("marketContext")),
-        getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
-        getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
-        getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
-        getRischioZona(lat, lng).then(resolve("rischioZona")).catch(reject("rischioZona")),
-        getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
-        getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
-        getConvergenzaTerritoriale(lat, lng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
-        getOffmarket(lat, lng, comuneFromIdentify, provinciaFromAddr).then(resolve("offmarket")).catch(reject("offmarket")),
-        getZoneIntelligence(lat, lng, comuneFromIdentify, provinciaFromAddr, addressFromIdentify || undefined).then(resolve("zoneIntelligence")).catch(reject("zoneIntelligence")),
-        getListings(addressFromIdentify, comuneFromIdentify, lat, lng).then(resolve("listings")).catch(reject("listings")),
-        getCondominio(addressFromIdentify, comuneFromIdentify, lat, lng).then(resolve("condominio")).catch(reject("condominio")),
+        getMarketContext(finalLat, finalLng, address || undefined).then(resolve("marketContext")).catch(reject("marketContext")),
+        getTimeView(finalLat, finalLng, 12).then(resolve("timeView")).catch(reject("timeView")),
+        getOpportunityIndex(finalLat, finalLng).then(resolve("opportunity")).catch(reject("opportunity")),
+        getInfrastrutture(finalLat, finalLng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
+        getRischioZona(finalLat, finalLng).then(resolve("rischioZona")).catch(reject("rischioZona")),
+        getTrendDemografico(finalLat, finalLng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
+        getSviluppoArea(finalLat, finalLng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
+        getConvergenzaTerritoriale(finalLat, finalLng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
+        getOffmarket(finalLat, finalLng, comuneFromIdentify, provinciaFromAddr).then(resolve("offmarket")).catch(reject("offmarket")),
+        getZoneIntelligence(finalLat, finalLng, comuneFromIdentify, provinciaFromAddr, addressFromIdentify || undefined).then(resolve("zoneIntelligence")).catch(reject("zoneIntelligence")),
+        getListings(addressFromIdentify, comuneFromIdentify, finalLat, finalLng).then(resolve("listings")).catch(reject("listings")),
+        getCondominio(addressFromIdentify, comuneFromIdentify, finalLat, finalLng).then(resolve("condominio")).catch(reject("condominio")),
         getStoricoTransazioni(addressFromIdentify, comuneFromIdentify).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
-        getMoodScore(lat, lng).then(resolve("moodScore")).catch(reject("moodScore")),
+        getMoodScore(finalLat, finalLng).then(resolve("moodScore")).catch(reject("moodScore")),
         getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy")),
-        getNeighborhood(lat, lng, address).then(resolve("neighborhood")).catch(reject("neighborhood")),
-        getPoiEnrichment(lat, lng, address).then(resolve("poiEnrichment")).catch(reject("poiEnrichment")),
+        getNeighborhood(finalLat, finalLng, address).then(resolve("neighborhood")).catch(reject("neighborhood")),
+        getPoiEnrichment(finalLat, finalLng, address).then(resolve("poiEnrichment")).catch(reject("poiEnrichment")),
         // Pro Sources (POI, OMI, ISTAT) — non-blocking
-        fetchProSources(lat, lng).then((proData) => {
+        fetchProSources(finalLat, finalLng).then((proData) => {
           set("poiEnrichment", {
             status: proData.poi ? "success" : "error",
             data: proData.poi,
@@ -250,7 +256,7 @@ export function useBuildingScan() {
 
       // Phase 2: Map real data to report sections using reducer action
       // The MAP_REPORT action reads current state inside the reducer
-      dispatch({ type: "MAP_REPORT", lat, lng });
+      dispatch({ type: "MAP_REPORT", lat: finalLat, lng: finalLng });
     };
 
     await runPipeline();
