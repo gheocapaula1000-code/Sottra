@@ -1688,6 +1688,8 @@ function ZoneIntelligenceSection({ data, loading }: { data: import("@/types").Zo
     </ReportAccordionItem>
   );
 }
+
+const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as ResultState | null;
