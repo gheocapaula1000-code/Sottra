@@ -25,3 +25,27 @@ export async function getZoneIntelligence(lat: number, lng: number, comune?: str
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
+
+export async function getListings(address: string, comune?: string, lat?: number, lng?: number) {
+  const res = await coreRequest("/scan/listings", "POST", { address, comune, lat, lng }, 20000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}
+
+export async function getCondominio(address: string, comune?: string, lat?: number, lng?: number) {
+  const res = await coreRequest("/scan/condominio", "POST", { address, comune, lat, lng }, 30000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}
+
+export async function getStoricoTransazioni(address: string, comune?: string) {
+  const res = await coreRequest("/scan/storico-transazioni", "POST", { address, comune }, 20000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}
+
+export async function getMoodScore(lat: number, lng: number) {
+  const res = await coreRequest("/forecast/moodscore", "POST", { lat, lng }, 20000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}
