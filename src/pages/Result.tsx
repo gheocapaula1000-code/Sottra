@@ -424,8 +424,8 @@ function PricingCard({ data, loading }: { data: PricingData | null; loading: boo
           </p>
         </div>
       )}
-      <div className="flex items-baseline gap-1.5 mb-3">
-        <span className="text-3xl font-extrabold text-foreground tracking-tight">{fmtEur(data.prezzoMq)}</span>
+      <div className="flex items-baseline gap-1.5 mb-3 min-w-0 flex-wrap">
+        <span className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight break-words">{fmtEur(data.prezzoMq)}</span>
         <span className="text-sm text-muted-foreground font-medium">/m²</span>
       </div>
       <div className={cn("grid gap-3 text-sm mb-3", hasMediaZona ? "grid-cols-2" : "grid-cols-1")}>
