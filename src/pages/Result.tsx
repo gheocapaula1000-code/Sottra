@@ -1715,7 +1715,7 @@ const Result = () => {
 
     if (!hasValidPhoto || !hasValidCoords) return;
     devLog("identify start", { lat: state!.lat, lng: state!.lng });
-    scan(state!.photo, state!.lat!, state!.lng!);
+    scan(state!.photo, state!.lat!, state!.lng!, state?.manualAddress);
   }, [state, scan, restoreResult, hasValidPhoto, hasValidCoords, hasSavedResult]);
 
   if (!hasValidPhoto) {
