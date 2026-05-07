@@ -216,7 +216,7 @@ export function ScanHistoryProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const saveScan = useCallback((scan: Omit<SavedScan, "id" | "date">) => {
+  const saveScan = useCallback(async (scan: Omit<SavedScan, "id" | "date">) => {
     const newScan: SavedScan = {
       ...scan,
       id: crypto.randomUUID(),
@@ -227,6 +227,8 @@ export function ScanHistoryProvider({ children }: { children: ReactNode }) {
       saveToStorage(updated);
       return updated;
     });
+    const { data: { session } } = await supabase.auth.getSession();
+
     supabase.functions.invoke("sottra", {
       body: {
         route: "scan/save",
@@ -237,6 +239,9 @@ export function ScanHistoryProvider({ children }: { children: ReactNode }) {
         photo_thumbnail: scan.photoThumbnail,
         result_snapshot: scan.resultSnapshot,
       },
+      headers: session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {},
     }).catch(() => {});
   }, []);
 
