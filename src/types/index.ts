@@ -396,6 +396,7 @@ export interface ScanResult {
   /** Sub-municipal ASC layer — internal enrichment, not a full section */
   subMunicipalMatch: SectionState<SubMunicipalMatchData>;
   offmarket?: SectionState<OffmarketData>;
+  zoneIntelligence?: SectionState<ZoneIntelligenceData>;
   /* ── New report engine sections (Phase 1 — framework only) ── */
   profiloRapido: SectionState<import("@/types/report").ProfiloRapidoData>;
   immobileFacciata: SectionState<import("@/types/report").ImmobileFacciataData>;
@@ -460,6 +461,21 @@ export interface OffmarketData extends SourceMetadata {
   totale: number;
   segnali?: OffmarketSignal[] | null;
   opportunita?: string[] | null;
+}
+
+/** Zone intelligence — Perplexity-powered grounded search for local news, auctions, urban variants */
+export interface ZoneIntelligenceSource {
+  title?: string | null;
+  url: string;
+}
+export interface ZoneIntelligenceResult {
+  query?: string | null;
+  categoria?: string | null;
+  risposta?: string | null;
+  fonti?: ZoneIntelligenceSource[] | null;
+}
+export interface ZoneIntelligenceData extends SourceMetadata {
+  risultati?: ZoneIntelligenceResult[] | null;
 }
 export interface CoreError {
   error: true;
