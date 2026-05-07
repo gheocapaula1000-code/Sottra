@@ -2179,13 +2179,13 @@ const Result = () => {
               <SectionSafe>
                 <ReportAccordionItem id="vicinato" title="Profilo di Zona" icon={Layers} defaultOpen={false}>
                   <NeighborhoodIndexCard
-                    index={calculateNeighborhoodIndex(
+                    index={(result.neighborhood?.data as unknown as NeighborhoodIndex | null) ?? calculateNeighborhoodIndex(
                       result.poiEnrichment.data as PoiEnrichmentData | null,
                       result.istatDemographic.data as import("@/types").IstatDemographicData | null,
                       result.rischioZona.data as RischioZonaData | null,
                       result.omiZone.data as import("@/types").OmiZoneData | null,
                     )}
-                    loading={scanning}
+                    loading={result.neighborhood?.status === "loading"}
                   />
                 </ReportAccordionItem>
               </SectionSafe>
