@@ -269,10 +269,18 @@ const Scan = () => {
                 type="text"
                 value={manualAddress}
                 onChange={(e) => setManualAddress(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (manualAddress.trim()) fileInputRef.current?.click(); } }}
                 placeholder="es. Via Roma 15, Padova"
                 autoComplete="street-address"
-                className="w-full h-11 rounded-lg bg-white/95 text-foreground placeholder:text-muted-foreground px-3 text-[16px] outline-none focus:ring-2 focus:ring-primary"
+                className="w-full h-11 rounded-lg bg-white/95 text-gray-900 placeholder:text-gray-400 px-3 text-[16px] outline-none focus:ring-2 focus:ring-primary"
               />
+              <button
+                type="button"
+                onClick={() => { if (manualAddress.trim()) fileInputRef.current?.click(); }}
+                className="mt-2 w-full h-10 rounded-lg bg-primary text-white text-[15px] font-semibold active:opacity-80"
+              >
+                📍 Scansiona questo indirizzo
+              </button>
               <p className="mt-1.5 text-[11px] text-white/60 leading-snug">
                 Inserisci l'indirizzo per analisi precisa anche da desktop. Senza indirizzo verrà usato il GPS.
               </p>
