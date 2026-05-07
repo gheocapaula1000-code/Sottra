@@ -11,3 +11,9 @@ export async function getPricing(address: string, photo?: string) {
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
+
+export async function getOffmarket(lat: number, lng: number, comune?: string, provincia?: string) {
+  const res = await coreRequest("/scan/offmarket", "POST", { lat, lng, comune, provincia }, 15000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}
