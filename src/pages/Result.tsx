@@ -156,7 +156,7 @@ function SourceTag({ meta }: { meta?: SourceMetadata }) {
 function Section({ children, className, gradient }: { children: React.ReactNode; className?: string; gradient?: string }) {
   return (
     <div className={cn(
-      "rounded-2xl border border-border/60 bg-card p-5 transition-opacity duration-500",
+      "rounded-2xl border border-border/60 bg-card p-5 transition-opacity duration-500 min-w-0 overflow-hidden",
       gradient && `bg-gradient-to-br ${gradient}`,
       className,
     )}>
@@ -424,8 +424,8 @@ function PricingCard({ data, loading }: { data: PricingData | null; loading: boo
           </p>
         </div>
       )}
-      <div className="flex items-baseline gap-1.5 mb-3">
-        <span className="text-3xl font-extrabold text-foreground tracking-tight">{fmtEur(data.prezzoMq)}</span>
+      <div className="flex items-baseline gap-1.5 mb-3 min-w-0 flex-wrap">
+        <span className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight break-words">{fmtEur(data.prezzoMq)}</span>
         <span className="text-sm text-muted-foreground font-medium">/m²</span>
       </div>
       <div className={cn("grid gap-3 text-sm mb-3", hasMediaZona ? "grid-cols-2" : "grid-cols-1")}>
@@ -529,9 +529,9 @@ function RischioZonaCard({ data, loading }: { data: RischioZonaData | null; load
   return (
     <Section>
       <SectionHeader icon={AlertTriangle} title="Rischio Zona" />
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-4 min-w-0">
         <ScoreArc value={data.scoreRischio} />
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm flex-1">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm flex-1 min-w-0">
           <div><span className="text-[10px] text-muted-foreground uppercase tracking-wider">Idrogeologico</span><p className={cn("font-semibold capitalize text-sm", data.idrogeologico ? lc[data.idrogeologico] : "text-muted-foreground")}>{data.idrogeologico ?? "—"}</p></div>
           <div><span className="text-[10px] text-muted-foreground uppercase tracking-wider">Sismico</span><p className={cn("font-semibold text-sm", data.sismico ? lc[data.sismico] : "text-muted-foreground")}>{data.sismico ? data.sismico.replace("zona", "Zona ") : "—"}</p></div>
           <div><span className="text-[10px] text-muted-foreground uppercase tracking-wider">Inquinamento</span><p className={cn("font-semibold capitalize text-sm", data.inquinamento ? lc[data.inquinamento] : "text-muted-foreground")}>{data.inquinamento ?? "—"}</p></div>
