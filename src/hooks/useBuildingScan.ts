@@ -1,5 +1,5 @@
 import { useReducer, useState, useCallback, useRef } from "react";
-import { identifyBuilding, getPricing } from "@/services/scan";
+import { identifyBuilding, getPricing, getOffmarket } from "@/services/scan";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
 import { fetchProSources } from "@/services/proSources";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,7 @@ const MODULES: (keyof ScanResult)[] = [
   "sviluppoArea", "convergenzaTerritoriale",
   "poiEnrichment", "omiZone", "istatDemographic",
   "subMunicipalMatch",
+  "offmarket",
   // Report engine sections — populated by MAP_REPORT action after data modules complete
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
