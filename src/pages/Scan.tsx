@@ -23,6 +23,7 @@ const Scan = () => {
   const [shootPhase, setShootPhase] = useState<ShootPhase>("idle");
   const [freezeFrame, setFreezeFrame] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(true);
+  const [manualAddress, setManualAddress] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Start camera only when moving past gate
