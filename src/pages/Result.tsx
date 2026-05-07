@@ -1870,6 +1870,8 @@ function MoodScoreSection({ data, loading }: { data: import("@/types").MoodScore
     </ReportAccordionItem>
   );
 }
+
+const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as ResultState | null;
