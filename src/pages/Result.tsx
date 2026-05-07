@@ -156,7 +156,7 @@ function SourceTag({ meta }: { meta?: SourceMetadata }) {
 function Section({ children, className, gradient }: { children: React.ReactNode; className?: string; gradient?: string }) {
   return (
     <div className={cn(
-      "rounded-2xl border border-border/60 bg-card p-5 transition-opacity duration-500",
+      "rounded-2xl border border-border/60 bg-card p-5 transition-opacity duration-500 min-w-0 overflow-hidden",
       gradient && `bg-gradient-to-br ${gradient}`,
       className,
     )}>
