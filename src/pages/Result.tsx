@@ -1933,7 +1933,7 @@ const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as ResultState | null;
-  const { result, scanning, refining, manualAddress, scan, refineAddress, restoreResult } = useBuildingScan();
+  const { result, scanning, refining, manualAddress, scan, refineAddress, restoreResult, forceShowResult, setForceShowResult } = useBuildingScan();
   const { saveScan } = useScanHistory();
   const { toast } = useToast();
   const started = useRef(false);
@@ -1983,10 +1983,12 @@ const Result = () => {
     );
   }
 
-  const identifyFailed = result.identify.status === "error";
+  const identifyFailedRaw = result.identify.status === "error";
   const identifyData = result.identify.data as IdentifyResult | null;
   const identifyDone = result.identify.status === "success";
-  const lowConfidence = identifyDone && identifyData != null && identifyData.confidence < LOW_CONFIDENCE_THRESHOLD;
+  const lowConfidenceRaw = identifyDone && identifyData != null && identifyData.confidence < LOW_CONFIDENCE_THRESHOLD;
+  const identifyFailed = identifyFailedRaw && !forceShowResult;
+  const lowConfidence = lowConfidenceRaw && !forceShowResult;
 
   // Count publishable vs excluded
   const moduleKeys: (keyof ScanResult)[] = ["pricing", "marketContext", "convergenzaTerritoriale", "rischioZona", "trendDemografico", "opportunity", "timeView", "infrastrutture", "sviluppoArea", "poiEnrichment"];
@@ -2082,6 +2084,12 @@ const Result = () => {
                 <Button size="lg" className="min-h-[48px]" onClick={() => navigate("/scan")}>
                   <Camera className="h-4 w-4 mr-2" />Riprova lo scatto
                 </Button>
+                <button
+                  onClick={() => setForceShowResult(true)}
+                  className="mt-2 text-[13px] text-white/50 underline"
+                >
+                  Continua comunque con i dati disponibili
+                </button>
               </div>
             </Section>
           )}
