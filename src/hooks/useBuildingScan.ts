@@ -155,6 +155,11 @@ export function useBuildingScan() {
       const address = identifyData.address ?? "";
       const confidence = identifyData.confidence ?? undefined;
 
+      // Derive comune/provincia from address tail (last two CSV segments) as fallback
+      const addrParts = address.split(",").map((s) => s.trim()).filter(Boolean);
+      const comuneFromAddr = addrParts.length >= 2 ? addrParts[addrParts.length - 2] : undefined;
+      const provinciaFromAddr = addrParts.length >= 1 ? addrParts[addrParts.length - 1] : undefined;
+
       // Set report sections to loading during data fetch
       const reportModules: (keyof ScanResult)[] = [
         "profiloRapido", "immobileFacciata", "contestoVicinato",
@@ -176,6 +181,7 @@ export function useBuildingScan() {
         getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
         getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
         getConvergenzaTerritoriale(lat, lng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
+        getOffmarket(lat, lng, comuneFromAddr, provinciaFromAddr).then(resolve("offmarket")).catch(reject("offmarket")),
         // Pro Sources (POI, OMI, ISTAT) — non-blocking
         fetchProSources(lat, lng).then((proData) => {
           set("poiEnrichment", {
