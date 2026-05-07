@@ -1558,9 +1558,20 @@ function OffmarketSection({ data, loading }: { data: import("@/types").Offmarket
   return (
     <ReportAccordionItem id="offmarket" title="Segnali Off-Market" icon={Gem} defaultOpen={false}>
       <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">{data.totale} {data.totale === 1 ? "segnale" : "segnali"}</Badge>
+        <div className="flex items-center gap-2 flex-wrap">
+          {loading && (
+            <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">In aggiornamento</Badge>
+          )}
+          {!loading && totale > 0 && (
+            <Badge variant="outline" className="text-[10px]">{totale} {totale === 1 ? "segnale" : "segnali"}</Badge>
+          )}
         </div>
+
+        {isEmpty && (
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Nessun segnale off-market rilevato per questa zona al momento.
+          </p>
+        )}
 
         {segnali.length > 0 && (
           <div className="space-y-2">
