@@ -1531,6 +1531,76 @@ const LOW_CONFIDENCE_THRESHOLD = 0.4;
 const isDev = import.meta.env.DEV;
 function devLog(...args: unknown[]) { if (isDev) console.log("[RESULT]", ...args); }
 
+function OffmarketSection({ data, loading }: { data: import("@/types").OffmarketData | null; loading: boolean }) {
+  if (loading) return null;
+  if (!data || !data.totale || data.totale <= 0) return null;
+  const segnali = data.segnali ?? [];
+  const opportunita = data.opportunita ?? [];
+
+  const badgeClass = (tipo: string): string => {
+    const t = tipo.toLowerCase();
+    if (t.includes("asta")) return "bg-red-500/15 text-red-400 border-red-500/30";
+    if (t.includes("variante")) return "bg-blue-500/15 text-blue-400 border-blue-500/30";
+    if (t.includes("eredit")) return "bg-orange-500/15 text-orange-400 border-orange-500/30";
+    if (t.includes("patrimonio") || t.includes("pubblic")) return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+    return "bg-muted text-muted-foreground border-border";
+  };
+
+  const badgeLabel = (tipo: string): string => {
+    const t = tipo.toLowerCase();
+    if (t.includes("asta")) return "Asta";
+    if (t.includes("variante")) return "Variante urbanistica";
+    if (t.includes("eredit")) return "Eredità";
+    if (t.includes("patrimonio") || t.includes("pubblic")) return "Patrimonio pubblico";
+    return tipo;
+  };
+
+  return (
+    <ReportAccordionItem id="offmarket" title="Segnali Off-Market" icon={Gem} defaultOpen={false}>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px]">{data.totale} {data.totale === 1 ? "segnale" : "segnali"}</Badge>
+        </div>
+
+        {segnali.length > 0 && (
+          <div className="space-y-2">
+            {segnali.map((s, i) => (
+              <div key={i} className="rounded-xl border border-border/60 bg-card/40 p-3">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-medium", badgeClass(s.tipo))}>
+                    {badgeLabel(s.tipo)}
+                  </span>
+                  {typeof s.distanza_m === "number" && (
+                    <span className="text-[10px] text-muted-foreground shrink-0">{Math.round(s.distanza_m)} m</span>
+                  )}
+                </div>
+                {s.titolo && <p className="text-sm font-medium text-foreground leading-tight">{toText(s.titolo)}</p>}
+                {s.descrizione && <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{toText(s.descrizione)}</p>}
+                {(s.fonte || s.data) && (
+                  <p className="text-[10px] text-muted-foreground/70 mt-1.5">
+                    {s.fonte ? toText(s.fonte) : ""}{s.fonte && s.data ? " · " : ""}{s.data ? toText(s.data) : ""}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {opportunita.length > 0 && (
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+            <p className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wide mb-1.5">Opportunità</p>
+            <ul className="space-y-1">
+              {opportunita.map((o, i) => (
+                <li key={i} className="text-xs text-foreground leading-relaxed">• {toText(o)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </ReportAccordionItem>
+  );
+}
+
 const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
