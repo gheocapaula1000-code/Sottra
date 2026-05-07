@@ -2227,6 +2227,22 @@ const Result = () => {
                 <ZoneIntelligenceSection data={result.zoneIntelligence?.data as import("@/types").ZoneIntelligenceData | null} loading={result.zoneIntelligence?.status === "loading"} />
               </SectionSafe>
 
+              <SectionSafe>
+                <ListingsSection data={result.listings?.data as import("@/types").ListingsData | null} loading={result.listings?.status === "loading"} />
+              </SectionSafe>
+
+              <SectionSafe>
+                <CondominioSection data={result.condominio?.data as import("@/types").CondominioData | null} loading={result.condominio?.status === "loading"} />
+              </SectionSafe>
+
+              <SectionSafe>
+                <StoricoTransazioniSection data={result.storicoTransazioni?.data as import("@/types").StoricoTransazioniData | null} loading={result.storicoTransazioni?.status === "loading"} />
+              </SectionSafe>
+
+              <SectionSafe>
+                <MoodScoreSection data={result.moodScore?.data as import("@/types").MoodScoreData | null} loading={result.moodScore?.status === "loading"} />
+              </SectionSafe>
+
               {/* Sintesi Finale — always open */}
               <SectionSafe><SintesiFinaleCard data={result.sintesiFinale.data as import("@/types/report").SintesiFinaleData | null} loading={result.sintesiFinale.status === "loading"} /></SectionSafe>
 
