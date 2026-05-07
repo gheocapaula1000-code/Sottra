@@ -1,7 +1,7 @@
 import { useEffect, useRef, Component, type ReactNode, type ErrorInfo } from "react";
 import AppHeader from "@/components/AppHeader";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bookmark, TrendingUp, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers, Camera, CheckCircle2, BarChart3, Gem, Zap, Wrench } from "lucide-react";
+import { ArrowLeft, Bookmark, TrendingUp, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers, Camera, CheckCircle2, BarChart3, Gem, Zap, Wrench, Share2 } from "lucide-react";
 import { useScanHistory, compressToThumbnail, serializeResult } from "@/contexts/ScanHistoryContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -2338,6 +2338,42 @@ const Result = () => {
           )}
         </div>
       </div>
+
+      {/* Share Report Button */}
+      <button
+        onClick={async () => {
+          const pricingD = result.pricing?.data as PricingData | null;
+          const marketD = result.marketContext?.data as { prezzoMedioMq?: number } | null;
+          const opportunityD = result.opportunity?.data as { score?: number } | null;
+          const rischioD = result.rischioZona?.data as { livello?: string } | null;
+          const valore = (pricingD as unknown as { estimatedValue?: number })?.estimatedValue ?? marketD?.prezzoMedioMq ?? "—";
+          const zonaOmi = (pricingD as unknown as { zonaOmi?: string })?.zonaOmi ?? "—";
+          const shareText = [
+            `📍 ${identifyData?.address ?? "Indirizzo non disponibile"}`,
+            `💶 Valore stimato: ${valore} €/m²`,
+            `🏘️ Zona OMI: ${zonaOmi}`,
+            `📊 Opportunità: ${opportunityD?.score ?? "—"}/100`,
+            `⚠️ Rischio zona: ${rischioD?.livello ?? "—"}`,
+            `🔍 Analisi Sottra — sottra.app`,
+          ].filter(Boolean).join("\n");
+          try {
+            if (navigator.share) {
+              await navigator.share({ title: "Report Sottra", text: shareText });
+            } else {
+              await navigator.clipboard.writeText(shareText);
+              toast({ title: "Copiato!", description: "Report copiato negli appunti." });
+            }
+          } catch (err) {
+            if ((err as Error)?.name !== "AbortError") {
+              console.error("[SHARE] failed:", err);
+            }
+          }
+        }}
+        className="fixed bottom-16 left-4 right-4 h-12 rounded-2xl bg-blue-600 text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-lg z-40"
+      >
+        <Share2 className="h-5 w-5" />
+        Condividi Report
+      </button>
 
       {/* Bottom bar */}
       <div className="fixed bottom-0 inset-x-0 bg-background/90 backdrop-blur-xl border-t border-border/50 px-4 sm:px-5 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-3 flex gap-3 z-40" style={{ paddingLeft: 'max(env(safe-area-inset-left, 0px), 16px)', paddingRight: 'max(env(safe-area-inset-right, 0px), 16px)' }}>
