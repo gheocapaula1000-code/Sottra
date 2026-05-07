@@ -17,3 +17,9 @@ export async function getOffmarket(lat: number, lng: number, comune?: string, pr
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
+
+export async function getZoneIntelligence(lat: number, lng: number, comune?: string, provincia?: string, indirizzo?: string) {
+  const res = await coreRequest("/scan/zone-intelligence", "POST", { lat, lng, comune, provincia, indirizzo }, 40000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}
