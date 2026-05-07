@@ -481,6 +481,66 @@ export interface ZoneIntelligenceResult {
 export interface ZoneIntelligenceData extends SourceMetadata {
   risultati?: ZoneIntelligenceResult[] | null;
 }
+
+/** Listings — annunci immobiliari attivi nella zona */
+export interface ListingItem {
+  titolo?: string | null;
+  prezzo?: number | null;
+  superficie_mq?: number | null;
+  prezzo_mq?: number | null;
+  locali?: number | string | null;
+  indirizzo?: string | null;
+  fonte?: string | null;
+  url?: string | null;
+  data?: string | null;
+}
+export interface ListingsData extends SourceMetadata {
+  totale: number;
+  annunci?: ListingItem[] | null;
+  prezzo_medio_mq?: number | null;
+  prezzo_min_mq?: number | null;
+  prezzo_max_mq?: number | null;
+}
+
+/** Condominio — informazioni amministrative/strutturali */
+export interface CondominioData extends SourceMetadata {
+  amministratore?: string | null;
+  contatti?: string | null;
+  numero_unita?: number | null;
+  anno_costruzione?: number | null;
+  classe_energetica?: string | null;
+  spese_annue?: number | null;
+  note?: string | null;
+  segnali?: { label: string; valore?: string | null }[] | null;
+}
+
+/** Storico transazioni — compravendite registrate */
+export interface TransazioneItem {
+  data?: string | null;
+  prezzo?: number | null;
+  superficie_mq?: number | null;
+  prezzo_mq?: number | null;
+  tipologia?: string | null;
+  fonte?: string | null;
+}
+export interface StoricoTransazioniData extends SourceMetadata {
+  totale: number;
+  transazioni?: TransazioneItem[] | null;
+  prezzo_medio_mq?: number | null;
+  variazione_percentuale?: number | null;
+  periodo?: string | null;
+}
+
+/** Mood score — sentiment/percezione zona */
+export interface MoodScoreData extends SourceMetadata {
+  score?: number | null;
+  band?: "molto_positivo" | "positivo" | "neutro" | "negativo" | "molto_negativo" | string | null;
+  sentimentLabel?: string | null;
+  drivers?: string[] | null;
+  risks?: string[] | null;
+  observation?: string | null;
+}
+
 export interface CoreError {
   error: true;
   message: string;
