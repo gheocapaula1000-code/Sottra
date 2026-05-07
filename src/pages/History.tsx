@@ -1,10 +1,24 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Trash2, Camera, MapPin, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Camera, MapPin, AlertTriangle, Cloud } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
+import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
+
+interface CloudScan {
+  id: string;
+  address: string | null;
+  comune: string | null;
+  lat: number | null;
+  lng: number | null;
+  zona_omi: string | null;
+  created_at: string;
+  result_snapshot: unknown;
+  photo_thumbnail: string | null;
+}
 
 function scoreVariant(score: number): "default" | "secondary" | "destructive" {
   if (score >= 60) return "default";
