@@ -156,7 +156,8 @@ export function useBuildingScan() {
 
       // Step 3: Launch all modules in parallel (Core V3 + Pro Sources)
       const identifyData = idRes.data as IdentifyResult;
-      const address = identifyData.address ?? "";
+      // Manual address takes precedence over identify-derived address
+      const address = (manualAddrInput && manualAddrInput.trim()) || identifyData.address || "";
       const confidence = identifyData.confidence ?? undefined;
 
       // Derive comune/provincia from address tail (last two CSV segments) as fallback
