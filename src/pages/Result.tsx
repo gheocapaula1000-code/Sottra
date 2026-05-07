@@ -1524,7 +1524,7 @@ function ReportFooter({ excludedCount, totalPublished }: { excludedCount: number
 
 /* ── page ─────────────────────────────────────────────── */
 
-interface ResultState { photo: string; lat: number | null; lng: number | null; savedResult?: Partial<ScanResult>; }
+interface ResultState { photo: string; lat: number | null; lng: number | null; manualAddress?: string; savedResult?: Partial<ScanResult>; }
 
 const LOW_CONFIDENCE_THRESHOLD = 0.4;
 
