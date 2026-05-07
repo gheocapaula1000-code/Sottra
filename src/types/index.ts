@@ -543,6 +543,23 @@ export interface MoodScoreData extends SourceMetadata {
   observation?: string | null;
 }
 
+/** Energy — stima classe energetica e consumi */
+export interface EnergyData extends SourceMetadata {
+  classeEnergetica?: string | null;
+  epglKwhM2Anno?: number | null;
+  annoCostruzione?: number | null;
+  tipoRiscaldamento?: string | null;
+  note?: string | null;
+}
+
+/** Neighborhood — indice di zona pre-calcolato lato server */
+export interface NeighborhoodData extends SourceMetadata {
+  score?: number | null;
+  band?: string | null;
+  dimensions?: Record<string, number | null> | null;
+  observation?: string | null;
+}
+
 export interface CoreError {
   error: true;
   message: string;
