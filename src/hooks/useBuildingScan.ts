@@ -1,5 +1,5 @@
 import { useReducer, useState, useCallback, useRef } from "react";
-import { identifyBuilding, getPricing, getOffmarket } from "@/services/scan";
+import { identifyBuilding, getPricing, getOffmarket, getZoneIntelligence } from "@/services/scan";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
 import { fetchProSources } from "@/services/proSources";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,7 @@ const MODULES: (keyof ScanResult)[] = [
   "poiEnrichment", "omiZone", "istatDemographic",
   "subMunicipalMatch",
   "offmarket",
+  "zoneIntelligence",
   // Report engine sections — populated by MAP_REPORT action after data modules complete
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
@@ -182,6 +183,7 @@ export function useBuildingScan() {
         getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
         getConvergenzaTerritoriale(lat, lng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
         getOffmarket(lat, lng, comuneFromAddr, provinciaFromAddr).then(resolve("offmarket")).catch(reject("offmarket")),
+        getZoneIntelligence(lat, lng, comuneFromAddr, provinciaFromAddr, address || undefined).then(resolve("zoneIntelligence")).catch(reject("zoneIntelligence")),
         // Pro Sources (POI, OMI, ISTAT) — non-blocking
         fetchProSources(lat, lng).then((proData) => {
           set("poiEnrichment", {
