@@ -401,6 +401,8 @@ export interface ScanResult {
   condominio?: SectionState<CondominioData>;
   storicoTransazioni?: SectionState<StoricoTransazioniData>;
   moodScore?: SectionState<MoodScoreData>;
+  energy?: SectionState<EnergyData>;
+  neighborhood?: SectionState<NeighborhoodData>;
   /* ── New report engine sections (Phase 1 — framework only) ── */
   profiloRapido: SectionState<import("@/types/report").ProfiloRapidoData>;
   immobileFacciata: SectionState<import("@/types/report").ImmobileFacciataData>;
