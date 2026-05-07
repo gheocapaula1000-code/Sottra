@@ -84,12 +84,15 @@ export function useBuildingScan() {
   const [manualAddress, setManualAddress] = useState<ManualAddressInput | null>(null);
   const scanIdRef = useRef<string | null>(null);
 
-  const scan = useCallback(async (photo: string, lat: number, lng: number) => {
+  const scan = useCallback(async (photo: string, lat: number, lng: number, manualAddrInput?: string) => {
     const scanId = crypto.randomUUID();
     scanIdRef.current = scanId;
 
     setScanning(true);
     dispatch({ type: "START_SCAN" });
+    if (manualAddrInput && manualAddrInput.trim()) {
+      setManualAddress({ via: manualAddrInput.trim(), civico: "", cap: "", comune: "", provincia: "" });
+    }
 
     const set = (key: keyof ScanResult, value: SectionState) =>
       dispatch({ type: "SET", key, value });
