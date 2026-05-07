@@ -281,7 +281,7 @@ const Scan = () => {
               >
                 📍 Scansiona questo indirizzo
               </button>
-              <p className="mt-1.5 text-[11px] text-white/60 leading-snug">
+              <p className="text-[11px] text-white/70 mt-1">
                 Inserisci l'indirizzo per analisi precisa anche da desktop. Senza indirizzo verrà usato il GPS.
               </p>
             </div>
