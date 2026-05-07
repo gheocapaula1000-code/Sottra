@@ -1876,6 +1876,11 @@ const Result = () => {
                 </ReportAccordionItem>
               </SectionSafe>
 
+              {/* Segnali Off-Market */}
+              <SectionSafe>
+                <OffmarketSection data={result.offmarket?.data as import("@/types").OffmarketData | null} loading={result.offmarket?.status === "loading"} />
+              </SectionSafe>
+
               {/* Sintesi Finale — always open */}
               <SectionSafe><SintesiFinaleCard data={result.sintesiFinale.data as import("@/types/report").SintesiFinaleData | null} loading={result.sintesiFinale.status === "loading"} /></SectionSafe>
 
