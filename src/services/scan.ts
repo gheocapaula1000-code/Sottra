@@ -49,3 +49,21 @@ export async function getMoodScore(lat: number, lng: number) {
   if (isError(res)) return { error: true, message: res.message, data: null };
   return { error: false, message: null, data: res };
 }
+
+export async function getEnergy(address: string, comune?: string) {
+  const res = await coreRequest("/scan/energy", "POST", { address, comune }, 60000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}
+
+export async function getNeighborhood(lat: number, lng: number, address?: string) {
+  const res = await coreRequest("/forecast/neighborhood", "POST", { lat, lng, address }, 25000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}
+
+export async function getPoiEnrichment(lat: number, lng: number, address?: string) {
+  const res = await coreRequest("/scan/poi-enrichment", "POST", { lat, lng, address }, 20000);
+  if (isError(res)) return { error: true, message: res.message, data: null };
+  return { error: false, message: null, data: res };
+}
