@@ -443,7 +443,24 @@ export interface SubMunicipalMatchData {
   r03_sections_with_data?: number | null;
 }
 
-/** Errore restituito da coreRequest */
+/** Off-market signals — auctions, urban variants, inheritances, public assets */
+export type OffmarketSignalType = "asta" | "variante_urbanistica" | "eredita" | "patrimonio_pubblico" | string;
+
+export interface OffmarketSignal {
+  tipo: OffmarketSignalType;
+  titolo?: string | null;
+  descrizione?: string | null;
+  fonte?: string | null;
+  data?: string | null;
+  url?: string | null;
+  distanza_m?: number | null;
+}
+
+export interface OffmarketData extends SourceMetadata {
+  totale: number;
+  segnali?: OffmarketSignal[] | null;
+  opportunita?: string[] | null;
+}
 export interface CoreError {
   error: true;
   message: string;
