@@ -1532,10 +1532,10 @@ const isDev = import.meta.env.DEV;
 function devLog(...args: unknown[]) { if (isDev) console.log("[RESULT]", ...args); }
 
 function OffmarketSection({ data, loading }: { data: import("@/types").OffmarketData | null; loading: boolean }) {
-  if (loading) return null;
-  if (!data || !data.totale || data.totale <= 0) return null;
-  const segnali = data.segnali ?? [];
-  const opportunita = data.opportunita ?? [];
+  const segnali = data?.segnali ?? [];
+  const opportunita = data?.opportunita ?? [];
+  const totale = data?.totale ?? 0;
+  const isEmpty = !loading && totale <= 0;
 
   const badgeClass = (tipo: string): string => {
     const t = tipo.toLowerCase();
