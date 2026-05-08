@@ -174,18 +174,23 @@ export function useBuildingScan() {
 
       // Use comune/address derived from identify result (with safe fallbacks)
       const identifyAny = identifyData as unknown as Record<string, unknown>;
-      const comuneFromIdentify = (identifyAny.comune as string | undefined)
+      const geoRes = identifyAny.geoResolution as Record<string, unknown> | undefined;
+      const comuneFromIdentify = (geoRes?.resolvedComune as string | undefined)
+        ?? (identifyAny.comune as string | undefined)
         ?? (typeof identifyData.address === "string"
           ? identifyData.address.split(",").slice(-2, -1)[0]?.trim()
           : undefined)
         ?? comuneFromAddr;
+      const provinciaFromIdentify = (geoRes?.resolvedProvincia as string | undefined)
+        ?? provinciaFromAddr;
       const addressFromIdentify = (identifyAny.resolvedAddress as string | undefined)
+        ?? (geoRes?.resolvedAddress as string | undefined)
         ?? identifyData.address
         ?? address;
 
       // If lat/lng missing (manual address flow), use resolved coords from identify
-      const resolvedLat = identifyAny.resolvedLat as number | undefined;
-      const resolvedLng = identifyAny.resolvedLng as number | undefined;
+      const resolvedLat = (geoRes?.resolvedLat as number | undefined) ?? (identifyAny.resolvedLat as number | undefined);
+      const resolvedLng = (geoRes?.resolvedLng as number | undefined) ?? (identifyAny.resolvedLng as number | undefined);
       const finalLat = ((!lat || lat === 0) && typeof resolvedLat === "number") ? resolvedLat : lat;
       const finalLng = ((!lng || lng === 0) && typeof resolvedLng === "number") ? resolvedLng : lng;
 
@@ -210,8 +215,8 @@ export function useBuildingScan() {
         getTrendDemografico(finalLat, finalLng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
         getSviluppoArea(finalLat, finalLng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
         getConvergenzaTerritoriale(finalLat, finalLng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
-        getOffmarket(finalLat, finalLng, comuneFromIdentify, provinciaFromAddr).then(resolve("offmarket")).catch(reject("offmarket")),
-        getZoneIntelligence(finalLat, finalLng, comuneFromIdentify, provinciaFromAddr, addressFromIdentify || undefined).then(resolve("zoneIntelligence")).catch(reject("zoneIntelligence")),
+        getOffmarket(finalLat, finalLng, comuneFromIdentify, provinciaFromIdentify).then(resolve("offmarket")).catch(reject("offmarket")),
+        getZoneIntelligence(finalLat, finalLng, comuneFromIdentify, provinciaFromIdentify, addressFromIdentify || undefined).then(resolve("zoneIntelligence")).catch(reject("zoneIntelligence")),
         getListings(addressFromIdentify, comuneFromIdentify, finalLat, finalLng).then(resolve("listings")).catch(reject("listings")),
         getCondominio(addressFromIdentify, comuneFromIdentify, finalLat, finalLng).then(resolve("condominio")).catch(reject("condominio")),
         getStoricoTransazioni(addressFromIdentify, comuneFromIdentify).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
