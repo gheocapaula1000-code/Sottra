@@ -1987,8 +1987,11 @@ const Result = () => {
   const identifyData = result.identify.data as IdentifyResult | null;
   const identifyDone = result.identify.status === "success";
   const lowConfidenceRaw = identifyDone && identifyData != null && identifyData.confidence < LOW_CONFIDENCE_THRESHOLD;
-  const identifyFailed = identifyFailedRaw && !forceShowResult;
-  const lowConfidence = lowConfidenceRaw && !forceShowResult;
+  // Quality gates DISABLED: il pipeline civiko-property-from-photo gestisce autonomamente
+  // la qualità foto con fallback sicuro. Il frontend non blocca mai /result.
+  void identifyFailedRaw; void lowConfidenceRaw; void forceShowResult; void setForceShowResult;
+  const identifyFailed = false;
+  const lowConfidence = false;
 
   // Count publishable vs excluded
   const moduleKeys: (keyof ScanResult)[] = ["pricing", "marketContext", "convergenzaTerritoriale", "rischioZona", "trendDemografico", "opportunity", "timeView", "infrastrutture", "sviluppoArea", "poiEnrichment"];
