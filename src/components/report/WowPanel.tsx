@@ -140,6 +140,7 @@ export interface WowPanelProps {
 }
 
 export function WowPanel({ data, photo, status = "loading" }: WowPanelProps) {
+  console.log("WOWPANEL data:", data, "status:", status);
   const navigate = useNavigate();
 
   // Safety timeout: exit loading after 20s even if no data arrived
