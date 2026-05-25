@@ -403,6 +403,8 @@ export interface ScanResult {
   moodScore?: SectionState<MoodScoreData>;
   energy?: SectionState<EnergyData>;
   neighborhood?: SectionState<NeighborhoodData>;
+  /** Single-call Central Core orchestrator response (civiko-property-from-photo) */
+  photoWow?: SectionState<import("@/types/photoWow").PhotoWowResponse>;
   /* ── New report engine sections (Phase 1 — framework only) ── */
   profiloRapido: SectionState<import("@/types/report").ProfiloRapidoData>;
   immobileFacciata: SectionState<import("@/types/report").ImmobileFacciataData>;
