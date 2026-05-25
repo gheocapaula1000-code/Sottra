@@ -1938,6 +1938,16 @@ const Result = () => {
   const { toast } = useToast();
   const started = useRef(false);
 
+  // Diagnostic: trace photoWow pipeline status/data evolution
+  useEffect(() => {
+    console.log("[Result] photoWow state →", {
+      status: result.photoWow?.status,
+      hasData: !!result.photoWow?.data,
+      message: result.photoWow?.message,
+      data: result.photoWow?.data,
+    });
+  }, [result.photoWow?.status, result.photoWow?.data, result.photoWow?.message]);
+
   const hasValidPhoto = isValidImageDataUrl(state?.photo);
   const hasManualAddress = !!(state?.manualAddress && state.manualAddress.trim().length >= 3);
   const hasValidCoords = isValidGps(state?.lat, state?.lng) || hasManualAddress;
@@ -1987,8 +1997,11 @@ const Result = () => {
   const identifyData = result.identify.data as IdentifyResult | null;
   const identifyDone = result.identify.status === "success";
   const lowConfidenceRaw = identifyDone && identifyData != null && identifyData.confidence < LOW_CONFIDENCE_THRESHOLD;
-  const identifyFailed = identifyFailedRaw && !forceShowResult;
-  const lowConfidence = lowConfidenceRaw && !forceShowResult;
+  // Quality gates DISABLED: il pipeline civiko-property-from-photo gestisce autonomamente
+  // la qualità foto con fallback sicuro. Il frontend non blocca mai /result.
+  void identifyFailedRaw; void lowConfidenceRaw; void forceShowResult; void setForceShowResult;
+  const identifyFailed = false;
+  const lowConfidence = false;
 
   // Count publishable vs excluded
   const moduleKeys: (keyof ScanResult)[] = ["pricing", "marketContext", "convergenzaTerritoriale", "rischioZona", "trendDemografico", "opportunity", "timeView", "infrastrutture", "sviluppoArea", "poiEnrichment"];
@@ -2136,7 +2149,11 @@ const Result = () => {
 
           {/* ═══ WOW PANEL — Photo-first reveal experience ═══ */}
           <SectionSafe>
-            <WowPanel data={result.photoWow?.data ?? null} photo={state.photo} />
+            <WowPanel
+              data={result.photoWow?.data ?? null}
+              status={result.photoWow?.status ?? "idle"}
+              photo={state.photo}
+            />
           </SectionSafe>
 
           {/* Manual address override — shown after identify success, not during initial scan */}
