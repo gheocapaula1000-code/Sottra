@@ -2139,7 +2139,11 @@ const Result = () => {
 
           {/* ═══ WOW PANEL — Photo-first reveal experience ═══ */}
           <SectionSafe>
-            <WowPanel data={result.photoWow?.data ?? null} photo={state.photo} />
+            <WowPanel
+              data={result.photoWow?.data ?? null}
+              status={result.photoWow?.status ?? "idle"}
+              photo={state.photo}
+            />
           </SectionSafe>
 
           {/* Manual address override — shown after identify success, not during initial scan */}
