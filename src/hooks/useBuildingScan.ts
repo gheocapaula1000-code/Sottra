@@ -226,8 +226,7 @@ export function useBuildingScan() {
         getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy")),
         getNeighborhood(finalLat, finalLng, address).then(resolve("neighborhood")).catch(reject("neighborhood")),
         getPoiEnrichment(finalLat, finalLng, address).then(resolve("poiEnrichment")).catch(reject("poiEnrichment")),
-        // Single-call Central Core orchestrator (civiko-property-from-photo)
-        getPhotoWow(photo, finalLat, finalLng).then(resolve("photoWow")).catch(reject("photoWow")),
+        // photoWow is called as the PRIMARY path before runPipeline — not here.
         // Pro Sources (POI, OMI, ISTAT) — non-blocking
         fetchProSources(finalLat, finalLng).then((proData) => {
           set("poiEnrichment", {
