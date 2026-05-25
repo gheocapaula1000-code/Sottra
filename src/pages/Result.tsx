@@ -2154,24 +2154,9 @@ const Result = () => {
             );
           })()}
 
-          {/* ═══ WOW PANEL — Tiers 1+2 (colpo d'occhio + decisione) ═══ */}
+          {/* ═══ WOW PANEL — Photo-first reveal experience ═══ */}
           <SectionSafe>
-            <WowPanel
-              snapshot={wowSnapshot}
-              loading={result.pricing.status === "loading"}
-              outlookLabel={null}
-              outlookVariant="muted"
-              alignmentLabel={houseDiff ? (
-                houseDiff.address_alignment.photo_address_alignment === "high_alignment" ? "Coerente" :
-                houseDiff.address_alignment.photo_address_alignment === "medium_alignment" ? "Parziale" :
-                houseDiff.address_alignment.photo_address_alignment === "low_alignment" ? "Da verificare" : null
-              ) : null}
-              alignmentVariant={houseDiff ? (
-                houseDiff.address_alignment.photo_address_alignment === "high_alignment" ? "positive" :
-                houseDiff.address_alignment.photo_address_alignment === "medium_alignment" ? "neutral" : "warning"
-              ) : "muted"}
-              caseResult={caseResult}
-            />
+            <WowPanel data={result.photoWow?.data ?? null} photo={state.photo} />
           </SectionSafe>
 
           {/* Manual address override — shown after identify success, not during initial scan */}
