@@ -275,16 +275,26 @@ serve(async (req) => {
     }
   }
 
+  const OFFICIAL_CORE_HOSTS = [
+    "jpunnzgixcghuydstdlt.supabase.co",
+  ];
+  let upstreamHost = "";
+  try { upstreamHost = new URL(CORE_API_URL).host; } catch { /* invalid */ }
+  const isOfficial = OFFICIAL_CORE_HOSTS.includes(upstreamHost);
+
   const payload = {
     proxy_local: sanitizeUrl(Deno.env.get("SUPABASE_URL") || "") + "/functions/v1/core-proxy",
     upstream_sanitized: sanitized,
     upstream_origin: "env",
     key_configured: hasApiKey,
     key_source: keySource,
+    is_official: isOfficial,
+    official_host: OFFICIAL_CORE_HOSTS[0],
     health: healthStatus,
     health_latency_ms: healthLatency,
     routing: "frontend → core-proxy → Central Core",
   };
+
 
   return json(payload);
 });
