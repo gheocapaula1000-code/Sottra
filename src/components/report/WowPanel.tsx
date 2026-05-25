@@ -1,293 +1,432 @@
 /**
- * WOW Panel — Commercial Report Top Section (Mobile-First Impact)
+ * WowPanel — Photo-first reveal experience
  *
- * Visual hierarchy optimised for 5-second comprehension:
- *  A) Hero result strip  — zona, case strength, attenzione, limite
- *  B) Key value strip    — valore mq, affidabilità, costi ristr., specificità
- *  C) Outlook strip      — segnali, outlook, fallback/confini/allineamento
- *
- * Strong-case boost: when the evaluator says strong/solid, the panel
- * renders with more decisive language & visual emphasis while keeping
- * the limite_principale always visible.
+ * Receives the PhotoWowResponse from the Central Core orchestrator and the
+ * captured photo (DataURL), and progressively reveals the full territorial
+ * intelligence with a high-impact, mobile-first UX.
  */
 
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  AlertTriangle, Zap, Wrench, TrendingUp,
-  MapPin, Eye, ArrowUpRight, CheckCircle2, Info,
+  MapPin, Zap, FileText, Brain, Target, Share2, Camera,
+  CheckCircle2, AlertTriangle, ExternalLink, TrendingUp,
 } from "lucide-react";
-import type { WowSnapshot, AttentionSignal, SpecificityLabel } from "@/lib/sottraWowSnapshot";
-import { attentionSignalColor } from "@/lib/sottraWowSnapshot";
-import type { StrongCaseResult } from "@/lib/strongCaseEvaluator";
-import {
-  toneAttentionLabel, toneSpecificityLabel, toneReliabilityLabel,
-  toneCaseStrengthLabel, toneStrengthLine, toneLimiteLabel,
-  toneSegnaliLabel,
-} from "@/lib/reportToneMap";
+import { useNavigate } from "react-router-dom";
+import type { PhotoWowResponse, PhotoWowLiveSignal } from "@/types/photoWow";
 
-/* ── Attention badge ─────────────────────────────────── */
+/* ── helpers ─────────────────────────────────────────── */
 
-const attentionBg: Record<AttentionSignal, string> = {
-  high: "bg-emerald-500/15 border-emerald-500/30",
-  medium: "bg-primary/15 border-primary/30",
-  low: "bg-amber-500/15 border-amber-500/30",
-  insufficient: "bg-muted border-border",
-};
-
-function AttentionBadge({ signal }: { signal: AttentionSignal }) {
-  return (
-    <span className={cn(
-      "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold leading-tight",
-      attentionBg[signal],
-      attentionSignalColor(signal),
-    )}>
-      {signal === "high" && <ArrowUpRight className="h-3 w-3" />}
-      {toneAttentionLabel(signal)}
-    </span>
-  );
+function scoreColor(v: number): { text: string; border: string; ring: string } {
+  if (v >= 70) return { text: "text-emerald-400", border: "border-emerald-500/40", ring: "ring-emerald-500/40" };
+  if (v >= 40) return { text: "text-amber-400", border: "border-amber-500/40", ring: "ring-amber-500/40" };
+  return { text: "text-rose-400", border: "border-rose-500/40", ring: "ring-rose-500/40" };
 }
 
-/* ── Specificity badge ───────────────────────────────── */
-
-const specBg: Record<SpecificityLabel, string> = {
-  Alta: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400",
-  "Medio-alta": "bg-emerald-500/10 border-emerald-500/25 text-emerald-400",
-  Media: "bg-primary/15 border-primary/30 text-primary",
-  Bassa: "bg-amber-500/15 border-amber-500/30 text-amber-400",
-  "Non sufficiente": "bg-muted border-border text-muted-foreground",
-};
-
-function SpecificityBadge({ label }: { label: SpecificityLabel }) {
-  return (
-    <span className={cn(
-      "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold leading-tight",
-      specBg[label],
-    )}>
-      <Eye className="h-3 w-3" />{toneSpecificityLabel(label)}
-    </span>
-  );
+function sentimentColor(level: string | null | undefined): string {
+  const k = (level ?? "").toLowerCase();
+  if (k.includes("alt")) return "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
+  if (k.includes("med")) return "bg-amber-500/20 text-amber-300 border-amber-500/40";
+  if (k.includes("bas")) return "bg-rose-500/20 text-rose-300 border-rose-500/40";
+  return "bg-white/10 text-white/70 border-white/20";
 }
 
-/* ── Strong-case strength highlights ─────────────────── */
+const SIGNAL_STYLE: Record<string, { bg: string; label: string }> = {
+  asta: { bg: "bg-rose-500/90 text-white", label: "ASTA" },
+  alienazione: { bg: "bg-orange-500/90 text-white", label: "ALIENAZIONE" },
+  bando: { bg: "bg-blue-500/90 text-white", label: "BANDO" },
+  lavori_pubblici: { bg: "bg-violet-500/90 text-white", label: "LAVORI" },
+  delibera: { bg: "bg-slate-500/90 text-white", label: "DELIBERA" },
+  rigenerazione: { bg: "bg-emerald-500/90 text-white", label: "RIGENERAZIONE" },
+};
 
-function StrengthHighlights({ strengths }: { strengths: string[] }) {
-  if (strengths.length === 0) return null;
+function signalStyle(tipo: string): { bg: string; label: string } {
+  const k = (tipo ?? "").toLowerCase().replace(/\s+/g, "_");
+  return SIGNAL_STYLE[k] ?? { bg: "bg-white/15 text-white", label: tipo?.toUpperCase() ?? "SEGNALE" };
+}
+
+/* ── animated counter ────────────────────────────────── */
+
+function useCountUp(target: number, durationMs: number, start: boolean): number {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (!start) return;
+    const t0 = performance.now();
+    let raf = 0;
+    const step = (t: number) => {
+      const p = Math.min(1, (t - t0) / durationMs);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setV(Math.round(eased * target));
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, durationMs, start]);
+  return v;
+}
+
+/* ── score card ──────────────────────────────────────── */
+
+function ScoreCard({ label, value, delay, start }: { label: string; value: number; delay: number; start: boolean }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (!start) return;
+    const t = setTimeout(() => setShown(true), delay);
+    return () => clearTimeout(t);
+  }, [start, delay]);
+  const c = scoreColor(value);
+  const animated = useCountUp(value, 1200, shown);
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {strengths.slice(0, 3).map((s, i) => (
-        <span key={i} className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-          <CheckCircle2 className="h-3 w-3" />{toneStrengthLine(s)}
-        </span>
-      ))}
+    <div className={cn(
+      "min-w-[180px] flex-1 rounded-2xl border bg-gradient-to-br from-black/60 to-black/30 p-4 backdrop-blur-md transition-all duration-500",
+      c.border,
+      shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
+    )}>
+      <p className="text-[11px] uppercase tracking-widest text-white/60">{label}</p>
+      <div className="mt-2 flex items-baseline gap-1">
+        <span className={cn("text-4xl font-black tabular-nums", c.text)}>{animated}</span>
+        <span className="text-sm text-white/40">/100</span>
+      </div>
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+        <div
+          className={cn("h-full rounded-full transition-[width] duration-[1200ms] ease-out", c.text.replace("text-", "bg-"))}
+          style={{ width: shown ? `${value}%` : "0%" }}
+        />
+      </div>
     </div>
   );
 }
 
-/* ── Micro status chip ───────────────────────────────── */
+/* ── phase reveal hook ───────────────────────────────── */
 
-function StatusChip({ label, value, variant }: { label: string; value: string; variant: "positive" | "neutral" | "warning" | "muted" }) {
-  const cls = variant === "positive" ? "text-emerald-400"
-    : variant === "warning" ? "text-amber-400"
-    : variant === "neutral" ? "text-primary"
-    : "text-muted-foreground";
+function useReveal(delayMs: number, enabled: boolean): boolean {
+  const [v, setV] = useState(false);
+  useEffect(() => {
+    if (!enabled) { setV(false); return; }
+    const t = setTimeout(() => setV(true), delayMs);
+    return () => clearTimeout(t);
+  }, [delayMs, enabled]);
+  return v;
+}
+
+/* ── section wrapper ─────────────────────────────────── */
+
+function Reveal({ show, slide = "up", className, children }: {
+  show: boolean;
+  slide?: "up" | "right" | "none";
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const hiddenT = slide === "up" ? "translate-y-10" : slide === "right" ? "translate-x-8" : "";
   return (
-    <div className="flex items-center justify-between text-[11px] gap-2 min-w-0">
-      <span className="text-muted-foreground truncate">{label}</span>
-      <span className={cn("font-semibold whitespace-nowrap", cls)}>{value}</span>
+    <div className={cn(
+      "transition-all duration-700 ease-out",
+      show ? "opacity-100 translate-y-0 translate-x-0" : `opacity-0 ${hiddenT}`,
+      className,
+    )}>
+      {children}
     </div>
   );
 }
 
-/* ── Fallback weight helpers ─────────────────────────── */
-
-function fallbackLabel(snapshot: WowSnapshot): { text: string; variant: "positive" | "neutral" | "warning" | "muted" } {
-  const aff = snapshot.affidabilita_valore;
-  if (aff === "Alta") return { text: "Contenuto", variant: "positive" };
-  if (aff === "Media") return { text: "Presente", variant: "neutral" };
-  if (aff === "Bassa") return { text: "Rilevante", variant: "warning" };
-  return { text: "Non det.", variant: "muted" };
-}
-
-/* ── Exported panel ──────────────────────────────────── */
+/* ── main component ──────────────────────────────────── */
 
 export interface WowPanelProps {
-  snapshot: WowSnapshot | null;
-  loading: boolean;
-  /** Optional outlook micro-summary */
-  outlookLabel?: string | null;
-  outlookVariant?: "positive" | "neutral" | "warning" | "muted";
-  /** Optional alignment label (photo+geo+address) */
-  alignmentLabel?: string | null;
-  alignmentVariant?: "positive" | "neutral" | "warning" | "muted";
-  /** Optional boundary label */
-  boundaryLabel?: string | null;
-  boundaryVariant?: "positive" | "neutral" | "warning" | "muted";
-  /** Strong case evaluation result */
-  caseResult?: StrongCaseResult | null;
+  data: PhotoWowResponse | null | undefined;
+  photo: string;
 }
 
-export function WowPanel({
-  snapshot, loading,
-  outlookLabel, outlookVariant = "muted",
-  alignmentLabel, alignmentVariant = "muted",
-  boundaryLabel, boundaryVariant = "muted",
-  caseResult,
-}: WowPanelProps) {
-  if (loading) {
-    return (
-      <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-3 animate-pulse">
-        <div className="h-5 w-32 bg-muted rounded" />
-        <div className="h-10 w-48 bg-muted rounded" />
-        <div className="h-4 w-full bg-muted rounded" />
-      </div>
-    );
-  }
-  if (!snapshot || snapshot.narrative_mode === "hidden") return null;
+export function WowPanel({ data, photo }: WowPanelProps) {
+  const navigate = useNavigate();
+  const ready = !!data;
 
-  const isPartial = snapshot.narrative_mode === "partial";
-  const fb = fallbackLabel(snapshot);
-  const isStrong = caseResult?.identity.overall_case_strength === "strong_case";
-  const isSolid = caseResult?.identity.overall_case_strength === "solid_case";
-  const isDecisive = isStrong || isSolid;
+  // Phase reveal timings (relative to data arrival)
+  const p2 = useReveal(50, ready);
+  const p3 = useReveal(50 + 800, ready);
+  const p4 = useReveal(50 + 800 + 600, ready);
+  const p5 = useReveal(50 + 800 + 600 + 500, ready);
+  const p6 = useReveal(50 + 800 + 600 + 500 + 400, ready);
+  const p7 = useReveal(50 + 800 + 600 + 500 + 400 + 400, ready);
+  const p8 = useReveal(50 + 800 + 600 + 500 + 400 + 400 + 400, ready);
+  const p9 = useReveal(50 + 800 + 600 + 500 + 400 + 400 + 400 + 300, ready);
 
-  const headerLabel = caseResult ? toneCaseStrengthLabel(caseResult.identity.overall_case_strength) : "Snapshot immediato";
+  const venScore = data?.scores?.vendibilita ?? 0;
+  const venCol = useMemo(() => scoreColor(venScore), [venScore]);
 
-  const borderCls = isStrong
-    ? "border-emerald-500/30"
-    : isSolid
-      ? "border-primary/25"
-      : "border-primary/20";
-  const gradientCls = isStrong
-    ? "from-emerald-500/8 to-transparent"
-    : "from-primary/5 to-transparent";
+  const handleShare = async () => {
+    const shareData = { title: "Report Sottra", text: "Guarda il mio report territoriale", url: window.location.href };
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch { /* user cancelled */ }
+    } else {
+      try { await navigator.clipboard.writeText(window.location.href); } catch { /* noop */ }
+    }
+  };
 
   return (
-    <div className={cn("rounded-2xl border bg-gradient-to-br overflow-hidden", borderCls, gradientCls)}>
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl">
+      {/* PHASE 0 — Background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: `url(${photo})`,
+          filter: "blur(24px) brightness(0.35)",
+          transform: "scale(1.08)",
+        }}
+        aria-hidden
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/30" aria-hidden />
 
-      {/* ═══ STRIP A — Hero Result (zona + esito + attenzione) ═══ */}
-      <div className="px-5 pt-5 pb-4 space-y-4">
-        {/* Case strength header */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-xl",
-              isStrong ? "bg-emerald-500/15" : "bg-primary/15",
-            )}>
-              <Zap className={cn("h-4 w-4", isStrong ? "text-emerald-400" : "text-primary")} />
+      {/* Content */}
+      <div className="relative z-10 px-4 sm:px-6 py-6 space-y-6 text-white">
+
+        {/* PHASE 1 — Loading */}
+        {!ready && (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <p className="text-lg font-medium tracking-wide">
+              Analisi zona in corso<span className="inline-block w-6 text-left animate-pulse">...</span>
+            </p>
+            <div className="relative w-56 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div className="absolute inset-y-0 w-1/3 rounded-full bg-white/70 animate-[wow-indeterminate_1.4s_ease-in-out_infinite]" />
             </div>
-            <div>
-              <span className="font-bold text-foreground text-[15px] tracking-tight leading-none">{headerLabel}</span>
-              {isPartial && <Badge variant="secondary" className="text-[9px] py-0 ml-2">Parziale</Badge>}
-            </div>
+            <style>{`@keyframes wow-indeterminate{0%{transform:translateX(-100%)}100%{transform:translateX(280%)}}`}</style>
           </div>
-          <AttentionBadge signal={snapshot.attenzione_area} />
-        </div>
+        )}
 
-        {/* Zona reale — prominent */}
-        <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-primary/70 shrink-0" />
-          <div className="min-w-0">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Zona</span>
-            <p className="text-base font-extrabold text-foreground leading-tight truncate">{snapshot.zona_reale}</p>
-          </div>
-        </div>
+        {ready && data && (
+          <>
+            {/* Quality banner */}
+            {data.qualita === "minima" && (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>Dati parziali — geolocalizzazione o foto non ottimale.</span>
+              </div>
+            )}
 
-        {/* Strength highlights — only for decisive cases */}
-        {isDecisive && caseResult && <StrengthHighlights strengths={caseResult.strengths} />}
-
-        {/* Limite principale — ALWAYS visible, elegant & subordinate */}
-        <div className={cn(
-          "flex items-start gap-2 rounded-xl border px-3 py-2.5",
-          isStrong
-            ? "bg-background/15 border-border/15"
-            : "bg-background/30 border-border/25",
-        )}>
-          <Info className={cn(
-            "h-3.5 w-3.5 mt-0.5 shrink-0",
-            isStrong ? "text-muted-foreground/40" : "text-amber-400/60",
-          )} />
-          <span className={cn(
-            "text-[11px] leading-relaxed",
-            isStrong ? "text-muted-foreground/50" : "text-muted-foreground/80",
-          )}>{toneLimiteLabel(snapshot.limite_principale)}</span>
-        </div>
-      </div>
-
-      {/* ═══ STRIP B — Key Values (valore + affidabilità + ristr. + specificità) ═══ */}
-      <div className="border-t border-border/20 bg-background/15 px-5 py-5 space-y-4">
-        {/* Value headline — dominant */}
-        <div className="flex items-end justify-between gap-3">
-          {snapshot.valore_al_mq ? (
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Valore al m²</span>
-                {snapshot.valore_zona_fine && (
-                  <span className="text-[9px] text-emerald-400/80 font-semibold">· {snapshot.livello_valore}</span>
+            {/* PHASE 2 — Zona identified */}
+            <Reveal show={p2}>
+              <div className="rounded-2xl border border-white/30 bg-black/80 backdrop-blur-md px-5 py-5 space-y-2">
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-white/50">
+                  <MapPin className="h-3.5 w-3.5" />Zona identificata
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                  {data.zona?.nomeComune ?? "—"}{data.zona?.provincia ? ` · ${data.zona.provincia}` : ""}
+                </h2>
+                {(data.zona?.nomeZonaOmi || data.zona?.classificazioneZona) && (
+                  <p className="text-sm text-white/70">
+                    {[data.zona?.nomeZonaOmi, data.zona?.classificazioneZona].filter(Boolean).join(" · ")}
+                  </p>
                 )}
-                {!snapshot.valore_zona_fine && snapshot.livello_valore && (
-                  <span className="text-[9px] text-amber-400/80 font-semibold">· {snapshot.livello_valore}</span>
+                {data.zona?.livelloSentiment && (
+                  <span className={cn(
+                    "inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold mt-1",
+                    sentimentColor(data.zona.livelloSentiment),
+                  )}>
+                    Sentiment: {data.zona.livelloSentiment}
+                  </span>
                 )}
               </div>
-              <span className={cn(
-                "text-3xl sm:text-4xl font-black leading-none tracking-tight",
-                isStrong ? "text-emerald-400" : "text-foreground",
-              )}>{snapshot.valore_al_mq}</span>
-              {snapshot.valore_range && (
-                <p className="text-[10px] text-muted-foreground/60 mt-1">{snapshot.valore_range}</p>
-              )}
-            </div>
-          ) : (
-            <div>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest block mb-1">Valore al m²</span>
-              <span className="text-sm text-muted-foreground">Non disponibile</span>
-            </div>
-          )}
-          {snapshot.specificita_immobile && <SpecificityBadge label={snapshot.specificita_immobile} />}
-        </div>
+            </Reveal>
 
-        {/* Affidabilità + Ristrutturazione — side-by-side cards */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-background/50 border border-border/30 p-3">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest block mb-1">Affidabilità</span>
-            <p className={cn(
-              "text-sm font-bold",
-              isDecisive && snapshot.affidabilita_valore === "Alta" ? "text-emerald-400" : "text-foreground",
-            )}>{toneReliabilityLabel(snapshot.affidabilita_valore)}</p>
-          </div>
-          {snapshot.costo_ristrutturazione ? (
-            <div className="rounded-xl bg-background/50 border border-border/30 p-3">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest flex items-center gap-1 mb-1"><Wrench className="h-3 w-3" />Ristr.</span>
-              <p className="text-sm font-bold text-foreground">{snapshot.costo_ristrutturazione}</p>
-              {snapshot.costo_range && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{snapshot.costo_range}</p>}
-            </div>
-          ) : (
-            <div className="rounded-xl bg-background/50 border border-border/30 p-3">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest flex items-center gap-1 mb-1"><Wrench className="h-3 w-3" />Ristr.</span>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Non stimabile</p>
-            </div>
-          )}
-        </div>
-      </div>
+            {/* PHASE 3 — Map */}
+            {data.mappaCaloreUrl && (
+              <Reveal show={p3}>
+                <div className="relative overflow-hidden rounded-xl border border-white/15">
+                  <img src={data.mappaCaloreUrl} alt="Mappa di calore zona" className="w-full h-auto object-cover" loading="lazy" />
+                  <div className={cn(
+                    "absolute top-3 right-3 flex flex-col items-center justify-center h-16 w-16 rounded-full bg-black/80 border-2",
+                    venCol.border,
+                  )}>
+                    <span className={cn("text-2xl font-black leading-none tabular-nums", venCol.text)}>{venScore}</span>
+                    <span className="text-[8px] uppercase tracking-wider text-white/60 mt-0.5">vendib.</span>
+                  </div>
+                </div>
+              </Reveal>
+            )}
 
-      {/* ═══ STRIP C — Signals & Context (segnali + outlook + micro-riga) ═══ */}
-      <div className="border-t border-border/15 bg-background/10 px-5 py-4 space-y-3">
-        {/* Segnali zona */}
-        <div className="flex items-center gap-2">
-          <TrendingUp className="h-3.5 w-3.5 text-primary/50 shrink-0" />
-          <span className="text-[11px] text-muted-foreground">Segnali zona:</span>
-          <span className="text-[11px] font-semibold text-foreground">{toneSegnaliLabel(snapshot.segnali_zona)}</span>
-        </div>
+            {/* PHASE 4 — Scores */}
+            <Reveal show={p4}>
+              <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
+                <div className="snap-start flex-1 min-w-[180px]">
+                  <ScoreCard label="Vendibilità" value={data.scores?.vendibilita ?? 0} delay={0} start={p4} />
+                </div>
+                <div className="snap-start flex-1 min-w-[180px]">
+                  <ScoreCard label="Opportunità" value={data.scores?.opportunitaInvestimento ?? 0} delay={120} start={p4} />
+                </div>
+                <div className="snap-start flex-1 min-w-[180px]">
+                  <ScoreCard label="Pressione ereditaria" value={data.scores?.pressioneEreditaria ?? 0} delay={240} start={p4} />
+                </div>
+              </div>
+            </Reveal>
 
-        {/* Micro-riga contestuale — secondary context */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-xl bg-background/30 border border-border/20 px-3 py-2.5">
-          <StatusChip label="Fallback" value={fb.text} variant={fb.variant} />
-          {outlookLabel && <StatusChip label="Outlook" value={outlookLabel} variant={outlookVariant} />}
-          {boundaryLabel && <StatusChip label="Confini" value={boundaryLabel} variant={boundaryVariant} />}
-          {alignmentLabel && <StatusChip label="Allineamento" value={alignmentLabel} variant={alignmentVariant} />}
-        </div>
+            {/* PHASE 5 — Live signals */}
+            {data.liveSignals && data.liveSignals.length > 0 && (
+              <Reveal show={p5}>
+                <div className="space-y-2.5">
+                  <h3 className="flex items-center gap-2 text-sm font-bold tracking-wide">
+                    <Zap className="h-4 w-4 text-amber-300" />Segnali attivi nella zona
+                  </h3>
+                  <div className="space-y-2">
+                    {data.liveSignals.map((s: PhotoWowLiveSignal, i) => {
+                      const st = signalStyle(s.tipo);
+                      return (
+                        <div
+                          key={`${s.url}-${i}`}
+                          className="rounded-xl border border-white/10 bg-black/50 backdrop-blur-sm px-3 py-2.5 transition-all duration-500"
+                          style={{
+                            transitionDelay: `${i * 100}ms`,
+                            opacity: p5 ? 1 : 0,
+                            transform: p5 ? "translateX(0)" : "translateX(24px)",
+                          }}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-black tracking-wider", st.bg)}>
+                              {st.label}
+                            </span>
+                            <span className="text-[10px] text-white/50 truncate">{s.fonte} · {s.dataRilevazione}</span>
+                          </div>
+                          <p className="text-[13px] font-semibold leading-snug line-clamp-2">{s.titolo}</p>
+                          {s.estratto && <p className="text-[11px] text-white/60 mt-1 line-clamp-2">{s.estratto}</p>}
+                          {s.url && (
+                            <a
+                              href={s.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-medium text-sky-300 hover:underline"
+                            >
+                              Vedi fonte <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Reveal>
+            )}
 
-        <p className="text-[9px] text-muted-foreground/25 text-center">Snapshot orientativo — non sostituisce una valutazione professionale</p>
+            {/* PHASE 6 — Territorial documents */}
+            {data.territorialDocuments && data.territorialDocuments.length > 0 && (
+              <Reveal show={p6}>
+                <div className="space-y-2">
+                  <h3 className="flex items-center gap-2 text-sm font-bold tracking-wide">
+                    <FileText className="h-4 w-4 text-sky-300" />Documenti territoriali
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {data.territorialDocuments.map((d, i) => (
+                      <li key={`${d.url}-${i}`} className="flex items-start gap-2 rounded-lg border border-white/10 bg-black/40 px-3 py-2">
+                        <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0 text-white/50" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12px] font-medium truncate">{d.titolo}</p>
+                          <p className="text-[10px] text-white/50">{d.fonte}</p>
+                        </div>
+                        {d.url && (
+                          <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-sky-300 hover:underline shrink-0">
+                            Apri
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Reveal>
+            )}
+
+            {/* PHASE 7 — Zone intelligence */}
+            {data.zonaIntelligence && (
+              <Reveal show={p7}>
+                <div className="space-y-3 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-sm p-4">
+                  <h3 className="flex items-center gap-2 text-sm font-bold tracking-wide">
+                    <Brain className="h-4 w-4 text-violet-300" />Intelligence zona
+                  </h3>
+                  {data.zonaIntelligence.tendenzaMercato && (
+                    <p className="text-base italic text-white/90 leading-snug">"{data.zonaIntelligence.tendenzaMercato}"</p>
+                  )}
+                  {data.zonaIntelligence.puntiDiForzaNascosti?.length > 0 && (
+                    <ul className="space-y-1">
+                      {data.zonaIntelligence.puntiDiForzaNascosti.map((p, i) => (
+                        <li key={i} className="flex items-start gap-2 text-[12px] text-white/80">
+                          <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 text-emerald-400 shrink-0" />{p}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {data.zonaIntelligence.criticitaEmergenti?.length > 0 && (
+                    <ul className="space-y-1">
+                      {data.zonaIntelligence.criticitaEmergenti.map((p, i) => (
+                        <li key={i} className="flex items-start gap-2 text-[12px] text-white/80">
+                          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-rose-400 shrink-0" />{p}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {data.zonaIntelligence.notizieRecenti?.length > 0 && (
+                    <div className="pt-1 space-y-1.5 border-t border-white/10">
+                      <p className="text-[10px] uppercase tracking-widest text-white/40 flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3" />Notizie recenti
+                      </p>
+                      {data.zonaIntelligence.notizieRecenti.slice(0, 3).map((n, i) => (
+                        <a
+                          key={i}
+                          href={n.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-[12px] text-sky-300 hover:underline"
+                        >
+                          {n.titolo} <span className="text-white/40 text-[10px]">· {n.data}</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Reveal>
+            )}
+
+            {/* PHASE 8 — Esclusiva plan */}
+            {data.pianoEsclusiva && (
+              <Reveal show={p8}>
+                <div className="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-black/60 to-black/40 backdrop-blur-sm p-5 space-y-3">
+                  <h3 className="flex items-center gap-2 text-sm font-bold tracking-wide text-amber-200">
+                    <Target className="h-4 w-4" />Il tuo piano esclusiva
+                  </h3>
+                  {data.pianoEsclusiva.argomento && (
+                    <p className="text-lg font-bold leading-tight">{data.pianoEsclusiva.argomento}</p>
+                  )}
+                  {data.pianoEsclusiva.puntiChiave?.length > 0 && (
+                    <ol className="list-decimal list-inside space-y-1 text-[13px] text-white/85">
+                      {data.pianoEsclusiva.puntiChiave.map((p, i) => <li key={i}>{p}</li>)}
+                    </ol>
+                  )}
+                  {data.pianoEsclusiva.stimaRapida && (
+                    <div className="rounded-lg border border-amber-400/30 bg-black/40 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-widest text-amber-200/70">Stima rapida</p>
+                      <p className="text-base font-bold text-amber-100">{data.pianoEsclusiva.stimaRapida}</p>
+                    </div>
+                  )}
+                </div>
+              </Reveal>
+            )}
+
+            {/* PHASE 9 — Actions */}
+            <Reveal show={p9}>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={handleShare} variant="secondary" className="bg-white/10 text-white border border-white/20 hover:bg-white/20 min-h-[44px]">
+                    <Share2 className="h-4 w-4" />Condividi report
+                  </Button>
+                  <Button onClick={() => navigate("/scan")} className="min-h-[44px]">
+                    <Camera className="h-4 w-4" />Nuova scansione
+                  </Button>
+                </div>
+                {data.fontiUsate?.length > 0 && (
+                  <p className="text-[10px] text-white/40 text-center leading-relaxed">
+                    Fonti usate: {data.fontiUsate.join(" · ")}
+                  </p>
+                )}
+              </div>
+            </Reveal>
+          </>
+        )}
       </div>
     </div>
   );
