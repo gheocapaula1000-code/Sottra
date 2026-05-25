@@ -1938,6 +1938,16 @@ const Result = () => {
   const { toast } = useToast();
   const started = useRef(false);
 
+  // Diagnostic: trace photoWow pipeline status/data evolution
+  useEffect(() => {
+    console.log("[Result] photoWow state →", {
+      status: result.photoWow?.status,
+      hasData: !!result.photoWow?.data,
+      message: result.photoWow?.message,
+      data: result.photoWow?.data,
+    });
+  }, [result.photoWow?.status, result.photoWow?.data, result.photoWow?.message]);
+
   const hasValidPhoto = isValidImageDataUrl(state?.photo);
   const hasManualAddress = !!(state?.manualAddress && state.manualAddress.trim().length >= 3);
   const hasValidCoords = isValidGps(state?.lat, state?.lng) || hasManualAddress;
