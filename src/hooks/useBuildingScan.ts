@@ -267,7 +267,31 @@ export function useBuildingScan() {
       dispatch({ type: "MAP_REPORT", lat: finalLat, lng: finalLng });
     };
 
-    await runPipeline();
+    // PRIMARY PATH: single-call orchestrator civiko-property-from-photo.
+    // Only fall back to the legacy parallel pipeline if it fails or times out (30s).
+    set("photoWow", { status: "loading", data: null, message: null });
+    const PHOTO_WOW_TIMEOUT_MS = 30000;
+    const photoWowTimeout = new Promise<{ error: true; message: string; data: null }>((res) =>
+      setTimeout(() => res({ error: true, message: "Timeout civiko-property-from-photo", data: null }), PHOTO_WOW_TIMEOUT_MS),
+    );
+    let primaryOk = false;
+    try {
+      const photoRes = await Promise.race([getPhotoWow(photo, lat, lng), photoWowTimeout]);
+      if (!photoRes.error && photoRes.data) {
+        set("photoWow", { status: "success", data: photoRes.data, message: null });
+        primaryOk = true;
+      } else {
+        console.warn("[SCAN] photoWow primary failed, falling back to legacy pipeline:", photoRes.message);
+        set("photoWow", { status: "error", data: null, message: photoRes.message });
+      }
+    } catch (err) {
+      console.error("[SCAN] photoWow primary threw, falling back:", err);
+      set("photoWow", { status: "error", data: null, message: err instanceof Error ? err.message : "Errore photoWow" });
+    }
+
+    if (!primaryOk) {
+      await runPipeline();
+    }
     setScanning(false);
   }, []);
 
