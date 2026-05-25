@@ -2109,29 +2109,9 @@ const Result = () => {
 
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-3 px-4 sm:px-5 pb-32 pt-2">
-          {/* Identify error — premium retry prompt */}
-          {identifyFailed && (
-            <Section className="border-destructive/20 bg-destructive/5">
-              <div className="flex flex-col items-center text-center gap-4 py-3">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-                  <Camera className="h-7 w-7 text-destructive" />
-                </div>
-                <div className="space-y-2 max-w-xs">
-                  <p className="text-sm font-semibold text-foreground">Scatto non ancora sufficiente per l'analisi</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">Per pubblicare il report, ripeti lo scatto inquadrando la facciata intera e il civico.</p>
-                </div>
-                <Button size="lg" className="min-h-[48px]" onClick={() => navigate("/scan")}>
-                  <Camera className="h-4 w-4 mr-2" />Riprova lo scatto
-                </Button>
-                <button
-                  onClick={() => setForceShowResult(true)}
-                  className="mt-2 text-[13px] text-white/50 underline"
-                >
-                  Continua comunque con i dati disponibili
-                </button>
-              </div>
-            </Section>
-          )}
+          {/* Identify error gate rimosso: il pipeline civiko-property-from-photo
+              gestisce autonomamente la qualità foto con fallback sicuro
+              (WowPanel mostra qualita: "minima" quando necessario). */}
 
           <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} lowConfidence={lowConfidence} />
 
