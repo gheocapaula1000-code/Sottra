@@ -2,6 +2,7 @@ import { useReducer, useState, useCallback, useRef } from "react";
 import { identifyBuilding, getPricing, getOffmarket, getZoneIntelligence, getListings, getCondominio, getStoricoTransazioni, getMoodScore, getEnergy, getNeighborhood, getPoiEnrichment } from "@/services/scan";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
 import { fetchProSources } from "@/services/proSources";
+import { getPhotoWow } from "@/services/photoWow";
 import { supabase } from "@/integrations/supabase/client";
 import { mapScanToReportSections } from "@/lib/reportMapper";
 import type { ScanResult, SectionState, IdentifyResult } from "@/types";
@@ -25,6 +26,7 @@ const MODULES: (keyof ScanResult)[] = [
   "moodScore",
   "energy",
   "neighborhood",
+  "photoWow",
   // Report engine sections — populated by MAP_REPORT action after data modules complete
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
@@ -224,6 +226,8 @@ export function useBuildingScan() {
         getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy")),
         getNeighborhood(finalLat, finalLng, address).then(resolve("neighborhood")).catch(reject("neighborhood")),
         getPoiEnrichment(finalLat, finalLng, address).then(resolve("poiEnrichment")).catch(reject("poiEnrichment")),
+        // Single-call Central Core orchestrator (civiko-property-from-photo)
+        getPhotoWow(photo, finalLat, finalLng).then(resolve("photoWow")).catch(reject("photoWow")),
         // Pro Sources (POI, OMI, ISTAT) — non-blocking
         fetchProSources(finalLat, finalLng).then((proData) => {
           set("poiEnrichment", {
