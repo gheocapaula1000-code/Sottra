@@ -1940,6 +1940,7 @@ const Result = () => {
 
   // Diagnostic: trace photoWow pipeline status/data evolution
   useEffect(() => {
+    console.log("RESULT STATE photoWow:", JSON.stringify(result.photoWow, null, 2));
     console.log("[Result] photoWow state →", {
       status: result.photoWow?.status,
       hasData: !!result.photoWow?.data,

@@ -278,6 +278,7 @@ export function useBuildingScan() {
     try {
       const photoRes = await Promise.race([getPhotoWow(photo, lat, lng), photoWowTimeout]);
       if (!photoRes.error && photoRes.data) {
+        console.log("PHOTOWOW RESPONSE:", JSON.stringify(photoRes.data, null, 2));
         set("photoWow", { status: "success", data: photoRes.data, message: null });
         primaryOk = true;
       } else {
