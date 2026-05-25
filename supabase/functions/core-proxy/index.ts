@@ -48,12 +48,14 @@ serve(async (req) => {
       return jsonResponse({ error: { message: "Parametri della richiesta non validi" } }, 400, req);
     }
 
+    console.log(`[core-proxy] IN endpoint=${endpoint} method=${method} user=${userData.user.id}`);
+
     // ── 3. Check backend configuration ────────────────────
     const CORE_API_URL = (Deno.env.get("CORE_API_URL") || "").replace(/\/+$/, "");
     const CORE_API_KEY = resolveCoreSecret();
 
     if (!CORE_API_URL || !CORE_API_KEY) {
-      console.error("Core backend not configured: missing CORE_API_URL or secret");
+      console.error("[core-proxy] missing CORE_API_URL or secret");
       return jsonResponse(
         { error: { message: "Servizio non ancora disponibile. Configurazione in corso." } },
         503,
@@ -67,6 +69,7 @@ serve(async (req) => {
 
     try {
       const coreUrl = `${CORE_API_URL}${endpoint}`;
+      console.log(`[core-proxy] FORWARD → ${coreUrl}`);
 
       const response = await fetch(coreUrl, {
         method,
@@ -81,6 +84,8 @@ serve(async (req) => {
       });
 
       clearTimeout(timeoutId);
+
+      console.log(`[core-proxy] RESPONSE ${endpoint} status=${response.status}`);
 
       const data = await response.json();
 
