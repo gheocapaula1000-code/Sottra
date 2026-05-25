@@ -135,11 +135,24 @@ function Reveal({ show, slide = "up", className, children }: {
 export interface WowPanelProps {
   data: PhotoWowResponse | null | undefined;
   photo: string;
+  /** Pipeline status from useBuildingScan (defaults to "loading" if omitted). */
+  status?: "idle" | "loading" | "success" | "error";
 }
 
-export function WowPanel({ data, photo }: WowPanelProps) {
+export function WowPanel({ data, photo, status = "loading" }: WowPanelProps) {
   const navigate = useNavigate();
-  const ready = !!data;
+
+  // Safety timeout: exit loading after 20s even if no data arrived
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    if (status !== "loading" || data) return;
+    const t = setTimeout(() => setTimedOut(true), 20_000);
+    return () => clearTimeout(t);
+  }, [status, data]);
+
+  // Show panel as soon as data exists OR pipeline is no longer loading OR timeout fired
+  const ready = !!data || status === "success" || status === "error" || timedOut;
+  const partial = ready && !data;
 
   // Phase reveal timings (relative to data arrival)
   const p2 = useReveal(50, ready);
@@ -180,7 +193,7 @@ export function WowPanel({ data, photo }: WowPanelProps) {
       {/* Content */}
       <div className="relative z-10 px-4 sm:px-6 py-6 space-y-6 text-white">
 
-        {/* PHASE 1 — Loading */}
+        {/* PHASE 1 — Loading (only while pipeline is actually fetching) */}
         {!ready && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <p className="text-lg font-medium tracking-wide">
@@ -192,6 +205,15 @@ export function WowPanel({ data, photo }: WowPanelProps) {
             <style>{`@keyframes wow-indeterminate{0%{transform:translateX(-100%)}100%{transform:translateX(280%)}}`}</style>
           </div>
         )}
+
+        {/* Partial / fallback banner — shown when ready but data missing */}
+        {partial && (
+          <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>Dati parziali disponibili — il motore non ha restituito un report completo per questa zona.</span>
+          </div>
+        )}
+
 
         {ready && data && (
           <>
