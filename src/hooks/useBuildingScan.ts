@@ -267,32 +267,40 @@ export function useBuildingScan() {
       dispatch({ type: "MAP_REPORT", lat: finalLat, lng: finalLng });
     };
 
-    // PRIMARY PATH: single-call orchestrator civiko-property-from-photo.
-    // Only fall back to the legacy parallel pipeline if it fails or times out (30s).
+    // PRIMARY (and only) path: single-call orchestrator civiko-property-from-photo.
+    // Legacy parallel pipeline (identify + 18 modules) is fully disabled here:
+    // photoWow è ora l'unica sorgente dati. `runPipeline` resta definita nel file
+    // ma non viene mai invocata — è mantenuta solo per riferimento e per non
+    // rompere le importazioni. Le altre sezioni vengono marcate `idle` in modo
+    // che Result.tsx mostri placeholder vuoti invece di skeleton infiniti.
+    void runPipeline; // silence unused warning; kept dormant on purpose
+
     set("photoWow", { status: "loading", data: null, message: null });
     const PHOTO_WOW_TIMEOUT_MS = 30000;
     const photoWowTimeout = new Promise<{ error: true; message: string; data: null }>((res) =>
       setTimeout(() => res({ error: true, message: "Timeout civiko-property-from-photo", data: null }), PHOTO_WOW_TIMEOUT_MS),
     );
-    let primaryOk = false;
     try {
       const photoRes = await Promise.race([getPhotoWow(photo, lat, lng), photoWowTimeout]);
       if (!photoRes.error && photoRes.data) {
         console.log("PHOTOWOW RESPONSE:", JSON.stringify(photoRes.data, null, 2));
         set("photoWow", { status: "success", data: photoRes.data, message: null });
-        primaryOk = true;
       } else {
-        console.warn("[SCAN] photoWow primary failed, falling back to legacy pipeline:", photoRes.message);
+        console.warn("[SCAN] photoWow failed (legacy pipeline disabled):", photoRes.message);
         set("photoWow", { status: "error", data: null, message: photoRes.message });
       }
     } catch (err) {
-      console.error("[SCAN] photoWow primary threw, falling back:", err);
+      console.error("[SCAN] photoWow threw (legacy pipeline disabled):", err);
       set("photoWow", { status: "error", data: null, message: err instanceof Error ? err.message : "Errore photoWow" });
     }
 
-    if (!primaryOk) {
-      await runPipeline();
+    // Neutralizza ogni modulo legacy: `idle` con dati null → le sezioni di
+    // Result.tsx rendono placeholder vuoti (nessun crash, nessuno skeleton).
+    for (const k of MODULES) {
+      if (k === "photoWow") continue;
+      set(k, { status: "idle", data: null, message: null });
     }
+
     setScanning(false);
   }, []);
 
