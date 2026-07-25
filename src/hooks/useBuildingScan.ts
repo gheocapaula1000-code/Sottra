@@ -311,79 +311,17 @@ export function useBuildingScan() {
    */
   const refineAddress = useCallback(async (
     addressInput: ManualAddressInput,
-    lat: number,
-    lng: number,
-    photo?: string,
+    _lat: number,
+    _lng: number,
+    _photo?: string,
   ) => {
+    // Legacy pipeline disabled: refineAddress ora si limita a memorizzare
+    // l'indirizzo manuale. Nessuna chiamata ai moduli AI viene eseguita.
     setRefining(true);
     setManualAddress(addressInput);
-
-    const manualAddr = formatManualAddress(addressInput);
-    if (import.meta.env.DEV) console.log("[SCAN] refineAddress:", manualAddr);
-
-    const set = (key: keyof ScanResult, value: SectionState) =>
-      dispatch({ type: "SET", key, value });
-
-    const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
-      set(key, { status: r.error ? "error" : "success", data: r.data, message: r.message });
-    };
-
-    const reject = (key: keyof ScanResult) => (err: unknown) => {
-      console.error(`[REFINE] ${key} rejected:`, err);
-      set(key, { status: "error", data: null, message: err instanceof Error ? err.message : "Errore imprevisto" });
-    };
-
-    // Set affected sections to loading
-    const affectedModules: (keyof ScanResult)[] = [
-      "pricing", "marketContext", "timeView", "opportunity",
-      "infrastrutture", "rischioZona", "trendDemografico",
-      "sviluppoArea", "convergenzaTerritoriale",
-      "poiEnrichment", "omiZone", "istatDemographic",
-      "profiloRapido", "immobileFacciata", "contestoVicinato",
-      "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
-      "prioritaCriticita",
-    ];
-    for (const m of affectedModules) {
-      set(m, { status: "loading", data: null, message: null });
-    }
-
-    // Update identify data with the manual address (keep existing data, override address)
-    const currentIdentify = result.identify.data as IdentifyResult | null;
-    if (currentIdentify) {
-      set("identify", {
-        status: "success",
-        data: { ...currentIdentify, address: manualAddr },
-        message: null,
-      });
-    }
-
-    const confidence = currentIdentify?.confidence ?? undefined;
-
-    await Promise.allSettled([
-      getPricing(manualAddr, photo).then(resolve("pricing")).catch(reject("pricing")),
-      getMarketContext(lat, lng, manualAddr).then(resolve("marketContext")).catch(reject("marketContext")),
-      getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
-      getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
-      getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
-      getRischioZona(lat, lng).then(resolve("rischioZona")).catch(reject("rischioZona")),
-      getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
-      getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
-      getConvergenzaTerritoriale(lat, lng, confidence, manualAddr).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
-      fetchProSources(lat, lng).then((proData) => {
-        set("poiEnrichment", { status: proData.poi ? "success" : "error", data: proData.poi, message: proData.poi ? null : "Dati POI non disponibili" });
-        set("omiZone", { status: proData.omi ? "success" : "error", data: proData.omi, message: proData.omi ? null : "Dati OMI non disponibili" });
-        set("istatDemographic", { status: proData.istat ? "success" : "error", data: proData.istat, message: proData.istat ? null : "Dati ISTAT non disponibili" });
-      }).catch((e) => {
-        console.error("[REFINE] pro-sources failed:", e);
-        set("poiEnrichment", { status: "error", data: null, message: "Servizio non disponibile" });
-        set("omiZone", { status: "error", data: null, message: "Servizio non disponibile" });
-        set("istatDemographic", { status: "error", data: null, message: "Servizio non disponibile" });
-      }),
-    ]);
-
-    dispatch({ type: "MAP_REPORT", lat, lng });
+    if (import.meta.env.DEV) console.log("[SCAN] refineAddress (legacy pipeline disabled)");
     setRefining(false);
-  }, [result.identify.data]);
+  }, []);
 
   const restoreResult = useCallback((saved: Partial<ScanResult>) => {
     dispatch({ type: "RESTORE", payload: saved });
