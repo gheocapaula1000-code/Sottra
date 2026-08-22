@@ -2017,7 +2017,9 @@ const Result = () => {
         await navigator.clipboard.writeText(lines);
         toast({ title: "Copiato!", description: "Report copiato negli appunti." });
       }
-    } catch {}
+    } catch {
+      /* share cancelled or clipboard unavailable */
+    }
   };
 
   // ── WOW Snapshot computation ──

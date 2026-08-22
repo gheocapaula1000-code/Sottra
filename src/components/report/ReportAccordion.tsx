@@ -45,6 +45,7 @@ export function hasMeaningfulAccordionDom(root: ParentNode): boolean {
 }
 
 export function ReportAccordionItem({
+  id,
   title,
   icon: Icon,
   badge,
@@ -62,20 +63,22 @@ export function ReportAccordionItem({
     if (staticallyEmpty) return;
     const el = contentRef.current;
     setShowShell(!!el && hasMeaningfulAccordionDom(el));
-  });
+  }, [staticallyEmpty, children]);
 
   if (staticallyEmpty) return null;
   if (!showShell) {
     // Keep children mounted (hidden) so a later non-null card can reveal the tendina.
     return (
-      <div hidden aria-hidden className="hidden">
+      <div id={id} hidden aria-hidden className="hidden">
         <div ref={contentRef}>{children}</div>
       </div>
     );
   }
 
   return (
-    <div className={cn(
+    <div
+      id={id}
+      className={cn(
       "rounded-2xl border border-border/60 bg-card overflow-hidden transition-all",
       isWeak && "opacity-80",
     )}>

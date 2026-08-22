@@ -512,7 +512,8 @@ describe("R03_CSV_SEZ streaming import logic", () => {
 
     const regionsFound = new Set<string>();
     const rows: any[] = [];
-    let imported = 0, skipped = 0, failed = 0;
+    let imported = 0, failed = 0;
+    const skipped = 0;
     const skipByReason: Record<string, number> = {};
 
     const lines = text.substring(headerEnd + 1).split(/\r?\n/).filter(l => l.trim());
