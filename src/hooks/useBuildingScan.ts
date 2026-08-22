@@ -33,6 +33,16 @@ const MODULES: (keyof ScanResult)[] = [
   "prioritaCriticita",
 ];
 
+const REPORT_MODULES: (keyof ScanResult)[] = [
+  "profiloRapido", "immobileFacciata", "contestoVicinato",
+  "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
+  "prioritaCriticita",
+];
+
+const ADDRESS_OPTIONAL_MODULES: (keyof ScanResult)[] = [
+  "pricing", "listings", "condominio", "storicoTransazioni", "energy",
+];
+
 function buildInitialState(): ScanResult {
   const s = {} as Record<string, SectionState>;
   for (const k of MODULES) s[k] = idle;
@@ -84,6 +94,50 @@ function reducer(state: ScanResult, action: Action): ScanResult {
   }
 }
 
+function deriveGeoFromIdentify(
+  identifyData: IdentifyResult | null,
+  manualAddrInput: string | undefined,
+  lat: number,
+  lng: number,
+) {
+  const address = (manualAddrInput && manualAddrInput.trim()) || identifyData?.address || "";
+  const confidence = identifyData?.confidence ?? undefined;
+  const addrParts = address.split(",").map((s) => s.trim()).filter(Boolean);
+  const comuneFromAddr = addrParts.length >= 2 ? addrParts[addrParts.length - 2] : undefined;
+  const provinciaFromAddr = addrParts.length >= 1 ? addrParts[addrParts.length - 1] : undefined;
+
+  const identifyAny = (identifyData ?? {}) as unknown as Record<string, unknown>;
+  const geoRes = identifyAny.geoResolution as Record<string, unknown> | undefined;
+  const comuneFromIdentify = (geoRes?.resolvedComune as string | undefined)
+    ?? (identifyAny.comune as string | undefined)
+    ?? (typeof identifyData?.address === "string"
+      ? identifyData.address.split(",").slice(-2, -1)[0]?.trim()
+      : undefined)
+    ?? comuneFromAddr;
+  const provinciaFromIdentify = (geoRes?.resolvedProvincia as string | undefined)
+    ?? provinciaFromAddr;
+  const addressFromIdentify = (identifyAny.resolvedAddress as string | undefined)
+    ?? (geoRes?.resolvedAddress as string | undefined)
+    ?? identifyData?.address
+    ?? address;
+
+  const resolvedLat = (geoRes?.resolvedLat as number | undefined) ?? (identifyAny.resolvedLat as number | undefined);
+  const resolvedLng = (geoRes?.resolvedLng as number | undefined) ?? (identifyAny.resolvedLng as number | undefined);
+  const finalLat = ((!lat || lat === 0) && typeof resolvedLat === "number") ? resolvedLat : lat;
+  const finalLng = ((!lng || lng === 0) && typeof resolvedLng === "number") ? resolvedLng : lng;
+
+  return {
+    address,
+    confidence,
+    comuneFromAddr,
+    comuneFromIdentify,
+    provinciaFromIdentify,
+    addressFromIdentify,
+    finalLat,
+    finalLng,
+  };
+}
+
 export function useBuildingScan() {
   const [result, dispatch] = useReducer(reducer, initialState);
   const [scanning, setScanning] = useState(false);
@@ -115,99 +169,26 @@ export function useBuildingScan() {
       set(key, { status: "error", data: null, message: err instanceof Error ? err.message : "Errore imprevisto" });
     };
 
-    const runPipeline = async () => {
-      // Step 1: Identify building
-      const idRes = await identifyBuilding(photo, lat, lng, manualAddrInput);
-      set("identify", {
-        status: idRes.error ? "error" : "success",
-        data: idRes.data,
-        message: idRes.message,
-      });
-
-      if (idRes.error || !idRes.data) {
-        for (const k of MODULES) {
-          if (k !== "identify") set(k, { status: "error", data: null, message: "Identificazione non riuscita" });
-        }
-        return;
+    const idleAddressModules = () => {
+      for (const k of ADDRESS_OPTIONAL_MODULES) {
+        set(k, { status: "idle", data: null, message: "Indirizzo non disponibile" });
       }
+    };
 
-      // Step 2: Record scan consumption
-      try {
-        const { data: recordData, error: recordError } = await supabase.functions.invoke("record-scan", {
-          body: { scan_id: scanId },
-        });
+    const launchOfficialModules = async (
+      identifyData: IdentifyResult | null,
+    ) => {
+      const geo = deriveGeoFromIdentify(identifyData, manualAddrInput, lat, lng);
+      const {
+        address, confidence, comuneFromAddr, comuneFromIdentify,
+        provinciaFromIdentify, addressFromIdentify, finalLat, finalLng,
+      } = geo;
 
-        if (recordError) {
-          console.error("[SCAN] record-scan invocation error:", recordError);
-          const errMsg = "Errore durante la registrazione della scansione. Riprova.";
-          for (const k of MODULES) {
-            if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
-          }
-          return;
-        }
-
-        if (recordData?.limit_reached || recordData?.error) {
-          const errMsg = recordData?.error ?? "Limite scansioni raggiunto";
-          for (const k of MODULES) {
-            if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
-          }
-          setLimitReached(true);
-          return;
-        }
-      } catch (err) {
-        console.error("[SCAN] record-scan failed:", err);
-        const errMsg = "Servizio temporaneamente non disponibile. Riprova.";
-        for (const k of MODULES) {
-          if (k !== "identify") set(k, { status: "error", data: null, message: errMsg });
-        }
-        return;
-      }
-
-      // Step 3: Launch all modules in parallel (Core V3 + Pro Sources)
-      const identifyData = idRes.data as IdentifyResult;
-      // Manual address takes precedence over identify-derived address
-      const address = (manualAddrInput && manualAddrInput.trim()) || identifyData.address || "";
-      const confidence = identifyData.confidence ?? undefined;
-
-      // Derive comune/provincia from address tail (last two CSV segments) as fallback
-      const addrParts = address.split(",").map((s) => s.trim()).filter(Boolean);
-      const comuneFromAddr = addrParts.length >= 2 ? addrParts[addrParts.length - 2] : undefined;
-      const provinciaFromAddr = addrParts.length >= 1 ? addrParts[addrParts.length - 1] : undefined;
-
-      // Use comune/address derived from identify result (with safe fallbacks)
-      const identifyAny = identifyData as unknown as Record<string, unknown>;
-      const geoRes = identifyAny.geoResolution as Record<string, unknown> | undefined;
-      const comuneFromIdentify = (geoRes?.resolvedComune as string | undefined)
-        ?? (identifyAny.comune as string | undefined)
-        ?? (typeof identifyData.address === "string"
-          ? identifyData.address.split(",").slice(-2, -1)[0]?.trim()
-          : undefined)
-        ?? comuneFromAddr;
-      const provinciaFromIdentify = (geoRes?.resolvedProvincia as string | undefined)
-        ?? provinciaFromAddr;
-      const addressFromIdentify = (identifyAny.resolvedAddress as string | undefined)
-        ?? (geoRes?.resolvedAddress as string | undefined)
-        ?? identifyData.address
-        ?? address;
-
-      // If lat/lng missing (manual address flow), use resolved coords from identify
-      const resolvedLat = (geoRes?.resolvedLat as number | undefined) ?? (identifyAny.resolvedLat as number | undefined);
-      const resolvedLng = (geoRes?.resolvedLng as number | undefined) ?? (identifyAny.resolvedLng as number | undefined);
-      const finalLat = ((!lat || lat === 0) && typeof resolvedLat === "number") ? resolvedLat : lat;
-      const finalLng = ((!lng || lng === 0) && typeof resolvedLng === "number") ? resolvedLng : lng;
-
-      // Set report sections to loading during data fetch
-      const reportModules: (keyof ScanResult)[] = [
-        "profiloRapido", "immobileFacciata", "contestoVicinato",
-        "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
-        "prioritaCriticita",
-      ];
-      for (const m of reportModules) {
+      for (const m of REPORT_MODULES) {
         set(m, { status: "loading", data: null, message: null });
       }
 
       await Promise.allSettled([
-        // Core V3 modules
         ...(address ? [getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing"))] : []),
         getMarketContext(finalLat, finalLng, address || undefined).then(resolve("marketContext")).catch(reject("marketContext")),
         getTimeView(finalLat, finalLng, 12).then(resolve("timeView")).catch(reject("timeView")),
@@ -219,21 +200,22 @@ export function useBuildingScan() {
         getConvergenzaTerritoriale(finalLat, finalLng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
         getOffmarket(finalLat, finalLng, comuneFromIdentify, provinciaFromIdentify).then(resolve("offmarket")).catch(reject("offmarket")),
         getZoneIntelligence(finalLat, finalLng, comuneFromIdentify, provinciaFromIdentify, addressFromIdentify || undefined).then(resolve("zoneIntelligence")).catch(reject("zoneIntelligence")),
-        getListings(addressFromIdentify, comuneFromIdentify, finalLat, finalLng).then(resolve("listings")).catch(reject("listings")),
-        getCondominio(addressFromIdentify, comuneFromIdentify, finalLat, finalLng).then(resolve("condominio")).catch(reject("condominio")),
-        getStoricoTransazioni(addressFromIdentify, comuneFromIdentify).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
+        ...(addressFromIdentify
+          ? [
+              getListings(addressFromIdentify, comuneFromIdentify, finalLat, finalLng).then(resolve("listings")).catch(reject("listings")),
+              getCondominio(addressFromIdentify, comuneFromIdentify, finalLat, finalLng).then(resolve("condominio")).catch(reject("condominio")),
+              getStoricoTransazioni(addressFromIdentify, comuneFromIdentify).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
+            ]
+          : []),
         getMoodScore(finalLat, finalLng).then(resolve("moodScore")).catch(reject("moodScore")),
-        getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy")),
+        ...(address ? [getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy"))] : []),
         getNeighborhood(finalLat, finalLng, address).then(resolve("neighborhood")).catch(reject("neighborhood")),
         getPoiEnrichment(finalLat, finalLng, address).then(resolve("poiEnrichment")).catch(reject("poiEnrichment")),
-        // photoWow is called as the PRIMARY path before runPipeline — not here.
-        // Pro Sources (POI, OMI, ISTAT) — non-blocking
         fetchProSources(finalLat, finalLng).then((proData) => {
-          set("poiEnrichment", {
-            status: proData.poi ? "success" : "error",
-            data: proData.poi,
-            message: proData.poi ? null : "Dati POI non disponibili",
-          });
+          // Official OMI/ISTAT from Sottra DB — never overwrite a prior POI success with null.
+          if (proData.poi) {
+            set("poiEnrichment", { status: "success", data: proData.poi, message: null });
+          }
           set("omiZone", {
             status: proData.omi ? "success" : "error",
             data: proData.omi,
@@ -251,55 +233,87 @@ export function useBuildingScan() {
           });
         }).catch((e) => {
           console.error("[SCAN] pro-sources failed:", e);
-          set("poiEnrichment", { status: "error", data: null, message: "Servizio non disponibile" });
           set("omiZone", { status: "error", data: null, message: "Servizio non disponibile" });
           set("istatDemographic", { status: "error", data: null, message: "Servizio non disponibile" });
           set("subMunicipalMatch", { status: "idle", data: null, message: null });
         }),
       ]);
 
-      if (!address) {
-        set("pricing", { status: "success", data: null, message: "Indirizzo non disponibile per la valutazione prezzi" });
-      }
+      if (!address) idleAddressModules();
 
-      // Phase 2: Map real data to report sections using reducer action
-      // The MAP_REPORT action reads current state inside the reducer
       dispatch({ type: "MAP_REPORT", lat: finalLat, lng: finalLng });
     };
 
-    // PRIMARY (and only) path: single-call orchestrator civiko-property-from-photo.
-    // Legacy parallel pipeline (identify + 18 modules) is fully disabled here:
-    // photoWow è ora l'unica sorgente dati. `runPipeline` resta definita nel file
-    // ma non viene mai invocata — è mantenuta solo per riferimento e per non
-    // rompere le importazioni. Le altre sezioni vengono marcate `idle` in modo
-    // che Result.tsx mostri placeholder vuoti invece di skeleton infiniti.
-    void runPipeline; // silence unused warning; kept dormant on purpose
+    const runOfficialPipeline = async () => {
+      const idRes = await identifyBuilding(photo, lat, lng, manualAddrInput);
+      set("identify", {
+        status: idRes.error ? "error" : "success",
+        data: idRes.data,
+        message: idRes.message,
+      });
 
-    set("photoWow", { status: "loading", data: null, message: null });
-    const PHOTO_WOW_TIMEOUT_MS = 30000;
-    const photoWowTimeout = new Promise<{ error: true; message: string; data: null }>((res) =>
-      setTimeout(() => res({ error: true, message: "Timeout civiko-property-from-photo", data: null }), PHOTO_WOW_TIMEOUT_MS),
-    );
-    try {
-      const photoRes = await Promise.race([getPhotoWow(photo, lat, lng), photoWowTimeout]);
-      if (!photoRes.error && photoRes.data) {
-        console.log("PHOTOWOW RESPONSE:", JSON.stringify(photoRes.data, null, 2));
-        set("photoWow", { status: "success", data: photoRes.data, message: null });
-      } else {
-        console.warn("[SCAN] photoWow failed (legacy pipeline disabled):", photoRes.message);
-        set("photoWow", { status: "error", data: null, message: photoRes.message });
+      // Consume a scan credit whenever we are about to fill official modules
+      // (GPS-based OMI/ISTAT still produce a report if identify fails).
+      try {
+        const { data: recordData, error: recordError } = await supabase.functions.invoke("record-scan", {
+          body: { scan_id: scanId },
+        });
+
+        if (recordError) {
+          console.error("[SCAN] record-scan invocation error:", recordError);
+          const errMsg = "Errore durante la registrazione della scansione. Riprova.";
+          for (const k of MODULES) {
+            if (k === "identify" || k === "photoWow") continue;
+            set(k, { status: "error", data: null, message: errMsg });
+          }
+          return;
+        }
+
+        if (recordData?.limit_reached || recordData?.error) {
+          const errMsg = recordData?.error ?? "Limite scansioni raggiunto";
+          for (const k of MODULES) {
+            if (k === "identify" || k === "photoWow") continue;
+            set(k, { status: "error", data: null, message: errMsg });
+          }
+          setLimitReached(true);
+          return;
+        }
+      } catch (err) {
+        console.error("[SCAN] record-scan failed:", err);
+        const errMsg = "Servizio temporaneamente non disponibile. Riprova.";
+        for (const k of MODULES) {
+          if (k === "identify" || k === "photoWow") continue;
+          set(k, { status: "error", data: null, message: errMsg });
+        }
+        return;
       }
-    } catch (err) {
-      console.error("[SCAN] photoWow threw (legacy pipeline disabled):", err);
-      set("photoWow", { status: "error", data: null, message: err instanceof Error ? err.message : "Errore photoWow" });
-    }
 
-    // Neutralizza ogni modulo legacy: `idle` con dati null → le sezioni di
-    // Result.tsx rendono placeholder vuoti (nessun crash, nessuno skeleton).
-    for (const k of MODULES) {
-      if (k === "photoWow") continue;
-      set(k, { status: "idle", data: null, message: null });
-    }
+      await launchOfficialModules((idRes.error || !idRes.data) ? null : (idRes.data as IdentifyResult));
+    };
+
+    const runPhotoWow = async () => {
+      set("photoWow", { status: "loading", data: null, message: null });
+      const PHOTO_WOW_TIMEOUT_MS = 30000;
+      const photoWowTimeout = new Promise<{ error: true; message: string; data: null }>((res) =>
+        setTimeout(() => res({ error: true, message: "Timeout anteprima visiva", data: null }), PHOTO_WOW_TIMEOUT_MS),
+      );
+      try {
+        const photoRes = await Promise.race([getPhotoWow(photo, lat, lng), photoWowTimeout]);
+        if (!photoRes.error && photoRes.data) {
+          set("photoWow", { status: "success", data: photoRes.data, message: null });
+        } else {
+          console.warn("[SCAN] photoWow opener failed (official pipeline continues):", photoRes.message);
+          set("photoWow", { status: "error", data: null, message: photoRes.message });
+        }
+      } catch (err) {
+        console.error("[SCAN] photoWow threw (official pipeline continues):", err);
+        set("photoWow", { status: "error", data: null, message: err instanceof Error ? err.message : "Errore photoWow" });
+      }
+    };
+
+    // Photo-first opener + official Sottra modules in parallel.
+    // photoWow is cinematic; official OMI/ISTAT/forecast fill the report.
+    await Promise.allSettled([runPhotoWow(), runOfficialPipeline()]);
 
     setScanning(false);
   }, []);
@@ -311,17 +325,78 @@ export function useBuildingScan() {
    */
   const refineAddress = useCallback(async (
     addressInput: ManualAddressInput,
-    _lat: number,
-    _lng: number,
-    _photo?: string,
+    lat: number,
+    lng: number,
+    photo?: string,
   ) => {
-    // Legacy pipeline disabled: refineAddress ora si limita a memorizzare
-    // l'indirizzo manuale. Nessuna chiamata ai moduli AI viene eseguita.
     setRefining(true);
     setManualAddress(addressInput);
-    if (import.meta.env.DEV) console.log("[SCAN] refineAddress (legacy pipeline disabled)");
+
+    const manualAddr = formatManualAddress(addressInput);
+    if (import.meta.env.DEV) console.log("[SCAN] refineAddress:", manualAddr);
+
+    const set = (key: keyof ScanResult, value: SectionState) =>
+      dispatch({ type: "SET", key, value });
+
+    const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
+      set(key, { status: r.error ? "error" : "success", data: r.data, message: r.message });
+    };
+
+    const reject = (key: keyof ScanResult) => (err: unknown) => {
+      console.error(`[REFINE] ${key} rejected:`, err);
+      set(key, { status: "error", data: null, message: err instanceof Error ? err.message : "Errore imprevisto" });
+    };
+
+    const affectedModules: (keyof ScanResult)[] = [
+      "pricing", "marketContext", "timeView", "opportunity",
+      "infrastrutture", "rischioZona", "trendDemografico",
+      "sviluppoArea", "convergenzaTerritoriale",
+      "poiEnrichment", "omiZone", "istatDemographic",
+      "profiloRapido", "immobileFacciata", "contestoVicinato",
+      "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
+      "prioritaCriticita",
+    ];
+    for (const m of affectedModules) {
+      set(m, { status: "loading", data: null, message: null });
+    }
+
+    const currentIdentify = result.identify.data as IdentifyResult | null;
+    if (currentIdentify) {
+      set("identify", {
+        status: "success",
+        data: { ...currentIdentify, address: manualAddr },
+        message: null,
+      });
+    }
+
+    const confidence = currentIdentify?.confidence ?? undefined;
+
+    await Promise.allSettled([
+      getPricing(manualAddr, photo).then(resolve("pricing")).catch(reject("pricing")),
+      getMarketContext(lat, lng, manualAddr).then(resolve("marketContext")).catch(reject("marketContext")),
+      getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
+      getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
+      getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
+      getRischioZona(lat, lng).then(resolve("rischioZona")).catch(reject("rischioZona")),
+      getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
+      getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
+      getConvergenzaTerritoriale(lat, lng, confidence, manualAddr).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
+      fetchProSources(lat, lng).then((proData) => {
+        if (proData.poi) {
+          set("poiEnrichment", { status: "success", data: proData.poi, message: null });
+        }
+        set("omiZone", { status: proData.omi ? "success" : "error", data: proData.omi, message: proData.omi ? null : "Dati OMI non disponibili" });
+        set("istatDemographic", { status: proData.istat ? "success" : "error", data: proData.istat, message: proData.istat ? null : "Dati ISTAT non disponibili" });
+      }).catch((e) => {
+        console.error("[REFINE] pro-sources failed:", e);
+        set("omiZone", { status: "error", data: null, message: "Servizio non disponibile" });
+        set("istatDemographic", { status: "error", data: null, message: "Servizio non disponibile" });
+      }),
+    ]);
+
+    dispatch({ type: "MAP_REPORT", lat, lng });
     setRefining(false);
-  }, []);
+  }, [result.identify.data]);
 
   const restoreResult = useCallback((saved: Partial<ScanResult>) => {
     dispatch({ type: "RESTORE", payload: saved });

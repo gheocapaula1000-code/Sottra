@@ -3,49 +3,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, AlertTriangle, CreditCard } from "lucide-react";
-import { PLANS, PlanKey } from "@/lib/plans";
+import { PLANS, PLAN_DESCRIPTIONS, PLAN_FEATURES, PLAN_POPULAR, planScansLabel, planUsersLabel, HAS_REAL_ANNUAL_PRICES, type PlanKey } from "@/lib/plans";
 import { isBillingReady } from "@/lib/billing";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { APP_BRAND } from "@/lib/legalEntity";
-
-const planFeatures: Record<PlanKey, string[]> = {
-  agente: [
-    "Analisi completa — dati ufficiali ed elaborati distinti",
-    "Quadro demografico e indicatori di zona",
-    "Prezzi di mercato, rischio zona, infrastrutture",
-    "Indice opportunità e scenario evolutivo",
-    "Storico scansioni 6 mesi",
-    "Visualizzazione in-app",
-    "Dispositivo vincolato per durata abbonamento",
-  ],
-  agenzia: [
-    "Tutto del piano Agente",
-    "Dashboard agenzia multi-agente",
-    "Export PDF con logo agenzia",
-    "Annunci attivi nella zona",
-    "Storico scansioni illimitato",
-    "Supporto prioritario via email",
-    "Dispositivo vincolato per durata abbonamento",
-  ],
-  enterprise: [
-    "Tutto del piano Agente",
-    "Dashboard agenzia multi-agente",
-    "Export PDF con logo agenzia",
-    "Annunci attivi nella zona",
-    "Storico scansioni illimitato",
-    "Supporto prioritario",
-  ],
-};
-
-const planMeta: Record<PlanKey, { users: string; scans: string; popular: boolean }> = {
-  agente: { users: "1 account", scans: "80 scansioni/mese", popular: false },
-  agenzia: { users: "3 account inclusi", scans: "250 scansioni/mese", popular: true },
-  enterprise: { users: "10 account inclusi", scans: "800 scansioni/mese", popular: false },
-};
-
-import { HAS_REAL_ANNUAL_PRICES } from "@/lib/plans";
 
 interface TrialExpiredScreenProps {
   scansUsed: number;
@@ -190,24 +153,25 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
                 <div className="mt-8 grid gap-6 lg:grid-cols-3">
                   {(Object.keys(PLANS) as PlanKey[]).map((key) => {
                     const plan = PLANS[key];
-                    const meta = planMeta[key];
-                    const features = planFeatures[key];
+                    const popular = key === PLAN_POPULAR;
+                    const features = PLAN_FEATURES[key];
 
                     return (
                       <Card
                         key={key}
                         className={`relative flex flex-col rounded-2xl border p-6 text-left ${
-                          meta.popular
+                          popular
                             ? "border-primary bg-primary/5 ring-1 ring-primary/30"
                             : "border-border bg-card"
                         }`}
                       >
-                        {meta.popular && (
+                        {popular && (
                           <Badge className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs">
                             Più popolare
                           </Badge>
                         )}
                         <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">{PLAN_DESCRIPTIONS[key]}</p>
 
                         <div className="mt-4 flex items-baseline gap-1">
                           <span className="text-4xl font-black text-foreground">€{plan.price}</span>
@@ -215,8 +179,8 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
                         </div>
 
                         <div className="mt-3 flex flex-wrap gap-2">
-                          <Badge variant="secondary" className="text-xs">{meta.scans}</Badge>
-                          <Badge variant="secondary" className="text-xs">{meta.users}</Badge>
+                          <Badge variant="secondary" className="text-xs">{planScansLabel(plan.scans)}</Badge>
+                          <Badge variant="secondary" className="text-xs">{planUsersLabel(plan.users)}</Badge>
                         </div>
 
                         <Separator className="my-5" />
@@ -232,7 +196,7 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
 
                         <Button
                           className="mt-6 w-full gap-2"
-                          variant={meta.popular ? "default" : "outline"}
+                          variant={popular ? "default" : "outline"}
                           size="lg"
                           disabled={loadingPlan !== null}
                           onClick={() => handleCheckout(key)}

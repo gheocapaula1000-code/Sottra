@@ -35,6 +35,52 @@ export const PLANS = {
 
 export type PlanKey = keyof typeof PLANS;
 
+export const PLAN_POPULAR: PlanKey = "agenzia";
+
+export const PLAN_DESCRIPTIONS: Record<PlanKey, string> = {
+  agente: "Per l'agente immobiliare indipendente o il professionista singolo.",
+  agenzia: "Per l'agenzia strutturata. 5 account inclusi.",
+  enterprise: "Per agenzie strutturate e grandi team.",
+};
+
+export const PLAN_FEATURES: Record<PlanKey, readonly string[]> = {
+  agente: [
+    "Analisi completa — dati ufficiali ed elaborati distinti",
+    "Quotazioni OMI da fonti istituzionali italiane",
+    "Quadro demografico ISTAT e indicatori di zona",
+    "Rischio zona, infrastrutture, indice opportunità",
+    "Storico scansioni 6 mesi",
+    "Visualizzazione in-app",
+  ],
+  agenzia: [
+    "Tutto del piano Agente",
+    "Dashboard agenzia multi-agente",
+    "Export PDF con logo agenzia",
+    "Storico scansioni illimitato",
+    "Supporto prioritario via email",
+  ],
+  enterprise: [
+    "Tutto del piano Agenzia",
+    "Utenti illimitati",
+    "Volume scansioni elevato",
+    "Supporto prioritario",
+  ],
+};
+
+export function planScansLabel(scans: number): string {
+  return `${scans} scansioni/mese`;
+}
+
+export function planUsersLabel(users: number): string {
+  if (users < 0) return "Utenti illimitati";
+  if (users === 1) return "1 account";
+  return `${users} account`;
+}
+
+export function isPlaceholderPriceId(priceId: string): boolean {
+  return priceId.includes("_TODO");
+}
+
 /** All allowed Stripe price IDs — used for server-side validation */
 export const ALLOWED_PRICE_IDS: readonly string[] = Object.values(PLANS).flatMap(
   (p) => [p.price_id, p.price_id_annual].filter(Boolean),

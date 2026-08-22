@@ -5,10 +5,12 @@ const CORE_PROXY_URL =
   "https://jpunnzgixcghuydstdlt.supabase.co/functions/v1/core-proxy";
 
 /**
- * Calls the Central Core `civiko-property-from-photo` orchestrator
- * via the Central Core's core-proxy edge function (absolute URL).
- * Bypasses Sottra's local Supabase client to ensure the request
- * reaches the correct project.
+ * Cinematic photo opener — NOT the official Sottra report.
+ *
+ * Hits Central Core `civiko-property-from-photo` for a fast visual reveal.
+ * Official OMI / ISTAT / forecast modules are filled afterwards by
+ * `useBuildingScan` via Sottra `core-proxy` + `pro-sources`.
+ * Scores and zone hints from this call are elaborated, never official.
  */
 export async function getPhotoWow(
   photo: string,

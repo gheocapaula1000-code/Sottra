@@ -62,7 +62,7 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
     {
       icon: <Hash className="h-5 w-5" />,
       label: "Civico visibile, se possibile",
-      sublabel: "Inquadra il numero civico nella foto",
+      sublabel: "Aiuta l'inquadramento. Non è una verifica catastale.",
       status: "neutral",
     },
   ];

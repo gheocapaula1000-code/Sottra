@@ -4,7 +4,7 @@ const levels = [
   {
     icon: Camera,
     title: "Un solo input",
-    desc: "Una foto e le coordinate GPS. Nient'altro.",
+    desc: "Una foto e le coordinate GPS. Nessun form da compilare per partire.",
   },
   {
     icon: Layers,

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
-// Mock supabase client — record-scan needs to succeed without real auth
 const mockInvoke = vi.fn().mockResolvedValue({
   data: { recorded: true, scans_used: 1, max_scans: 5, trial_end: "2099-12-31" },
   error: null,
@@ -12,23 +11,34 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
-// Mock scan services
+const identifyBuilding = vi.fn().mockResolvedValue({
+  error: false, message: null,
+  data: { address: "Via Roma 1, Padova", buildingId: "PD-VR1", confidence: 0.95 },
+});
+const getPricing = vi.fn().mockResolvedValue({
+  error: false, message: null,
+  data: { prezzoMq: 2400, prezzoMqMin: 2100, prezzoMqMax: 2800, mediaZona: null, trend5Anni: null },
+});
+const unusedScan = vi.fn().mockResolvedValue({ error: false, message: null, data: null });
+
 vi.mock("@/services/scan", () => ({
-  identifyBuilding: vi.fn().mockResolvedValue({
-    error: false, message: null,
-    data: { address: "Via Roma 1, Milano", buildingId: "MI-VR1", confidence: 0.95 },
-  }),
-  getPricing: vi.fn().mockResolvedValue({
-    error: false, message: null,
-    data: { prezzoMq: 4000, prezzoMqMin: 3500, prezzoMqMax: 4800, mediaZona: null, trend5Anni: null },
-  }),
+  identifyBuilding: (...args: unknown[]) => identifyBuilding(...args),
+  getPricing: (...args: unknown[]) => getPricing(...args),
+  getOffmarket: (...args: unknown[]) => unusedScan(...args),
+  getZoneIntelligence: (...args: unknown[]) => unusedScan(...args),
+  getListings: (...args: unknown[]) => unusedScan(...args),
+  getCondominio: (...args: unknown[]) => unusedScan(...args),
+  getStoricoTransazioni: (...args: unknown[]) => unusedScan(...args),
+  getMoodScore: (...args: unknown[]) => unusedScan(...args),
+  getEnergy: (...args: unknown[]) => unusedScan(...args),
+  getNeighborhood: (...args: unknown[]) => unusedScan(...args),
+  getPoiEnrichment: (...args: unknown[]) => unusedScan(...args),
 }));
 
-// Mock forecast services
 vi.mock("@/services/forecast", () => ({
   getTimeView: vi.fn().mockResolvedValue({
     error: false, message: null,
-    data: { previsione5Anni: 10, previsione10Anni: 22, previsione20Anni: 40, progettiInArrivo: ["Metro M5"] },
+    data: { previsione5Anni: 10, previsione10Anni: 22, previsione20Anni: 40, progettiInArrivo: ["Metro"] },
   }),
   getOpportunityIndex: vi.fn().mockResolvedValue({
     error: false, message: null,
@@ -42,9 +52,43 @@ vi.mock("@/services/forecast", () => ({
   getMarketContext: vi.fn().mockResolvedValue({ error: false, message: null, data: { marketConfidence: 78, comparablesSummary: { count: 14 }, sourceType: "elaborated" } }),
 }));
 
-// Mock proSources
+const fetchProSources = vi.fn().mockResolvedValue({
+  poi: null,
+  omi: {
+    zonaOmi: "B2",
+    zonaOmiLabel: "Semicentro",
+    comuneLabel: "Padova",
+    quotazioneMinResidenziale: 2100,
+    quotazioneMaxResidenziale: 2800,
+    sourceType: "official",
+    polygonMatch: true,
+  },
+  istat: null,
+});
 vi.mock("@/services/proSources", () => ({
-  fetchProSources: vi.fn().mockResolvedValue({ poi: null, omi: null, istat: null }),
+  fetchProSources: (...args: unknown[]) => fetchProSources(...args),
+}));
+
+const getPhotoWow = vi.fn().mockResolvedValue({
+  error: false,
+  message: null,
+  data: {
+    immobile: { tipologiaProbabile: "residenziale", pianoStimato: null, statoApparente: null, puntiDiForzaVisivi: [], materialePresunto: null, annoPresunto: null },
+    zona: { nomeComune: "Padova", provincia: "PD", nomeZonaOmi: null, fascia: null, valoreMinOmi: null, valoreMaxOmi: null, tendenzaMercato: null, classificazioneZona: null, sentimentResidenti: null, livelloSentiment: null },
+    scores: { vendibilita: 62, opportunitaInvestimento: 55, pressioneEreditaria: 40 },
+    liveSignals: [],
+    territorialDocuments: [],
+    zonaIntelligence: { notizieRecenti: [], puntiDiForzaNascosti: [], criticitaEmergenti: [], tendenzaMercato: "" },
+    vendutoRecente: [],
+    mappaCaloreUrl: "",
+    pianoEsclusiva: { argomento: "", puntiChiave: [], obiezioniProbabili: [], stimaRapida: "" },
+    qualita: "buona",
+    tempoElaborazione: 1200,
+    fontiUsate: ["OSM"],
+  },
+});
+vi.mock("@/services/photoWow", () => ({
+  getPhotoWow: (...args: unknown[]) => getPhotoWow(...args),
 }));
 
 import { useBuildingScan } from "@/hooks/useBuildingScan";
@@ -61,31 +105,73 @@ describe("useBuildingScan", () => {
     const { result } = renderHook(() => useBuildingScan());
 
     await act(async () => {
-      await result.current.scan("base64photo", 45.46, 9.19);
+      await result.current.scan("base64photo", 45.41, 11.87);
     });
 
     expect(result.current.scanning).toBe(false);
   });
 
-  it("populates all sections on successful scan", async () => {
+  it("fills official modules even when photoWow succeeds", async () => {
+    getPhotoWow.mockResolvedValueOnce({
+      error: false,
+      message: null,
+      data: { scores: { vendibilita: 70, opportunitaInvestimento: 60, pressioneEreditaria: 30 }, zona: { nomeComune: "Padova" } },
+    });
+
     const { result } = renderHook(() => useBuildingScan());
 
     await act(async () => {
-      await result.current.scan("base64photo", 45.46, 9.19);
+      await result.current.scan("base64photo", 45.41, 11.87);
     });
 
+    expect(result.current.result.photoWow?.status).toBe("success");
     expect(result.current.result.identify.status).toBe("success");
-    expect(result.current.result.identify.data?.address).toBe("Via Roma 1, Milano");
+    expect(result.current.result.identify.data?.address).toBe("Via Roma 1, Padova");
     expect(result.current.result.pricing.status).toBe("success");
     expect(result.current.result.timeView.status).toBe("success");
     expect(result.current.result.opportunity.status).toBe("success");
+    expect(result.current.result.omiZone.status).toBe("success");
+    expect(result.current.result.omiZone.data?.comuneLabel).toBe("Padova");
+    expect(identifyBuilding).toHaveBeenCalled();
+    expect(getPricing).toHaveBeenCalled();
+    expect(fetchProSources).toHaveBeenCalled();
+  });
+
+  it("still runs official pipeline when photoWow fails", async () => {
+    getPhotoWow.mockResolvedValueOnce({ error: true, message: "core-proxy HTTP 502", data: null });
+
+    const { result } = renderHook(() => useBuildingScan());
+
+    await act(async () => {
+      await result.current.scan("base64photo", 45.41, 11.87);
+    });
+
+    expect(result.current.result.photoWow?.status).toBe("error");
+    expect(result.current.result.identify.status).toBe("success");
+    expect(result.current.result.pricing.status).toBe("success");
+    expect(result.current.result.omiZone.status).toBe("success");
+  });
+
+  it("runs GPS official modules when identify fails", async () => {
+    identifyBuilding.mockResolvedValueOnce({ error: true, message: "Identificazione non riuscita", data: null });
+
+    const { result } = renderHook(() => useBuildingScan());
+
+    await act(async () => {
+      await result.current.scan("base64photo", 45.41, 11.87);
+    });
+
+    expect(result.current.result.identify.status).toBe("error");
+    expect(result.current.result.timeView.status).toBe("success");
+    expect(result.current.result.omiZone.status).toBe("success");
+    expect(result.current.result.pricing.status).toBe("idle");
   });
 
   it("resets state correctly", async () => {
     const { result } = renderHook(() => useBuildingScan());
 
     await act(async () => {
-      await result.current.scan("base64photo", 45.46, 9.19);
+      await result.current.scan("base64photo", 45.41, 11.87);
     });
 
     expect(result.current.result.identify.status).toBe("success");

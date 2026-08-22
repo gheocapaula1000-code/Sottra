@@ -11,7 +11,7 @@ const steps = [
   {
     num: "02",
     title: "Usi 5 scansioni in 3 giorni",
-    desc: "Carica una foto, ottieni il quadro completo. Valuti il prodotto con calma.",
+    desc: "Carica una foto, leggi OMI e contesto ufficiale. Valuti il prodotto con calma.",
   },
   {
     num: "03",
