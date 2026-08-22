@@ -25,9 +25,9 @@ export interface PhotoWowZona {
 }
 
 export interface PhotoWowScores {
-  vendibilita: number;
-  opportunitaInvestimento: number;
-  pressioneEreditaria: number;
+  vendibilita: number | null;
+  opportunitaInvestimento: number | null;
+  pressioneEreditaria: number | null;
 }
 
 export interface PhotoWowLiveSignal {

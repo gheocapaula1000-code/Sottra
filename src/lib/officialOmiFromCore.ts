@@ -1,0 +1,397 @@
+/**
+ * Map Central Core photoWow / scan/pricing payloads into WowPanel's officialOmi
+ * overlay (OmiZoneData). Core 3.4.4 is dual-readable: `{ ok, data }` plus
+ * top-level `zona` / `pricing` / official microzona fields.
+ *
+ * Does not invent scores, catasto, or APE. Missing numbers stay null.
+ */
+
+import type { OmiZoneData, SectionStatus, SourceType } from "@/types";
+import type { PhotoWowImmobile, PhotoWowResponse, PhotoWowScores, PhotoWowZona } from "@/types/photoWow";
+
+const ENVELOPE_KEYS = new Set([
+  "ok", "data", "error", "warnings", "debug_id", "status", "message",
+]);
+
+export function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+export function asTrimmedString(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t.length > 0 ? t : null;
+}
+
+export function asFiniteNumber(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) {
+    const n = Number(v.replace(",", "."));
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function firstNumber(...vals: unknown[]): number | null {
+  for (const v of vals) {
+    const n = asFiniteNumber(v);
+    if (n != null) return n;
+  }
+  return null;
+}
+
+function firstString(...vals: unknown[]): string | null {
+  for (const v of vals) {
+    const s = asTrimmedString(v);
+    if (s) return s;
+  }
+  return null;
+}
+
+/** Merge nested `data` with sibling official fields (zona, pricing, microzona). Nested wins on conflict. */
+export function mergeDualReadable(
+  nested: Record<string, unknown>,
+  envelope: Record<string, unknown>,
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...nested };
+  for (const [k, v] of Object.entries(envelope)) {
+    if (ENVELOPE_KEYS.has(k) || v == null) continue;
+    if (merged[k] == null) {
+      merged[k] = v;
+      continue;
+    }
+    if (isPlainObject(merged[k]) && isPlainObject(v)) {
+      merged[k] = { ...v, ...(merged[k] as Record<string, unknown>) };
+    }
+  }
+  return merged;
+}
+
+/** Unwrap `{ ok, data }` while keeping top-level zona/pricing. Returns null if `ok === false`. */
+export function unwrapCoreEnvelope(raw: unknown): Record<string, unknown> | null {
+  if (!isPlainObject(raw)) return null;
+  if (raw.ok === false) return null;
+  const nested = isPlainObject(raw.data) ? raw.data : null;
+  if (nested) return mergeDualReadable(nested, raw);
+  return raw;
+}
+
+function parseOmiCode(label: string | null): string | null {
+  if (!label) return null;
+  const omi = label.match(/\bOMI\s*[:\-]?\s*([A-Z]\d{1,2})\b/i);
+  if (omi) return omi[1].toUpperCase();
+  const bare = label.match(/\b([A-Z]\d{1,2})\b/);
+  return bare ? bare[1].toUpperCase() : null;
+}
+
+/** Prefer an existing "Centro (OMI B1)" label; otherwise compose from name + code. */
+export function formatZonaOmiLabel(nameOrLabel: string | null, code: string | null): string | null {
+  if (nameOrLabel && /OMI\s*[A-Z]\d/i.test(nameOrLabel)) return nameOrLabel;
+  if (nameOrLabel && code && nameOrLabel.toUpperCase().includes(code.toUpperCase())) return nameOrLabel;
+  if (nameOrLabel && code) {
+    if (nameOrLabel.toUpperCase() === code.toUpperCase()) return `OMI ${code}`;
+    return `${nameOrLabel} (OMI ${code})`;
+  }
+  if (nameOrLabel) return nameOrLabel;
+  if (code) return `OMI ${code}`;
+  return null;
+}
+
+function asSourceType(v: unknown): SourceType | undefined {
+  if (typeof v !== "string" || !v.trim()) return undefined;
+  return v.trim() as SourceType;
+}
+
+function readPricingBag(root: Record<string, unknown>): Record<string, unknown> {
+  return isPlainObject(root.pricing) ? root.pricing : {};
+}
+
+function readZonaBag(zona: unknown): { obj: Record<string, unknown>; asString: string | null } {
+  if (typeof zona === "string") return { obj: {}, asString: asTrimmedString(zona) };
+  if (isPlainObject(zona)) return { obj: zona, asString: firstString(zona.nomeZonaOmi, zona.zonaOmiLabel, zona.zona, zona.label) };
+  return { obj: {}, asString: null };
+}
+
+/**
+ * Extract official OMI overlay fields from any Core / pro-sources / pricing payload.
+ * Returns null when there is nothing official to show (or sourceType is unavailable).
+ */
+export function officialOmiFromCore(raw: unknown): OmiZoneData | null {
+  const root = unwrapCoreEnvelope(raw);
+  if (!root) return null;
+
+  const pricing = readPricingBag(root);
+  const zona = readZonaBag(root.zona);
+  const zonaNested = isPlainObject(root.data) ? readZonaBag((root.data as Record<string, unknown>).zona) : { obj: {}, asString: null };
+
+  const sourceType = asSourceType(
+    firstString(root.sourceType, pricing.sourceType, zona.obj.sourceType),
+  );
+  if (sourceType === "unavailable") return null;
+
+  const officialMicrozona = firstString(
+    root.officialMicrozona,
+    pricing.officialMicrozona,
+    zona.obj.officialMicrozona,
+    zona.obj.zonaOmi,
+    root.zonaOmi,
+    pricing.zonaOmi,
+  );
+
+  const rawLabel = firstString(
+    zona.asString,
+    zona.obj.nomeZonaOmi,
+    zona.obj.zonaOmiLabel,
+    zonaNested.asString,
+    root.nomeZonaOmi,
+    root.zonaOmiLabel,
+    pricing.zonaOmiLabel,
+    pricing.zona,
+  );
+
+  const zonaOmi = officialMicrozona ?? parseOmiCode(rawLabel);
+  const zonaOmiLabel = formatZonaOmiLabel(rawLabel, zonaOmi);
+
+  const comuneLabel = firstString(
+    zona.obj.nomeComune,
+    zona.obj.comuneLabel,
+    root.nomeComune,
+    root.comuneLabel,
+    root.comune,
+    pricing.comuneLabel,
+    pricing.comune,
+  );
+
+  const quotazioneMinResidenziale = firstNumber(
+    root.quotazioneMinResidenziale,
+    root.valoreMinOmi,
+    root.prezzoMqMin,
+    pricing.quotazioneMinResidenziale,
+    pricing.valoreMinOmi,
+    pricing.prezzoMqMin,
+    zona.obj.quotazioneMinResidenziale,
+    zona.obj.valoreMinOmi,
+    zona.obj.prezzoMqMin,
+  );
+  const quotazioneMaxResidenziale = firstNumber(
+    root.quotazioneMaxResidenziale,
+    root.valoreMaxOmi,
+    root.prezzoMqMax,
+    pricing.quotazioneMaxResidenziale,
+    pricing.valoreMaxOmi,
+    pricing.prezzoMqMax,
+    zona.obj.quotazioneMaxResidenziale,
+    zona.obj.valoreMaxOmi,
+    zona.obj.prezzoMqMax,
+  );
+
+  const semestre = firstString(root.semestre, pricing.semestre, zona.obj.semestre, root.sourcePeriod, pricing.sourcePeriod);
+  const tipologia = firstString(root.tipologia, pricing.tipologia, zona.obj.tipologia);
+  const statoConservazione = firstString(root.statoConservazione, pricing.statoConservazione, zona.obj.statoConservazione);
+
+  const polygonMatch = root.polygonMatch === true
+    || pricing.polygonMatch === true
+    || zona.obj.polygonMatch === true;
+
+  const omiGeoLevel = firstString(root.omiGeoLevel, pricing.omiGeoLevel, zona.obj.omiGeoLevel)
+    ?? (polygonMatch ? "microzona_omi" : undefined);
+  const matchMethod = firstString(root.matchMethod, pricing.matchMethod, zona.obj.matchMethod);
+  const matchConfidence = firstNumber(root.matchConfidence, pricing.matchConfidence, zona.obj.matchConfidence) ?? undefined;
+
+  const hasQuotes = quotazioneMinResidenziale != null || quotazioneMaxResidenziale != null;
+  const hasZone = !!(zonaOmiLabel || zonaOmi);
+  if (!hasQuotes && !hasZone) return null;
+
+  const resolvedType: SourceType = sourceType
+    ?? (hasQuotes ? "official" : "official");
+
+  return {
+    zonaOmi,
+    zonaOmiLabel,
+    comuneLabel,
+    quotazioneMinResidenziale,
+    quotazioneMaxResidenziale,
+    semestre,
+    tipologia,
+    statoConservazione,
+    polygonMatch,
+    omiGeoLevel: omiGeoLevel as OmiZoneData["omiGeoLevel"],
+    matchMethod: matchMethod ?? undefined,
+    matchConfidence,
+    sourceType: resolvedType,
+    sourceProvider: "omi",
+    sourceLabel: firstString(root.sourceLabel, pricing.sourceLabel) ?? "OMI / Agenzia delle Entrate",
+    sourcePeriod: semestre ?? undefined,
+    sourceFreshness: firstString(root.sourceFreshness, pricing.sourceFreshness) ?? undefined,
+    sourceCoverageLevel: (firstString(root.sourceCoverageLevel, pricing.sourceCoverageLevel)
+      ?? (polygonMatch ? "zone_omi" : undefined)) as OmiZoneData["sourceCoverageLevel"],
+    licensingNote: firstString(root.licensingNote, pricing.licensingNote) ?? undefined,
+  };
+}
+
+export function hasRenderableOfficialOmi(d: OmiZoneData | null | undefined): boolean {
+  if (!d || d.sourceType === "unavailable") return false;
+  return d.quotazioneMinResidenziale != null
+    || d.quotazioneMaxResidenziale != null
+    || !!d.zonaOmiLabel
+    || !!d.zonaOmi;
+}
+
+/** Fill gaps only — never invent values that neither side sent. */
+export function mergeOfficialOmiData(
+  current: OmiZoneData | null | undefined,
+  incoming: OmiZoneData,
+): OmiZoneData {
+  if (!current || current.sourceType === "unavailable") return incoming;
+  return {
+    ...current,
+    ...incoming,
+    zonaOmi: incoming.zonaOmi ?? current.zonaOmi,
+    zonaOmiLabel: incoming.zonaOmiLabel ?? current.zonaOmiLabel,
+    comuneLabel: incoming.comuneLabel ?? current.comuneLabel,
+    quotazioneMinResidenziale: incoming.quotazioneMinResidenziale ?? current.quotazioneMinResidenziale,
+    quotazioneMaxResidenziale: incoming.quotazioneMaxResidenziale ?? current.quotazioneMaxResidenziale,
+    semestre: incoming.semestre ?? current.semestre,
+    tipologia: incoming.tipologia ?? current.tipologia,
+    statoConservazione: incoming.statoConservazione ?? current.statoConservazione,
+    polygonMatch: incoming.polygonMatch === true || current.polygonMatch === true,
+    omiGeoLevel: incoming.omiGeoLevel ?? current.omiGeoLevel,
+    matchMethod: incoming.matchMethod ?? current.matchMethod,
+    matchConfidence: incoming.matchConfidence ?? current.matchConfidence,
+    sourceType: incoming.sourceType === "official" || current.sourceType === "official"
+      ? "official"
+      : (incoming.sourceType ?? current.sourceType),
+    sourceProvider: incoming.sourceProvider ?? current.sourceProvider,
+    sourceLabel: incoming.sourceLabel ?? current.sourceLabel,
+    sourcePeriod: incoming.sourcePeriod ?? current.sourcePeriod,
+    sourceFreshness: incoming.sourceFreshness ?? current.sourceFreshness,
+    sourceCoverageLevel: incoming.sourceCoverageLevel ?? current.sourceCoverageLevel,
+    licensingNote: incoming.licensingNote ?? current.licensingNote,
+  };
+}
+
+export interface OfficialOmiSource {
+  status?: SectionStatus;
+  data?: unknown;
+}
+
+export interface ResolvedOfficialOmi {
+  status: SectionStatus;
+  data: OmiZoneData | null;
+}
+
+/** Prefer Core photoWow / pricing official fields; pro-sources omiZone fills gaps. */
+export function resolveOfficialOmiOverlay(sources: {
+  omiZone?: OfficialOmiSource | null;
+  photoWow?: OfficialOmiSource | null;
+  pricing?: OfficialOmiSource | null;
+}): ResolvedOfficialOmi {
+  let data: OmiZoneData | null = null;
+  for (const src of [sources.omiZone, sources.photoWow, sources.pricing]) {
+    const mapped = officialOmiFromCore(src?.data);
+    if (mapped) data = data ? mergeOfficialOmiData(data, mapped) : mapped;
+  }
+
+  if (data && hasRenderableOfficialOmi(data)) {
+    return { status: "success", data };
+  }
+
+  const statuses = [sources.omiZone?.status, sources.photoWow?.status, sources.pricing?.status];
+  if (statuses.includes("loading")) return { status: "loading", data: null };
+  if (statuses.includes("error")) return { status: "error", data: null };
+  return { status: sources.omiZone?.status ?? "idle", data: null };
+}
+
+function emptyScores(): PhotoWowScores {
+  return { vendibilita: null, opportunitaInvestimento: null, pressioneEreditaria: null };
+}
+
+function readScores(raw: unknown): PhotoWowScores {
+  if (!isPlainObject(raw)) return emptyScores();
+  return {
+    vendibilita: asFiniteNumber(raw.vendibilita),
+    opportunitaInvestimento: asFiniteNumber(raw.opportunitaInvestimento),
+    pressioneEreditaria: asFiniteNumber(raw.pressioneEreditaria),
+  };
+}
+
+function readImmobile(raw: unknown): PhotoWowImmobile {
+  const d = isPlainObject(raw) ? raw : {};
+  return {
+    tipologiaProbabile: asTrimmedString(d.tipologiaProbabile),
+    pianoStimato: asTrimmedString(d.pianoStimato),
+    statoApparente: asTrimmedString(d.statoApparente),
+    puntiDiForzaVisivi: Array.isArray(d.puntiDiForzaVisivi)
+      ? d.puntiDiForzaVisivi.filter((x): x is string => typeof x === "string")
+      : [],
+    materialePresunto: asTrimmedString(d.materialePresunto),
+    annoPresunto: asTrimmedString(d.annoPresunto),
+  };
+}
+
+function readZonaObject(root: Record<string, unknown>): PhotoWowZona {
+  const zona = readZonaBag(root.zona);
+  const pricing = readPricingBag(root);
+  const officialMicrozona = firstString(root.officialMicrozona, pricing.officialMicrozona, zona.obj.officialMicrozona);
+  const nomeZonaOmi = formatZonaOmiLabel(
+    firstString(zona.asString, zona.obj.nomeZonaOmi, root.nomeZonaOmi),
+    officialMicrozona ?? parseOmiCode(zona.asString),
+  );
+  return {
+    nomeComune: firstString(zona.obj.nomeComune, root.nomeComune, root.comuneLabel, root.comune),
+    provincia: firstString(zona.obj.provincia, root.provincia),
+    nomeZonaOmi,
+    fascia: firstString(zona.obj.fascia, root.fascia),
+    valoreMinOmi: firstNumber(zona.obj.valoreMinOmi, root.valoreMinOmi, root.prezzoMqMin, pricing.prezzoMqMin, pricing.valoreMinOmi),
+    valoreMaxOmi: firstNumber(zona.obj.valoreMaxOmi, root.valoreMaxOmi, root.prezzoMqMax, pricing.prezzoMqMax, pricing.valoreMaxOmi),
+    tendenzaMercato: firstString(zona.obj.tendenzaMercato, root.tendenzaMercato),
+    classificazioneZona: firstString(zona.obj.classificazioneZona, officialMicrozona, root.classificazioneZona),
+    sentimentResidenti: firstString(zona.obj.sentimentResidenti),
+    livelloSentiment: firstString(zona.obj.livelloSentiment),
+  };
+}
+
+/**
+ * Normalize a live Core photoWow payload into PhotoWowResponse.
+ * Scores stay null when Core omitted them — never coerced to 0.
+ */
+export function normalizePhotoWow(raw: unknown): PhotoWowResponse | null {
+  const root = unwrapCoreEnvelope(raw);
+  if (!root) return null;
+
+  const zona = readZonaObject(root);
+  const scores = readScores(root.scores);
+  const immobile = readImmobile(root.immobile);
+
+  const hasCinematic = !!(
+    zona.nomeComune
+    || zona.nomeZonaOmi
+    || zona.valoreMinOmi != null
+    || root.immobile
+    || root.scores
+    || root.liveSignals
+    || root.qualita
+    || root.fontiUsate
+  );
+  const hasOfficial = officialOmiFromCore(root) != null;
+  if (!hasCinematic && !hasOfficial) return null;
+
+  return {
+    immobile,
+    zona,
+    scores,
+    liveSignals: Array.isArray(root.liveSignals) ? root.liveSignals as PhotoWowResponse["liveSignals"] : [],
+    territorialDocuments: Array.isArray(root.territorialDocuments) ? root.territorialDocuments as PhotoWowResponse["territorialDocuments"] : [],
+    zonaIntelligence: (isPlainObject(root.zonaIntelligence)
+      ? root.zonaIntelligence
+      : { notizieRecenti: [], puntiDiForzaNascosti: [], criticitaEmergenti: [], tendenzaMercato: "" }) as PhotoWowResponse["zonaIntelligence"],
+    vendutoRecente: Array.isArray(root.vendutoRecente) ? root.vendutoRecente as PhotoWowResponse["vendutoRecente"] : [],
+    mappaCaloreUrl: typeof root.mappaCaloreUrl === "string" ? root.mappaCaloreUrl : "",
+    pianoEsclusiva: (isPlainObject(root.pianoEsclusiva)
+      ? root.pianoEsclusiva
+      : { argomento: "", puntiChiave: [], obiezioniProbabili: [], stimaRapida: "" }) as PhotoWowResponse["pianoEsclusiva"],
+    qualita: (root.qualita === "ottima" || root.qualita === "buona" || root.qualita === "minima") ? root.qualita : "buona",
+    tempoElaborazione: asFiniteNumber(root.tempoElaborazione) ?? 0,
+    fontiUsate: Array.isArray(root.fontiUsate) ? root.fontiUsate.filter((x): x is string => typeof x === "string") : [],
+  };
+}

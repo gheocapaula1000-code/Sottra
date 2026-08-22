@@ -38,6 +38,7 @@ import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovati
 import { buildWowSnapshot } from "@/lib/sottraWowSnapshot";
 import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
 import { WowPanel } from "@/components/report/WowPanel";
+import { resolveOfficialOmiOverlay } from "@/lib/officialOmiFromCore";
 import {
   buildHouseDifferentiation,
   differentiationStatusLabel,
@@ -2099,6 +2100,12 @@ const Result = () => {
   const houseDiff = wowAndDiff?.houseDiff ?? null;
   const caseResult = wowAndDiff?.caseResult ?? null;
 
+  const officialOmi = resolveOfficialOmiOverlay({
+    omiZone: result.omiZone,
+    photoWow: result.photoWow,
+    pricing: result.pricing,
+  });
+
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <AppHeader rightContent={
@@ -2127,7 +2134,7 @@ const Result = () => {
               _pd?.polygonMatch,
               _istat?.geoLevel,
             );
-            const _omi = result.omiZone.data as import("@/types").OmiZoneData | null;
+            const _omi = officialOmi.data ?? (result.omiZone.data as import("@/types").OmiZoneData | null);
             return (
               <GeoLevelHeroBanner
                 status={geoStatus}
@@ -2143,10 +2150,7 @@ const Result = () => {
               data={result.photoWow?.data ?? null}
               status={result.photoWow?.status ?? "idle"}
               photo={state.photo}
-              officialOmi={{
-                status: result.omiZone.status,
-                data: result.omiZone.data as import("@/types").OmiZoneData | null,
-              }}
+              officialOmi={officialOmi}
             />
           </SectionSafe>
 
@@ -2186,7 +2190,7 @@ const Result = () => {
               {/* Zona OMI — always open */}
               <SectionSafe>
                 <ReportAccordionItem id="omi" title="Quotazioni OMI" icon={TrendingUp} defaultOpen>
-                  <OmiCard data={result.omiZone.data as import("@/types").OmiZoneData | null} loading={result.omiZone.status === "loading"} />
+                  <OmiCard data={officialOmi.data} loading={officialOmi.status === "loading"} />
                 </ReportAccordionItem>
               </SectionSafe>
 

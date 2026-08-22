@@ -69,15 +69,16 @@ function useCountUp(target: number, durationMs: number, start: boolean): number 
 
 /* ── score card ──────────────────────────────────────── */
 
-function ScoreCard({ label, value, delay, start }: { label: string; value: number; delay: number; start: boolean }) {
+function ScoreCard({ label, value, delay, start }: { label: string; value: number | null | undefined; delay: number; start: boolean }) {
+  const available = typeof value === "number" && Number.isFinite(value);
   const [shown, setShown] = useState(false);
   useEffect(() => {
     if (!start) return;
     const t = setTimeout(() => setShown(true), delay);
     return () => clearTimeout(t);
   }, [start, delay]);
-  const c = scoreColor(value);
-  const animated = useCountUp(value, 1200, shown);
+  const c = available ? scoreColor(value) : { text: "text-white/45", border: "border-white/15", ring: "ring-white/10" };
+  const animated = useCountUp(available ? value : 0, 1200, shown && available);
   return (
     <div className={cn(
       "min-w-[180px] flex-1 rounded-2xl border bg-gradient-to-br from-black/60 to-black/30 p-4 backdrop-blur-md transition-all duration-500",
@@ -86,15 +87,24 @@ function ScoreCard({ label, value, delay, start }: { label: string; value: numbe
     )}>
       <p className="text-[11px] uppercase tracking-widest text-white/60">{label}</p>
       <div className="mt-2 flex items-baseline gap-1">
-        <span className={cn("text-4xl font-black tabular-nums", c.text)}>{animated}</span>
-        <span className="text-sm text-white/40">/100</span>
+        {available ? (
+          <>
+            <span className={cn("text-4xl font-black tabular-nums", c.text)}>{animated}</span>
+            <span className="text-sm text-white/40">/100</span>
+          </>
+        ) : (
+          <span className="text-2xl font-semibold text-white/40">—</span>
+        )}
       </div>
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
         <div
           className={cn("h-full rounded-full transition-[width] duration-[1200ms] ease-out", c.text.replace("text-", "bg-"))}
-          style={{ width: shown ? `${value}%` : "0%" }}
+          style={{ width: shown && available ? `${value}%` : "0%" }}
         />
       </div>
+      {!available && (
+        <p className="mt-2 text-[10px] uppercase tracking-widest text-white/40">Non disponibile</p>
+      )}
     </div>
   );
 }
@@ -184,8 +194,16 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
   const p8 = useReveal(50 + 800 + 600 + 500 + 400 + 400 + 400, ready);
   const p9 = useReveal(50 + 800 + 600 + 500 + 400 + 400 + 400 + 300, ready);
 
-  const venScore = data?.scores?.vendibilita ?? 0;
-  const venCol = useMemo(() => scoreColor(venScore), [venScore]);
+  const venScore = typeof data?.scores?.vendibilita === "number" ? data.scores.vendibilita : null;
+  const venCol = useMemo(() => scoreColor(venScore ?? 0), [venScore]);
+  const zoneTitle = data?.zona?.nomeComune
+    ?? omi?.comuneLabel
+    ?? data?.zona?.nomeZonaOmi
+    ?? omi?.zonaOmiLabel
+    ?? "—";
+  const zoneOmiLine = [data?.zona?.nomeZonaOmi ?? omi?.zonaOmiLabel, data?.zona?.classificazioneZona]
+    .filter((x, i, arr) => !!x && arr.indexOf(x) === i && x !== zoneTitle)
+    .join(" · ");
 
   const handleShare = async () => {
     const shareData = { title: "Report Sottra", text: "Guarda il mio report territoriale", url: window.location.href };
@@ -283,12 +301,10 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
                   <MapPin className="h-3.5 w-3.5" />Zona (da foto e posizione)
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
-                  {data.zona?.nomeComune ?? "—"}{data.zona?.provincia ? ` · ${data.zona.provincia}` : ""}
+                  {zoneTitle}{data.zona?.provincia ? ` · ${data.zona.provincia}` : ""}
                 </h2>
-                {(data.zona?.nomeZonaOmi || data.zona?.classificazioneZona) && (
-                  <p className="text-sm text-white/70">
-                    {[data.zona?.nomeZonaOmi, data.zona?.classificazioneZona].filter(Boolean).join(" · ")}
-                  </p>
+                {zoneOmiLine && (
+                  <p className="text-sm text-white/70">{zoneOmiLine}</p>
                 )}
                 {data.zona?.livelloSentiment && (
                   <span className={cn(
@@ -310,7 +326,7 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
                     "absolute top-3 right-3 flex flex-col items-center justify-center h-16 w-16 rounded-full bg-black/80 border-2",
                     venCol.border,
                   )}>
-                    <span className={cn("text-2xl font-black leading-none tabular-nums", venCol.text)}>{venScore}</span>
+                    <span className={cn("text-2xl font-black leading-none tabular-nums", venCol.text)}>{venScore ?? "—"}</span>
                     <span className="text-[8px] uppercase tracking-wider text-white/60 mt-0.5">vendib.</span>
                   </div>
                 </div>
@@ -324,13 +340,13 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
               </p>
               <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
                 <div className="snap-start flex-1 min-w-[180px]">
-                  <ScoreCard label="Vendibilità" value={data.scores?.vendibilita ?? 0} delay={0} start={p4} />
+                  <ScoreCard label="Vendibilità" value={data.scores?.vendibilita} delay={0} start={p4} />
                 </div>
                 <div className="snap-start flex-1 min-w-[180px]">
-                  <ScoreCard label="Opportunità" value={data.scores?.opportunitaInvestimento ?? 0} delay={120} start={p4} />
+                  <ScoreCard label="Opportunità" value={data.scores?.opportunitaInvestimento} delay={120} start={p4} />
                 </div>
                 <div className="snap-start flex-1 min-w-[180px]">
-                  <ScoreCard label="Pressione ereditaria" value={data.scores?.pressioneEreditaria ?? 0} delay={240} start={p4} />
+                  <ScoreCard label="Pressione ereditaria" value={data.scores?.pressioneEreditaria} delay={240} start={p4} />
                 </div>
               </div>
             </Reveal>

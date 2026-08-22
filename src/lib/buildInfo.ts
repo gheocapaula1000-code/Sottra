@@ -1,5 +1,5 @@
 /** Build version — bumped on each deploy (YYYY.MM.DD.N) */
-export const BUILD_VERSION = "2026.08.22.1";
+export const BUILD_VERSION = "2026.08.22.2";
 
 /**
  * Sottra — Release Readiness State

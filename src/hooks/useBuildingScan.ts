@@ -5,7 +5,8 @@ import { fetchProSources } from "@/services/proSources";
 import { getPhotoWow } from "@/services/photoWow";
 import { supabase } from "@/integrations/supabase/client";
 import { mapScanToReportSections } from "@/lib/reportMapper";
-import type { ScanResult, SectionState, IdentifyResult } from "@/types";
+import { hasRenderableOfficialOmi, mergeOfficialOmiData, officialOmiFromCore } from "@/lib/officialOmiFromCore";
+import type { OmiZoneData, ScanResult, SectionState, IdentifyResult } from "@/types";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
 import { formatManualAddress } from "@/components/AddressOverrideForm";
 
@@ -56,7 +57,9 @@ type Action =
   | { type: "RESET_IDLE" }
   | { type: "RESTORE"; payload: Partial<ScanResult> }
   | { type: "SET"; key: keyof ScanResult; value: SectionState }
-  | { type: "MAP_REPORT"; lat: number | null; lng: number | null };
+  | { type: "MAP_REPORT"; lat: number | null; lng: number | null }
+  | { type: "MERGE_OFFICIAL_OMI"; data: OmiZoneData }
+  | { type: "OMI_UNAVAILABLE_IF_EMPTY"; message: string };
 
 function reducer(state: ScanResult, action: Action): ScanResult {
   switch (action.type) {
@@ -88,6 +91,17 @@ function reducer(state: ScanResult, action: Action): ScanResult {
         };
       }
       return { ...state, ...updates } as ScanResult;
+    }
+    case "MERGE_OFFICIAL_OMI": {
+      const merged = mergeOfficialOmiData(state.omiZone.data, action.data);
+      return { ...state, omiZone: { status: "success", data: merged, message: null } };
+    }
+    case "OMI_UNAVAILABLE_IF_EMPTY": {
+      if (hasRenderableOfficialOmi(state.omiZone.data)) return state;
+      return {
+        ...state,
+        omiZone: { status: "error", data: state.omiZone.data, message: action.message },
+      };
     }
     default:
       return state;
@@ -160,8 +174,14 @@ export function useBuildingScan() {
     const set = (key: keyof ScanResult, value: SectionState) =>
       dispatch({ type: "SET", key, value });
 
+    const applyCoreOmi = (raw: unknown) => {
+      const omi = officialOmiFromCore(raw);
+      if (omi) dispatch({ type: "MERGE_OFFICIAL_OMI", data: omi });
+    };
+
     const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
       set(key, { status: r.error ? "error" : "success", data: r.data, message: r.message });
+      if (!r.error && key === "pricing") applyCoreOmi(r.data);
     };
 
     const reject = (key: keyof ScanResult) => (err: unknown) => {
@@ -216,11 +236,11 @@ export function useBuildingScan() {
           if (proData.poi) {
             set("poiEnrichment", { status: "success", data: proData.poi, message: null });
           }
-          set("omiZone", {
-            status: proData.omi ? "success" : "error",
-            data: proData.omi,
-            message: proData.omi ? null : "Dati OMI non disponibili",
-          });
+          if (proData.omi) {
+            dispatch({ type: "MERGE_OFFICIAL_OMI", data: proData.omi });
+          } else {
+            dispatch({ type: "OMI_UNAVAILABLE_IF_EMPTY", message: "Dati OMI non disponibili" });
+          }
           set("istatDemographic", {
             status: proData.istat ? "success" : "error",
             data: proData.istat,
@@ -233,7 +253,7 @@ export function useBuildingScan() {
           });
         }).catch((e) => {
           console.error("[SCAN] pro-sources failed:", e);
-          set("omiZone", { status: "error", data: null, message: "Servizio non disponibile" });
+          dispatch({ type: "OMI_UNAVAILABLE_IF_EMPTY", message: "Servizio non disponibile" });
           set("istatDemographic", { status: "error", data: null, message: "Servizio non disponibile" });
           set("subMunicipalMatch", { status: "idle", data: null, message: null });
         }),
@@ -301,6 +321,7 @@ export function useBuildingScan() {
         const photoRes = await Promise.race([getPhotoWow(photo, lat, lng), photoWowTimeout]);
         if (!photoRes.error && photoRes.data) {
           set("photoWow", { status: "success", data: photoRes.data, message: null });
+          applyCoreOmi(photoRes.data);
         } else {
           console.warn("[SCAN] photoWow opener failed (official pipeline continues):", photoRes.message);
           set("photoWow", { status: "error", data: null, message: photoRes.message });
@@ -338,8 +359,14 @@ export function useBuildingScan() {
     const set = (key: keyof ScanResult, value: SectionState) =>
       dispatch({ type: "SET", key, value });
 
+    const applyCoreOmi = (raw: unknown) => {
+      const omi = officialOmiFromCore(raw);
+      if (omi) dispatch({ type: "MERGE_OFFICIAL_OMI", data: omi });
+    };
+
     const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
       set(key, { status: r.error ? "error" : "success", data: r.data, message: r.message });
+      if (!r.error && key === "pricing") applyCoreOmi(r.data);
     };
 
     const reject = (key: keyof ScanResult) => (err: unknown) => {
@@ -385,11 +412,15 @@ export function useBuildingScan() {
         if (proData.poi) {
           set("poiEnrichment", { status: "success", data: proData.poi, message: null });
         }
-        set("omiZone", { status: proData.omi ? "success" : "error", data: proData.omi, message: proData.omi ? null : "Dati OMI non disponibili" });
+        if (proData.omi) {
+          dispatch({ type: "MERGE_OFFICIAL_OMI", data: proData.omi });
+        } else {
+          dispatch({ type: "OMI_UNAVAILABLE_IF_EMPTY", message: "Dati OMI non disponibili" });
+        }
         set("istatDemographic", { status: proData.istat ? "success" : "error", data: proData.istat, message: proData.istat ? null : "Dati ISTAT non disponibili" });
       }).catch((e) => {
         console.error("[REFINE] pro-sources failed:", e);
-        set("omiZone", { status: "error", data: null, message: "Servizio non disponibile" });
+        dispatch({ type: "OMI_UNAVAILABLE_IF_EMPTY", message: "Servizio non disponibile" });
         set("istatDemographic", { status: "error", data: null, message: "Servizio non disponibile" });
       }),
     ]);

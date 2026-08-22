@@ -1,3 +1,4 @@
+import { normalizePhotoWow } from "@/lib/officialOmiFromCore";
 import type { PhotoWowResponse } from "@/types/photoWow";
 
 const CORE_PROXY_URL =
@@ -5,12 +6,12 @@ const CORE_PROXY_URL =
   "https://jpunnzgixcghuydstdlt.supabase.co/functions/v1/core-proxy";
 
 /**
- * Cinematic photo opener — NOT the official Sottra report.
+ * Cinematic photo opener — plus official OMI crumbs from Central Core 3.4.4.
  *
- * Hits Central Core `civiko-property-from-photo` for a fast visual reveal.
- * Official OMI / ISTAT / forecast modules are filled afterwards by
- * `useBuildingScan` via Sottra `core-proxy` + `pro-sources`.
- * Scores and zone hints from this call are elaborated, never official.
+ * Hits Central Core `civiko-property-from-photo`. The live payload is
+ * dual-readable (`{ ok, data }` plus top-level zona/pricing). Official
+ * microzona / €/m² are mapped into WowPanel's officialOmi overlay by
+ * `officialOmiFromCore`; scores stay null when Core omitted them.
  */
 export async function getPhotoWow(
   photo: string,
@@ -43,7 +44,18 @@ export async function getPhotoWow(
       };
     }
 
-    const data = (await res.json()) as PhotoWowResponse;
+    const raw: unknown = await res.json();
+    if (raw && typeof raw === "object" && "ok" in raw && (raw as { ok?: unknown }).ok === false) {
+      const msg = (raw as { error?: { message?: string }; message?: string }).error?.message
+        ?? (raw as { message?: string }).message
+        ?? "photoWow non disponibile";
+      return { error: true, message: msg, data: null };
+    }
+
+    const data = normalizePhotoWow(raw);
+    if (!data) {
+      return { error: true, message: "Risposta photoWow non valida", data: null };
+    }
     return { error: false, message: null, data };
   } catch (err) {
     return {

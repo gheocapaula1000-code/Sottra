@@ -1,3 +1,4 @@
+import { unwrapCoreEnvelope } from "@/lib/officialOmiFromCore";
 import { supabase } from "@/integrations/supabase/client";
 
 interface CoreError {
@@ -92,7 +93,7 @@ export async function coreRequest<T = unknown>(
         return { error: true, message: friendlyMessage(data.error.message, status) };
       }
 
-      // Central Core V3 wrapper: { ok, data, warnings, debug_id }
+      // Central Core V3 wrapper: { ok, data } plus optional top-level zona/pricing
       if (data && typeof data === "object" && "ok" in data) {
         if (!data.ok) {
           const status = data.status;
@@ -104,6 +105,8 @@ export async function coreRequest<T = unknown>(
           return { error: true, message: friendlyMessage(data.error?.message ?? "", status) };
         }
         recordSuccess();
+        const unwrapped = unwrapCoreEnvelope(data);
+        if (unwrapped) return unwrapped as T;
         return data.data as T;
       }
 
