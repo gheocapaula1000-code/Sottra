@@ -1,8 +1,9 @@
 /**
  * ReportAccordion — Mobile-first collapsible report sections.
- * 
+ *
  * Wraps report content in accordion items with clear section headers.
  * Weak/fallback sections start closed; strong sections start open.
+ * Empty shells (null / empty children, or a card that renders nothing) are omitted.
  */
 
 import * as React from "react";
@@ -22,6 +23,27 @@ interface ReportAccordionItemProps {
   children: React.ReactNode;
 }
 
+/** True when children are statically empty (null, false, whitespace, empty fragment). */
+export function isEmptyAccordionChildren(children: React.ReactNode): boolean {
+  const nodes = React.Children.toArray(children);
+  if (nodes.length === 0) return true;
+  return nodes.every((node) => {
+    if (typeof node === "string") return node.trim().length === 0;
+    if (React.isValidElement(node) && node.type === React.Fragment) {
+      return isEmptyAccordionChildren((node.props as { children?: React.ReactNode }).children);
+    }
+    return false;
+  });
+}
+
+/** True when a mounted accordion body has real UI (text, media, or a loading skeleton). */
+export function hasMeaningfulAccordionDom(root: ParentNode): boolean {
+  if (!(root instanceof Element)) return (root.textContent ?? "").replace(/\u00a0/g, " ").trim().length > 0;
+  if (root.querySelector(".animate-pulse")) return true;
+  if (root.querySelector("img, svg, canvas, video, iframe, audio, input, textarea, select")) return true;
+  return (root.textContent ?? "").replace(/\u00a0/g, " ").trim().length > 0;
+}
+
 export function ReportAccordionItem({
   title,
   icon: Icon,
@@ -31,9 +53,26 @@ export function ReportAccordionItem({
   children,
 }: ReportAccordionItemProps) {
   const [open, setOpen] = React.useState(defaultOpen);
-
-  // Don't render empty children
+  const [showShell, setShowShell] = React.useState(true);
   const contentRef = React.useRef<HTMLDivElement>(null);
+
+  const staticallyEmpty = isEmptyAccordionChildren(children);
+
+  React.useLayoutEffect(() => {
+    if (staticallyEmpty) return;
+    const el = contentRef.current;
+    setShowShell(!!el && hasMeaningfulAccordionDom(el));
+  });
+
+  if (staticallyEmpty) return null;
+  if (!showShell) {
+    // Keep children mounted (hidden) so a later non-null card can reveal the tendina.
+    return (
+      <div hidden aria-hidden className="hidden">
+        <div ref={contentRef}>{children}</div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(
@@ -70,13 +109,12 @@ export function ReportAccordionItem({
         )} />
       </button>
       <div
-        ref={contentRef}
         className={cn(
           "transition-all duration-300 ease-in-out overflow-hidden",
           open ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0",
         )}
       >
-        <div className="px-5 pb-5 pt-0">
+        <div ref={contentRef} className="px-5 pb-5 pt-0">
           {children}
         </div>
       </div>
