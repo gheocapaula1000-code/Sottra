@@ -116,6 +116,14 @@ describe("officialOmiFromCore — Padova centro Core 3.4.4 shapes", () => {
     const omi = officialOmiFromCore({ zona: { nomeComune: "Padova" }, scores: null });
     expect(omi).toBeNull();
   });
+
+  it("does not treat bare market prezzoMq as official OMI", () => {
+    expect(officialOmiFromCore({
+      prezzoMq: 2400,
+      prezzoMqMin: 2100,
+      prezzoMqMax: 2800,
+    })).toBeNull();
+  });
 });
 
 describe("normalizePhotoWow", () => {

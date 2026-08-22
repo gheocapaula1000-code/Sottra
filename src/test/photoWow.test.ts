@@ -13,6 +13,13 @@ describe("getPhotoWow", () => {
   });
 
   it("unwraps dual-readable Core envelope into PhotoWowResponse + official zona", async () => {
+    if (typeof AbortSignal.timeout !== "function") {
+      AbortSignal.timeout = ((ms: number) => {
+        const c = new AbortController();
+        setTimeout(() => c.abort(), ms);
+        return c.signal;
+      }) as typeof AbortSignal.timeout;
+    }
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -30,6 +37,7 @@ describe("getPhotoWow", () => {
     }) as unknown as typeof fetch;
 
     const res = await getPhotoWow("data:image/jpeg;base64,xx", 45.407, 11.876);
+    expect(res.message).toBeNull();
     expect(res.error).toBe(false);
     expect(res.data?.zona.nomeZonaOmi).toBe("Centro (OMI B1)");
     expect(res.data?.zona.valoreMinOmi).toBe(2400);

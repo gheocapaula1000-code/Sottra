@@ -78,7 +78,7 @@ export function unwrapCoreEnvelope(raw: unknown): Record<string, unknown> | null
 
 function parseOmiCode(label: string | null): string | null {
   if (!label) return null;
-  const omi = label.match(/\bOMI\s*[:\-]?\s*([A-Z]\d{1,2})\b/i);
+  const omi = label.match(/\bOMI\s*[:-]?\s*([A-Z]\d{1,2})\b/i);
   if (omi) return omi[1].toUpperCase();
   const bare = label.match(/\b([A-Z]\d{1,2})\b/);
   return bare ? bare[1].toUpperCase() : null;
@@ -202,8 +202,20 @@ export function officialOmiFromCore(raw: unknown): OmiZoneData | null {
   const hasZone = !!(zonaOmiLabel || zonaOmi);
   if (!hasQuotes && !hasZone) return null;
 
-  const resolvedType: SourceType = sourceType
-    ?? (hasQuotes ? "official" : "official");
+  // Bare market pricing (prezzoMqMin/Max only) is not official OMI.
+  const hasOfficialSignal = sourceType === "official"
+    || !!officialMicrozona
+    || asFiniteNumber(root.valoreMinOmi) != null
+    || asFiniteNumber(zona.obj.valoreMinOmi) != null
+    || asFiniteNumber(root.quotazioneMinResidenziale) != null
+    || asFiniteNumber(root.quotazioneMaxResidenziale) != null
+    || asFiniteNumber(zona.obj.quotazioneMinResidenziale) != null
+    || !!asTrimmedString(root.zonaOmiLabel)
+    || !!asTrimmedString(root.zonaOmi)
+    || !!(rawLabel && /OMI\s*[A-Z]\d/i.test(rawLabel));
+  if (!hasOfficialSignal) return null;
+
+  const resolvedType: SourceType = sourceType ?? "official";
 
   return {
     zonaOmi,
@@ -243,14 +255,21 @@ export function mergeOfficialOmiData(
   incoming: OmiZoneData,
 ): OmiZoneData {
   if (!current || current.sourceType === "unavailable") return incoming;
+  const currentOfficial = current.sourceType === "official" && hasRenderableOfficialOmi(current);
+  const incomingOfficial = incoming.sourceType === "official";
+  const keepCurrentQuotes = currentOfficial && !incomingOfficial;
   return {
     ...current,
     ...incoming,
     zonaOmi: incoming.zonaOmi ?? current.zonaOmi,
     zonaOmiLabel: incoming.zonaOmiLabel ?? current.zonaOmiLabel,
     comuneLabel: incoming.comuneLabel ?? current.comuneLabel,
-    quotazioneMinResidenziale: incoming.quotazioneMinResidenziale ?? current.quotazioneMinResidenziale,
-    quotazioneMaxResidenziale: incoming.quotazioneMaxResidenziale ?? current.quotazioneMaxResidenziale,
+    quotazioneMinResidenziale: keepCurrentQuotes
+      ? current.quotazioneMinResidenziale
+      : (incoming.quotazioneMinResidenziale ?? current.quotazioneMinResidenziale),
+    quotazioneMaxResidenziale: keepCurrentQuotes
+      ? current.quotazioneMaxResidenziale
+      : (incoming.quotazioneMaxResidenziale ?? current.quotazioneMaxResidenziale),
     semestre: incoming.semestre ?? current.semestre,
     tipologia: incoming.tipologia ?? current.tipologia,
     statoConservazione: incoming.statoConservazione ?? current.statoConservazione,
