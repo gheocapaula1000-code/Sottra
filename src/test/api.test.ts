@@ -51,6 +51,31 @@ describe("api.ts", () => {
       expect(isError(result)).toBe(true);
     });
 
+    it("keeps top-level zona/pricing on dual-readable {ok,data} envelopes", async () => {
+      mockInvoke.mockResolvedValue({
+        data: {
+          ok: true,
+          data: { prezzoMqMin: 2400, prezzoMqMax: 3400 },
+          zona: "Centro (OMI B1)",
+          officialMicrozona: "B1",
+          sourceType: "official",
+          polygonMatch: true,
+        },
+        error: null,
+      });
+
+      const result = await coreRequest("/scan/pricing", "POST");
+      expect(isError(result)).toBe(false);
+      expect(result).toMatchObject({
+        prezzoMqMin: 2400,
+        prezzoMqMax: 3400,
+        zona: "Centro (OMI B1)",
+        officialMicrozona: "B1",
+        sourceType: "official",
+        polygonMatch: true,
+      });
+    });
+
     it("sends correct payload to invoke", async () => {
       mockInvoke.mockResolvedValue({
         data: { ok: true, data: {} },

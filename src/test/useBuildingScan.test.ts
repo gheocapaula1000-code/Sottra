@@ -167,6 +167,57 @@ describe("useBuildingScan", () => {
     expect(result.current.result.pricing.status).toBe("idle");
   });
 
+  it("maps Core photoWow official OMI even when pro-sources is empty", async () => {
+    getPhotoWow.mockResolvedValueOnce({
+      error: false,
+      message: null,
+      data: {
+        immobile: { tipologiaProbabile: "residenziale", pianoStimato: null, statoApparente: null, puntiDiForzaVisivi: [], materialePresunto: null, annoPresunto: null },
+        zona: {
+          nomeComune: "Padova",
+          provincia: "PD",
+          nomeZonaOmi: "Centro (OMI B1)",
+          fascia: null,
+          valoreMinOmi: 2400,
+          valoreMaxOmi: 3400,
+          tendenzaMercato: null,
+          classificazioneZona: "B1",
+          sentimentResidenti: null,
+          livelloSentiment: null,
+        },
+        scores: { vendibilita: null, opportunitaInvestimento: null, pressioneEreditaria: null },
+        liveSignals: [],
+        territorialDocuments: [],
+        zonaIntelligence: { notizieRecenti: [], puntiDiForzaNascosti: [], criticitaEmergenti: [], tendenzaMercato: "" },
+        vendutoRecente: [],
+        mappaCaloreUrl: "",
+        pianoEsclusiva: { argomento: "", puntiChiave: [], obiezioniProbabili: [], stimaRapida: "" },
+        qualita: "buona",
+        tempoElaborazione: 800,
+        fontiUsate: ["OMI"],
+        officialMicrozona: "B1",
+        prezzoMqMin: 2400,
+        prezzoMqMax: 3400,
+        sourceType: "official",
+        polygonMatch: true,
+      },
+    });
+    fetchProSources.mockResolvedValueOnce({ poi: null, omi: null, istat: null, subMunicipalMatch: null });
+
+    const { result } = renderHook(() => useBuildingScan());
+
+    await act(async () => {
+      await result.current.scan("base64photo", 45.407, 11.876);
+    });
+
+    expect(result.current.result.omiZone.status).toBe("success");
+    expect(result.current.result.omiZone.data?.zonaOmiLabel).toBe("Centro (OMI B1)");
+    expect(result.current.result.omiZone.data?.quotazioneMinResidenziale).toBe(2400);
+    expect(result.current.result.omiZone.data?.quotazioneMaxResidenziale).toBe(3400);
+    expect(result.current.result.omiZone.data?.sourceType).toBe("official");
+    expect(result.current.result.photoWow?.data?.scores?.vendibilita).toBeNull();
+  });
+
   it("resets state correctly", async () => {
     const { result } = renderHook(() => useBuildingScan());
 
