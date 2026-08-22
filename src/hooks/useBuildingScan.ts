@@ -190,11 +190,16 @@ export function useBuildingScan() {
       if (finalLat == null || finalLng == null) {
         failClosedTerritorial("Dati OMI non disponibili");
         if (address) {
+          const resolveAddressOnly = (key: keyof ScanResult) =>
+            (r: { error: boolean; data: unknown; message: string | null }) => {
+              // Do not promote pricing numbers to official OMI without a geocoded zone.
+              set(key, { status: r.error ? "error" : "success", data: r.data, message: r.message });
+            };
           await Promise.allSettled([
-            getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing")),
-            getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy")),
+            getPricing(address, photo).then(resolveAddressOnly("pricing")).catch(reject("pricing")),
+            getEnergy(address, comuneFromAddr).then(resolveAddressOnly("energy")).catch(reject("energy")),
             ...(addressFromIdentify
-              ? [getStoricoTransazioni(addressFromIdentify, comuneFromIdentify).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni"))]
+              ? [getStoricoTransazioni(addressFromIdentify, comuneFromIdentify).then(resolveAddressOnly("storicoTransazioni")).catch(reject("storicoTransazioni"))]
               : []),
           ]);
           set("listings", { status: "idle", data: null, message: "Dati OMI non disponibili" });
@@ -449,7 +454,9 @@ export function useBuildingScan() {
       }
       dispatch({ type: "OMI_UNAVAILABLE_IF_EMPTY", message: "Dati OMI non disponibili" });
       await Promise.allSettled([
-        getPricing(manualAddr, photo).then(resolve("pricing")).catch(reject("pricing")),
+        getPricing(manualAddr, photo).then((r) => {
+          set("pricing", { status: r.error ? "error" : "success", data: r.data, message: r.message });
+        }).catch(reject("pricing")),
       ]);
       dispatch({ type: "MAP_REPORT", lat: null, lng: null });
       setRefining(false);
