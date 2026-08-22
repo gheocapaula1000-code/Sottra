@@ -6,6 +6,7 @@ import { getPhotoWow } from "@/services/photoWow";
 import { supabase } from "@/integrations/supabase/client";
 import { mapScanToReportSections } from "@/lib/reportMapper";
 import { deriveGeoFromIdentify, type DerivedScanGeo } from "@/lib/deriveScanGeo";
+import { isValidGps } from "@/lib/imageUtils";
 import { hasRenderableOfficialOmi, mergeOfficialOmiData, officialOmiFromCore } from "@/lib/officialOmiFromCore";
 import type { OmiZoneData, ScanResult, SectionState, IdentifyResult } from "@/types";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
@@ -328,7 +329,7 @@ export function useBuildingScan() {
       geoSource: "device" | "address",
       addressForWow?: string,
     ) => {
-      if (wowLat == null || wowLng == null) {
+      if (wowLat == null || wowLng == null || !isValidGps(wowLat, wowLng)) {
         set("photoWow", { status: "error", data: null, message: "Posizione dell'indirizzo non disponibile" });
         return;
       }

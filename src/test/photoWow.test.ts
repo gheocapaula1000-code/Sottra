@@ -48,6 +48,17 @@ describe("getPhotoWow", () => {
     expect(res.data).toBeNull();
   });
 
+  it("refuses 0,0 without calling Core — no invented cinematic zona", async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const res = await getPhotoWow("data:image/jpeg;base64,xx", 0, 0, "address", "Via San Francesco 2, Padova");
+    expect(res.error).toBe(true);
+    expect(res.data).toBeNull();
+    expect(res.message).toMatch(/non disponibile/i);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("pairs the photo with address coords when geoSource is address", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

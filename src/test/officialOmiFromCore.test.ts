@@ -176,6 +176,29 @@ describe("resolveOfficialOmiOverlay", () => {
     expect(overlay.data?.quotazioneMinResidenziale).toBe(2400);
   });
 
+  it("keeps official strip from omiZone when photoWow failed (0,0 cinematic)", () => {
+    const overlay = resolveOfficialOmiOverlay({
+      omiZone: {
+        status: "success",
+        data: {
+          zonaOmi: "B1",
+          zonaOmiLabel: "Centro (OMI B1)",
+          comuneLabel: "Padova",
+          quotazioneMinResidenziale: 2400,
+          quotazioneMaxResidenziale: 3400,
+          sourceType: "official",
+          polygonMatch: true,
+        },
+      },
+      photoWow: { status: "error", data: null },
+      pricing: { status: "success", data: null },
+    });
+    expect(overlay.status).toBe("success");
+    expect(overlay.data?.comuneLabel).toBe("Padova");
+    expect(overlay.data?.zonaOmiLabel).toBe("Centro (OMI B1)");
+    expect(overlay.data?.quotazioneMinResidenziale).toBe(2400);
+  });
+
   it("stays loading when sources are still in flight", () => {
     const overlay = resolveOfficialOmiOverlay({
       omiZone: { status: "loading", data: null },

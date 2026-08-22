@@ -254,6 +254,36 @@ describe("useBuildingScan", () => {
     expect(result.current.result.pricing.status).toBe("idle");
   });
 
+  it("Scansiona questo indirizzo (lat 0,0) sends geocoded coords to photoWow, not 0,0", async () => {
+    const padova = { lat: 45.407, lng: 11.876 };
+    geocodeAddress.mockResolvedValueOnce(padova);
+
+    const { result } = renderHook(() => useBuildingScan());
+
+    await act(async () => {
+      await result.current.scan("base64photo", 0, 0, "Via San Francesco 2, Padova");
+    });
+
+    expect(geocodeAddress).toHaveBeenCalledWith("Via San Francesco 2, Padova");
+    expect(getPhotoWow).toHaveBeenCalledWith(
+      "base64photo",
+      padova.lat,
+      padova.lng,
+      "address",
+      "Via San Francesco 2, Padova",
+    );
+    expect(getPhotoWow).not.toHaveBeenCalledWith(
+      expect.anything(),
+      0,
+      0,
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(fetchProSources).toHaveBeenCalledWith(padova.lat, padova.lng);
+    expect(fetchProSources).not.toHaveBeenCalledWith(0, 0);
+    expect(result.current.result.omiZone.status).toBe("success");
+  });
+
   it("uses geocoded address coords over non-zero indoor GPS for OMI, photoWow, and POI", async () => {
     const padova = { lat: 45.407, lng: 11.876 };
     geocodeAddress.mockResolvedValueOnce(padova);

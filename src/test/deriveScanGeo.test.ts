@@ -75,6 +75,19 @@ describe("deriveGeoFromIdentify — manual address vs device GPS", () => {
     })).toBeNull();
   });
 
+  it("Scan.tsx 0,0 + manual address uses geocode, never raw 0,0", () => {
+    const geo = deriveGeoFromIdentify(
+      identifyPadova,
+      "Via San Francesco 2, Padova",
+      0,
+      0,
+      padova,
+    );
+    expect(geo.finalLat).toBe(padova.lat);
+    expect(geo.finalLng).toBe(padova.lng);
+    expect(geo.geoSource).toBe("geocode");
+  });
+
   it("no address and GPS 0,0 falls back to identify-resolved coords", () => {
     const geo = deriveGeoFromIdentify(identifyWithResolved, undefined, 0, 0, null);
     expect(geo.finalLat).toBe(padova.lat);

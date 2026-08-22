@@ -1,3 +1,4 @@
+import { isValidGps } from "@/lib/imageUtils";
 import { normalizePhotoWow } from "@/lib/officialOmiFromCore";
 import type { PhotoWowResponse } from "@/types/photoWow";
 
@@ -21,6 +22,10 @@ export async function getPhotoWow(
   geoSource: "device" | "address" = "device",
   address?: string,
 ): Promise<{ error: boolean; message: string | null; data: PhotoWowResponse | null }> {
+  if (!isValidGps(lat, lng)) {
+    return { error: true, message: "Posizione dell'indirizzo non disponibile", data: null };
+  }
+
   try {
     const res = await fetch(CORE_PROXY_URL, {
       method: "POST",
