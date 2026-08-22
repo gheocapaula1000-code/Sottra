@@ -1536,7 +1536,8 @@ function OffmarketSection({ data, loading }: { data: import("@/types").Offmarket
   const segnali = data?.segnali ?? [];
   const opportunita = data?.opportunita ?? [];
   const totale = data?.totale ?? 0;
-  const isEmpty = !loading && totale <= 0;
+  const hasContent = totale > 0 || segnali.length > 0 || opportunita.length > 0;
+  if (!loading && !hasContent) return null;
 
   const badgeClass = (tipo: string): string => {
     const t = tipo.toLowerCase();
@@ -1567,12 +1568,6 @@ function OffmarketSection({ data, loading }: { data: import("@/types").Offmarket
             <Badge variant="outline" className="text-[10px]">{totale} {totale === 1 ? "segnale" : "segnali"}</Badge>
           )}
         </div>
-
-        {isEmpty && (
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Nessun segnale off-market rilevato per questa zona al momento.
-          </p>
-        )}
 
         {segnali.length > 0 && (
           <div className="space-y-2">
@@ -1627,6 +1622,8 @@ function ZoneIntelligenceSection({ data, loading }: { data: import("@/types").Zo
 
   const truncate = (s: string, n = 40) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
+  if (!loading && risultati.length === 0) return null;
+
   return (
     <ReportAccordionItem id="zone-intelligence" title="Intelligenza di Zona" icon={Zap} defaultOpen={false}>
       <div className="space-y-3 min-w-0">
@@ -1636,12 +1633,6 @@ function ZoneIntelligenceSection({ data, loading }: { data: import("@/types").Zo
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-16 w-full" />
           </div>
-        )}
-
-        {!loading && risultati.length === 0 && (
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Nessuna notizia recente disponibile per questa zona
-          </p>
         )}
 
         {!loading && risultati.length > 0 && (
@@ -1693,13 +1684,11 @@ function ZoneIntelligenceSection({ data, loading }: { data: import("@/types").Zo
 function ListingsSection({ data, loading }: { data: import("@/types").ListingsData | null; loading: boolean }) {
   const annunci = data?.annunci ?? [];
   const totale = data?.totale ?? annunci.length;
+  if (!loading && totale === 0) return null;
   return (
     <ReportAccordionItem id="listings" title="Annunci attivi nella zona" icon={Gem} defaultOpen={false}>
       <div className="space-y-3 min-w-0">
         {loading && <Skeleton className="h-16 w-full" />}
-        {!loading && totale === 0 && (
-          <p className="text-xs text-muted-foreground leading-relaxed">Nessun annuncio attivo rilevato per questa zona.</p>
-        )}
         {!loading && totale > 0 && (
           <>
             <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
@@ -1743,13 +1732,11 @@ function ListingsSection({ data, loading }: { data: import("@/types").ListingsDa
 
 function CondominioSection({ data, loading }: { data: import("@/types").CondominioData | null; loading: boolean }) {
   const hasData = !!data && (data.amministratore || data.numero_unita || data.anno_costruzione || data.classe_energetica || (data.segnali && data.segnali.length > 0));
+  if (!loading && !hasData) return null;
   return (
     <ReportAccordionItem id="condominio" title="Condominio" icon={Gem} defaultOpen={false}>
       <div className="space-y-3 min-w-0">
         {loading && <Skeleton className="h-16 w-full" />}
-        {!loading && !hasData && (
-          <p className="text-xs text-muted-foreground leading-relaxed">Nessun dato condominiale disponibile.</p>
-        )}
         {!loading && hasData && data && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             {data.amministratore && <div><span className="text-muted-foreground">Amministratore: </span><span className="text-foreground break-words">{toText(data.amministratore)}</span></div>}
@@ -1776,13 +1763,11 @@ function CondominioSection({ data, loading }: { data: import("@/types").Condomin
 function StoricoTransazioniSection({ data, loading }: { data: import("@/types").StoricoTransazioniData | null; loading: boolean }) {
   const transazioni = data?.transazioni ?? [];
   const totale = data?.totale ?? transazioni.length;
+  if (!loading && totale === 0) return null;
   return (
     <ReportAccordionItem id="storico-transazioni" title="Storico transazioni" icon={Gem} defaultOpen={false}>
       <div className="space-y-3 min-w-0">
         {loading && <Skeleton className="h-16 w-full" />}
-        {!loading && totale === 0 && (
-          <p className="text-xs text-muted-foreground leading-relaxed">Nessuna transazione storica disponibile.</p>
-        )}
         {!loading && totale > 0 && (
           <>
             <div className="flex flex-wrap gap-2">
@@ -1827,13 +1812,11 @@ function MoodScoreSection({ data, loading }: { data: import("@/types").MoodScore
     if (b.includes("neg")) return "bg-orange-500/15 text-orange-400 border-orange-500/30";
     return "bg-muted text-muted-foreground border-border";
   };
+  if (!loading && !hasData) return null;
   return (
     <ReportAccordionItem id="mood-score" title="Percezione di zona" icon={Zap} defaultOpen={false}>
       <div className="space-y-3 min-w-0">
         {loading && <Skeleton className="h-16 w-full" />}
-        {!loading && !hasData && (
-          <p className="text-xs text-muted-foreground leading-relaxed">Percezione di zona non disponibile.</p>
-        )}
         {!loading && hasData && data && (
           <>
             <div className="flex flex-wrap items-center gap-2">
@@ -1882,13 +1865,11 @@ function EnergySection({ data, loading }: { data: import("@/types").EnergyData |
     if (c === "F" || c === "G") return "bg-red-500/15 text-red-400 border-red-500/30";
     return "bg-muted text-muted-foreground border-border";
   };
+  if (!loading && !hasData) return null;
   return (
     <ReportAccordionItem id="energy" title="Profilo energetico stimato" icon={Zap} defaultOpen={false}>
       <div className="space-y-3 min-w-0">
         {loading && <Skeleton className="h-16 w-full" />}
-        {!loading && !hasData && (
-          <p className="text-xs text-muted-foreground leading-relaxed">Profilo energetico non disponibile per questa zona.</p>
-        )}
         {!loading && hasData && data && (
           <>
             <div className="flex flex-wrap items-center gap-2">
