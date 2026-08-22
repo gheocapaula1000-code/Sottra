@@ -6,12 +6,13 @@ const CORE_PROXY_URL =
   "https://jpunnzgixcghuydstdlt.supabase.co/functions/v1/core-proxy";
 
 /**
- * Cinematic photo opener — plus official OMI crumbs from Central Core 3.4.4.
+ * Cinematic photo opener — NOT the official Sottra report.
  *
  * Hits Central Core `civiko-property-from-photo`. The live payload is
  * dual-readable (`{ ok, data }` plus top-level zona/pricing). Official
  * microzona / €/m² are mapped into WowPanel's officialOmi overlay by
- * `officialOmiFromCore`; scores stay null when Core omitted them.
+ * `officialOmiFromCore`, alongside the official pro-sources pipeline;
+ * scores stay null when Core omitted them (never coerced to 0/100).
  */
 export async function getPhotoWow(
   photo: string,
