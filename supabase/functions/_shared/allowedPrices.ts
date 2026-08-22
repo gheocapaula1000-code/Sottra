@@ -18,5 +18,6 @@ const ALLOWED_PRICE_IDS: ReadonlySet<string> = new Set([
 ]);
 
 export function isAllowedPriceId(priceId: string): boolean {
+  if (!priceId || priceId.includes("_TODO")) return false;
   return ALLOWED_PRICE_IDS.has(priceId);
 }

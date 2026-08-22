@@ -12,7 +12,7 @@ const modules = [
   {
     icon: BarChart3,
     title: "Prezzi",
-    copy: "Quotazioni OMI e riferimenti di mercato per leggere subito il posizionamento dell'immobile.",
+    copy: "Quotazioni OMI ufficiali (€/m² di zona). Se la copertura manca, lo diciamo — non inventiamo il prezzo.",
   },
   {
     icon: ShieldCheck,
@@ -54,7 +54,7 @@ export default function ValueModules() {
           Sette moduli, un unico quadro operativo
         </h2>
         <p className="mx-auto mt-3 max-w-lg text-center text-sm text-muted-foreground sm:text-base">
-          Non un numero isolato: un quadro strutturato con fonti distinte, costruito per essere letto e usato.
+          Foto → fonti ufficiali italiane (OMI, ISTAT, OpenStreetMap). Ogni voce è etichettata: ufficiale, elaborata o non disponibile.
         </p>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

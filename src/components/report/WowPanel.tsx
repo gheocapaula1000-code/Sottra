@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { PhotoWowResponse, PhotoWowLiveSignal } from "@/types/photoWow";
+import type { OmiZoneData, SectionStatus } from "@/types";
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -132,16 +133,34 @@ function Reveal({ show, slide = "up", className, children }: {
 
 /* ── main component ──────────────────────────────────── */
 
+export interface OfficialOmiOverlay {
+  status?: SectionStatus;
+  data?: OmiZoneData | null;
+}
+
 export interface WowPanelProps {
   data: PhotoWowResponse | null | undefined;
   photo: string;
   /** Pipeline status from useBuildingScan (defaults to "loading" if omitted). */
   status?: "idle" | "loading" | "success" | "error";
+  /** Official Sottra OMI lookup — replaces Civiko zone numbers when present. */
+  officialOmi?: OfficialOmiOverlay;
 }
 
-export function WowPanel({ data, photo, status = "loading" }: WowPanelProps) {
-  console.log("WOWPANEL data:", data, "status:", status);
+function fmtEur(n: number | null | undefined): string {
+  if (n == null) return "—";
+  return n.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+}
+
+export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPanelProps) {
   const navigate = useNavigate();
+  const omi = officialOmi?.data ?? null;
+  const omiStatus = officialOmi?.status ?? "idle";
+  const hasOfficialOmi = !!(
+    omi &&
+    omi.sourceType !== "unavailable" &&
+    (omi.quotazioneMinResidenziale != null || omi.quotazioneMaxResidenziale != null || omi.zonaOmiLabel)
+  );
 
   // Safety timeout: exit loading after 20s even if no data arrived
   const [timedOut, setTimedOut] = useState(false);
@@ -211,7 +230,38 @@ export function WowPanel({ data, photo, status = "loading" }: WowPanelProps) {
         {partial && (
           <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200">
             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>Dati parziali disponibili — il motore non ha restituito un report completo per questa zona.</span>
+            <span>Anteprima visiva non disponibile. Il report ufficiale (OMI / ISTAT) si compila sotto se la zona è coperta.</span>
+          </div>
+        )}
+
+        {/* Official OMI strip — shown as soon as Sottra pro-sources resolve */}
+        {(omiStatus === "loading" || hasOfficialOmi || omiStatus === "error") && (
+          <div className="rounded-2xl border border-sky-400/40 bg-sky-500/10 px-5 py-4 space-y-1.5">
+            <p className="text-[10px] uppercase tracking-widest text-sky-200/80 font-semibold">
+              Dato ufficiale OMI
+            </p>
+            {omiStatus === "loading" && !hasOfficialOmi && (
+              <p className="text-sm text-white/80">Lettura quotazioni ufficiali…</p>
+            )}
+            {hasOfficialOmi && (
+              <>
+                <p className="text-2xl font-black tracking-tight">
+                  {fmtEur(omi?.quotazioneMinResidenziale)} – {fmtEur(omi?.quotazioneMaxResidenziale)}
+                  <span className="ml-1 text-sm font-semibold text-white/60">/m²</span>
+                </p>
+                <p className="text-sm text-white/75">
+                  {[omi?.zonaOmiLabel, omi?.comuneLabel, omi?.semestre].filter(Boolean).join(" · ")}
+                </p>
+                {!omi?.polygonMatch && (
+                  <p className="text-[11px] text-amber-200/90">
+                    Riferimento di zona o comunale — non è il valore del singolo immobile.
+                  </p>
+                )}
+              </>
+            )}
+            {omiStatus === "error" && !hasOfficialOmi && (
+              <p className="text-sm text-white/75">Quotazione OMI ufficiale non disponibile per questa zona.</p>
+            )}
           </div>
         )}
 
@@ -230,7 +280,7 @@ export function WowPanel({ data, photo, status = "loading" }: WowPanelProps) {
             <Reveal show={p2}>
               <div className="rounded-2xl border border-white/30 bg-black/80 backdrop-blur-md px-5 py-5 space-y-2">
                 <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-white/50">
-                  <MapPin className="h-3.5 w-3.5" />Zona identificata
+                  <MapPin className="h-3.5 w-3.5" />Zona (da foto e posizione)
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
                   {data.zona?.nomeComune ?? "—"}{data.zona?.provincia ? ` · ${data.zona.provincia}` : ""}
@@ -267,8 +317,11 @@ export function WowPanel({ data, photo, status = "loading" }: WowPanelProps) {
               </Reveal>
             )}
 
-            {/* PHASE 4 — Scores */}
+            {/* PHASE 4 — Scores (elaborated, never official) */}
             <Reveal show={p4}>
+              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-2">
+                Stime elaborate — non sono quotazioni OMI
+              </p>
               <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
                 <div className="snap-start flex-1 min-w-[180px]">
                   <ScoreCard label="Vendibilità" value={data.scores?.vendibilita ?? 0} delay={0} start={p4} />
@@ -422,7 +475,7 @@ export function WowPanel({ data, photo, status = "loading" }: WowPanelProps) {
                   )}
                   {data.pianoEsclusiva.stimaRapida && (
                     <div className="rounded-lg border border-amber-400/30 bg-black/40 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-widest text-amber-200/70">Stima rapida</p>
+                      <p className="text-[10px] uppercase tracking-widest text-amber-200/70">Stima rapida (elaborata)</p>
                       <p className="text-base font-bold text-amber-100">{data.pianoEsclusiva.stimaRapida}</p>
                     </div>
                   )}
@@ -443,7 +496,7 @@ export function WowPanel({ data, photo, status = "loading" }: WowPanelProps) {
                 </div>
                 {data.fontiUsate?.length > 0 && (
                   <p className="text-[10px] text-white/40 text-center leading-relaxed">
-                    Fonti usate: {data.fontiUsate.join(" · ")}
+                    Anteprima: {data.fontiUsate.join(" · ")}. Le quotazioni ufficiali OMI/ISTAT sono nel report sotto.
                   </p>
                 )}
               </div>

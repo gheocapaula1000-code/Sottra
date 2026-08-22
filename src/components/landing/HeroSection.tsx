@@ -55,9 +55,10 @@ export default function HeroSection() {
           <span className="text-primary">Un quadro completo.</span>
         </h1>
 
-        <p className="mx-auto mt-5 max-w-[18rem] text-base leading-relaxed text-muted-foreground sm:mt-6 sm:max-w-md sm:text-lg" style={{ textWrap: "balance" } as React.CSSProperties}>
-          Da un singolo scatto,{" "}
-          <strong className="text-foreground">dati, contesto e posizionamento dell'immobile.</strong>
+        <p className="mx-auto mt-5 max-w-[20rem] text-base leading-relaxed text-muted-foreground sm:mt-6 sm:max-w-lg sm:text-lg" style={{ textWrap: "balance" } as React.CSSProperties}>
+          Da una foto e la posizione:{" "}
+          <strong className="text-foreground">quotazioni OMI, zona e contesto da fonti ufficiali italiane.</strong>
+          {" "}Le stime restano stime. Il catastale non lo inventiamo.
         </p>
 
         <div className="mt-8 flex w-full flex-col items-center gap-3 sm:mt-10 sm:flex-row sm:justify-center sm:gap-4">

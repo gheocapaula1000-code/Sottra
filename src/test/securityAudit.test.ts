@@ -209,7 +209,7 @@ describe("Consumer pages use minimal scan data", () => {
     const historySource = fs.readFileSync("src/pages/History.tsx", "utf-8");
     // scan.photoThumbnail is OK (compressed thumbnail), but raw scan.photo is not
     // Use word-boundary check: "scan.photo" not followed by "Thumbnail"
-    const hasRawPhoto = /scan\.photo(?!Thumbnail)/.test(historySource);
+    const hasRawPhoto = /scan\.photo(?!Thumbnail|_thumbnail)/.test(historySource);
     expect(hasRawPhoto).toBe(false);
     expect(historySource).not.toContain("scan.address");
   });

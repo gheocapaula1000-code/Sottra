@@ -1,6 +1,6 @@
 /**
- * Response shape from the Central Core `civiko-property-from-photo` orchestrator.
- * Single-call endpoint replacing the legacy parallel scan/forecast pipeline.
+ * Response shape from the Central Core `civiko-property-from-photo` opener.
+ * Cinematic preview only — official OMI/ISTAT/forecast come from Sottra modules.
  */
 export interface PhotoWowImmobile {
   tipologiaProbabile: string | null;

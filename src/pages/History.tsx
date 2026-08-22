@@ -10,7 +10,6 @@ import AppHeader from "@/components/AppHeader";
 
 interface CloudScan {
   id: string;
-  address: string | null;
   comune: string | null;
   lat: number | null;
   lng: number | null;
@@ -48,7 +47,7 @@ const History = () => {
         };
       })
         .from("sottra_scans")
-        .select("id, address, comune, lat, lng, zona_omi, created_at, result_snapshot, photo_thumbnail")
+        .select("id, comune, lat, lng, zona_omi, created_at, result_snapshot, photo_thumbnail")
         .order("created_at", { ascending: false })
         .limit(50);
       return data ?? [];
@@ -128,11 +127,8 @@ const History = () => {
                   </div>
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <p className="text-sm font-medium text-foreground truncate">
-                      {scan.address || scan.comune || "Posizione non disponibile"}
+                      {scan.comune || "Posizione non disponibile"}
                     </p>
-                    {scan.comune && scan.address && scan.comune !== scan.address && (
-                      <p className="text-[11px] text-muted-foreground truncate">{scan.comune}</p>
-                    )}
                     <p className="text-[10px] text-muted-foreground">{formatDate(scan.created_at)}</p>
                   </div>
                   <Button
