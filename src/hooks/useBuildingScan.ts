@@ -160,10 +160,13 @@ export function useBuildingScan() {
   const [manualAddress, setManualAddress] = useState<ManualAddressInput | null>(null);
   const [forceShowResult, setForceShowResult] = useState(false);
   const scanIdRef = useRef<string | null>(null);
+  /** Highest official-OMI precedence applied so far (Core official > generic pricing). */
+  const omiPriorityRef = useRef(0);
 
   const scan = useCallback(async (photo: string, lat: number, lng: number, manualAddrInput?: string) => {
     const scanId = crypto.randomUUID();
     scanIdRef.current = scanId;
+    omiPriorityRef.current = 0;
 
     setScanning(true);
     dispatch({ type: "START_SCAN" });
@@ -174,9 +177,12 @@ export function useBuildingScan() {
     const set = (key: keyof ScanResult, value: SectionState) =>
       dispatch({ type: "SET", key, value });
 
-    const applyCoreOmi = (raw: unknown) => {
+    const applyCoreOmi = (raw: unknown, priority = 1) => {
+      if (priority < omiPriorityRef.current) return;
       const omi = officialOmiFromCore(raw);
-      if (omi) dispatch({ type: "MERGE_OFFICIAL_OMI", data: omi });
+      if (!omi) return;
+      omiPriorityRef.current = Math.max(omiPriorityRef.current, priority);
+      dispatch({ type: "MERGE_OFFICIAL_OMI", data: omi });
     };
 
     const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
@@ -321,7 +327,7 @@ export function useBuildingScan() {
         const photoRes = await Promise.race([getPhotoWow(photo, lat, lng), photoWowTimeout]);
         if (!photoRes.error && photoRes.data) {
           set("photoWow", { status: "success", data: photoRes.data, message: null });
-          applyCoreOmi(photoRes.data);
+          applyCoreOmi(photoRes.data, 2);
         } else {
           console.warn("[SCAN] photoWow opener failed (official pipeline continues):", photoRes.message);
           set("photoWow", { status: "error", data: null, message: photoRes.message });
@@ -359,9 +365,12 @@ export function useBuildingScan() {
     const set = (key: keyof ScanResult, value: SectionState) =>
       dispatch({ type: "SET", key, value });
 
-    const applyCoreOmi = (raw: unknown) => {
+    const applyCoreOmi = (raw: unknown, priority = 1) => {
+      if (priority < omiPriorityRef.current) return;
       const omi = officialOmiFromCore(raw);
-      if (omi) dispatch({ type: "MERGE_OFFICIAL_OMI", data: omi });
+      if (!omi) return;
+      omiPriorityRef.current = Math.max(omiPriorityRef.current, priority);
+      dispatch({ type: "MERGE_OFFICIAL_OMI", data: omi });
     };
 
     const resolve = (key: keyof ScanResult) => (r: { error: boolean; data: unknown; message: string | null }) => {
