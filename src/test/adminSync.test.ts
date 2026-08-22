@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 
 /**
  * Tests for admin sync registry mapping correctness.
@@ -225,8 +226,7 @@ describe("Admin Upload Flow — error surfacing and rollback", () => {
   it("loadJobs must not silently ignore errors", () => {
     // The old code had: catch { /* ignore */ }
     // Verify the current source does NOT have silent catch in loadJobs
-    const fs = require("fs");
-    const src = fs.readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
+    const src = readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
     // Extract the loadJobs function body
     const loadJobsMatch = src.match(/const loadJobs = async[^]*?setJobsLoading\(false\);\s*(?:return result;\s*)\};/);
     expect(loadJobsMatch).toBeTruthy();
@@ -239,8 +239,7 @@ describe("Admin Upload Flow — error surfacing and rollback", () => {
   });
 
   it("handleUpload has storage rollback on job insert failure", () => {
-    const fs = require("fs");
-    const src = fs.readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
+    const src = readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
     const uploadMatch = src.match(/const handleUpload = async[^]*?setUploading\(null\);\s*\};/);
     expect(uploadMatch).toBeTruthy();
     const body = uploadMatch![0];
@@ -251,8 +250,7 @@ describe("Admin Upload Flow — error surfacing and rollback", () => {
   });
 
   it("edge function allows owner in addition to admin", () => {
-    const fs = require("fs");
-    const src = fs.readFileSync("supabase/functions/territorial-import/index.ts", "utf-8");
+    const src = readFileSync("supabase/functions/territorial-import/index.ts", "utf-8");
     expect(src).toContain("owner_access");
     expect(src).toContain("Admin or owner required");
     // Must NOT have the old admin-only check
@@ -260,8 +258,7 @@ describe("Admin Upload Flow — error surfacing and rollback", () => {
   });
 
   it("debug trace state tracks all phases", () => {
-    const fs = require("fs");
-    const src = fs.readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
+    const src = readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
     // Verify debug trace captures upload, insert, and list phases
     expect(src).toContain("trace.uploadOk");
     expect(src).toContain("trace.insertJobOk");
@@ -271,8 +268,7 @@ describe("Admin Upload Flow — error surfacing and rollback", () => {
   });
 
   it("jobsError state is displayed inline above job list", () => {
-    const fs = require("fs");
-    const src = fs.readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
+    const src = readFileSync("src/pages/AdminSubMunicipal.tsx", "utf-8");
     expect(src).toContain("jobsError");
     expect(src).toContain("border-destructive");
   });

@@ -353,7 +353,7 @@ function parseAndNormalize(raw: string, comune?: string | null): ParsedAddress {
   const mainTokens = mainPart.split(/\s+/);
   if (mainTokens.length >= 2) {
     const last = mainTokens[mainTokens.length - 1];
-    if (/^\d+[a-zA-Z\/]*$/.test(last) || /^\d+\s*bis$/i.test(last)) {
+    if (/^\d+[a-zA-Z/]*$/.test(last) || /^\d+\s*bis$/i.test(last)) {
       houseNumber = last;
       mainTokens.pop();
       mainPart = mainTokens.join(" ");
