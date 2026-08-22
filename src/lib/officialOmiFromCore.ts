@@ -384,12 +384,12 @@ export function normalizePhotoWow(raw: unknown): PhotoWowResponse | null {
     territorialDocuments: Array.isArray(root.territorialDocuments) ? root.territorialDocuments as PhotoWowResponse["territorialDocuments"] : [],
     zonaIntelligence: (isPlainObject(root.zonaIntelligence)
       ? root.zonaIntelligence
-      : { notizieRecenti: [], puntiDiForzaNascosti: [], criticitaEmergenti: [], tendenzaMercato: "" }) as PhotoWowResponse["zonaIntelligence"],
+      : { notizieRecenti: [], puntiDiForzaNascosti: [], criticitaEmergenti: [], tendenzaMercato: "" }) as unknown as PhotoWowResponse["zonaIntelligence"],
     vendutoRecente: Array.isArray(root.vendutoRecente) ? root.vendutoRecente as PhotoWowResponse["vendutoRecente"] : [],
     mappaCaloreUrl: typeof root.mappaCaloreUrl === "string" ? root.mappaCaloreUrl : "",
     pianoEsclusiva: (isPlainObject(root.pianoEsclusiva)
       ? root.pianoEsclusiva
-      : { argomento: "", puntiChiave: [], obiezioniProbabili: [], stimaRapida: "" }) as PhotoWowResponse["pianoEsclusiva"],
+      : { argomento: "", puntiChiave: [], obiezioniProbabili: [], stimaRapida: "" }) as unknown as PhotoWowResponse["pianoEsclusiva"],
     qualita: (root.qualita === "ottima" || root.qualita === "buona" || root.qualita === "minima") ? root.qualita : "buona",
     tempoElaborazione: asFiniteNumber(root.tempoElaborazione) ?? 0,
     fontiUsate: Array.isArray(root.fontiUsate) ? root.fontiUsate.filter((x): x is string => typeof x === "string") : [],
