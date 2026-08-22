@@ -32,7 +32,9 @@ export async function getPhotoWow(
         },
         timeout: 60000,
       }),
-      signal: AbortSignal.timeout(65000),
+      signal: typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+        ? AbortSignal.timeout(65000)
+        : undefined,
     });
 
     if (!res.ok) {
