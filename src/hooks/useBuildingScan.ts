@@ -1,10 +1,11 @@
 import { useReducer, useState, useCallback, useRef } from "react";
 import { identifyBuilding, getPricing, getOffmarket, getZoneIntelligence, getListings, getCondominio, getStoricoTransazioni, getMoodScore, getEnergy, getNeighborhood, getPoiEnrichment } from "@/services/scan";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
-import { fetchProSources } from "@/services/proSources";
+import { fetchProSources, geocodeAddress } from "@/services/proSources";
 import { getPhotoWow } from "@/services/photoWow";
 import { supabase } from "@/integrations/supabase/client";
 import { mapScanToReportSections } from "@/lib/reportMapper";
+import { deriveGeoFromIdentify, type DerivedScanGeo } from "@/lib/deriveScanGeo";
 import { hasRenderableOfficialOmi, mergeOfficialOmiData, officialOmiFromCore } from "@/lib/officialOmiFromCore";
 import type { OmiZoneData, ScanResult, SectionState, IdentifyResult } from "@/types";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
@@ -108,49 +109,14 @@ function reducer(state: ScanResult, action: Action): ScanResult {
   }
 }
 
-function deriveGeoFromIdentify(
-  identifyData: IdentifyResult | null,
-  manualAddrInput: string | undefined,
-  lat: number,
-  lng: number,
-) {
-  const address = (manualAddrInput && manualAddrInput.trim()) || identifyData?.address || "";
-  const confidence = identifyData?.confidence ?? undefined;
-  const addrParts = address.split(",").map((s) => s.trim()).filter(Boolean);
-  const comuneFromAddr = addrParts.length >= 2 ? addrParts[addrParts.length - 2] : undefined;
-  const provinciaFromAddr = addrParts.length >= 1 ? addrParts[addrParts.length - 1] : undefined;
-
-  const identifyAny = (identifyData ?? {}) as unknown as Record<string, unknown>;
-  const geoRes = identifyAny.geoResolution as Record<string, unknown> | undefined;
-  const comuneFromIdentify = (geoRes?.resolvedComune as string | undefined)
-    ?? (identifyAny.comune as string | undefined)
-    ?? (typeof identifyData?.address === "string"
-      ? identifyData.address.split(",").slice(-2, -1)[0]?.trim()
-      : undefined)
-    ?? comuneFromAddr;
-  const provinciaFromIdentify = (geoRes?.resolvedProvincia as string | undefined)
-    ?? provinciaFromAddr;
-  const addressFromIdentify = (identifyAny.resolvedAddress as string | undefined)
-    ?? (geoRes?.resolvedAddress as string | undefined)
-    ?? identifyData?.address
-    ?? address;
-
-  const resolvedLat = (geoRes?.resolvedLat as number | undefined) ?? (identifyAny.resolvedLat as number | undefined);
-  const resolvedLng = (geoRes?.resolvedLng as number | undefined) ?? (identifyAny.resolvedLng as number | undefined);
-  const finalLat = ((!lat || lat === 0) && typeof resolvedLat === "number") ? resolvedLat : lat;
-  const finalLng = ((!lng || lng === 0) && typeof resolvedLng === "number") ? resolvedLng : lng;
-
-  return {
-    address,
-    confidence,
-    comuneFromAddr,
-    comuneFromIdentify,
-    provinciaFromIdentify,
-    addressFromIdentify,
-    finalLat,
-    finalLng,
-  };
-}
+const TERRITORIAL_MODULES: (keyof ScanResult)[] = [
+  "marketContext", "timeView", "opportunity",
+  "infrastrutture", "rischioZona", "trendDemografico",
+  "sviluppoArea", "convergenzaTerritoriale",
+  "poiEnrichment", "omiZone", "istatDemographic",
+  "subMunicipalMatch", "offmarket", "zoneIntelligence",
+  "moodScore", "neighborhood",
+];
 
 export function useBuildingScan() {
   const [result, dispatch] = useReducer(reducer, initialState);
@@ -201,10 +167,17 @@ export function useBuildingScan() {
       }
     };
 
+    const failClosedTerritorial = (message: string) => {
+      for (const k of TERRITORIAL_MODULES) {
+        set(k, { status: "error", data: null, message });
+      }
+      dispatch({ type: "OMI_UNAVAILABLE_IF_EMPTY", message });
+    };
+
     const launchOfficialModules = async (
       identifyData: IdentifyResult | null,
+      geo: DerivedScanGeo,
     ) => {
-      const geo = deriveGeoFromIdentify(identifyData, manualAddrInput, lat, lng);
       const {
         address, confidence, comuneFromAddr, comuneFromIdentify,
         provinciaFromIdentify, addressFromIdentify, finalLat, finalLng,
@@ -212,6 +185,25 @@ export function useBuildingScan() {
 
       for (const m of REPORT_MODULES) {
         set(m, { status: "loading", data: null, message: null });
+      }
+
+      if (finalLat == null || finalLng == null) {
+        failClosedTerritorial("Dati OMI non disponibili");
+        if (address) {
+          await Promise.allSettled([
+            getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing")),
+            getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy")),
+            ...(addressFromIdentify
+              ? [getStoricoTransazioni(addressFromIdentify, comuneFromIdentify).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni"))]
+              : []),
+          ]);
+          set("listings", { status: "idle", data: null, message: "Dati OMI non disponibili" });
+          set("condominio", { status: "idle", data: null, message: "Dati OMI non disponibili" });
+        } else {
+          idleAddressModules();
+        }
+        dispatch({ type: "MAP_REPORT", lat: null, lng: null });
+        return;
       }
 
       await Promise.allSettled([
@@ -270,8 +262,13 @@ export function useBuildingScan() {
       dispatch({ type: "MAP_REPORT", lat: finalLat, lng: finalLng });
     };
 
-    const runOfficialPipeline = async () => {
-      const idRes = await identifyBuilding(photo, lat, lng, manualAddrInput);
+    const runOfficialPipeline = async (
+      geocoded: { lat: number; lng: number } | null,
+    ): Promise<DerivedScanGeo | null> => {
+      const trimmedManual = manualAddrInput?.trim() ?? "";
+      const identifyLat = trimmedManual ? (geocoded?.lat ?? 0) : lat;
+      const identifyLng = trimmedManual ? (geocoded?.lng ?? 0) : lng;
+      const idRes = await identifyBuilding(photo, identifyLat, identifyLng, manualAddrInput);
       set("identify", {
         status: idRes.error ? "error" : "success",
         data: idRes.data,
@@ -292,7 +289,7 @@ export function useBuildingScan() {
             if (k === "identify" || k === "photoWow") continue;
             set(k, { status: "error", data: null, message: errMsg });
           }
-          return;
+          return null;
         }
 
         if (recordData?.limit_reached || recordData?.error) {
@@ -302,7 +299,7 @@ export function useBuildingScan() {
             set(k, { status: "error", data: null, message: errMsg });
           }
           setLimitReached(true);
-          return;
+          return null;
         }
       } catch (err) {
         console.error("[SCAN] record-scan failed:", err);
@@ -311,20 +308,35 @@ export function useBuildingScan() {
           if (k === "identify" || k === "photoWow") continue;
           set(k, { status: "error", data: null, message: errMsg });
         }
-        return;
+        return null;
       }
 
-      await launchOfficialModules((idRes.error || !idRes.data) ? null : (idRes.data as IdentifyResult));
+      const identifyData = (idRes.error || !idRes.data) ? null : (idRes.data as IdentifyResult);
+      const geo = deriveGeoFromIdentify(identifyData, manualAddrInput, lat, lng, geocoded);
+      await launchOfficialModules(identifyData, geo);
+      return geo;
     };
 
-    const runPhotoWow = async () => {
+    const runPhotoWow = async (
+      wowLat: number | null,
+      wowLng: number | null,
+      geoSource: "device" | "address",
+      addressForWow?: string,
+    ) => {
+      if (wowLat == null || wowLng == null) {
+        set("photoWow", { status: "error", data: null, message: "Posizione dell'indirizzo non disponibile" });
+        return;
+      }
       set("photoWow", { status: "loading", data: null, message: null });
       const PHOTO_WOW_TIMEOUT_MS = 30000;
       const photoWowTimeout = new Promise<{ error: true; message: string; data: null }>((res) =>
         setTimeout(() => res({ error: true, message: "Timeout anteprima visiva", data: null }), PHOTO_WOW_TIMEOUT_MS),
       );
       try {
-        const photoRes = await Promise.race([getPhotoWow(photo, lat, lng), photoWowTimeout]);
+        const photoRes = await Promise.race([
+          getPhotoWow(photo, wowLat, wowLng, geoSource, addressForWow),
+          photoWowTimeout,
+        ]);
         if (!photoRes.error && photoRes.data) {
           set("photoWow", { status: "success", data: photoRes.data, message: null });
           applyCoreOmi(photoRes.data, 2);
@@ -338,9 +350,26 @@ export function useBuildingScan() {
       }
     };
 
-    // Photo-first opener + official Sottra modules in parallel.
-    // photoWow is cinematic; official OMI/ISTAT/forecast fill the report.
-    await Promise.allSettled([runPhotoWow(), runOfficialPipeline()]);
+    const trimmedManual = manualAddrInput?.trim() ?? "";
+    const geocoded = trimmedManual ? await geocodeAddress(trimmedManual) : null;
+    const preGeo = deriveGeoFromIdentify(null, manualAddrInput, lat, lng, geocoded);
+    const wowSource: "device" | "address" = trimmedManual ? "address" : "device";
+
+    // Photo-first opener + official Sottra modules in parallel when coords are known.
+    // Typed address: geocode (or later identify) wins over indoor/device GPS.
+    if (preGeo.finalLat != null && preGeo.finalLng != null) {
+      await Promise.allSettled([
+        runPhotoWow(preGeo.finalLat, preGeo.finalLng, wowSource, trimmedManual || undefined),
+        runOfficialPipeline(geocoded),
+      ]);
+    } else {
+      const geo = await runOfficialPipeline(geocoded);
+      if (geo?.finalLat != null && geo.finalLng != null) {
+        await runPhotoWow(geo.finalLat, geo.finalLng, "address", trimmedManual || undefined);
+      } else {
+        await runPhotoWow(null, null, "address", trimmedManual || undefined);
+      }
+    }
 
     setScanning(false);
   }, []);
@@ -397,27 +426,47 @@ export function useBuildingScan() {
     }
 
     const currentIdentify = result.identify.data as IdentifyResult | null;
-    if (currentIdentify) {
+    const identifyForGeo = currentIdentify
+      ? { ...currentIdentify, address: manualAddr }
+      : null;
+    if (identifyForGeo) {
       set("identify", {
         status: "success",
-        data: { ...currentIdentify, address: manualAddr },
+        data: identifyForGeo,
         message: null,
       });
     }
 
-    const confidence = currentIdentify?.confidence ?? undefined;
+    const geocoded = await geocodeAddress(manualAddr);
+    const geo = deriveGeoFromIdentify(identifyForGeo, manualAddr, lat, lng, geocoded);
+    const { finalLat, finalLng, confidence } = geo;
+
+    if (finalLat == null || finalLng == null) {
+      for (const k of TERRITORIAL_MODULES) {
+        if (affectedModules.includes(k) || k === "omiZone" || k === "istatDemographic" || k === "poiEnrichment") {
+          set(k, { status: "error", data: null, message: "Dati OMI non disponibili" });
+        }
+      }
+      dispatch({ type: "OMI_UNAVAILABLE_IF_EMPTY", message: "Dati OMI non disponibili" });
+      await Promise.allSettled([
+        getPricing(manualAddr, photo).then(resolve("pricing")).catch(reject("pricing")),
+      ]);
+      dispatch({ type: "MAP_REPORT", lat: null, lng: null });
+      setRefining(false);
+      return;
+    }
 
     await Promise.allSettled([
       getPricing(manualAddr, photo).then(resolve("pricing")).catch(reject("pricing")),
-      getMarketContext(lat, lng, manualAddr).then(resolve("marketContext")).catch(reject("marketContext")),
-      getTimeView(lat, lng, 12).then(resolve("timeView")).catch(reject("timeView")),
-      getOpportunityIndex(lat, lng).then(resolve("opportunity")).catch(reject("opportunity")),
-      getInfrastrutture(lat, lng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
-      getRischioZona(lat, lng).then(resolve("rischioZona")).catch(reject("rischioZona")),
-      getTrendDemografico(lat, lng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
-      getSviluppoArea(lat, lng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
-      getConvergenzaTerritoriale(lat, lng, confidence, manualAddr).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
-      fetchProSources(lat, lng).then((proData) => {
+      getMarketContext(finalLat, finalLng, manualAddr).then(resolve("marketContext")).catch(reject("marketContext")),
+      getTimeView(finalLat, finalLng, 12).then(resolve("timeView")).catch(reject("timeView")),
+      getOpportunityIndex(finalLat, finalLng).then(resolve("opportunity")).catch(reject("opportunity")),
+      getInfrastrutture(finalLat, finalLng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
+      getRischioZona(finalLat, finalLng).then(resolve("rischioZona")).catch(reject("rischioZona")),
+      getTrendDemografico(finalLat, finalLng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
+      getSviluppoArea(finalLat, finalLng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
+      getConvergenzaTerritoriale(finalLat, finalLng, confidence, manualAddr).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
+      fetchProSources(finalLat, finalLng).then((proData) => {
         if (proData.poi) {
           set("poiEnrichment", { status: "success", data: proData.poi, message: null });
         }
@@ -434,7 +483,7 @@ export function useBuildingScan() {
       }),
     ]);
 
-    dispatch({ type: "MAP_REPORT", lat, lng });
+    dispatch({ type: "MAP_REPORT", lat: finalLat, lng: finalLng });
     setRefining(false);
   }, [result.identify.data]);
 

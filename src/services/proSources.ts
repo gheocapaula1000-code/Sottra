@@ -10,6 +10,41 @@ interface ProSourcesResult {
 }
 
 /**
+ * Forward-geocode a typed Italian address via pro-sources (Nominatim).
+ * Fail-closed: returns null on empty input, provider error, or invalid coords.
+ * Does not invent a location.
+ */
+export async function geocodeAddress(
+  address: string,
+): Promise<{ lat: number; lng: number } | null> {
+  const trimmed = address.trim();
+  if (trimmed.length < 3) return null;
+
+  try {
+    const { data, error } = await supabase.functions.invoke("pro-sources", {
+      body: { address: trimmed, modules: ["geocode"] },
+    });
+
+    if (error || !data || data.ok === false || !data.data) return null;
+
+    const raw = (data.data as Record<string, unknown>).geocode;
+    if (!raw || typeof raw !== "object") return null;
+    const g = raw as Record<string, unknown>;
+    if (g.sourceType === "unavailable") return null;
+
+    const lat = typeof g.lat === "number" ? g.lat : Number(g.lat);
+    const lng = typeof g.lng === "number" ? g.lng : Number(g.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (lat === 0 && lng === 0) return null;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+    return { lat, lng };
+  } catch (e) {
+    console.warn("[ProSources] geocode exception:", e);
+    return null;
+  }
+}
+
+/**
  * Fetch enrichment data from pro sources (Overpass POI, OMI, ISTAT).
  * Never throws — returns null for failed modules.
  */

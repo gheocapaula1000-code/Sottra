@@ -18,6 +18,8 @@ export async function getPhotoWow(
   photo: string,
   lat: number,
   lng: number,
+  geoSource: "device" | "address" = "device",
+  address?: string,
 ): Promise<{ error: boolean; message: string | null; data: PhotoWowResponse | null }> {
   try {
     const res = await fetch(CORE_PROXY_URL, {
@@ -28,8 +30,8 @@ export async function getPhotoWow(
         method: "POST",
         payload: {
           photo,
-          geo: { latitude: lat, longitude: lng, source: "device" },
-          quickFacts: {},
+          geo: { latitude: lat, longitude: lng, source: geoSource },
+          quickFacts: address && address.trim() ? { address: address.trim() } : {},
         },
         timeout: 60000,
       }),

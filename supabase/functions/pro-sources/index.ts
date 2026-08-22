@@ -113,6 +113,51 @@ async function identifyMunicipality(lat: number, lng: number): Promise<GeoIdenti
 }
 
 /* ══════════════════════════════════════════════════════
+   NOMINATIM — Forward geocode a typed Italian address
+   ══════════════════════════════════════════════════════ */
+
+async function forwardGeocode(address: string): Promise<Record<string, unknown>> {
+  try {
+    const q = /italia/i.test(address) ? address : `${address}, Italia`;
+    const searchUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=jsonv2&limit=1&countrycodes=it&addressdetails=1`;
+    const searchRes = await fetchT(searchUrl, 8000, { "User-Agent": "Sottra/1.0 (real-estate-analysis)" });
+
+    if (!searchRes.ok) {
+      const t = await searchRes.text();
+      log("nominatim forward error", `${searchRes.status}: ${t.slice(0, 100)}`);
+      return { sourceType: "unavailable", availabilityReason: "provider_unavailable", sourceLabel: "OpenStreetMap Nominatim" };
+    }
+
+    const searchData = await searchRes.json();
+    if (!Array.isArray(searchData) || searchData.length === 0) {
+      log("nominatim forward", "no results");
+      return { sourceType: "unavailable", availabilityReason: "no_match", sourceLabel: "OpenStreetMap Nominatim" };
+    }
+
+    const best = searchData[0] as Record<string, unknown>;
+    const lat = Number(best.lat);
+    const lng = Number(best.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
+      log("nominatim forward", "invalid coords");
+      return { sourceType: "unavailable", availabilityReason: "no_match", sourceLabel: "OpenStreetMap Nominatim" };
+    }
+
+    log("nominatim forward", `lat=${lat}, lng=${lng}`);
+    return {
+      lat,
+      lng,
+      displayName: typeof best.display_name === "string" ? best.display_name : null,
+      sourceType: "verified_geo",
+      sourceProvider: "nominatim",
+      sourceLabel: "OpenStreetMap Nominatim",
+    };
+  } catch (e) {
+    log("nominatim forward exception", String(e));
+    return { sourceType: "unavailable", availabilityReason: "provider_unavailable", sourceLabel: "OpenStreetMap Nominatim" };
+  }
+}
+
+/* ══════════════════════════════════════════════════════
    ISTAT — Real SDMX REST API query for demographic data
    ══════════════════════════════════════════════════════ */
 
@@ -801,15 +846,29 @@ serve(async (req) => {
 
     // Parse request
     const body = await req.json();
-    const { lat, lng, modules, radius = 800 } = body as {
-      lat: number; lng: number; modules?: string[]; radius?: number;
+    const { lat, lng, modules, radius = 800, address } = body as {
+      lat?: number; lng?: number; modules?: string[]; radius?: number; address?: string;
     };
+
+    const requestedModules = modules ?? ["poi", "omi", "istat"];
+
+    if (requestedModules.length === 1 && requestedModules[0] === "geocode") {
+      const addr = typeof address === "string" ? address.trim() : "";
+      log("request", `modules=geocode, address=${addr.slice(0, 80)}`);
+      if (addr.length < 3) {
+        return json({
+          ok: true,
+          data: { geocode: { sourceType: "unavailable", availabilityReason: "no_match", sourceLabel: "OpenStreetMap Nominatim" } },
+        });
+      }
+      const geocode = await forwardGeocode(addr);
+      return json({ ok: true, data: { geocode } });
+    }
 
     if (lat == null || lng == null) {
       return json({ error: "lat/lng required" }, 200);
     }
 
-    const requestedModules = modules ?? ["poi", "omi", "istat"];
     log("request", `modules=${requestedModules.join(",")}, lat=${lat}, lng=${lng}`);
 
     const results: Record<string, unknown> = {};
