@@ -2036,7 +2036,9 @@ const Result = () => {
         await navigator.clipboard.writeText(lines);
         toast({ title: "Copiato!", description: "Report copiato negli appunti." });
       }
-    } catch {}
+    } catch {
+      /* user cancelled share or clipboard unavailable */
+    }
   };
 
   // ── WOW Snapshot computation ──
