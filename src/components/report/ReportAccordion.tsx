@@ -3,12 +3,15 @@
  *
  * Wraps report content in accordion items with clear section headers.
  * Weak/fallback sections start closed; strong sections start open.
- * Empty shells (null / empty children, or a card that renders nothing) are omitted.
+ *
+ * Empty modules must be gated on data BEFORE this component mounts
+ * (see PublishableAccordionItem / shouldRenderAccordion). Do not probe the DOM.
  */
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
+import { shouldRenderAccordion } from "@/lib/reportSectionPublishable";
 
 interface ReportAccordionItemProps {
   id: string;
@@ -36,12 +39,18 @@ export function isEmptyAccordionChildren(children: React.ReactNode): boolean {
   });
 }
 
-/** True when a mounted accordion body has real UI (text, media, or a loading skeleton). */
-export function hasMeaningfulAccordionDom(root: ParentNode): boolean {
-  if (!(root instanceof Element)) return (root.textContent ?? "").replace(/\u00a0/g, " ").trim().length > 0;
-  if (root.querySelector(".animate-pulse")) return true;
-  if (root.querySelector("img, svg, canvas, video, iframe, audio, input, textarea, select")) return true;
-  return (root.textContent ?? "").replace(/\u00a0/g, " ").trim().length > 0;
+/**
+ * Tendina that is omitted entirely when the module is finished and unpublished.
+ * Loading may keep the title visible; empty results unmount title + chevron.
+ */
+export function PublishableAccordionItem({
+  loading = false,
+  publishable,
+  children,
+  ...props
+}: ReportAccordionItemProps & { loading?: boolean; publishable: boolean }) {
+  if (!shouldRenderAccordion(loading, publishable)) return null;
+  return <ReportAccordionItem {...props}>{children}</ReportAccordionItem>;
 }
 
 export function ReportAccordionItem({
@@ -53,26 +62,8 @@ export function ReportAccordionItem({
   children,
 }: ReportAccordionItemProps) {
   const [open, setOpen] = React.useState(defaultOpen);
-  const [showShell, setShowShell] = React.useState(true);
-  const contentRef = React.useRef<HTMLDivElement>(null);
 
-  const staticallyEmpty = isEmptyAccordionChildren(children);
-
-  React.useLayoutEffect(() => {
-    if (staticallyEmpty) return;
-    const el = contentRef.current;
-    setShowShell(!!el && hasMeaningfulAccordionDom(el));
-  });
-
-  if (staticallyEmpty) return null;
-  if (!showShell) {
-    // Keep children mounted (hidden) so a later non-null card can reveal the tendina.
-    return (
-      <div hidden aria-hidden className="hidden">
-        <div ref={contentRef}>{children}</div>
-      </div>
-    );
-  }
+  if (isEmptyAccordionChildren(children)) return null;
 
   return (
     <div className={cn(
@@ -114,7 +105,7 @@ export function ReportAccordionItem({
           open ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0",
         )}
       >
-        <div ref={contentRef} className="px-5 pb-5 pt-0">
+        <div className="px-5 pb-5 pt-0">
           {children}
         </div>
       </div>
