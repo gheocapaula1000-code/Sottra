@@ -98,6 +98,7 @@ import { useBuildingScan } from "@/hooks/useBuildingScan";
 
 describe("useBuildingScan", () => {
   beforeEach(() => {
+    mockInvoke.mockClear();
     identifyBuilding.mockClear();
     getPricing.mockClear();
     unusedScan.mockClear();
@@ -408,5 +409,34 @@ describe("useBuildingScan", () => {
     expect(geocodeAddress).toHaveBeenCalledWith(expect.stringContaining("Via San Francesco"));
     expect(fetchProSources).toHaveBeenCalledWith(45.407, 11.876);
     expect(fetchProSources).not.toHaveBeenCalledWith(45.0, 9.0);
+  });
+
+  it("refresh reloads official modules without consuming a scan credit", async () => {
+    const { result } = renderHook(() => useBuildingScan());
+
+    await act(async () => {
+      await result.current.scan("base64photo", 45.41, 11.87);
+    });
+
+    expect(mockInvoke).toHaveBeenCalledWith("record-scan", expect.anything());
+    expect(result.current.result.photoWow?.status).toBe("success");
+
+    fetchProSources.mockClear();
+    getPhotoWow.mockClear();
+    identifyBuilding.mockClear();
+    mockInvoke.mockClear();
+
+    await act(async () => {
+      await result.current.refresh("base64photo", 45.41, 11.87);
+    });
+
+    expect(mockInvoke).not.toHaveBeenCalled();
+    expect(identifyBuilding).toHaveBeenCalledWith("base64photo", 45.41, 11.87, undefined);
+    expect(fetchProSources).toHaveBeenCalledWith(45.41, 11.87);
+    expect(getPhotoWow).toHaveBeenCalled();
+    expect(result.current.scanning).toBe(false);
+    expect(result.current.result.photoWow?.status).toBe("success");
+    expect(result.current.result.omiZone.status).toBe("success");
+    expect(result.current.result.omiZone.data?.comuneLabel).toBe("Padova");
   });
 });

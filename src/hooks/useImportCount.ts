@@ -4,34 +4,32 @@
  * This is used for optional UI hints (e.g. dashboard quick action).
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export function useImportCount(): { count: number; loading: boolean } {
+export function useImportCount(): { count: number; loading: boolean; refetch: () => Promise<void> } {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
+  const refetch = useCallback(async () => {
+    try {
+      const { count: total, error } = await supabase
+        .from("keydraft_imports" as never)
+        .select("id", { count: "exact", head: true });
 
-    (async () => {
-      try {
-        const { count: total, error } = await supabase
-          .from("keydraft_imports" as never)
-          .select("id", { count: "exact", head: true });
-
-        if (!cancelled && !error) {
-          setCount(total ?? 0);
-        }
-      } catch {
-        // Silently fail — imports are optional
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (!error) {
+        setCount(total ?? 0);
       }
-    })();
-
-    return () => { cancelled = true; };
+    } catch {
+      // Silently fail — imports are optional
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { count, loading };
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  return { count, loading, refetch };
 }

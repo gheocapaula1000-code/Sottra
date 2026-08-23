@@ -119,6 +119,13 @@ const TERRITORIAL_MODULES: (keyof ScanResult)[] = [
   "moodScore", "neighborhood",
 ];
 
+export type ScanOptions = {
+  /** Default true. Pull-to-refresh must pass false so a reload does not charge another credit. */
+  consumeCredit?: boolean;
+  /** Keep current section data until replacements arrive (photo wow / empty tendine stay). */
+  preserveExisting?: boolean;
+};
+
 export function useBuildingScan() {
   const [result, dispatch] = useReducer(reducer, initialState);
   const [scanning, setScanning] = useState(false);
@@ -130,13 +137,23 @@ export function useBuildingScan() {
   /** Highest official-OMI precedence applied so far (Core official > generic pricing). */
   const omiPriorityRef = useRef(0);
 
-  const scan = useCallback(async (photo: string, lat: number, lng: number, manualAddrInput?: string) => {
+  const scan = useCallback(async (
+    photo: string,
+    lat: number,
+    lng: number,
+    manualAddrInput?: string,
+    options?: ScanOptions,
+  ) => {
+    const consumeCredit = options?.consumeCredit !== false;
+    const preserveExisting = options?.preserveExisting === true;
     const scanId = crypto.randomUUID();
     scanIdRef.current = scanId;
     omiPriorityRef.current = 0;
 
-    setScanning(true);
-    dispatch({ type: "START_SCAN" });
+    if (!preserveExisting) {
+      setScanning(true);
+      dispatch({ type: "START_SCAN" });
+    }
     if (manualAddrInput && manualAddrInput.trim()) {
       setManualAddress({ via: manualAddrInput.trim(), civico: "", cap: "", comune: "", provincia: "" });
     }
@@ -184,8 +201,10 @@ export function useBuildingScan() {
         provinciaFromIdentify, addressFromIdentify, finalLat, finalLng,
       } = geo;
 
-      for (const m of REPORT_MODULES) {
-        set(m, { status: "loading", data: null, message: null });
+      if (!preserveExisting) {
+        for (const m of REPORT_MODULES) {
+          set(m, { status: "loading", data: null, message: null });
+        }
       }
 
       if (finalLat == null || finalLng == null) {
@@ -281,40 +300,41 @@ export function useBuildingScan() {
         message: idRes.message,
       });
 
-      // Consume a scan credit whenever we are about to fill official modules
-      // (GPS-based OMI/ISTAT still produce a report if identify fails).
-      try {
-        const { data: recordData, error: recordError } = await supabase.functions.invoke("record-scan", {
-          body: { scan_id: scanId },
-        });
+      // Consume a scan credit only on a new scan — pull-to-refresh reuses the same photo + address/GPS.
+      if (consumeCredit) {
+        try {
+          const { data: recordData, error: recordError } = await supabase.functions.invoke("record-scan", {
+            body: { scan_id: scanId },
+          });
 
-        if (recordError) {
-          console.error("[SCAN] record-scan invocation error:", recordError);
-          const errMsg = "Errore durante la registrazione della scansione. Riprova.";
+          if (recordError) {
+            console.error("[SCAN] record-scan invocation error:", recordError);
+            const errMsg = "Errore durante la registrazione della scansione. Riprova.";
+            for (const k of MODULES) {
+              if (k === "identify" || k === "photoWow") continue;
+              set(k, { status: "error", data: null, message: errMsg });
+            }
+            return null;
+          }
+
+          if (recordData?.limit_reached || recordData?.error) {
+            const errMsg = recordData?.error ?? "Limite scansioni raggiunto";
+            for (const k of MODULES) {
+              if (k === "identify" || k === "photoWow") continue;
+              set(k, { status: "error", data: null, message: errMsg });
+            }
+            setLimitReached(true);
+            return null;
+          }
+        } catch (err) {
+          console.error("[SCAN] record-scan failed:", err);
+          const errMsg = "Servizio temporaneamente non disponibile. Riprova.";
           for (const k of MODULES) {
             if (k === "identify" || k === "photoWow") continue;
             set(k, { status: "error", data: null, message: errMsg });
           }
           return null;
         }
-
-        if (recordData?.limit_reached || recordData?.error) {
-          const errMsg = recordData?.error ?? "Limite scansioni raggiunto";
-          for (const k of MODULES) {
-            if (k === "identify" || k === "photoWow") continue;
-            set(k, { status: "error", data: null, message: errMsg });
-          }
-          setLimitReached(true);
-          return null;
-        }
-      } catch (err) {
-        console.error("[SCAN] record-scan failed:", err);
-        const errMsg = "Servizio temporaneamente non disponibile. Riprova.";
-        for (const k of MODULES) {
-          if (k === "identify" || k === "photoWow") continue;
-          set(k, { status: "error", data: null, message: errMsg });
-        }
-        return null;
       }
 
       const identifyData = (idRes.error || !idRes.data) ? null : (idRes.data as IdentifyResult);
@@ -333,7 +353,9 @@ export function useBuildingScan() {
         set("photoWow", { status: "error", data: null, message: "Posizione dell'indirizzo non disponibile" });
         return;
       }
-      set("photoWow", { status: "loading", data: null, message: null });
+      if (!preserveExisting) {
+        set("photoWow", { status: "loading", data: null, message: null });
+      }
       const PHOTO_WOW_TIMEOUT_MS = 30000;
       const photoWowTimeout = new Promise<{ error: true; message: string; data: null }>((res) =>
         setTimeout(() => res({ error: true, message: "Timeout anteprima visiva", data: null }), PHOTO_WOW_TIMEOUT_MS),
@@ -377,8 +399,19 @@ export function useBuildingScan() {
       }
     }
 
-    setScanning(false);
+    if (!preserveExisting) setScanning(false);
   }, []);
+
+  /**
+   * Reload the current report with the same photo + address/GPS.
+   * Does not consume a scan credit and does not wipe existing sections first.
+   */
+  const refresh = useCallback((
+    photo: string,
+    lat: number,
+    lng: number,
+    manualAddrInput?: string,
+  ) => scan(photo, lat, lng, manualAddrInput, { consumeCredit: false, preserveExisting: true }), [scan]);
 
   /**
    * Refine territorial data using a manually provided address.
@@ -506,6 +539,7 @@ export function useBuildingScan() {
     limitReached,
     manualAddress,
     scan,
+    refresh,
     refineAddress,
     scanId: scanIdRef.current,
     restoreResult,
