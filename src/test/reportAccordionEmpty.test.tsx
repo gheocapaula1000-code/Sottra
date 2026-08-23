@@ -139,6 +139,7 @@ describe("shouldRenderAccordion + publishability", () => {
   it("does not treat leftover dash / non disponibile copy as content", () => {
     expect(isMeaningfulCopy("—")).toBe(false);
     expect(isMeaningfulCopy("non disponibile")).toBe(false);
+    expect(isMeaningfulCopy("Segnali non disponibili")).toBe(false);
     expect(isMeaningfulCopy("APE non disponibile")).toBe(false);
     expect(isMeaningfulCopy("Est")).toBe(true);
   });

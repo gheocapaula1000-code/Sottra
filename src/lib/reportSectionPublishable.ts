@@ -63,7 +63,7 @@ export function isMeaningfulCopy(value: unknown): boolean {
   if (/^[—–−-]+$/.test(trimmed)) return false;
   const lower = trimmed.toLowerCase();
   if (lower === "n/d" || lower === "n.d." || lower === "nd") return false;
-  if (/\bnon disponibile\b/.test(lower)) return false;
+  if (/\bnon disponibil[ei]\b/.test(lower)) return false;
   return true;
 }
 
