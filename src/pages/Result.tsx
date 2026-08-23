@@ -1,5 +1,6 @@
-import { useEffect, useRef, Component, type ReactNode, type ErrorInfo } from "react";
+import { useCallback, useEffect, useRef, Component, type ReactNode, type ErrorInfo } from "react";
 import AppHeader from "@/components/AppHeader";
+import PullToRefresh from "@/components/PullToRefresh";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Bookmark, TrendingUp, Users, Rocket, Construction, AlertTriangle, MapPin, Compass, Target, Eye, ShieldCheck, TriangleAlert, Layers, Camera, CheckCircle2, BarChart3, Gem, Zap, Wrench, Share2 } from "lucide-react";
 import { useScanHistory, compressToThumbnail, serializeResult } from "@/contexts/ScanHistoryContext";
@@ -29,7 +30,7 @@ import {
   PrioritaCriticitaCard,
 } from "@/components/report/ReportSections";
 import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/types/report";
-import AddressOverrideForm from "@/components/AddressOverrideForm";
+import AddressOverrideForm, { formatManualAddress } from "@/components/AddressOverrideForm";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
 import { GeoLevelHeroBanner, ReportAccordionItem, resolveReportGeoStatus } from "@/components/report/ReportAccordion";
 import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib/zoneValueEngine";
@@ -1915,7 +1916,7 @@ const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as ResultState | null;
-  const { result, scanning, refining, manualAddress, scan, refineAddress, restoreResult, forceShowResult, setForceShowResult } = useBuildingScan();
+  const { result, scanning, refining, manualAddress, scan, refresh, refineAddress, restoreResult, forceShowResult, setForceShowResult } = useBuildingScan();
   const { saveScan } = useScanHistory();
   const { toast } = useToast();
   const started = useRef(false);
@@ -1940,6 +1941,12 @@ const Result = () => {
     devLog("identify start", { lat: state!.lat, lng: state!.lng });
     scan(state!.photo, state!.lat!, state!.lng!, state?.manualAddress);
   }, [state, scan, restoreResult, hasValidPhoto, hasValidCoords, hasSavedResult]);
+
+  const handlePullRefresh = useCallback(async () => {
+    if (!state?.photo) return;
+    const address = manualAddress ? formatManualAddress(manualAddress) : state.manualAddress;
+    await refresh(state.photo, state.lat ?? 0, state.lng ?? 0, address);
+  }, [state, manualAddress, refresh]);
 
   if (!hasValidPhoto) {
     return (
@@ -2090,7 +2097,7 @@ const Result = () => {
   });
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <AppHeader rightContent={
         <>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/scan")} aria-label="Indietro">
@@ -2100,7 +2107,7 @@ const Result = () => {
         </>
       } />
 
-      <div className="flex-1 overflow-y-auto">
+      <PullToRefresh onRefresh={handlePullRefresh} disabled={scanning || refining}>
         <div className="space-y-3 px-4 sm:px-5 pb-32 pt-2">
           {/* Identify error gate rimosso: il pipeline civiko-property-from-photo
               gestisce autonomamente la qualità foto con fallback sicuro
@@ -2339,7 +2346,7 @@ const Result = () => {
             </>
           )}
         </div>
-      </div>
+      </PullToRefresh>
 
       {/* Share Report Button */}
       <button

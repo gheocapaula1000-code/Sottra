@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { useImportCount } from "@/hooks/useImportCount";
 import AppHeader from "@/components/AppHeader";
+import PullToRefresh from "@/components/PullToRefresh";
 
 import {
   ScanLine,
@@ -31,10 +32,14 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { subscribed, trial, isAdmin, isOwner, subscriptionStatus, cancelAtPeriodEnd, planKey, canManageBilling } = useSubscription();
+  const { subscribed, trial, isAdmin, isOwner, subscriptionStatus, cancelAtPeriodEnd, planKey, canManageBilling, refresh } = useSubscription();
   const { toast } = useToast();
   const { scans } = useScanHistory();
-  const { count: importCount } = useImportCount();
+  const { count: importCount, refetch: refetchImports } = useImportCount();
+
+  const handlePullRefresh = async () => {
+    await Promise.all([refresh(), refetchImports()]);
+  };
 
   const handleManageSubscription = async () => {
     try {
@@ -69,7 +74,7 @@ const Dashboard = () => {
       : "Attivo";
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
       {/* ── Header ── */}
       <AppHeader rightContent={
         <>
@@ -94,7 +99,8 @@ const Dashboard = () => {
       } />
 
       {/* ── Main ── */}
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-8 pb-safe space-y-6">
+      <PullToRefresh onRefresh={handlePullRefresh}>
+      <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-8 pb-safe space-y-6">
 
         {/* ── Title row + CTA ── */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -277,6 +283,7 @@ const Dashboard = () => {
           </div>
         </div>
       </main>
+      </PullToRefresh>
     </div>
   );
 };

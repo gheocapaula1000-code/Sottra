@@ -3,10 +3,10 @@ import { ArrowLeft, Search, Trash2, Camera, MapPin, AlertTriangle, Cloud } from 
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
+import PullToRefresh from "@/components/PullToRefresh";
 
 interface CloudScan {
   id: string;
@@ -34,7 +34,7 @@ const History = () => {
   const navigate = useNavigate();
   const { scans, clearAll, removeScan } = useScanHistory();
 
-  const { data: cloudScans = [] } = useQuery<CloudScan[]>({
+  const { data: cloudScans = [], refetch: refetchCloud } = useQuery<CloudScan[]>({
     queryKey: ["sottra-cloud-scans"],
     queryFn: async () => {
       const { data } = await (supabase as unknown as {
@@ -81,7 +81,7 @@ const History = () => {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <AppHeader rightContent={
         <>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)} aria-label="Indietro">
@@ -95,7 +95,7 @@ const History = () => {
         </>
       } />
 
-      <ScrollArea className="flex-1">
+      <PullToRefresh onRefresh={async () => { await refetchCloud(); }}>
         <div className="px-5 pb-10 pb-safe pt-4 space-y-4">
           <div>
             <h1 className="text-xl font-bold text-foreground tracking-tight">Cronologia</h1>
@@ -219,7 +219,7 @@ const History = () => {
             ))
           )}
         </div>
-      </ScrollArea>
+      </PullToRefresh>
     </div>
   );
 };
