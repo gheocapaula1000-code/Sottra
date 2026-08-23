@@ -2,15 +2,17 @@ import { useEffect, useState } from "react";
 import { MapPin, Crosshair, Hash, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { GEO_GATE_PROMPT_OPTIONS, requestGeolocation } from "@/lib/requestGeolocation";
 
-type GeoStatus = "checking" | "granted" | "denied" | "unavailable";
+type GeoStatus = "idle" | "granted" | "failed" | "unavailable";
 
 interface CaptureGateProps {
   onContinue: () => void;
 }
 
 export default function CaptureGate({ onContinue }: CaptureGateProps) {
-  const [geoStatus, setGeoStatus] = useState<GeoStatus>("checking");
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
+  const [locating, setLocating] = useState(false);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -18,40 +20,59 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
       return;
     }
 
-    // Check permissions API if available
-    if (navigator.permissions) {
-      navigator.permissions.query({ name: "geolocation" }).then((perm) => {
+    // Permissions API is advisory only. On iOS Safari / Home Screen PWA it often
+    // reports "denied" before the user was asked — never lock Continua on it.
+    if (!navigator.permissions?.query) return;
+
+    navigator.permissions
+      .query({ name: "geolocation" })
+      .then((perm) => {
         if (perm.state === "granted") setGeoStatus("granted");
-        else if (perm.state === "denied") setGeoStatus("denied");
-        else setGeoStatus("checking"); // prompt — we'll show as neutral
 
         perm.addEventListener("change", () => {
           if (perm.state === "granted") setGeoStatus("granted");
-          else if (perm.state === "denied") setGeoStatus("denied");
-          else setGeoStatus("checking");
         });
-      }).catch(() => {
-        // permissions API not supported for geolocation on this browser
-        setGeoStatus("checking");
+      })
+      .catch(() => {
+        // permissions.query is unsupported or throws for geolocation — ignore.
       });
-    } else {
-      setGeoStatus("checking");
-    }
   }, []);
 
-  const _geoOk = geoStatus === "granted" || geoStatus === "checking";
-  const geoDenied = geoStatus === "denied" || geoStatus === "unavailable";
+  const requestDeviceLocation = () =>
+    requestGeolocation(GEO_GATE_PROMPT_OPTIONS)
+      .then(() => {
+        setGeoStatus("granted");
+      })
+      .catch(() => {
+        setGeoStatus((prev) => (prev === "granted" ? prev : navigator.geolocation ? "failed" : "unavailable"));
+      });
+
+  const handleUseMyLocation = () => {
+    if (locating) return;
+    setLocating(true);
+    void requestDeviceLocation().finally(() => {
+      setLocating(false);
+    });
+  };
+
+  const handleContinue = () => {
+    // User gesture: trigger the real iOS prompt, then go to camera regardless.
+    void requestDeviceLocation();
+    onContinue();
+  };
+
+  const geoFailed = geoStatus === "failed" || geoStatus === "unavailable";
 
   const checks: { icon: React.ReactNode; label: string; sublabel: string; status: "ok" | "warn" | "neutral" }[] = [
     {
       icon: <MapPin className="h-5 w-5" />,
       label: "Geolocalizzazione attiva",
-      sublabel: geoDenied
-        ? "Attivala nelle impostazioni del browser"
-        : geoStatus === "granted"
-          ? "Posizione disponibile"
-          : "Verrà richiesta al momento dello scatto",
-      status: geoStatus === "granted" ? "ok" : geoDenied ? "warn" : "neutral",
+      sublabel: geoStatus === "granted"
+        ? "Posizione disponibile"
+        : geoFailed
+          ? "Puoi continuare e inserire l'indirizzo"
+          : "Tocca Continua o Usa la mia posizione. Puoi anche inserire l'indirizzo.",
+      status: geoStatus === "granted" ? "ok" : geoFailed ? "warn" : "neutral",
     },
     {
       icon: <Crosshair className="h-5 w-5" />,
@@ -114,26 +135,29 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
           ))}
         </div>
 
-        {/* CTA */}
+        {/* CTA — never locked by Permissions API denied/prompt */}
         <Button
-          onClick={onContinue}
-          disabled={geoDenied}
+          onClick={handleContinue}
           size="lg"
           className="w-full min-h-[52px] text-base font-semibold"
         >
-          {geoDenied ? (
-            <>Attiva la geolocalizzazione per continuare</>
-          ) : (
-            <>
-              Continua allo scatto
-              <ChevronRight className="h-5 w-5 ml-1" />
-            </>
-          )}
+          Continua allo scatto
+          <ChevronRight className="h-5 w-5 ml-1" />
         </Button>
 
-        {geoDenied && (
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={handleUseMyLocation}
+          disabled={locating}
+          className="w-full mt-2 min-h-[44px] text-sm font-medium"
+        >
+          {locating ? "Richiesta posizione…" : "Usa la mia posizione"}
+        </Button>
+
+        {geoFailed && (
           <p className="text-xs text-muted-foreground/70 text-center mt-3 leading-relaxed">
-            Vai nelle impostazioni del browser, consenti la posizione per questo sito e ricarica la pagina.
+            Posizione non disponibile. Puoi continuare e inserire l'indirizzo.
           </p>
         )}
       </div>
