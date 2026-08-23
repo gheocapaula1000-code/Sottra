@@ -2119,7 +2119,6 @@ const Result = () => {
     pricing: result.pricing,
   });
 
-  const pricingData = result.pricing.data as PricingData | null;
   const marketData = result.marketContext.data as MarketContextData | null;
   const facciataData = result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null;
   const contestoData = result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null;
