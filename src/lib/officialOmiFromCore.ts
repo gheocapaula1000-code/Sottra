@@ -78,7 +78,7 @@ export function unwrapCoreEnvelope(raw: unknown): Record<string, unknown> | null
 
 function parseOmiCode(label: string | null): string | null {
   if (!label) return null;
-  const omi = label.match(/\bOMI\s*[:\-]?\s*([A-Z]\d{1,2})\b/i);
+  const omi = label.match(/\bOMI\s*[:-]?\s*([A-Z]\d{1,2})\b/i);
   if (omi) return omi[1].toUpperCase();
   const bare = label.match(/\b([A-Z]\d{1,2})\b/);
   return bare ? bare[1].toUpperCase() : null;
