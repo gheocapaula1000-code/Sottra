@@ -28,12 +28,26 @@ export interface StreetEvidence {
   photoAnalysis?: PhotoAnalysis;
 }
 
+/** Optional geo payload from Core identify when it geocodes a typed address */
+export interface IdentifyGeoResolution {
+  resolvedLat?: number;
+  resolvedLng?: number;
+  resolvedComune?: string;
+  resolvedProvincia?: string;
+  resolvedAddress?: string;
+}
+
 /** Dati identificazione edificio */
 export interface IdentifyResult {
   address: string;
   buildingId: string;
   confidence: number;
   streetEvidence?: StreetEvidence;
+  resolvedLat?: number;
+  resolvedLng?: number;
+  resolvedAddress?: string;
+  comune?: string;
+  geoResolution?: IdentifyGeoResolution;
 }
 
 /** Source provider identifiers */
