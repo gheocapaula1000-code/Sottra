@@ -54,27 +54,54 @@ describe("data-gated accordion titles", () => {
     expect(container.querySelector("button")).toBeNull();
   });
 
-  it("omits title for null/unavailable modules (condominio, APE, off-market, atti)", () => {
-    render(
+  it("hides only the empty modules on that scan — not a permanent hide-list", () => {
+    const padovaOmi: OmiZoneData = {
+      sourceType: "official",
+      zonaOmi: "D8",
+      zonaOmiLabel: "Est",
+      comuneLabel: "Padova",
+      quotazioneMinResidenziale: 1850,
+      quotazioneMaxResidenziale: 2400,
+    };
+    const { rerender } = render(
       <>
+        <PublishableAccordionItem id="omi" title="Quotazioni OMI" loading={false} publishable={isOmiPublishable(padovaOmi)}>
+          <p>Est D8</p>
+        </PublishableAccordionItem>
         <PublishableAccordionItem id="condominio" title="Condominio" loading={false} publishable={isCondominioPublishable(null)}>
           <EmptyCard />
         </PublishableAccordionItem>
-        <PublishableAccordionItem id="energy" title="Profilo energetico stimato" loading={false} publishable={isEnergyPublishable({ sourceType: "unavailable" })}>
+        <PublishableAccordionItem id="istat" title="Dati Demografici" loading={false} publishable={isIstatPublishable({ popolazione: null })}>
           <EmptyCard />
         </PublishableAccordionItem>
-        <PublishableAccordionItem id="offmarket" title="Segnali Off-Market" loading={false} publishable={isOffmarketPublishable({ totale: 0, segnali: [], opportunita: [] })}>
-          <EmptyCard />
-        </PublishableAccordionItem>
-        <PublishableAccordionItem id="atti" title="Storico transazioni" loading={false} publishable={isStoricoPublishable({ totale: 0, transazioni: [] })}>
+        <PublishableAccordionItem id="poi" title="Servizi e POI" loading={false} publishable={isPoiPublishable({ totalPois: 0, categories: [], pois: [], searchRadius: 800 })}>
           <EmptyCard />
         </PublishableAccordionItem>
       </>,
     );
+    expect(screen.getByText("Quotazioni OMI")).toBeInTheDocument();
     expect(screen.queryByText("Condominio")).not.toBeInTheDocument();
-    expect(screen.queryByText("Profilo energetico stimato")).not.toBeInTheDocument();
-    expect(screen.queryByText("Segnali Off-Market")).not.toBeInTheDocument();
-    expect(screen.queryByText("Storico transazioni")).not.toBeInTheDocument();
+
+    rerender(
+      <>
+        <PublishableAccordionItem id="omi" title="Quotazioni OMI" loading={false} publishable={isOmiPublishable({ sourceType: "unavailable" })}>
+          <EmptyCard />
+        </PublishableAccordionItem>
+        <PublishableAccordionItem id="condominio" title="Condominio" loading={false} publishable={isCondominioPublishable({ amministratore: "Studio Rossi", numero_unita: 12 })}>
+          <p>Studio Rossi</p>
+        </PublishableAccordionItem>
+        <PublishableAccordionItem id="istat" title="Dati Demografici" loading={false} publishable={isIstatPublishable({ popolazione: 48200, sourceType: "official" })}>
+          <p>48.200 abitanti</p>
+        </PublishableAccordionItem>
+        <PublishableAccordionItem id="poi" title="Servizi e POI" loading={false} publishable={isPoiPublishable({ totalPois: 0, categories: [], pois: [], searchRadius: 800 })}>
+          <EmptyCard />
+        </PublishableAccordionItem>
+      </>,
+    );
+    expect(screen.queryByText("Quotazioni OMI")).not.toBeInTheDocument();
+    expect(screen.getByText("Condominio")).toBeInTheDocument();
+    expect(screen.getByText("Dati Demografici")).toBeInTheDocument();
+    expect(screen.queryByText("Servizi e POI")).not.toBeInTheDocument();
   });
 
   it("still shows Quotazioni OMI when official zone prices exist", () => {
@@ -170,11 +197,18 @@ describe("shouldRenderAccordion + publishability", () => {
     expect(isFontiPublishable(null)).toBe(false);
   });
 
-  it("never publishes empty condominio / APE / off-market / atti", () => {
+  it("publishes condominio / APE / off-market / atti only when that scan has real data", () => {
     expect(isCondominioPublishable(null)).toBe(false);
     expect(isCondominioPublishable({ amministratore: "non disponibile" })).toBe(false);
+    expect(isCondominioPublishable({ amministratore: "Studio Rossi", numero_unita: 12 })).toBe(true);
+
     expect(isEnergyPublishable({ classeEnergetica: "—", sourceType: "estimate" })).toBe(false);
+    expect(isEnergyPublishable({ classeEnergetica: "D", epglKwhM2Anno: 180, sourceType: "estimate" })).toBe(true);
+
     expect(isOffmarketPublishable({ totale: 0, segnali: [], opportunita: ["Segnali non disponibili"] })).toBe(false);
+    expect(isOffmarketPublishable({ totale: 1, segnali: [{ tipo: "asta", titolo: "Asta via Roma" }] })).toBe(true);
+
     expect(isStoricoPublishable({ totale: 0, transazioni: [] })).toBe(false);
+    expect(isStoricoPublishable({ totale: 2, transazioni: [{ prezzo: 240000 }] })).toBe(true);
   });
 });

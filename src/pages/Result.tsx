@@ -2223,7 +2223,7 @@ const Result = () => {
               <SectionSafe><ProfiloRapidoCard data={result.profiloRapido.data as import("@/types/report").ProfiloRapidoData | null} loading={result.profiloRapido.status === "loading"} /></SectionSafe>
               <SectionSafe><HouseDifferentiationCard diff={houseDiff} loading={scanning} /></SectionSafe>
 
-              {/* ═══ ACCORDION SECTIONS — Mobile-first collapsible ═══ */}
+              {/* Accordion tendine: title only when THIS scan has data for that section. */}
 
               {/* Zona OMI — open when zone prices exist */}
               <SectionSafe>

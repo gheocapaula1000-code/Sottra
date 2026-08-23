@@ -40,8 +40,9 @@ export function isEmptyAccordionChildren(children: React.ReactNode): boolean {
 }
 
 /**
- * Tendina that is omitted entirely when the module is finished and unpublished.
- * Loading may keep the title visible; empty results unmount title + chevron.
+ * Tendina gated on this scan's data: publishable → title; empty → nothing.
+ * Not a permanent hide-list — the same section can appear on the next scan.
+ * Loading may keep the title visible; an empty finished module unmounts it.
  */
 export function PublishableAccordionItem({
   loading = false,

@@ -1,8 +1,12 @@
 /**
- * Data-first gates for /result accordion tendine.
+ * Per-scan gates for /result accordion tendine.
  *
- * A section is publishable only when the matching card would render real content.
- * Gate BEFORE mounting ReportAccordionItem — do not sniff the DOM after.
+ * Rule: if THIS scan has renderable data for a section, show the title.
+ * If that section is empty on THIS scan, show nothing (no title, no chevron).
+ * Visibility is never a fixed hide-list of section names — Padova can show
+ * Quotazioni OMI and hide Condominio; another city can show demografici and hide POI.
+ *
+ * Gate BEFORE mounting ReportAccordionItem. Do not sniff the DOM after.
  * Loading may keep the title visible; an empty finished module must not.
  */
 
