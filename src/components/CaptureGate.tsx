@@ -57,7 +57,10 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
 
   const handleContinue = () => {
     // User gesture: trigger the real iOS prompt, then go to camera regardless.
-    void requestDeviceLocation();
+    // Do not write gate state after this — the component unmounts immediately.
+    void requestGeolocation(GEO_GATE_PROMPT_OPTIONS).catch(() => {
+      // Denied, timeout, or unavailable: still continue so she can type the address.
+    });
     onContinue();
   };
 
