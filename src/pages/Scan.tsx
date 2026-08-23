@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { normalizeImage, isValidImageDataUrl } from "@/lib/imageUtils";
 import { Button } from "@/components/ui/button";
 import CaptureGate from "@/components/CaptureGate";
+import { requestGeolocationWithFallback } from "@/lib/requestGeolocation";
 
 type CameraState = "loading" | "active" | "denied" | "unavailable";
 type ShootPhase = "idle" | "flash" | "gps" | "compressing" | "gps_denied";
@@ -107,29 +108,15 @@ const Scan = () => {
       setShootPhase("gps");
       devLog("gps acquisition started");
 
-      if (!navigator.geolocation) {
-        devLog("gps unavailable");
+      try {
+        const { lat, lng } = await requestGeolocationWithFallback();
+        devLog(`gps granted: ${lat}, ${lng}`);
+        navigate("/result", { state: { photo, lat, lng } });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "unavailable";
+        devLog("gps denied:", message);
         setShootPhase("gps_denied");
-        return;
       }
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude: lat, longitude: lng } = pos.coords;
-          devLog(`gps granted: ${lat}, ${lng}`);
-          if (lat === 0 && lng === 0) {
-            devLog("gps returned 0,0 — treating as denied");
-            setShootPhase("gps_denied");
-            return;
-          }
-          navigate("/result", { state: { photo, lat, lng } });
-        },
-        (err) => {
-          devLog("gps denied:", err.message);
-          setShootPhase("gps_denied");
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
     },
     [navigate, toast, manualAddress]
   );
