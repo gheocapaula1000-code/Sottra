@@ -20,6 +20,9 @@ import type {
   ConvergenzaTerritorialeData, MarketContextData, ComparablesSummary,
   ScanResult, SourceMetadata, PoiEnrichmentData,
   InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
+  CondominioData, EnergyData, ListingsData, MoodScoreData,
+  OffmarketData, StoricoTransazioniData, ZoneIntelligenceData,
+  IstatDemographicData, OmiZoneData,
 } from "@/types";
 import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
 import { calculateNeighborhoodIndex, type NeighborhoodIndex, type SubDimension } from "@/lib/neighborhoodIndex";
@@ -29,10 +32,36 @@ import {
   ScenarioTemporaleCard, SintesiFinaleCard, TrasparenzaFontiCard,
   PrioritaCriticitaCard,
 } from "@/components/report/ReportSections";
-import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData } from "@/types/report";
+import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData, ScenarioTemporaleData } from "@/types/report";
 import AddressOverrideForm, { formatManualAddress } from "@/components/AddressOverrideForm";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
-import { GeoLevelHeroBanner, ReportAccordionItem, resolveReportGeoStatus } from "@/components/report/ReportAccordion";
+import { GeoLevelHeroBanner, PublishableAccordionItem, resolveReportGeoStatus } from "@/components/report/ReportAccordion";
+import {
+  isCondominioPublishable,
+  isConvergenzaPublishable,
+  isDemographicsPublishable,
+  isEnergyPublishable,
+  isFontiPublishable,
+  isInfraPublishable,
+  isListingsPublishable,
+  isMarketPublishable,
+  isModuleLoading,
+  isMoodPublishable,
+  isNeighborhoodPublishable,
+  isOffmarketPublishable,
+  isOmiPublishable,
+  isOpportunityPublishable,
+  isPoiPublishable,
+  isPricingPublishable,
+  isPrioritaPublishable,
+  isReportFieldsPublishable,
+  isRischioPublishable,
+  isScenarioTemporalePublishable,
+  isStoricoPublishable,
+  isSviluppoPublishable,
+  isTimeViewPublishable,
+  isZoneIntelligencePublishable,
+} from "@/lib/reportSectionPublishable";
 import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib/zoneValueEngine";
 import { resolveGeoContext } from "@/lib/reportMapper";
 import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
@@ -1010,15 +1039,6 @@ function SviluppoAreaCard({ data, loading }: { data: SviluppoAreaData | null; lo
 
 /* ── Market Context Card ──────────────────────────────── */
 
-function isMarketPublishable(data: MarketContextData | null): boolean {
-  if (!data) return false;
-  const st = data.sourceType;
-  if (st === "unavailable") return false;
-  // Must have at least comparables or signals
-  const hasComparables = data.comparablesSummary != null && data.comparablesSummary.count != null && data.comparablesSummary.count > 0;
-  const hasSignals = (data.marketSignals ?? []).length > 0;
-  return hasComparables || hasSignals;
-}
 
 function MarketContextCard({ data, loading }: { data: MarketContextData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
@@ -1533,11 +1553,11 @@ const LOW_CONFIDENCE_THRESHOLD = 0.4;
 const isDev = import.meta.env.DEV;
 function devLog(...args: unknown[]) { if (isDev) console.log("[RESULT]", ...args); }
 
-function OffmarketSection({ data, loading }: { data: import("@/types").OffmarketData | null; loading: boolean }) {
+function OffmarketSection({ data, loading }: { data: OffmarketData | null; loading: boolean }) {
   const segnali = data?.segnali ?? [];
   const opportunita = data?.opportunita ?? [];
   const totale = data?.totale ?? 0;
-  const hasContent = totale > 0 || segnali.length > 0 || opportunita.length > 0;
+  const hasContent = isOffmarketPublishable(data);
   if (!loading && !hasContent) return null;
 
   const badgeClass = (tipo: string): string => {
@@ -1559,7 +1579,7 @@ function OffmarketSection({ data, loading }: { data: import("@/types").Offmarket
   };
 
   return (
-    <ReportAccordionItem id="offmarket" title="Segnali Off-Market" icon={Gem} defaultOpen={false}>
+    <PublishableAccordionItem id="offmarket" title="Segnali Off-Market" icon={Gem} defaultOpen={false} loading={loading} publishable={hasContent}>
       <div className="space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
           {loading && (
@@ -1605,12 +1625,13 @@ function OffmarketSection({ data, loading }: { data: import("@/types").Offmarket
           </div>
         )}
       </div>
-    </ReportAccordionItem>
+    </PublishableAccordionItem>
   );
 }
 
-function ZoneIntelligenceSection({ data, loading }: { data: import("@/types").ZoneIntelligenceData | null; loading: boolean }) {
+function ZoneIntelligenceSection({ data, loading }: { data: ZoneIntelligenceData | null; loading: boolean }) {
   const risultati = data?.risultati ?? [];
+  const hasContent = isZoneIntelligencePublishable(data);
 
   const inferCategoria = (r: import("@/types").ZoneIntelligenceResult): string => {
     if (r.categoria) return r.categoria;
@@ -1623,10 +1644,10 @@ function ZoneIntelligenceSection({ data, loading }: { data: import("@/types").Zo
 
   const truncate = (s: string, n = 40) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
-  if (!loading && risultati.length === 0) return null;
+  if (!loading && !hasContent) return null;
 
   return (
-    <ReportAccordionItem id="zone-intelligence" title="Intelligenza di Zona" icon={Zap} defaultOpen={false}>
+    <PublishableAccordionItem id="zone-intelligence" title="Intelligenza di Zona" icon={Zap} defaultOpen={false} loading={loading} publishable={hasContent}>
       <div className="space-y-3 min-w-0">
         {loading && (
           <div className="space-y-2">
@@ -1678,16 +1699,17 @@ function ZoneIntelligenceSection({ data, loading }: { data: import("@/types").Zo
           </Badge>
         </div>
       </div>
-    </ReportAccordionItem>
+    </PublishableAccordionItem>
   );
 }
 
-function ListingsSection({ data, loading }: { data: import("@/types").ListingsData | null; loading: boolean }) {
+function ListingsSection({ data, loading }: { data: ListingsData | null; loading: boolean }) {
   const annunci = data?.annunci ?? [];
   const totale = data?.totale ?? annunci.length;
-  if (!loading && totale === 0) return null;
+  const hasContent = isListingsPublishable(data);
+  if (!loading && !hasContent) return null;
   return (
-    <ReportAccordionItem id="listings" title="Annunci attivi nella zona" icon={Gem} defaultOpen={false}>
+    <PublishableAccordionItem id="listings" title="Annunci attivi nella zona" icon={Gem} defaultOpen={false} loading={loading} publishable={hasContent}>
       <div className="space-y-3 min-w-0">
         {loading && <Skeleton className="h-16 w-full" />}
         {!loading && totale > 0 && (
@@ -1727,15 +1749,15 @@ function ListingsSection({ data, loading }: { data: import("@/types").ListingsDa
           </>
         )}
       </div>
-    </ReportAccordionItem>
+    </PublishableAccordionItem>
   );
 }
 
-function CondominioSection({ data, loading }: { data: import("@/types").CondominioData | null; loading: boolean }) {
-  const hasData = !!data && (data.amministratore || data.numero_unita || data.anno_costruzione || data.classe_energetica || (data.segnali && data.segnali.length > 0));
+function CondominioSection({ data, loading }: { data: CondominioData | null; loading: boolean }) {
+  const hasData = isCondominioPublishable(data);
   if (!loading && !hasData) return null;
   return (
-    <ReportAccordionItem id="condominio" title="Condominio" icon={Gem} defaultOpen={false}>
+    <PublishableAccordionItem id="condominio" title="Condominio" icon={Gem} defaultOpen={false} loading={loading} publishable={hasData}>
       <div className="space-y-3 min-w-0">
         {loading && <Skeleton className="h-16 w-full" />}
         {!loading && hasData && data && (
@@ -1757,16 +1779,17 @@ function CondominioSection({ data, loading }: { data: import("@/types").Condomin
           </ul>
         )}
       </div>
-    </ReportAccordionItem>
+    </PublishableAccordionItem>
   );
 }
 
-function StoricoTransazioniSection({ data, loading }: { data: import("@/types").StoricoTransazioniData | null; loading: boolean }) {
+function StoricoTransazioniSection({ data, loading }: { data: StoricoTransazioniData | null; loading: boolean }) {
   const transazioni = data?.transazioni ?? [];
   const totale = data?.totale ?? transazioni.length;
-  if (!loading && totale === 0) return null;
+  const hasContent = isStoricoPublishable(data);
+  if (!loading && !hasContent) return null;
   return (
-    <ReportAccordionItem id="storico-transazioni" title="Storico transazioni" icon={Gem} defaultOpen={false}>
+    <PublishableAccordionItem id="storico-transazioni" title="Storico transazioni" icon={Gem} defaultOpen={false} loading={loading} publishable={hasContent}>
       <div className="space-y-3 min-w-0">
         {loading && <Skeleton className="h-16 w-full" />}
         {!loading && totale > 0 && (
@@ -1798,12 +1821,12 @@ function StoricoTransazioniSection({ data, loading }: { data: import("@/types").
           </>
         )}
       </div>
-    </ReportAccordionItem>
+    </PublishableAccordionItem>
   );
 }
 
-function MoodScoreSection({ data, loading }: { data: import("@/types").MoodScoreData | null; loading: boolean }) {
-  const hasData = !!data && (typeof data.score === "number" || data.observation || (data.drivers && data.drivers.length > 0));
+function MoodScoreSection({ data, loading }: { data: MoodScoreData | null; loading: boolean }) {
+  const hasData = isMoodPublishable(data);
   const bandClass = (band?: string | null): string => {
     const b = (band ?? "").toLowerCase();
     if (b.includes("molto_pos")) return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
@@ -1815,7 +1838,7 @@ function MoodScoreSection({ data, loading }: { data: import("@/types").MoodScore
   };
   if (!loading && !hasData) return null;
   return (
-    <ReportAccordionItem id="mood-score" title="Percezione di zona" icon={Zap} defaultOpen={false}>
+    <PublishableAccordionItem id="mood-score" title="Percezione di zona" icon={Zap} defaultOpen={false} loading={loading} publishable={hasData}>
       <div className="space-y-3 min-w-0">
         {loading && <Skeleton className="h-16 w-full" />}
         {!loading && hasData && data && (
@@ -1852,12 +1875,12 @@ function MoodScoreSection({ data, loading }: { data: import("@/types").MoodScore
           </>
         )}
       </div>
-    </ReportAccordionItem>
+    </PublishableAccordionItem>
   );
 }
 
-function EnergySection({ data, loading }: { data: import("@/types").EnergyData | null; loading: boolean }) {
-  const hasData = !!data && (data.classeEnergetica || data.epglKwhM2Anno || data.annoCostruzione || data.tipoRiscaldamento);
+function EnergySection({ data, loading }: { data: EnergyData | null; loading: boolean }) {
+  const hasData = isEnergyPublishable(data);
   const classClass = (cls?: string | null): string => {
     const c = (cls ?? "").toUpperCase().trim();
     if (c.startsWith("A")) return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
@@ -1868,7 +1891,7 @@ function EnergySection({ data, loading }: { data: import("@/types").EnergyData |
   };
   if (!loading && !hasData) return null;
   return (
-    <ReportAccordionItem id="energy" title="Profilo energetico stimato" icon={Zap} defaultOpen={false}>
+    <PublishableAccordionItem id="energy" title="Profilo energetico stimato" icon={Zap} defaultOpen={false} loading={loading} publishable={hasData}>
       <div className="space-y-3 min-w-0">
         {loading && <Skeleton className="h-16 w-full" />}
         {!loading && hasData && data && (
@@ -1908,7 +1931,7 @@ function EnergySection({ data, loading }: { data: import("@/types").EnergyData |
           </>
         )}
       </div>
-    </ReportAccordionItem>
+    </PublishableAccordionItem>
   );
 }
 
@@ -2096,6 +2119,30 @@ const Result = () => {
     pricing: result.pricing,
   });
 
+  const marketData = result.marketContext.data as MarketContextData | null;
+  const facciataData = result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null;
+  const contestoData = result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null;
+  const poiData = result.poiEnrichment.data as PoiEnrichmentData | null;
+  const commercialeData = result.posizionamentoCommerciale.data as import("@/types/report").PosizionamentoCommercialeData | null;
+  const areaData = result.profiloArea.data as import("@/types/report").ProfiloAreaData | null;
+  const rischioData = result.rischioZona.data as RischioZonaData | null;
+  const istatData = result.istatDemographic.data as IstatDemographicData | null;
+  const trendData = result.trendDemografico.data as TrendDemograficoData | null;
+  const convergenzaData = result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null;
+  const opportunityData = result.opportunity.data as OpportunityData | null;
+  const scenarioData = result.scenarioTemporale.data as ScenarioTemporaleData | null;
+  const timeViewData = result.timeView.data as TimeViewData | null;
+  const infraData = result.infrastrutture.data as InfrastrutureData | null;
+  const sviluppoData = result.sviluppoArea.data as SviluppoAreaData | null;
+  const prioritaData = result.prioritaCriticita.data as PrioritaCriticitaData | null;
+  const fontiData = scanning ? null : buildTrasparenzaFonti(result);
+  const neighborhoodIndex = (result.neighborhood?.data as unknown as NeighborhoodIndex | null) ?? calculateNeighborhoodIndex(
+    poiData,
+    istatData,
+    rischioData,
+    result.omiZone.data as OmiZoneData | null,
+  );
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <AppHeader rightContent={
@@ -2175,121 +2222,135 @@ const Result = () => {
               <SectionSafe><ProfiloRapidoCard data={result.profiloRapido.data as import("@/types/report").ProfiloRapidoData | null} loading={result.profiloRapido.status === "loading"} /></SectionSafe>
               <SectionSafe><HouseDifferentiationCard diff={houseDiff} loading={scanning} /></SectionSafe>
 
-              {/* ═══ ACCORDION SECTIONS — Mobile-first collapsible ═══ */}
+              {/* Accordion tendine: title only when THIS scan has data for that section. */}
 
-              {/* Zona OMI — always open */}
+              {/* Zona OMI — open when zone prices exist */}
               <SectionSafe>
-                <ReportAccordionItem id="omi" title="Quotazioni OMI" icon={TrendingUp} defaultOpen>
-                  <OmiCard data={officialOmi.data} loading={officialOmi.status === "loading"} />
-                </ReportAccordionItem>
+                <PublishableAccordionItem id="omi" title="Quotazioni OMI" icon={TrendingUp} defaultOpen
+                  loading={isModuleLoading(officialOmi.status)} publishable={isOmiPublishable(officialOmi.data)}>
+                  <OmiCard data={officialOmi.data} loading={isModuleLoading(officialOmi.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
-              {/* Prezzi di Mercato — always open */}
+              {/* Prezzi di Mercato — open when prezzoMq exists */}
               <SectionSafe>
-                <ReportAccordionItem id="pricing" title="Prezzi di Mercato" icon={TrendingUp} defaultOpen
-                  isWeak={(() => { const _p = result.pricing.data as PricingData | null; return !_p?.polygonMatch && (!_p?.omiGeoLevel || _p?.omiGeoLevel === "comune"); })()}>
-                  <PricingCard data={result.pricing.data as PricingData | null} loading={result.pricing.status === "loading"} />
-                </ReportAccordionItem>
+                <PublishableAccordionItem id="pricing" title="Prezzi di Mercato" icon={TrendingUp} defaultOpen
+                  loading={isModuleLoading(result.pricing.status)} publishable={isPricingPublishable(pricingData)}
+                  isWeak={!pricingData?.polygonMatch && (!pricingData?.omiGeoLevel || pricingData?.omiGeoLevel === "comune")}>
+                  <PricingCard data={pricingData} loading={isModuleLoading(result.pricing.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Mercato Locale */}
               <SectionSafe>
-                <ReportAccordionItem id="market" title="Mercato Locale" icon={BarChart3} defaultOpen={false}>
-                  <MarketContextCard data={result.marketContext.data as MarketContextData | null} loading={result.marketContext.status === "loading"} />
-                </ReportAccordionItem>
+                <PublishableAccordionItem id="market" title="Mercato Locale" icon={BarChart3} defaultOpen={false}
+                  loading={isModuleLoading(result.marketContext.status)} publishable={isMarketPublishable(marketData)}>
+                  <MarketContextCard data={marketData} loading={isModuleLoading(result.marketContext.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Immobile e Facciata */}
               <SectionSafe>
-                <ReportAccordionItem id="facciata" title="Immobile e Facciata" icon={Eye} defaultOpen={false}>
-                  <ImmobileFacciataCard data={result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null} loading={result.immobileFacciata.status === "loading"} />
-                </ReportAccordionItem>
+                <PublishableAccordionItem id="facciata" title="Immobile e Facciata" icon={Eye} defaultOpen={false}
+                  loading={isModuleLoading(result.immobileFacciata.status)} publishable={isReportFieldsPublishable(facciataData as unknown as Record<string, unknown>)}>
+                  <ImmobileFacciataCard data={facciataData} loading={isModuleLoading(result.immobileFacciata.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Contesto e Vicinato */}
               <SectionSafe>
-                <ReportAccordionItem id="contesto" title="Contesto e Vicinato" icon={Compass} defaultOpen={false}>
-                  <ContestoVicinatoCard data={result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null} loading={result.contestoVicinato.status === "loading"} />
-                </ReportAccordionItem>
+                <PublishableAccordionItem id="contesto" title="Contesto e Vicinato" icon={Compass} defaultOpen={false}
+                  loading={isModuleLoading(result.contestoVicinato.status)}
+                  publishable={isReportFieldsPublishable(contestoData as unknown as Record<string, unknown>)}>
+                  <ContestoVicinatoCard data={contestoData} loading={isModuleLoading(result.contestoVicinato.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Servizi e POI */}
               <SectionSafe>
-                <ReportAccordionItem id="poi" title="Servizi e POI" icon={MapPin} defaultOpen={false}>
-                  <PoiEnrichmentCard data={result.poiEnrichment.data as PoiEnrichmentData | null} loading={result.poiEnrichment.status === "loading"} />
-                </ReportAccordionItem>
+                <PublishableAccordionItem id="poi" title="Servizi e POI" icon={MapPin} defaultOpen={false}
+                  loading={isModuleLoading(result.poiEnrichment.status)} publishable={isPoiPublishable(poiData)}>
+                  <PoiEnrichmentCard data={poiData} loading={isModuleLoading(result.poiEnrichment.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Posizionamento Commerciale */}
               <SectionSafe>
-                <ReportAccordionItem id="commerciale" title="Posizionamento Commerciale" icon={Target} defaultOpen={false}>
-                  <PosizionamentoCommercialeCard data={result.posizionamentoCommerciale.data as import("@/types/report").PosizionamentoCommercialeData | null} loading={result.posizionamentoCommerciale.status === "loading"} />
-                </ReportAccordionItem>
+                <PublishableAccordionItem id="commerciale" title="Posizionamento Commerciale" icon={Target} defaultOpen={false}
+                  loading={isModuleLoading(result.posizionamentoCommerciale.status)} publishable={isReportFieldsPublishable(commercialeData as unknown as Record<string, unknown>)}>
+                  <PosizionamentoCommercialeCard data={commercialeData} loading={isModuleLoading(result.posizionamentoCommerciale.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Profilo Area */}
               <SectionSafe>
-                <ReportAccordionItem id="area" title="Profilo Area" icon={Layers} defaultOpen={false}>
-                  <ProfiloAreaCard data={result.profiloArea.data as import("@/types/report").ProfiloAreaData | null} loading={result.profiloArea.status === "loading"} />
-                </ReportAccordionItem>
+                <PublishableAccordionItem id="area" title="Profilo Area" icon={Layers} defaultOpen={false}
+                  loading={isModuleLoading(result.profiloArea.status)} publishable={isReportFieldsPublishable(areaData as unknown as Record<string, unknown>)}>
+                  <ProfiloAreaCard data={areaData} loading={isModuleLoading(result.profiloArea.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Rischio Zona */}
               <SectionSafe>
-                <ReportAccordionItem id="rischio" title="Rischio Zona" icon={AlertTriangle} defaultOpen={false}>
-                  <RischioZonaCard data={result.rischioZona.data as RischioZonaData | null} loading={result.rischioZona.status === "loading"} />
-                </ReportAccordionItem>
+                <PublishableAccordionItem id="rischio" title="Rischio Zona" icon={AlertTriangle} defaultOpen={false}
+                  loading={isModuleLoading(result.rischioZona.status)} publishable={isRischioPublishable(rischioData)}>
+                  <RischioZonaCard data={rischioData} loading={isModuleLoading(result.rischioZona.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Dati Demografici */}
               <SectionSafe>
-                <ReportAccordionItem id="istat" title="Dati Demografici" icon={Users} defaultOpen={false}
-                  isWeak={(() => { const _i = result.istatDemographic.data as import("@/types").IstatDemographicData | null; return !_i?.geoLevel || _i?.geoLevel === "comune" || _i?.geoLevel === "area_vasta"; })()}>
-                  <IstatCard data={result.istatDemographic.data as import("@/types").IstatDemographicData | null} loading={result.istatDemographic.status === "loading"} />
-                  <TrendDemograficoCard data={result.trendDemografico.data as TrendDemograficoData | null} loading={result.trendDemografico.status === "loading"} />
-                </ReportAccordionItem>
+                <PublishableAccordionItem id="istat" title="Dati Demografici" icon={Users} defaultOpen={false}
+                  loading={isModuleLoading(result.istatDemographic.status) || isModuleLoading(result.trendDemografico.status)}
+                  publishable={isDemographicsPublishable(istatData, trendData)}
+                  isWeak={!istatData?.geoLevel || istatData?.geoLevel === "comune" || istatData?.geoLevel === "area_vasta"}>
+                  <IstatCard data={istatData} loading={isModuleLoading(result.istatDemographic.status)} />
+                  <TrendDemograficoCard data={trendData} loading={isModuleLoading(result.trendDemografico.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Profilo di Zona */}
               <SectionSafe>
-                <ReportAccordionItem id="vicinato" title="Profilo di Zona" icon={Layers} defaultOpen={false}>
+                <PublishableAccordionItem id="vicinato" title="Profilo di Zona" icon={Layers} defaultOpen={false}
+                  loading={isModuleLoading(result.neighborhood?.status)} publishable={isNeighborhoodPublishable(neighborhoodIndex)}>
                   <NeighborhoodIndexCard
-                    index={(result.neighborhood?.data as unknown as NeighborhoodIndex | null) ?? calculateNeighborhoodIndex(
-                      result.poiEnrichment.data as PoiEnrichmentData | null,
-                      result.istatDemographic.data as import("@/types").IstatDemographicData | null,
-                      result.rischioZona.data as RischioZonaData | null,
-                      result.omiZone.data as import("@/types").OmiZoneData | null,
-                    )}
-                    loading={result.neighborhood?.status === "loading"}
+                    index={neighborhoodIndex}
+                    loading={isModuleLoading(result.neighborhood?.status)}
                   />
-                </ReportAccordionItem>
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Convergenza + Opportunità */}
               <SectionSafe>
-                <ReportAccordionItem id="convergenza" title="Convergenza e Opportunità" icon={Zap} defaultOpen={false}>
-                  <ConvergenzaTerritorialeCard data={result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null} loading={result.convergenzaTerritoriale.status === "loading"} />
+                <PublishableAccordionItem id="convergenza" title="Convergenza e Opportunità" icon={Zap} defaultOpen={false}
+                  loading={isModuleLoading(result.convergenzaTerritoriale.status) || isModuleLoading(result.opportunity.status)}
+                  publishable={isConvergenzaPublishable(convergenzaData) || isOpportunityPublishable(opportunityData)}>
+                  <ConvergenzaTerritorialeCard data={convergenzaData} loading={isModuleLoading(result.convergenzaTerritoriale.status)} />
                   <div className="mt-3" />
-                  <OpportunityCard data={result.opportunity.data as OpportunityData | null} loading={result.opportunity.status === "loading"} />
-                </ReportAccordionItem>
+                  <OpportunityCard data={opportunityData} loading={isModuleLoading(result.opportunity.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Scenario e Proiezioni */}
               <SectionSafe>
-                <ReportAccordionItem id="scenario" title="Scenario e Proiezioni" icon={Rocket} defaultOpen={false}>
-                  <ScenarioTemporaleCard data={result.scenarioTemporale.data as import("@/types/report").ScenarioTemporaleData | null} loading={result.scenarioTemporale.status === "loading"} />
+                <PublishableAccordionItem id="scenario" title="Scenario e Proiezioni" icon={Rocket} defaultOpen={false}
+                  loading={isModuleLoading(result.scenarioTemporale.status) || isModuleLoading(result.timeView.status)}
+                  publishable={isScenarioTemporalePublishable(scenarioData) || isTimeViewPublishable(timeViewData)}>
+                  <ScenarioTemporaleCard data={scenarioData} loading={isModuleLoading(result.scenarioTemporale.status)} />
                   <div className="mt-3" />
-                  <TimeViewCard data={result.timeView.data as TimeViewData | null} loading={result.timeView.status === "loading"} />
-                </ReportAccordionItem>
+                  <TimeViewCard data={timeViewData} loading={isModuleLoading(result.timeView.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Infrastrutture e Sviluppo */}
               <SectionSafe>
-                <ReportAccordionItem id="infra" title="Infrastrutture e Sviluppo" icon={Construction} defaultOpen={false}>
-                  <InfrastrutureCard data={result.infrastrutture.data as InfrastrutureData | null} loading={result.infrastrutture.status === "loading"} />
+                <PublishableAccordionItem id="infra" title="Infrastrutture e Sviluppo" icon={Construction} defaultOpen={false}
+                  loading={isModuleLoading(result.infrastrutture.status) || isModuleLoading(result.sviluppoArea.status)}
+                  publishable={isInfraPublishable(infraData) || isSviluppoPublishable(sviluppoData)}>
+                  <InfrastrutureCard data={infraData} loading={isModuleLoading(result.infrastrutture.status)} />
                   <div className="mt-3" />
-                  <SviluppoAreaCard data={result.sviluppoArea.data as SviluppoAreaData | null} loading={result.sviluppoArea.status === "loading"} />
-                </ReportAccordionItem>
+                  <SviluppoAreaCard data={sviluppoData} loading={isModuleLoading(result.sviluppoArea.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Segnali Off-Market */}
@@ -2327,19 +2388,19 @@ const Result = () => {
 
               {/* Priorità / Criticità */}
               <SectionSafe>
-                <ReportAccordionItem id="priorita" title="Priorità e Criticità" icon={AlertTriangle} defaultOpen={false}>
-                  <PrioritaCriticitaCard data={result.prioritaCriticita.data as PrioritaCriticitaData | null} loading={result.prioritaCriticita.status === "loading"} />
-                </ReportAccordionItem>
+                <PublishableAccordionItem id="priorita" title="Priorità e Criticità" icon={AlertTriangle} defaultOpen={false}
+                  loading={isModuleLoading(result.prioritaCriticita.status)} publishable={isPrioritaPublishable(prioritaData)}>
+                  <PrioritaCriticitaCard data={prioritaData} loading={isModuleLoading(result.prioritaCriticita.status)} />
+                </PublishableAccordionItem>
               </SectionSafe>
 
               {/* Trasparenza Fonti */}
-              {!scanning && (
-                <SectionSafe>
-                  <ReportAccordionItem id="fonti" title="Fonti e Metodologia" icon={ShieldCheck} defaultOpen={false}>
-                    <TrasparenzaFontiCard data={buildTrasparenzaFonti(result)} />
-                  </ReportAccordionItem>
-                </SectionSafe>
-              )}
+              <SectionSafe>
+                <PublishableAccordionItem id="fonti" title="Fonti e Metodologia" icon={ShieldCheck} defaultOpen={false}
+                  loading={false} publishable={!scanning && isFontiPublishable(fontiData)}>
+                  <TrasparenzaFontiCard data={fontiData} />
+                </PublishableAccordionItem>
+              </SectionSafe>
 
               {/* Discrete quality footer */}
               {!scanning && <ReportFooter excludedCount={excludedCount} totalPublished={publishedCount} />}
