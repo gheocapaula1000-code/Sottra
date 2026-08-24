@@ -209,7 +209,7 @@ describe("OMI name-only Est suggestion — not a polygon match", () => {
     );
     const estRow = document.querySelector('[data-area="Est"]');
     expect(estRow).toHaveAttribute("data-suggested", "true");
-    expect(screen.getByText(/suggerimento nominale/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/suggerimento nominale/i).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText(OMI_NAME_ONLY_SUGGESTION_NOTE)).toBeInTheDocument();
     expect(OMI_NAME_ONLY_SUGGESTION_NOTE).toMatch(/non è un match poligonale/i);
   });
