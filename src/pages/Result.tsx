@@ -61,6 +61,7 @@ import {
   isSviluppoPublishable,
   isTimeViewPublishable,
   isZoneIntelligencePublishable,
+  shouldShowEmptyScanAddressPrompt,
 } from "@/lib/reportSectionPublishable";
 import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib/zoneValueEngine";
 import { resolveGeoContext } from "@/lib/reportMapper";
@@ -1968,7 +1969,9 @@ const Result = () => {
   const handlePullRefresh = useCallback(async () => {
     if (!state?.photo) return;
     const address = manualAddress ? formatManualAddress(manualAddress) : state.manualAddress;
-    await refresh(state.photo, state.lat ?? 0, state.lng ?? 0, address);
+    const lat = isValidGps(state.lat, state.lng) ? state.lat : 0;
+    const lng = isValidGps(state.lat, state.lng) ? state.lng : 0;
+    await refresh(state.photo, lat, lng, address);
   }, [state, manualAddress, refresh]);
 
   if (!hasValidPhoto) {
@@ -1976,21 +1979,6 @@ const Result = () => {
       <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 text-center">
         <p className="text-muted-foreground">Nessuna immagine disponibile.</p>
         <Button variant="outline" className="mt-4" onClick={() => navigate("/scan")}>Vai alla scansione</Button>
-      </div>
-    );
-  }
-
-  if (!hasValidCoords) {
-    return (
-      <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 mb-4">
-          <MapPin className="h-8 w-8 text-destructive" />
-        </div>
-        <p className="text-lg font-semibold text-foreground mb-2">Posizione non disponibile</p>
-        <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-6">
-          Per analizzare correttamente l'edificio serve la posizione del dispositivo. Consenti la geolocalizzazione e riprova.
-        </p>
-        <Button className="min-h-[48px]" onClick={() => navigate("/scan")}>Torna alla scansione</Button>
       </div>
     );
   }
@@ -2143,6 +2131,30 @@ const Result = () => {
     result.omiZone.data as OmiZoneData | null,
   );
 
+  const hasPublishableTendine =
+    isOmiPublishable(officialOmi.data)
+    || isPricingPublishable(pricingData)
+    || isMarketPublishable(marketData)
+    || isReportFieldsPublishable(facciataData as unknown as Record<string, unknown>)
+    || isReportFieldsPublishable(contestoData as unknown as Record<string, unknown>)
+    || isPoiPublishable(poiData)
+    || isReportFieldsPublishable(commercialeData as unknown as Record<string, unknown>)
+    || isReportFieldsPublishable(areaData as unknown as Record<string, unknown>)
+    || isRischioPublishable(rischioData)
+    || isDemographicsPublishable(istatData, trendData)
+    || isNeighborhoodPublishable(neighborhoodIndex)
+    || isConvergenzaPublishable(convergenzaData)
+    || isOpportunityPublishable(opportunityData)
+    || isScenarioTemporalePublishable(scenarioData)
+    || isTimeViewPublishable(timeViewData)
+    || isInfraPublishable(infraData)
+    || isSviluppoPublishable(sviluppoData)
+    || isPrioritaPublishable(prioritaData);
+
+  const emptyScanNeedsAddress = shouldShowEmptyScanAddressPrompt(scanning, hasPublishableTendine)
+    || !hasValidCoords;
+  const showAddressForm = identifyDone || emptyScanNeedsAddress;
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <AppHeader rightContent={
@@ -2191,12 +2203,15 @@ const Result = () => {
             />
           </SectionSafe>
 
-          {/* Manual address override — shown after identify success, not during initial scan */}
-          {identifyDone && !lowConfidence && !identifyFailed && (
+          {/* Address form: after identify, or when the finished scan has no tendine (iPhone GPS miss). */}
+          {showAddressForm && !lowConfidence && !identifyFailed && (
             <AddressOverrideForm
               loading={refining}
+              defaultOpen={emptyScanNeedsAddress}
               onSubmit={(addr: ManualAddressInput) => {
-                refineAddress(addr, state!.lat!, state!.lng!, state!.photo);
+                const lat = isValidGps(state?.lat, state?.lng) ? state!.lat! : 0;
+                const lng = isValidGps(state?.lat, state?.lng) ? state!.lng! : 0;
+                refineAddress(addr, lat, lng, state?.photo);
               }}
             />
           )}

@@ -449,6 +449,44 @@ function pointInMultiPolygon(lat: number, lng: number, polygons: number[][][]): 
   return false;
 }
 
+/** Official fascia (B1) from zona_omi or gold G224-B1. Does not invent a zone. */
+function extractOmiFascia(zona: string | null | undefined): string | null {
+  if (!zona) return null;
+  const gold = zona.match(/^[A-Z]\d{3}-([A-E]\d{1,2})$/i);
+  if (gold) return gold[1].toUpperCase();
+  const fascia = zona.match(/\b([A-E]\d{1,2})\b/i);
+  return fascia ? fascia[1].toUpperCase() : null;
+}
+
+/**
+ * When several polygons contain the point (Padova centro B1 ∩ B2), prefer the
+ * official PD* / B1 microzona over a conflicting B2. Gold G224-B1 is the same B1.
+ * National polygons stay in the table — this only picks among hits.
+ */
+function preferPolygonMatch<T extends { zona_omi?: string | null }>(matches: T[]): T | null {
+  if (matches.length === 0) return null;
+  if (matches.length === 1) return matches[0];
+
+  let best = matches[0];
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const row of matches) {
+    const zona = String(row.zona_omi ?? "");
+    const fascia = extractOmiFascia(zona);
+    const officialFascia = /^[A-E]\d{1,2}$/i.test(zona.trim());
+    let score = 0;
+    if (fascia === "B1") score += 50;
+    if (officialFascia && fascia === "B1") score += 40;
+    if (/^G224/i.test(zona) && fascia === "B1") score += 25;
+    if (officialFascia) score += 10;
+    if (fascia === "B2") score -= 40;
+    if (score > bestScore) {
+      best = row;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
 /* ══════════════════════════════════════════════════════
    OMI — Real database lookup with polygon point-in-polygon
    ══════════════════════════════════════════════════════
@@ -488,15 +526,20 @@ async function queryOmiWithPolygons(
       if (!polyError && polyData && polyData.length > 0) {
         log("omi polygons", `found ${polyData.length} zones for ${cadastralCode}`);
 
+        const containing: typeof polyData = [];
         for (const row of polyData) {
           const coords = row.polygon_coords as number[][][];
           if (coords && pointInMultiPolygon(lat, lng, coords)) {
-            matchedZone = row.zona_omi;
-            matchedComuneLabel = row.comune_label || comuneLabel;
-            polygonMatch = true;
-            log("omi polygon match", `zone=${matchedZone} for ${cadastralCode}`);
-            break;
+            containing.push(row);
           }
+        }
+        const preferred = preferPolygonMatch(containing);
+        if (preferred) {
+          const rawZone = preferred.zona_omi;
+          matchedZone = extractOmiFascia(rawZone) ?? rawZone;
+          matchedComuneLabel = preferred.comune_label || comuneLabel;
+          polygonMatch = true;
+          log("omi polygon match", `zone=${matchedZone} (raw=${rawZone}, candidates=${containing.map((r) => r.zona_omi).join(",")}) for ${cadastralCode}`);
         }
 
         if (!polygonMatch) {
@@ -576,14 +619,18 @@ async function queryOmiWithPolygons(
       return unavailableOmi("no_coverage");
     }
 
-    // Get the most recent semester
+    // Get the most recent semester — prefer NORMALE civile when that band exists.
     const latest = data[0];
     const samePeriod = data.filter(
       (d: Record<string, unknown>) => d.anno === latest.anno && d.semestre === latest.semestre
     );
+    const normale = samePeriod.filter((d: Record<string, unknown>) =>
+      /normale/i.test(String(d.stato_conservazione ?? ""))
+    );
+    const quoteRows = normale.length > 0 ? normale : samePeriod;
 
-    const allMin = Math.min(...samePeriod.map((d: Record<string, unknown>) => Number(d.quotazione_min)));
-    const allMax = Math.max(...samePeriod.map((d: Record<string, unknown>) => Number(d.quotazione_max)));
+    const allMin = Math.min(...quoteRows.map((d: Record<string, unknown>) => Number(d.quotazione_min)));
+    const allMax = Math.max(...quoteRows.map((d: Record<string, unknown>) => Number(d.quotazione_max)));
 
     const zones = [...new Set(samePeriod.map((d: Record<string, unknown>) => String(d.zona_omi)))];
 
@@ -624,7 +671,7 @@ async function queryOmiWithPolygons(
       quotazioneMaxResidenziale: allMax,
       semestre: `${latest.semestre}° semestre ${latest.anno}`,
       tipologia: latest.tipologia,
-      statoConservazione: latest.stato_conservazione,
+      statoConservazione: (quoteRows[0] as Record<string, unknown> | undefined)?.stato_conservazione ?? latest.stato_conservazione,
       sourceType: "official",
       sourceProvider: "omi",
       sourceLabel: "OMI / Agenzia delle Entrate",

@@ -207,7 +207,7 @@ export function useBuildingScan() {
         }
       }
 
-      if (finalLat == null || finalLng == null) {
+      if (finalLat == null || finalLng == null || !isValidGps(finalLat, finalLng)) {
         failClosedTerritorial("Dati OMI non disponibili");
         if (address) {
           const resolveAddressOnly = (key: keyof ScanResult) =>
@@ -385,14 +385,18 @@ export function useBuildingScan() {
 
     // Photo-first opener + official Sottra modules in parallel when coords are known.
     // Typed address: geocode (or later identify) wins over indoor/device GPS.
-    if (preGeo.finalLat != null && preGeo.finalLng != null) {
+    if (
+      preGeo.finalLat != null
+      && preGeo.finalLng != null
+      && isValidGps(preGeo.finalLat, preGeo.finalLng)
+    ) {
       await Promise.allSettled([
         runPhotoWow(preGeo.finalLat, preGeo.finalLng, wowSource, trimmedManual || undefined),
         runOfficialPipeline(geocoded),
       ]);
     } else {
       const geo = await runOfficialPipeline(geocoded);
-      if (geo?.finalLat != null && geo.finalLng != null) {
+      if (geo?.finalLat != null && geo.finalLng != null && isValidGps(geo.finalLat, geo.finalLng)) {
         await runPhotoWow(geo.finalLat, geo.finalLng, "address", trimmedManual || undefined);
       } else {
         await runPhotoWow(null, null, "address", trimmedManual || undefined);
@@ -480,7 +484,7 @@ export function useBuildingScan() {
     const geo = deriveGeoFromIdentify(identifyForGeo, manualAddr, lat, lng, geocoded);
     const { finalLat, finalLng, confidence } = geo;
 
-    if (finalLat == null || finalLng == null) {
+    if (finalLat == null || finalLng == null || !isValidGps(finalLat, finalLng)) {
       for (const k of TERRITORIAL_MODULES) {
         if (affectedModules.includes(k) || k === "omiZone" || k === "istatDemographic" || k === "poiEnrichment") {
           set(k, { status: "error", data: null, message: "Dati OMI non disponibili" });
