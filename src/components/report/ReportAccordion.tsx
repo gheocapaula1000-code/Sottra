@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { shouldRenderAccordion } from "@/lib/reportSectionPublishable";
 
+/** When true, publishable tendine expand for a full-report capture. Empty ones stay unmounted. */
+export const ReportCaptureOpenContext = React.createContext(false);
+
 interface ReportAccordionItemProps {
   id: string;
   title: string;
@@ -63,6 +66,8 @@ export function ReportAccordionItem({
   children,
 }: ReportAccordionItemProps) {
   const [open, setOpen] = React.useState(defaultOpen);
+  const captureOpen = React.useContext(ReportCaptureOpenContext);
+  const shown = captureOpen || open;
 
   if (isEmptyAccordionChildren(children)) return null;
 
@@ -75,7 +80,7 @@ export function ReportAccordionItem({
         type="button"
         onClick={() => setOpen(v => !v)}
         className="flex w-full items-center justify-between px-5 py-3.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        aria-expanded={open}
+        aria-expanded={shown}
       >
         <div className="flex items-center gap-2.5 min-w-0">
           {Icon && (
@@ -97,13 +102,13 @@ export function ReportAccordionItem({
         </div>
         <ChevronDown className={cn(
           "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-          open && "rotate-180",
+          shown && "rotate-180",
         )} />
       </button>
       <div
         className={cn(
           "transition-all duration-300 ease-in-out overflow-hidden",
-          open ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0",
+          shown ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0",
         )}
       >
         <div className="px-5 pb-5 pt-0">

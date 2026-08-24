@@ -10,6 +10,8 @@ export interface PullToRefreshProps {
   disabled?: boolean;
   className?: string;
   children: ReactNode;
+  /** Override the default pull-to-refresh test id (Result uses result-scroll). */
+  "data-testid"?: string;
 }
 
 /**
@@ -22,6 +24,7 @@ export default function PullToRefresh({
   disabled = false,
   className,
   children,
+  "data-testid": testId = "pull-to-refresh",
 }: PullToRefreshProps) {
   const { containerRef, pullDistance, refreshing, pulling, indicatorVisible } =
     usePullToRefresh({ onRefresh, disabled });
@@ -31,11 +34,12 @@ export default function PullToRefresh({
   return (
     <div
       ref={containerRef}
-      data-testid="pull-to-refresh"
+      data-testid={testId}
       className={cn(
-        "relative min-h-0 flex-1 overflow-y-auto overscroll-y-none",
+        "relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain touch-pan-y",
         className,
       )}
+      style={{ WebkitOverflowScrolling: "touch" }}
     >
       <div
         className="flex items-center justify-center overflow-hidden"
