@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useScanHistory } from "@/contexts/ScanHistoryContext";
+import { canReopenHistoryScan } from "@/lib/scanHistoryStore";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import PullToRefresh from "@/components/PullToRefresh";
@@ -55,18 +56,17 @@ const History = () => {
   });
 
   const handleOpenScan = (scan: typeof scans[number]) => {
-    // If the scan is restorable and has a photo + coordinates, reopen the real report
-    if (scan.restorable && scan.resultSnapshot && scan.photoThumbnail && scan.lat != null && scan.lng != null) {
-      navigate("/result", {
-        state: {
-          photo: scan.photoThumbnail,
-          lat: scan.lat,
-          lng: scan.lng,
-          savedResult: scan.resultSnapshot,
-        },
-      });
-    }
-    // Otherwise, show that the result is not restorable — don't fake a redirect
+    if (!canReopenHistoryScan(scan) || !scan.resultSnapshot || !scan.photoThumbnail) return;
+    navigate("/result", {
+      state: {
+        photo: scan.photoThumbnail,
+        lat: scan.lat,
+        lng: scan.lng,
+        savedResult: scan.resultSnapshot,
+        historyId: scan.id,
+        ...(scan.manualAddress ? { manualAddress: scan.manualAddress } : {}),
+      },
+    });
   };
 
   const handleOpenCloudScan = (scan: CloudScan) => {
@@ -127,7 +127,9 @@ const History = () => {
                   </div>
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <p className="text-sm font-medium text-foreground truncate">
-                      {scan.comune || "Posizione non disponibile"}
+                      {scan.comune && scan.zona_omi
+                        ? `${scan.comune} ${scan.zona_omi}`
+                        : (scan.comune || scan.zona_omi || "Posizione non disponibile")}
                     </p>
                     <p className="text-[10px] text-muted-foreground">{formatDate(scan.created_at)}</p>
                   </div>
@@ -148,7 +150,7 @@ const History = () => {
             </div>
           )}
 
-          {scans.length === 0 ? (
+          {scans.length === 0 && cloudScans.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
                 <Search className="h-7 w-7 text-muted-foreground" />
@@ -164,7 +166,7 @@ const History = () => {
               <div key={scan.id} className="relative">
                 <button
                   onClick={() => handleOpenScan(scan)}
-                  disabled={!scan.restorable}
+                  disabled={!canReopenHistoryScan(scan)}
                   className="flex w-full items-center gap-3 rounded-xl bg-card border border-border p-3 text-left active:bg-secondary transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {/* Thumbnail or placeholder */}
@@ -194,7 +196,7 @@ const History = () => {
                         </span>
                       )}
                     </div>
-                    {!scan.restorable && (
+                    {!canReopenHistoryScan(scan) && (
                       <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
                         <AlertTriangle className="h-2.5 w-2.5" />
                         <span>Risultato non più ricostruibile</span>

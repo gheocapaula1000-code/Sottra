@@ -149,7 +149,7 @@ describe("Core-proxy secret resolution", () => {
 
 describe("Scan history PII minimization", () => {
   const scanHistorySource = fs.readFileSync(
-    "src/contexts/ScanHistoryContext.tsx",
+    "src/lib/scanHistoryStore.ts",
     "utf-8",
   );
 
@@ -181,6 +181,7 @@ describe("Scan history PII minimization", () => {
 
   it("uses locality instead of full address", () => {
     expect(scanHistorySource).toContain("locality");
+    expect(fs.readFileSync("src/contexts/ScanHistoryContext.tsx", "utf-8")).toContain("locality");
   });
 });
 
@@ -222,8 +223,9 @@ describe("Consumer pages use minimal scan data", () => {
 
   it("Result page saves only locality, not full address", () => {
     const resultSource = fs.readFileSync("src/pages/Result.tsx", "utf-8");
-    expect(resultSource).toContain("locality:");
+    expect(resultSource).toContain("buildHistoryDraft");
     expect(resultSource).not.toMatch(/saveScan\(\{[^}]*photo:/);
+    expect(fs.readFileSync("src/lib/scanHistoryStore.ts", "utf-8")).toContain("locality:");
   });
 });
 

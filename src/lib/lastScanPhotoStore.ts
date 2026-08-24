@@ -17,6 +17,8 @@ export interface LastScanRecord {
   lat: number | null;
   lng: number | null;
   manualAddress?: string;
+  /** Stable history row id so reload / PTR updates the same Cronologia entry. */
+  historyId?: string;
 }
 
 let memoryRecord: LastScanRecord | null = null;
@@ -29,7 +31,16 @@ function normalizeRecord(input: LastScanRecord): LastScanRecord | null {
     typeof input.manualAddress === "string" && input.manualAddress.trim().length >= 3
       ? input.manualAddress.trim()
       : undefined;
-  return { photo: input.photo, lat, lng, ...(trimmed ? { manualAddress: trimmed } : {}) };
+  const historyId = typeof input.historyId === "string" && input.historyId.trim()
+    ? input.historyId.trim()
+    : undefined;
+  return {
+    photo: input.photo,
+    lat,
+    lng,
+    ...(trimmed ? { manualAddress: trimmed } : {}),
+    ...(historyId ? { historyId } : {}),
+  };
 }
 
 export function isUsableLastScan(value: unknown): value is LastScanRecord {
