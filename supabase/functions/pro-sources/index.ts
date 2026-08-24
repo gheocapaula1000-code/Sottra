@@ -958,6 +958,14 @@ serve(async (req) => {
       return json({ error: "Auth verification failed" }, 200);
     }
 
+    // Server-side entitlement gate (owner/admin/trial/subscription)
+    const entitlement = await checkEntitlement(userData.user.id);
+    if (!entitlement.allowed) {
+      return json({ ok: false, error: "Abbonamento non attivo o periodo di prova esaurito", limit_reached: true }, 403);
+    }
+
+
+
     // Parse request
     const body = await req.json();
     const { lat, lng, modules, radius = 800, address } = body as {
