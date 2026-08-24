@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { hasOfficialOmiQuotes, WowPanel } from "@/components/report/WowPanel";
+import {
+  hasOfficialOmiQuotes,
+  hasPianoEsclusivaContent,
+  hasZonaIntelligenceContent,
+  WowPanel,
+} from "@/components/report/WowPanel";
 import type { PhotoWowResponse } from "@/types/photoWow";
 import type { OmiZoneData } from "@/types";
 
@@ -105,7 +110,45 @@ describe("WowPanel partial banner", () => {
     expect(screen.getByText(/D8/)).toBeInTheDocument();
     expect(screen.getByText(/Padova/)).toBeInTheDocument();
     expect(document.body.textContent).toMatch(/1400|1\.400/);
-    expect(document.body.textContent).toMatch(/2750|2\.750/);
+    expect(document.body.textContent).toMatch(/1850|1\.850/);
+    expect(document.body.textContent).not.toMatch(/1400 € – 2750 €|1\.400\s*€\s*[–-]\s*2\.750/);
+  });
+
+  it("hides Intelligence zona and piano esclusiva when Core sent no body", () => {
+    render(
+      <WowPanel
+        data={emptyWow()}
+        status="success"
+        photo={PHOTO}
+        officialOmi={{ status: "success", data: PADOVA_D8 }}
+      />,
+    );
+    expect(hasZonaIntelligenceContent(emptyWow().zonaIntelligence)).toBe(false);
+    expect(hasPianoEsclusivaContent(emptyWow().pianoEsclusiva)).toBe(false);
+    expect(screen.queryByText("Intelligence zona")).not.toBeInTheDocument();
+    expect(screen.queryByText("Il tuo piano esclusiva")).not.toBeInTheDocument();
+    expect(screen.getByText("Vendibilità")).toBeInTheDocument();
+    expect(screen.getAllByText(/Non disponibile/i).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps Intelligence zona when Core sent a body", () => {
+    render(
+      <WowPanel
+        data={emptyWow({
+          zonaIntelligence: {
+            notizieRecenti: [],
+            puntiDiForzaNascosti: ["tram"],
+            criticitaEmergenti: [],
+            tendenzaMercato: "",
+          },
+        })}
+        status="success"
+        photo={PHOTO}
+        officialOmi={{ status: "success", data: PADOVA_D8 }}
+      />,
+    );
+    expect(screen.getByText("Intelligence zona")).toBeInTheDocument();
+    expect(screen.queryByText("Il tuo piano esclusiva")).not.toBeInTheDocument();
   });
 
   it("shows the amber preview banner when Core visual is missing and official OMI is not", () => {

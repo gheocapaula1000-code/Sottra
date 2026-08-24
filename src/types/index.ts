@@ -364,6 +364,8 @@ export interface OmiZoneData extends SourceMetadata {
   zonaOmi?: string | null;
   zonaOmiLabel?: string | null;
   comuneLabel?: string | null;
+  /** Official AdE link_zona (e.g. PD00002850). Never guessed. */
+  linkZona?: string | null;
   quotazioneMinResidenziale?: number | null;
   quotazioneMaxResidenziale?: number | null;
   /** Official rows for the matched PD* link_zona — never a mashed civile envelope. */

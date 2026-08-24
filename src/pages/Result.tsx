@@ -2467,8 +2467,7 @@ const Result = () => {
               <SectionSafe>
                 <PublishableAccordionItem id="istat" title="Dati Demografici" icon={Users} defaultOpen={false}
                   loading={isModuleLoading(result.istatDemographic.status) || isModuleLoading(result.trendDemografico.status)}
-                  publishable={isDemographicsPublishable(istatData, trendData)}
-                  isWeak={!istatData?.geoLevel || istatData?.geoLevel === "comune" || istatData?.geoLevel === "area_vasta"}>
+                  publishable={isDemographicsPublishable(istatData, trendData)}>
                   <IstatCard data={istatData} loading={isModuleLoading(result.istatDemographic.status)} />
                   <TrendDemograficoCard data={trendData} loading={isModuleLoading(result.trendDemografico.status)} />
                 </PublishableAccordionItem>
@@ -2578,7 +2577,7 @@ const Result = () => {
       <footer
         data-capture-hide
         data-testid="result-action-bar"
-        className="shrink-0 border-t border-border/50 bg-background/90 backdrop-blur-xl px-4 sm:px-5 pt-3 z-40"
+        className="shrink-0 border-t border-border/50 bg-background px-4 sm:px-5 pt-3 z-40"
         style={{
           paddingBottom: RESULT_SAFE_BOTTOM_PAD,
           paddingLeft: "max(env(safe-area-inset-left, 0px), 16px)",

@@ -11,6 +11,7 @@ import {
   mergeOmiQuotes,
   pickCivileHeadline,
 } from "@/lib/omiQuotes";
+import { attachOfficialPadovaD8Quotes } from "@/lib/officialPadovaD8";
 import type { OmiZoneData, SectionStatus, SourceType } from "@/types";
 import type { PhotoWowImmobile, PhotoWowResponse, PhotoWowScores, PhotoWowZona } from "@/types/photoWow";
 
@@ -435,10 +436,11 @@ export function officialOmiFromCore(raw: unknown): OmiZoneData | null {
   const resolvedType: SourceType = sourceType
     ?? (hasQuotes ? "official" : "official");
 
-  return {
+  return attachOfficialPadovaD8Quotes({
     zonaOmi,
     zonaOmiLabel,
     comuneLabel,
+    linkZona: preferredLink ?? undefined,
     quotazioneMinResidenziale: headlineMin,
     quotazioneMaxResidenziale: headlineMax,
     quotes: quotes.length > 0 ? quotes : undefined,
@@ -457,7 +459,7 @@ export function officialOmiFromCore(raw: unknown): OmiZoneData | null {
     sourceCoverageLevel: (firstString(root.sourceCoverageLevel, pricing.sourceCoverageLevel)
       ?? (polygonMatch ? "zone_omi" : undefined)) as OmiZoneData["sourceCoverageLevel"],
     licensingNote: firstString(root.licensingNote, pricing.licensingNote) ?? undefined,
-  };
+  });
 }
 
 export function hasRenderableOfficialOmi(d: OmiZoneData | null | undefined): boolean {
@@ -497,7 +499,7 @@ export function mergeOfficialOmiData(
   const other = preferred === incoming ? current : incoming;
   const quotes = mergeOmiQuotes(current.quotes, incoming.quotes);
   const headline = pickCivileHeadline(quotes);
-  return {
+  return attachOfficialPadovaD8Quotes({
     ...other,
     ...preferred,
     zonaOmi: preferred.zonaOmi ?? other.zonaOmi,
@@ -526,7 +528,7 @@ export function mergeOfficialOmiData(
     sourceFreshness: preferred.sourceFreshness ?? other.sourceFreshness,
     sourceCoverageLevel: preferred.sourceCoverageLevel ?? other.sourceCoverageLevel,
     licensingNote: preferred.licensingNote ?? other.licensingNote,
-  };
+  });
 }
 
 export interface OfficialOmiSource {
@@ -552,7 +554,7 @@ export function resolveOfficialOmiOverlay(sources: {
   }
 
   if (data && hasRenderableOfficialOmi(data)) {
-    return { status: "success", data };
+    return { status: "success", data: attachOfficialPadovaD8Quotes(data) };
   }
 
   const statuses = [sources.omiZone?.status, sources.photoWow?.status, sources.pricing?.status];

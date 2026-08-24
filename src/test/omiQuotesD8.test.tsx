@@ -62,6 +62,33 @@ describe("Padova D8 official OMI quotes", () => {
     expect(omi!.quotazioneMaxResidenziale).not.toBe(2750);
   });
 
+  it("renders the official 7-row table from a live mashed D8 payload (no quotes array)", () => {
+    const omi = officialOmiFromCore({
+      zona: "S. GREGORIO / TERRANEGRA / FORCELLINI EST (OMI D8)",
+      officialMicrozona: "D8",
+      prezzoMqMin: 1400,
+      prezzoMqMax: 2750,
+      sourceType: "official",
+      polygonMatch: true,
+    });
+    expect(isOmiPublishable(omi)).toBe(true);
+    render(
+      <PublishableAccordionItem
+        id="omi"
+        title="Quotazioni OMI"
+        defaultOpen
+        loading={false}
+        publishable={isOmiPublishable(omi)}
+      >
+        <OmiQuotesTable quotes={omi!.quotes ?? []} />
+      </PublishableAccordionItem>,
+    );
+    expect(screen.getAllByTestId("omi-quote-row")).toHaveLength(7);
+    expect(screen.getByText(/Vendita 1400 – 1850 €\/m²/)).toBeInTheDocument();
+    expect(screen.getByText(/Affitto 6\.5 – 9 €\/m²\/mese/)).toBeInTheDocument();
+    expect(screen.queryByText(/1400 – 2750 €\/m²/)).not.toBeInTheDocument();
+  });
+
   it("renders every official row; mashed 1400–2750 is not the only number", () => {
     const omi = officialOmiFromCore(D8_CORE_MASHED_PLUS_QUOTES);
     expect(isOmiPublishable(omi)).toBe(true);
@@ -103,18 +130,51 @@ describe("Padova D8 official OMI quotes", () => {
     expect(screen.getByTestId("omi-quote-rent-blank").textContent).toBe("");
   });
 
-  it("does not invent extra rows when Core sent only the mashed band", () => {
+  it("attaches official D8 rows from link_zona PD00002850 without inventing extras", () => {
     const omi = officialOmiFromCore({
-      zona: "Est (OMI D8)",
       officialMicrozona: "D8",
+      comuneLabel: "Padova",
       prezzoMqMin: 1400,
       prezzoMqMax: 2750,
       sourceType: "official",
       polygonMatch: true,
+      link_zona: "PD00002850",
     });
-    expect(omi!.quotazioneMinResidenziale).toBe(1400);
-    expect(omi!.quotazioneMaxResidenziale).toBe(2750);
+    expect(omi!.quotes).toHaveLength(7);
+    expect(omi!.linkZona).toBe("PD00002850");
+    expect(omi!.quotazioneMaxResidenziale).toBe(1850);
+  });
+
+  it("does not invent extra rows for an unmatched zone that only sent a mashed band", () => {
+    const omi = officialOmiFromCore({
+      zona: "Centro (OMI B1)",
+      officialMicrozona: "B1",
+      prezzoMqMin: 2400,
+      prezzoMqMax: 3400,
+      sourceType: "official",
+      polygonMatch: true,
+    });
+    expect(omi!.quotazioneMinResidenziale).toBe(2400);
+    expect(omi!.quotazioneMaxResidenziale).toBe(3400);
     expect(omi!.quotes ?? []).toHaveLength(0);
+  });
+
+  it("replaces the live D8 mashed 1400–2750 band with the official 7 omi_valori rows", () => {
+    const omi = officialOmiFromCore({
+      zona: "S. GREGORIO / TERRANEGRA / FORCELLINI EST (OMI D8)",
+      officialMicrozona: "D8",
+      comuneLabel: "Padova",
+      prezzoMqMin: 1400,
+      prezzoMqMax: 2750,
+      sourceType: "official",
+      polygonMatch: true,
+      semestre: "1H 2025",
+    });
+    expect(omi!.quotes).toHaveLength(7);
+    expect(omi!.quotazioneMinResidenziale).toBe(1400);
+    expect(omi!.quotazioneMaxResidenziale).toBe(1850);
+    expect(omi!.statoConservazione).toMatch(/normale/i);
+    expect(omi!.quotes!.map((q) => `${q.tipologia}|${q.stato}`)).toContain("Negozi|OTTIMO");
   });
 });
 
