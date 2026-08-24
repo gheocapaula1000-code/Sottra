@@ -5,6 +5,7 @@ import {
   PublishableAccordionItem,
   ReportCaptureOpenContext,
 } from "@/components/report/ReportAccordion";
+import { RESULT_SAFE_BOTTOM_EXTRA_PX, RESULT_SAFE_BOTTOM_PAD } from "@/lib/resultChrome";
 
 describe("Result scroll + chrome", () => {
   it("Result scroll container is overflow-y auto (not locked)", () => {
@@ -31,6 +32,18 @@ describe("Result scroll + chrome", () => {
     expect(result).not.toContain("Condividi Report");
     expect(wow).toContain("Intelligence zona");
     expect(wow).toContain("piano esclusiva");
+  });
+
+  it("footer and scroll share safe-area + extra padding so Fonti clears the action bar", () => {
+    const result = readFileSync("src/pages/Result.tsx", "utf-8");
+    expect(RESULT_SAFE_BOTTOM_EXTRA_PX).toBeGreaterThanOrEqual(12);
+    expect(RESULT_SAFE_BOTTOM_PAD).toContain("env(safe-area-inset-bottom");
+    expect(RESULT_SAFE_BOTTOM_PAD).toMatch(/\+\s*16px/);
+    expect(RESULT_SAFE_BOTTOM_PAD).not.toMatch(/^max\(/);
+    expect(result).toContain("RESULT_SAFE_BOTTOM_PAD");
+    expect(result.match(/RESULT_SAFE_BOTTOM_PAD/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(result).not.toContain('paddingBottom: "max(12px, env(safe-area-inset-bottom, 0px))"');
+    expect(result).toContain("Fonti e Metodologia");
   });
 });
 
