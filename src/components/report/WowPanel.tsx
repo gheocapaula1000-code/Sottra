@@ -160,14 +160,27 @@ function fmtEur(n: number | null | undefined): string {
   return n.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 }
 
-export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPanelProps) {
-  const omi = officialOmi?.data ?? null;
-  const omiStatus = officialOmi?.status ?? "idle";
-  const hasOfficialOmi = !!(
+/** True when official OMI quotes/zona are already on screen — do not invent values. */
+export function hasOfficialOmiQuotes(
+  omi: OmiZoneData | null | undefined,
+  status?: SectionStatus,
+): boolean {
+  const hasQuotes = !!(
     omi &&
     omi.sourceType !== "unavailable" &&
     (omi.quotazioneMinResidenziale != null || omi.quotazioneMaxResidenziale != null || omi.zonaOmiLabel)
   );
+  if (hasQuotes) return true;
+  return status === "success" && !!(
+    omi &&
+    (omi.quotazioneMinResidenziale != null || omi.quotazioneMaxResidenziale != null)
+  );
+}
+
+export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPanelProps) {
+  const omi = officialOmi?.data ?? null;
+  const omiStatus = officialOmi?.status ?? "idle";
+  const hasOfficialOmi = hasOfficialOmiQuotes(omi, omiStatus);
 
   // Safety timeout: exit loading after 20s even if no data arrived
   const [timedOut, setTimedOut] = useState(false);
@@ -232,9 +245,12 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
           </div>
         )}
 
-        {/* Partial / fallback banner — shown when ready but data missing */}
-        {partial && (
-          <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200">
+        {/* Partial banner only when Core visual is missing AND official OMI is not already on screen */}
+        {partial && !hasOfficialOmi && (
+          <div
+            data-testid="wow-partial-banner"
+            className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200"
+          >
             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
             <span>Anteprima visiva non disponibile. Il report ufficiale (OMI / ISTAT) si compila sotto se la zona è coperta.</span>
           </div>

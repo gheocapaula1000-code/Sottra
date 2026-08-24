@@ -79,6 +79,7 @@ import { buildWowSnapshot } from "@/lib/sottraWowSnapshot";
 import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
 import { WowPanel } from "@/components/report/WowPanel";
 import { resolveOfficialOmiOverlay } from "@/lib/officialOmiFromCore";
+import { RESULT_SAFE_BOTTOM_PAD } from "@/lib/resultChrome";
 import {
   buildHouseDifferentiation,
   differentiationStatusLabel,
@@ -2295,7 +2296,8 @@ const Result = () => {
         <div
           ref={reportRootRef}
           data-testid="result-report-root"
-          className="space-y-3 px-4 sm:px-5 pb-6 pt-2"
+          className="space-y-3 px-4 sm:px-5 pt-2"
+          style={{ paddingBottom: RESULT_SAFE_BOTTOM_PAD }}
         >
           {/* Identify error gate rimosso: il pipeline civiko-property-from-photo
               gestisce autonomamente la qualità foto con fallback sicuro
@@ -2559,7 +2561,7 @@ const Result = () => {
         data-testid="result-action-bar"
         className="shrink-0 border-t border-border/50 bg-background/90 backdrop-blur-xl px-4 sm:px-5 pt-3 z-40"
         style={{
-          paddingBottom: "max(12px, env(safe-area-inset-bottom, 0px))",
+          paddingBottom: RESULT_SAFE_BOTTOM_PAD,
           paddingLeft: "max(env(safe-area-inset-left, 0px), 16px)",
           paddingRight: "max(env(safe-area-inset-right, 0px), 16px)",
         }}
