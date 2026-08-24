@@ -1,5 +1,6 @@
 import { useReducer, useState, useCallback, useRef } from "react";
 import { identifyBuilding, getPricing, getOffmarket, getZoneIntelligence, getListings, getCondominio, getStoricoTransazioni, getMoodScore, getEnergy, getNeighborhood, getPoiEnrichment } from "@/services/scan";
+import { _resetCircuitBreaker } from "@/services/api";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
 import { fetchProSources, geocodeAddress, reverseGeocode } from "@/services/proSources";
 import { getPhotoWow } from "@/services/photoWow";
@@ -162,6 +163,8 @@ export function useBuildingScan() {
     const scanId = crypto.randomUUID();
     scanIdRef.current = scanId;
     omiPriorityRef.current = 0;
+    // Fresh scan: do not inherit a tripped breaker from a prior burst of Core failures.
+    _resetCircuitBreaker();
 
     if (!preserveExisting) {
       setScanning(true);

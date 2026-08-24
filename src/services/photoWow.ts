@@ -1,19 +1,14 @@
 import { isValidGps } from "@/lib/imageUtils";
 import { normalizePhotoWow } from "@/lib/officialOmiFromCore";
+import { coreRequest, isError } from "@/services/api";
 import type { PhotoWowResponse } from "@/types/photoWow";
-
-const CORE_PROXY_URL =
-  (import.meta.env.VITE_CORE_PROXY_URL as string | undefined) ??
-  "https://jpunnzgixcghuydstdlt.supabase.co/functions/v1/core-proxy";
 
 /**
  * Cinematic photo opener — NOT the official Sottra report.
  *
- * Hits Central Core `civiko-property-from-photo`. The live payload is
- * dual-readable (`{ ok, data }` plus top-level zona/pricing). Official
- * microzona / €/m² are mapped into WowPanel's officialOmi overlay by
- * `officialOmiFromCore`, alongside the official pro-sources pipeline;
- * scores stay null when Core omitted them (never coerced to 0/100).
+ * Routes through Sottra `core-proxy` → Central Core `/sottra/scan/photo-wow`
+ * (same auth path as identify/pricing/forecast). Accepts both flat lat/lng
+ * and Civiko-style `{ geo: { latitude, longitude } }` upstream.
  */
 export async function getPhotoWow(
   photo: string,
@@ -27,42 +22,19 @@ export async function getPhotoWow(
   }
 
   try {
-    const res = await fetch(CORE_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        endpoint: "/civiko-property-from-photo",
-        method: "POST",
-        payload: {
-          photo,
-          geo: { latitude: lat, longitude: lng, source: geoSource },
-          quickFacts: address && address.trim() ? { address: address.trim() } : {},
-        },
-        timeout: 60000,
-      }),
-      signal: typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-        ? AbortSignal.timeout(65000)
-        : undefined,
-    });
+    const res = await coreRequest<unknown>("/scan/photo-wow", "POST", {
+      photo,
+      lat,
+      lng,
+      geo: { latitude: lat, longitude: lng, source: geoSource },
+      ...(address && address.trim() ? { address: address.trim() } : {}),
+    }, 60000);
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      return {
-        error: true,
-        message: `core-proxy HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ""}`,
-        data: null,
-      };
+    if (isError(res)) {
+      return { error: true, message: res.message, data: null };
     }
 
-    const raw: unknown = await res.json();
-    if (raw && typeof raw === "object" && "ok" in raw && (raw as { ok?: unknown }).ok === false) {
-      const msg = (raw as { error?: { message?: string }; message?: string }).error?.message
-        ?? (raw as { message?: string }).message
-        ?? "photoWow non disponibile";
-      return { error: true, message: msg, data: null };
-    }
-
-    const data = normalizePhotoWow(raw);
+    const data = normalizePhotoWow(res);
     if (!data) {
       return { error: true, message: "Risposta photoWow non valida", data: null };
     }
