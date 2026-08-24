@@ -146,7 +146,7 @@ serve(async (req) => {
       clearTimeout(timeoutId);
 
       if (fetchError instanceof Error && fetchError.name === "AbortError") {
-        console.error(`Core timeout on ${endpoint} after ${timeout}ms`);
+        console.error(`Core timeout on ${endpoint} after ${safeTimeout}ms`);
         return jsonResponse(
           { error: { message: "Il servizio non ha risposto in tempo. Riprova tra qualche istante." } },
           504,
