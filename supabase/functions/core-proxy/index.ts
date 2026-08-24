@@ -1,6 +1,29 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { checkEntitlement } from "../_shared/entitlement.ts";
+
+/** Endpoint prefixes the client is allowed to reach on the upstream Core. */
+const ALLOWED_ENDPOINT_PREFIXES = [
+  "/civiko-",
+  "/sottra",
+  "/scan",
+  "/pro-sources",
+  "/health",
+];
+
+const ALLOWED_METHODS = ["GET", "POST"];
+
+export function isAllowedEndpoint(endpoint: string): boolean {
+  if (typeof endpoint !== "string") return false;
+  const ep = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  if (ep.includes("..") || ep.includes("//") || ep.includes("\\")) return false;
+  if (/^\/*[a-z][a-z0-9+.-]*:/i.test(ep)) return false;
+  if (/[\r\n\s]/.test(ep)) return false;
+  if (ep.length > 200) return false;
+  return ALLOWED_ENDPOINT_PREFIXES.some((p) => ep === p || ep.startsWith(p));
+}
+
 
 function jsonResponse(body: Record<string, unknown>, status: number, req: Request) {
   return new Response(JSON.stringify(body), {
