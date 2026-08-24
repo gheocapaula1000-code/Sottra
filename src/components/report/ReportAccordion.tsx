@@ -74,7 +74,6 @@ export function ReportAccordionItem({
   return (
     <div className={cn(
       "rounded-2xl border border-border/60 bg-card overflow-hidden transition-all",
-      isWeak && "opacity-80",
     )}>
       <button
         type="button"

@@ -77,6 +77,7 @@ import { resolveGeoContext } from "@/lib/reportMapper";
 import { buildRenovationEstimate, renovationNarrativeMode } from "@/lib/renovationCostEngine";
 import { buildWowSnapshot } from "@/lib/sottraWowSnapshot";
 import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
+import { OmiQuotesTable } from "@/components/report/OmiQuotesTable";
 import { WowPanel } from "@/components/report/WowPanel";
 import { resolveOfficialOmiOverlay } from "@/lib/officialOmiFromCore";
 import { RESULT_SAFE_BOTTOM_PAD } from "@/lib/resultChrome";
@@ -1220,8 +1221,10 @@ function OmiCard({ data, loading }: { data: import("@/types").OmiZoneData | null
         </div>
       )}
 
-      {/* Quotazioni */}
-      {hasQuotazioni ? (
+      {/* Official rows — every tipologia × stato for the matched link_zona */}
+      {data.quotes && data.quotes.length > 0 ? (
+        <OmiQuotesTable quotes={data.quotes} />
+      ) : hasQuotazioni ? (
         <div className="grid grid-cols-2 gap-2 mb-3">
           {data.quotazioneMinResidenziale != null && (
             <div className="rounded-lg bg-muted/50 px-3 py-2">
@@ -1242,7 +1245,9 @@ function OmiCard({ data, loading }: { data: import("@/types").OmiZoneData | null
         </div>
       )}
 
-      {data.tipologia && <p className="text-[10px] text-muted-foreground/60">Tipologia: {data.tipologia}</p>}
+      {data.semestre && (
+        <p className="text-[10px] text-muted-foreground/60">Semestre {data.semestre}</p>
+      )}
       <SourceTag meta={data} />
     </Section>
   );
@@ -1252,7 +1257,13 @@ function OmiCard({ data, loading }: { data: import("@/types").OmiZoneData | null
 
 function IstatCard({ data, loading }: { data: import("@/types").IstatDemographicData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
-  if (!data || data.sourceType === "unavailable" || data.popolazione == null) return null;
+  if (!data || data.sourceType === "unavailable") return null;
+  const hasAnyMetric = data.popolazione != null
+    || data.nucleiFamiliari != null
+    || data.densita != null
+    || data.indiceVecchiaia != null
+    || data.percentualeStranieri != null;
+  if (!hasAnyMetric) return null;
 
   const isMunicipal = !data.geoLevel || data.geoLevel === "comune" || data.geoLevel === "area_vasta" || data.geoLevel === "stimato";
   const isSubMunicipal = data.geoLevel === "microzona" || data.geoLevel === "quartiere" || data.geoLevel === "zona";
@@ -1292,10 +1303,18 @@ function IstatCard({ data, loading }: { data: import("@/types").IstatDemographic
         </div>
       )}
       <div className="grid grid-cols-2 gap-2 mb-3">
+        {data.popolazione != null && (
         <div className="rounded-lg bg-muted/50 px-3 py-2">
           <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Popolazione{geoSuffix}</span>
           <p className="font-bold text-foreground text-sm mt-0.5">{fmt(data.popolazione)}</p>
         </div>
+        )}
+        {data.nucleiFamiliari != null && (
+          <div className="rounded-lg bg-muted/50 px-3 py-2">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Nuclei familiari{geoSuffix}</span>
+            <p className="font-bold text-foreground text-sm mt-0.5">{fmt(data.nucleiFamiliari)}</p>
+          </div>
+        )}
         {data.densita != null && (
           <div className="rounded-lg bg-muted/50 px-3 py-2">
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Densità{geoSuffix}</span>
@@ -2448,8 +2467,7 @@ const Result = () => {
               <SectionSafe>
                 <PublishableAccordionItem id="istat" title="Dati Demografici" icon={Users} defaultOpen={false}
                   loading={isModuleLoading(result.istatDemographic.status) || isModuleLoading(result.trendDemografico.status)}
-                  publishable={isDemographicsPublishable(istatData, trendData)}
-                  isWeak={!istatData?.geoLevel || istatData?.geoLevel === "comune" || istatData?.geoLevel === "area_vasta"}>
+                  publishable={isDemographicsPublishable(istatData, trendData)}>
                   <IstatCard data={istatData} loading={isModuleLoading(result.istatDemographic.status)} />
                   <TrendDemograficoCard data={trendData} loading={isModuleLoading(result.trendDemografico.status)} />
                 </PublishableAccordionItem>
@@ -2559,7 +2577,7 @@ const Result = () => {
       <footer
         data-capture-hide
         data-testid="result-action-bar"
-        className="shrink-0 border-t border-border/50 bg-background/90 backdrop-blur-xl px-4 sm:px-5 pt-3 z-40"
+        className="shrink-0 border-t border-border/50 bg-background px-4 sm:px-5 pt-3 z-40"
         style={{
           paddingBottom: RESULT_SAFE_BOTTOM_PAD,
           paddingLeft: "max(env(safe-area-inset-left, 0px), 16px)",

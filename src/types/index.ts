@@ -348,13 +348,28 @@ export interface PoiEnrichmentData extends SourceMetadata {
   searchRadius: number;
 }
 
+/** One official AdE OMI row (tipologia × stato) for the matched link_zona. */
+export interface OmiQuote {
+  tipologia: string;
+  stato?: string | null;
+  comprMin?: number | null;
+  comprMax?: number | null;
+  locMin?: number | null;
+  locMax?: number | null;
+  semestre?: string | null;
+}
+
 /** OMI zone data */
 export interface OmiZoneData extends SourceMetadata {
   zonaOmi?: string | null;
   zonaOmiLabel?: string | null;
   comuneLabel?: string | null;
+  /** Official AdE link_zona (e.g. PD00002850). Never guessed. */
+  linkZona?: string | null;
   quotazioneMinResidenziale?: number | null;
   quotazioneMaxResidenziale?: number | null;
+  /** Official rows for the matched PD* link_zona — never a mashed civile envelope. */
+  quotes?: OmiQuote[];
   semestre?: string | null;
   tipologia?: string | null;
   statoConservazione?: string | null;

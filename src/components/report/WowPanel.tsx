@@ -7,13 +7,43 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { attachOfficialPadovaD8Quotes } from "@/lib/officialPadovaD8";
 import { cn } from "@/lib/utils";
 import {
   MapPin, Zap, FileText, Brain, Target,
   CheckCircle2, AlertTriangle, ExternalLink, TrendingUp,
 } from "lucide-react";
-import type { PhotoWowResponse, PhotoWowLiveSignal } from "@/types/photoWow";
+import type {
+  PhotoWowLiveSignal,
+  PhotoWowPianoEsclusiva,
+  PhotoWowResponse,
+  PhotoWowZonaIntelligence,
+} from "@/types/photoWow";
 import type { OmiZoneData, SectionStatus } from "@/types";
+
+/** Hide the Intelligence zona tease when Core sent no body. */
+export function hasZonaIntelligenceContent(
+  zi: PhotoWowZonaIntelligence | null | undefined,
+): boolean {
+  if (!zi) return false;
+  if (typeof zi.tendenzaMercato === "string" && zi.tendenzaMercato.trim()) return true;
+  if ((zi.puntiDiForzaNascosti?.length ?? 0) > 0) return true;
+  if ((zi.criticitaEmergenti?.length ?? 0) > 0) return true;
+  if ((zi.notizieRecenti?.length ?? 0) > 0) return true;
+  return false;
+}
+
+/** Hide Il tuo piano esclusiva when Core sent no body. */
+export function hasPianoEsclusivaContent(
+  p: PhotoWowPianoEsclusiva | null | undefined,
+): boolean {
+  if (!p) return false;
+  if (typeof p.argomento === "string" && p.argomento.trim()) return true;
+  if ((p.puntiChiave?.length ?? 0) > 0) return true;
+  if (typeof p.stimaRapida === "string" && p.stimaRapida.trim()) return true;
+  if ((p.obiezioniProbabili?.length ?? 0) > 0) return true;
+  return false;
+}
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -178,7 +208,7 @@ export function hasOfficialOmiQuotes(
 }
 
 export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPanelProps) {
-  const omi = officialOmi?.data ?? null;
+  const omi = officialOmi?.data ? attachOfficialPadovaD8Quotes(officialOmi.data) : null;
   const omiStatus = officialOmi?.status ?? "idle";
   const hasOfficialOmi = hasOfficialOmiQuotes(omi, omiStatus);
 
@@ -272,7 +302,13 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
                   <span className="ml-1 text-sm font-semibold text-white/60">/m²</span>
                 </p>
                 <p className="text-sm text-white/75">
-                  {[omi?.zonaOmiLabel, omi?.comuneLabel, omi?.semestre].filter(Boolean).join(" · ")}
+                  {[
+                    omi?.tipologia,
+                    omi?.statoConservazione,
+                    omi?.zonaOmiLabel,
+                    omi?.comuneLabel,
+                    omi?.semestre,
+                  ].filter(Boolean).join(" · ")}
                 </p>
                 {!omi?.polygonMatch && (
                   <p className="text-[11px] text-amber-200/90">
@@ -428,8 +464,8 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
               </Reveal>
             )}
 
-            {/* PHASE 7 — Zone intelligence */}
-            {data.zonaIntelligence && (
+            {/* PHASE 7 — Zone intelligence (hide empty Core tease) */}
+            {hasZonaIntelligenceContent(data.zonaIntelligence) && (
               <Reveal show={p7}>
                 <div className="space-y-3 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-sm p-4">
                   <h3 className="flex items-center gap-2 text-sm font-bold tracking-wide">
@@ -478,8 +514,8 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
               </Reveal>
             )}
 
-            {/* PHASE 8 — Esclusiva plan */}
-            {data.pianoEsclusiva && (
+            {/* PHASE 8 — Esclusiva plan (hide empty Core tease) */}
+            {hasPianoEsclusivaContent(data.pianoEsclusiva) && (
               <Reveal show={p8}>
                 <div className="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-black/60 to-black/40 backdrop-blur-sm p-5 space-y-3">
                   <h3 className="flex items-center gap-2 text-sm font-bold tracking-wide text-amber-200">
