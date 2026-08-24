@@ -259,7 +259,13 @@ serve(async (req) => {
       const t0 = Date.now();
       const ctrl = new AbortController();
       const tid = setTimeout(() => ctrl.abort(), 5000);
-      const res = await fetch(`${CORE_API_URL}/health`, {
+      const base = CORE_API_URL.replace(/\/+$/, "");
+      const healthUrl = /\/sottra$/i.test(base)
+        ? `${base}/health`
+        : /\/functions\/v1$/i.test(base)
+          ? `${base}/sottra/health`
+          : `${base}/functions/v1/sottra/health`;
+      const res = await fetch(healthUrl, {
         headers: {
           "x-internal-secret": coreSecret!,
           "Authorization": `Bearer ${coreSecret!}`,

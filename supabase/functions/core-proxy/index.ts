@@ -10,6 +10,17 @@ function jsonResponse(body: Record<string, unknown>, status: number, req: Reques
 }
 
 /** Resolve core API secret with per-app priority and legacy fallback */
+
+/** Build upstream Sottra URL. Accepts CORE_API_URL as project root, /functions/v1, or /functions/v1/sottra. */
+function buildSottraCoreUrl(base: string, endpoint: string): string {
+  const ep = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const b = base.replace(/\/+$/, "");
+  if (/\/sottra$/i.test(b)) return `${b}${ep}`;
+  if (/\/functions\/v1$/i.test(b)) return `${b}/sottra${ep}`;
+  // project root (https://xxx.supabase.co)
+  return `${b}/functions/v1/sottra${ep}`;
+}
+
 function resolveCoreSecret(): string | undefined {
   return Deno.env.get("AI_CORE_SECRET_SOTTRA")
     || Deno.env.get("AI_CORE_SECRET")
@@ -68,7 +79,7 @@ serve(async (req) => {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const coreUrl = `${CORE_API_URL}${endpoint}`;
+      const coreUrl = buildSottraCoreUrl(CORE_API_URL, endpoint);
       console.log(`[core-proxy] FORWARD → ${coreUrl}`);
 
       const response = await fetch(coreUrl, {
