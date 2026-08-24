@@ -32,7 +32,7 @@ const D8_SNAPSHOT = {
   },
   identify: {
     status: "success" as const,
-    data: { address: "Via Forcellini 12, Padova", confidence: 0.9 },
+    data: { address: "Via Forcellini 12, Padova", buildingId: "bld-test", confidence: 0.9 },
     message: null,
   },
 };
@@ -172,8 +172,8 @@ describe("lastScanPhotoStore", () => {
     const persisted = { photo: FIXTURE_A, lat: 45.4, lng: 11.8, savedResult: D8_SNAPSHOT };
     expect(mergeResultScanState(null, persisted)?.photo).toBe(FIXTURE_A);
     expect(mergeResultScanState({ photo: FIXTURE_B, lat: 1, lng: 2 }, persisted)?.photo).toBe(FIXTURE_B);
-    expect(mergeResultScanState({ photo: FIXTURE_B, lat: 1, lng: 2 }, persisted)?.savedResult).toBeUndefined();
-    expect(mergeResultScanState({ photo: FIXTURE_A, lat: 45.4, lng: 11.8 }, persisted)?.savedResult).toEqual(D8_SNAPSHOT);
+    expect((mergeResultScanState({ photo: FIXTURE_B, lat: 1, lng: 2 }, persisted) as { savedResult?: unknown } | null)?.savedResult).toBeUndefined();
+    expect((mergeResultScanState({ photo: FIXTURE_A, lat: 45.4, lng: 11.8 }, persisted) as { savedResult?: unknown } | null)?.savedResult).toEqual(D8_SNAPSHOT);
     expect(mergeResultScanState(null, null)).toBeNull();
   });
 });

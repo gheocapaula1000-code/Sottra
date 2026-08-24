@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders as getCorsHeaders, handleCors } from "../_shared/cors.ts";
+import { checkEntitlement } from "../_shared/entitlement.ts";
+
 
 let _currentReq: Request | undefined;
 
@@ -957,6 +959,14 @@ serve(async (req) => {
     if (userError || !userData?.user) {
       return json({ error: "Auth verification failed" }, 200);
     }
+
+    // Server-side entitlement gate (owner/admin/trial/subscription)
+    const entitlement = await checkEntitlement(userData.user.id);
+    if (!entitlement.allowed) {
+      return json({ ok: false, error: "Abbonamento non attivo o periodo di prova esaurito", limit_reached: true }, 403);
+    }
+
+
 
     // Parse request
     const body = await req.json();

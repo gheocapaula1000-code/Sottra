@@ -1,6 +1,29 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { checkEntitlement } from "../_shared/entitlement.ts";
+
+/** Endpoint prefixes the client is allowed to reach on the upstream Core. */
+const ALLOWED_ENDPOINT_PREFIXES = [
+  "/civiko-",
+  "/sottra",
+  "/scan",
+  "/pro-sources",
+  "/health",
+];
+
+const ALLOWED_METHODS = ["GET", "POST"];
+
+export function isAllowedEndpoint(endpoint: string): boolean {
+  if (typeof endpoint !== "string") return false;
+  const ep = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  if (ep.includes("..") || ep.includes("//") || ep.includes("\\")) return false;
+  if (/^\/*[a-z][a-z0-9+.-]*:/i.test(ep)) return false;
+  if (/[\r\n\s]/.test(ep)) return false;
+  if (ep.length > 200) return false;
+  return ALLOWED_ENDPOINT_PREFIXES.some((p) => ep === p || ep.startsWith(p));
+}
+
 
 function jsonResponse(body: Record<string, unknown>, status: number, req: Request) {
   return new Response(JSON.stringify(body), {
@@ -52,14 +75,32 @@ serve(async (req) => {
       return jsonResponse({ error: { message: "Sessione non valida o scaduta" } }, 401, req);
     }
 
-    // ── 2. Parse request body ─────────────────────────────
+    // ── 2. Server-side entitlement gate (trial / subscription) ──
+    const entitlement = await checkEntitlement(userData.user.id);
+    if (!entitlement.allowed) {
+      return jsonResponse(
+        { error: { message: "Abbonamento non attivo o periodo di prova esaurito" }, limit_reached: true },
+        403,
+        req,
+      );
+    }
+
+    // ── 3. Parse and validate request body ────────────────
     const { endpoint, method = "POST", payload, timeout = 10000 } = await req.json();
 
-    if (!endpoint || typeof endpoint !== "string") {
+    if (!endpoint || typeof endpoint !== "string" || !isAllowedEndpoint(endpoint)) {
       return jsonResponse({ error: { message: "Parametri della richiesta non validi" } }, 400, req);
     }
 
-    console.log(`[core-proxy] IN endpoint=${endpoint} method=${method} user=${userData.user.id}`);
+    const upstreamMethod = typeof method === "string" ? method.toUpperCase() : "";
+    if (!ALLOWED_METHODS.includes(upstreamMethod)) {
+      return jsonResponse({ error: { message: "Metodo non consentito" } }, 405, req);
+    }
+
+    const safeTimeout = typeof timeout === "number" && timeout > 0 && timeout <= 60000 ? timeout : 10000;
+
+    console.log(`[core-proxy] IN endpoint=${endpoint} method=${upstreamMethod} user=${userData.user.id}`);
+
 
     // ── 3. Check backend configuration ────────────────────
     const CORE_API_URL = (Deno.env.get("CORE_API_URL") || "").replace(/\/+$/, "");
@@ -76,14 +117,14 @@ serve(async (req) => {
 
     // ── 4. Forward to Core API ────────────────────────────
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const timeoutId = setTimeout(() => controller.abort(), safeTimeout);
 
     try {
       const coreUrl = buildSottraCoreUrl(CORE_API_URL, endpoint);
       console.log(`[core-proxy] FORWARD → ${coreUrl}`);
 
       const response = await fetch(coreUrl, {
-        method,
+        method: upstreamMethod,
         headers: {
           "Content-Type": "application/json",
           "x-internal-secret": CORE_API_KEY,
@@ -105,7 +146,7 @@ serve(async (req) => {
       clearTimeout(timeoutId);
 
       if (fetchError instanceof Error && fetchError.name === "AbortError") {
-        console.error(`Core timeout on ${endpoint} after ${timeout}ms`);
+        console.error(`Core timeout on ${endpoint} after ${safeTimeout}ms`);
         return jsonResponse(
           { error: { message: "Il servizio non ha risposto in tempo. Riprova tra qualche istante." } },
           504,
