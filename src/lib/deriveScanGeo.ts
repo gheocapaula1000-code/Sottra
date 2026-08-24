@@ -47,7 +47,8 @@ function validPair(
  *
  * Manual address present: identify-resolved coords, then forward-geocode.
  * Never keep device GPS — indoor phones are never 0,0, so GPS would ignore Padova.
- * No address: device GPS; identify-resolved only if GPS is missing/0,0.
+ * No typed address: device GPS (reverse-geocoded street is display/pricing only).
+ * Identify-resolved coords only if GPS is missing/0,0.
  * Fail-closed: null coords, no invented zone.
  */
 export function deriveGeoFromIdentify(
@@ -56,9 +57,12 @@ export function deriveGeoFromIdentify(
   lat: number,
   lng: number,
   geocoded?: { lat: number; lng: number } | null,
+  resolvedStreetAddress?: string | null,
 ): DerivedScanGeo {
-  const address = (manualAddrInput && manualAddrInput.trim()) || identifyData?.address || "";
-  const hasManualAddress = !!(manualAddrInput && manualAddrInput.trim());
+  const typed = manualAddrInput?.trim() ?? "";
+  const reverse = resolvedStreetAddress?.trim() ?? "";
+  const address = typed || reverse || identifyData?.address || "";
+  const hasManualAddress = typed.length > 0;
   const confidence = identifyData?.confidence ?? undefined;
   const addrParts = address.split(",").map((s) => s.trim()).filter(Boolean);
   const comuneFromAddr = addrParts.length >= 2 ? addrParts[addrParts.length - 2] : undefined;
@@ -74,10 +78,12 @@ export function deriveGeoFromIdentify(
     ?? comuneFromAddr;
   const provinciaFromIdentify = (geoRes?.resolvedProvincia as string | undefined)
     ?? provinciaFromAddr;
-  const addressFromIdentify = (identifyAny.resolvedAddress as string | undefined)
-    ?? (geoRes?.resolvedAddress as string | undefined)
-    ?? identifyData?.address
-    ?? address;
+  const addressFromIdentify = typed
+    || reverse
+    || (identifyAny.resolvedAddress as string | undefined)
+    || (geoRes?.resolvedAddress as string | undefined)
+    || identifyData?.address
+    || address;
 
   const resolved = readIdentifyResolvedCoords(identifyData);
   const geocodedPair = geocoded ? validPair(geocoded.lat, geocoded.lng) : null;

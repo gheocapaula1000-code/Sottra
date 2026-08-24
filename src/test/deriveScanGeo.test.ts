@@ -101,4 +101,19 @@ describe("deriveGeoFromIdentify — manual address vs device GPS", () => {
     expect(geo.finalLng).toBeNull();
     expect(geo.geoSource).toBe("none");
   });
+
+  it("GPS + reverse street keeps device coords and does not treat the street as a typed address", () => {
+    const geo = deriveGeoFromIdentify(
+      identifyPadova,
+      undefined,
+      45.4064,
+      11.8768,
+      null,
+      "Via San Francesco 2, Padova",
+    );
+    expect(geo.finalLat).toBe(45.4064);
+    expect(geo.finalLng).toBe(11.8768);
+    expect(geo.geoSource).toBe("device");
+    expect(geo.address).toBe("Via San Francesco 2, Padova");
+  });
 });

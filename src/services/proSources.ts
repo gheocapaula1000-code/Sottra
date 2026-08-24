@@ -1,4 +1,6 @@
 import { officialOmiFromCore } from "@/lib/officialOmiFromCore";
+import { isValidGps } from "@/lib/imageUtils";
+import { readReverseGeocodeAddress } from "@/lib/reverseGeocodeAddress";
 import { supabase } from "@/integrations/supabase/client";
 import type { PoiEnrichmentData, OmiZoneData, IstatDemographicData, SubMunicipalMatchData } from "@/types";
 
@@ -40,6 +42,29 @@ export async function geocodeAddress(
     return { lat, lng };
   } catch (e) {
     console.warn("[ProSources] geocode exception:", e);
+    return null;
+  }
+}
+
+/**
+ * Reverse-geocode real GPS to a street address (Nominatim via pro-sources).
+ * Never looks up 0,0. Fail-closed: null on error — GPS coords still drive OMI.
+ */
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+): Promise<string | null> {
+  if (!isValidGps(lat, lng)) return null;
+
+  try {
+    const { data, error } = await supabase.functions.invoke("pro-sources", {
+      body: { lat, lng, modules: ["reverse"] },
+    });
+
+    if (error || !data || data.ok === false || !data.data) return null;
+    return readReverseGeocodeAddress((data.data as Record<string, unknown>).reverse);
+  } catch (e) {
+    console.warn("[ProSources] reverse geocode exception:", e);
     return null;
   }
 }

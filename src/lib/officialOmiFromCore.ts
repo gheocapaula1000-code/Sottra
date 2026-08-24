@@ -102,6 +102,7 @@ export interface OmiZoneHit {
   max: number | null;
   stato: string | null;
   tipologia: string | null;
+  polygonMatch?: boolean;
 }
 
 /** Official Agenzia microzona id (PD00000015), not a gold G224-* layer. */
@@ -125,27 +126,55 @@ export function extractOmiFascia(...vals: unknown[]): string | null {
   return null;
 }
 
-export function scoreOmiHit(hit: OmiZoneHit): number {
+/** True only for the Padova centro B1 ∩ B2 overlap — never a global B1 bonus. */
+export function isB1B2OverlapOnly(fasce: Iterable<string | null | undefined>): boolean {
+  const set = new Set<string>();
+  for (const f of fasce) {
+    if (f) set.add(f);
+  }
+  if (!set.has("B1") || !set.has("B2")) return false;
+  for (const f of set) {
+    if (f !== "B1" && f !== "B2") return false;
+  }
+  return true;
+}
+
+export function competingFasceFromHits(hits: OmiZoneHit[]): Set<string> {
+  const set = new Set<string>();
+  for (const h of hits) {
+    if (h.fascia) set.add(h.fascia);
+  }
+  return set;
+}
+
+/**
+ * Rank official polygon hits. Official PD* + quotes win.
+ * B1 beats B2 only when those two fasce overlap at the same point
+ * (San Francesco). Never force B1 over D7 / C3 / other zones.
+ */
+export function scoreOmiHit(hit: OmiZoneHit, competingFasce?: Iterable<string | null | undefined>): number {
   const fascia = hit.fascia;
   const link = hit.linkZona;
   const hasQuotes = hit.min != null || hit.max != null;
   let score = 0;
   if (hasQuotes) score += 40;
-  if (fascia === "B1") score += 50;
-  if (isOfficialPdLink(link) && fascia === "B1") score += 40;
-  if (isGoldG224Link(link) && fascia === "B1") score += 25;
-  if (isOfficialPdLink(link)) score += 10;
-  if (fascia === "B2") score -= 40;
+  if (isOfficialPdLink(link)) score += 50;
+  if (isGoldG224Link(link) && hasQuotes) score += 20;
+  if (hit.polygonMatch) score += 25;
+  const overlap = competingFasce ? isB1B2OverlapOnly(competingFasce) : false;
+  if (overlap && fascia === "B1") score += 15;
+  if (overlap && fascia === "B2") score -= 15;
   if (hit.stato && /normale/i.test(hit.stato)) score += 5;
   return score;
 }
 
 export function pickPreferredOmiHit(hits: OmiZoneHit[]): OmiZoneHit | null {
   if (hits.length === 0) return null;
+  const fasce = competingFasceFromHits(hits);
   let best = hits[0];
-  let bestScore = scoreOmiHit(best);
+  let bestScore = scoreOmiHit(best, fasce);
   for (let i = 1; i < hits.length; i++) {
-    const s = scoreOmiHit(hits[i]);
+    const s = scoreOmiHit(hits[i], fasce);
     if (s > bestScore) {
       best = hits[i];
       bestScore = s;
@@ -184,8 +213,9 @@ function readOmiHit(raw: unknown): OmiZoneHit | null {
   );
   const stato = firstString(raw.stato_conservazione, raw.statoConservazione, raw.stato);
   const tipologia = firstString(raw.tipologia, raw.descr_tipologia, raw.Descr_Tipologia);
+  const polygonMatch = raw.polygonMatch === true || raw.polygon_match === true;
   if (!linkZona && !fascia && !label && min == null && max == null) return null;
-  return { raw, linkZona, fascia, label, comune, min, max, stato, tipologia };
+  return { raw, linkZona, fascia, label, comune, min, max, stato, tipologia, polygonMatch };
 }
 
 function collectFromArray(arr: unknown): OmiZoneHit[] {
@@ -430,6 +460,7 @@ function omiDataAsHit(d: OmiZoneData): OmiZoneHit {
     max: d.quotazioneMaxResidenziale ?? null,
     stato: d.statoConservazione ?? null,
     tipologia: d.tipologia ?? null,
+    polygonMatch: d.polygonMatch === true,
   };
 }
 
@@ -439,7 +470,8 @@ export function mergeOfficialOmiData(
   incoming: OmiZoneData,
 ): OmiZoneData {
   if (!current || current.sourceType === "unavailable") return incoming;
-  const preferred = scoreOmiHit(omiDataAsHit(incoming)) > scoreOmiHit(omiDataAsHit(current))
+  const fasce = competingFasceFromHits([omiDataAsHit(incoming), omiDataAsHit(current)]);
+  const preferred = scoreOmiHit(omiDataAsHit(incoming), fasce) > scoreOmiHit(omiDataAsHit(current), fasce)
     ? incoming
     : current;
   const other = preferred === incoming ? current : incoming;

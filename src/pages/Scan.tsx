@@ -6,6 +6,7 @@ import { normalizeImage, isValidImageDataUrl } from "@/lib/imageUtils";
 import { Button } from "@/components/ui/button";
 import CaptureGate from "@/components/CaptureGate";
 import {
+  LOCATION_CAMERA_ASK,
   STANDALONE_LOCATION_ASK_HINT,
   isStandaloneDisplay,
   isValidGeoPosition,
@@ -272,7 +273,7 @@ const Scan = () => {
             </div>
             <p className="text-base font-semibold text-white">Posizione non disponibile</p>
             <p className="text-sm text-white/70 leading-relaxed">
-              Puoi riprovare la geolocalizzazione oppure inserire l'indirizzo dell'immobile.
+              Consenti la posizione Durante l'uso, riprova, oppure inserisci l'indirizzo dell'immobile.
             </p>
             {(standaloneAskHint || isStandaloneDisplay()) && (
               <p className="text-xs text-white/55 leading-relaxed">
@@ -356,9 +357,11 @@ const Scan = () => {
                 📍 Scansiona questo indirizzo
               </button>
               <p className="text-[11px] text-white/70 mt-1">
-                Inserisci l'indirizzo per analisi precisa anche da desktop. Senza indirizzo verrà usato il GPS.
+                {isValidGeoPosition(gatePosition)
+                  ? "Posizione acquisita. Lo scatto userà le coordinate e l'indirizzo automatico. Puoi comunque scrivere un indirizzo se vuoi."
+                  : LOCATION_CAMERA_ASK}
               </p>
-              {standaloneAskHint && (
+              {(standaloneAskHint || (!isValidGeoPosition(gatePosition) && isStandaloneDisplay())) && (
                 <p className="text-[11px] text-white/55 mt-1 leading-relaxed">
                   {STANDALONE_LOCATION_ASK_HINT}
                 </p>

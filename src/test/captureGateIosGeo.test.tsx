@@ -48,6 +48,8 @@ describe("CaptureGate iOS Permissions API must not lock Continua", () => {
     const continua = await screen.findByRole("button", { name: /continua allo scatto/i });
     expect(continua).toBeEnabled();
     expect(screen.queryByText("Attiva la geolocalizzazione per continuare")).toBeNull();
+    expect(screen.getByText(/consenti la posizione Durante l'uso/i)).toBeInTheDocument();
+    expect(screen.getByText(/Attiva la posizione per questa analisi/i)).toBeInTheDocument();
   });
 
   it("keeps Continua enabled when permissions.query reports prompt", async () => {
@@ -182,6 +184,8 @@ describe("CaptureGate / Scan source invariants", () => {
     const gate = src("src/components/CaptureGate.tsx");
     expect(gate).not.toContain("disabled={geoDenied}");
     expect(gate).not.toContain("Attiva la geolocalizzazione per continuare");
+    expect(gate).toContain("LOCATION_USE_PROMPT");
+    expect(gate).toContain("Durante l'uso");
     expect(gate).toContain("requestGeolocation");
     expect(gate).toContain("Usa la mia posizione");
     expect(gate).toContain("await requestGeolocation");
@@ -197,6 +201,8 @@ describe("CaptureGate / Scan source invariants", () => {
     expect(scan).toContain('shootPhase === "gps_denied"');
     expect(scan).toContain("Riprova posizione");
     expect(scan).toContain("Continua con l'indirizzo");
+    expect(scan).toContain("LOCATION_CAMERA_ASK");
+    expect(scan).toContain("Durante l'uso");
     expect(scan).toContain("navigateWithTypedAddress");
     expect(scan).not.toContain("timeout: 8000");
   });

@@ -338,6 +338,35 @@ describe("pickPreferredOmiHit — Padova overlap", () => {
     expect(preferred?.min).toBe(2400);
   });
 
+  it("does not force Via Tiziano Aspetti 245 D7 onto B1", () => {
+    const omi = officialOmiFromCore({
+      hits: [
+        {
+          link_zona: "PD00002830",
+          zona_omi: "D7",
+          zona_descr: "Arcella Nord / Mortise",
+          comune_label: "Padova",
+          quotazione_min: 950,
+          quotazione_max: 1200,
+          stato_conservazione: "NORMALE",
+          tipologia: "Abitazioni civili",
+        },
+        {
+          link_zona: "G224-B1",
+          zona_omi: "B1",
+          zona_descr: "Centro",
+          comune_label: "Padova",
+          quotazione_min: 2400,
+          quotazione_max: 3400,
+        },
+      ],
+    });
+    expect(omi!.zonaOmi).toBe("D7");
+    expect(omi!.quotazioneMinResidenziale).toBe(950);
+    expect(omi!.quotazioneMaxResidenziale).toBe(1200);
+    expect(omi!.zonaOmiLabel).not.toMatch(/B1/i);
+  });
+
   it("keeps official B1 quotes when merging a later B2 pro-sources row", () => {
     const merged = mergeOfficialOmiData(
       {
@@ -360,5 +389,30 @@ describe("pickPreferredOmiHit — Padova overlap", () => {
     expect(merged.zonaOmi).toBe("B1");
     expect(merged.quotazioneMinResidenziale).toBe(2400);
     expect(merged.quotazioneMaxResidenziale).toBe(3400);
+  });
+
+  it("does not let cinematic B1 overwrite official D7 950–1200", () => {
+    const merged = mergeOfficialOmiData(
+      {
+        zonaOmi: "D7",
+        zonaOmiLabel: "Arcella Nord / Mortise (OMI D7)",
+        comuneLabel: "Padova",
+        quotazioneMinResidenziale: 950,
+        quotazioneMaxResidenziale: 1200,
+        sourceType: "official",
+        polygonMatch: true,
+      },
+      {
+        zonaOmi: "B1",
+        zonaOmiLabel: "Centro (OMI B1)",
+        comuneLabel: "Padova",
+        quotazioneMinResidenziale: 2400,
+        quotazioneMaxResidenziale: 3400,
+        sourceType: "official",
+      },
+    );
+    expect(merged.zonaOmi).toBe("D7");
+    expect(merged.quotazioneMinResidenziale).toBe(950);
+    expect(merged.quotazioneMaxResidenziale).toBe(1200);
   });
 });

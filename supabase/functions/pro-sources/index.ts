@@ -158,6 +158,62 @@ async function forwardGeocode(address: string): Promise<Record<string, unknown>>
 }
 
 /* ══════════════════════════════════════════════════════
+   NOMINATIM — Reverse geocode GPS to a street address
+   ══════════════════════════════════════════════════════ */
+
+function formatNominatimStreet(addr: Record<string, unknown> | null | undefined): string | null {
+  if (!addr) return null;
+  const first = (...vals: unknown[]) => {
+    for (const v of vals) {
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
+    return null;
+  };
+  const road = first(addr.road, addr.pedestrian, addr.footway, addr.square, addr.residential);
+  const house = first(addr.house_number);
+  const comune = first(addr.city, addr.town, addr.village, addr.municipality);
+  if (!road && !comune) return null;
+  const street = road && house ? `${road} ${house}` : (road ?? "");
+  if (street && comune) return `${street}, ${comune}`;
+  return street || comune;
+}
+
+async function reverseGeocodeStreet(lat: number, lng: number): Promise<Record<string, unknown>> {
+  if (lat === 0 && lng === 0) {
+    return { sourceType: "unavailable", availabilityReason: "no_match", sourceLabel: "OpenStreetMap Nominatim" };
+  }
+  try {
+    const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&addressdetails=1&accept-language=it&zoom=18`;
+    const revRes = await fetchT(revUrl, 8000, { "User-Agent": "Sottra/1.0 (real-estate-analysis)" });
+    if (!revRes.ok) {
+      const t = await revRes.text();
+      log("nominatim street reverse error", `${revRes.status}: ${t.slice(0, 100)}`);
+      return { sourceType: "unavailable", availabilityReason: "provider_unavailable", sourceLabel: "OpenStreetMap Nominatim" };
+    }
+    const revData = await revRes.json() as Record<string, unknown>;
+    const addr = (revData.address ?? null) as Record<string, unknown> | null;
+    const address = formatNominatimStreet(addr);
+    if (!address || address.length < 3) {
+      log("nominatim street reverse", "no street address");
+      return { sourceType: "unavailable", availabilityReason: "no_match", sourceLabel: "OpenStreetMap Nominatim" };
+    }
+    log("nominatim street reverse", address);
+    return {
+      address,
+      lat,
+      lng,
+      displayName: typeof revData.display_name === "string" ? revData.display_name : null,
+      sourceType: "verified_geo",
+      sourceProvider: "nominatim",
+      sourceLabel: "OpenStreetMap Nominatim",
+    };
+  } catch (e) {
+    log("nominatim street reverse exception", String(e));
+    return { sourceType: "unavailable", availabilityReason: "provider_unavailable", sourceLabel: "OpenStreetMap Nominatim" };
+  }
+}
+
+/* ══════════════════════════════════════════════════════
    ISTAT — Real SDMX REST API query for demographic data
    ══════════════════════════════════════════════════════ */
 
@@ -459,32 +515,24 @@ function extractOmiFascia(zona: string | null | undefined): string | null {
 }
 
 /**
- * When several polygons contain the point (Padova centro B1 ∩ B2), prefer the
- * official PD* / B1 microzona over a conflicting B2. Gold G224-B1 is the same B1.
- * National polygons stay in the table — this only picks among hits.
+ * When several polygons contain the point (Padova centro B1 ∩ B2), prefer B1
+ * over a conflicting B2. Do not force B1 when another fascia (D7, C3, …) is present.
+ * Official PD* ids win when present. National polygons stay in the table.
  */
 function preferPolygonMatch<T extends { zona_omi?: string | null }>(matches: T[]): T | null {
   if (matches.length === 0) return null;
   if (matches.length === 1) return matches[0];
 
-  let best = matches[0];
-  let bestScore = Number.NEGATIVE_INFINITY;
-  for (const row of matches) {
-    const zona = String(row.zona_omi ?? "");
-    const fascia = extractOmiFascia(zona);
-    const officialFascia = /^[A-E]\d{1,2}$/i.test(zona.trim());
-    let score = 0;
-    if (fascia === "B1") score += 50;
-    if (officialFascia && fascia === "B1") score += 40;
-    if (/^G224/i.test(zona) && fascia === "B1") score += 25;
-    if (officialFascia) score += 10;
-    if (fascia === "B2") score -= 40;
-    if (score > bestScore) {
-      best = row;
-      bestScore = score;
-    }
+  const fasce = matches.map((row) => extractOmiFascia(row.zona_omi)).filter((f): f is string => !!f);
+  const unique = [...new Set(fasce)];
+  const onlyB1B2 = unique.includes("B1") && unique.includes("B2")
+    && unique.every((f) => f === "B1" || f === "B2");
+  if (onlyB1B2) {
+    return matches.find((row) => extractOmiFascia(row.zona_omi) === "B1") ?? matches[0];
   }
-  return best;
+  const official = matches.find((row) => /^PD\d+/i.test(String(row.zona_omi ?? "").trim()));
+  if (official) return official;
+  return matches[0];
 }
 
 /* ══════════════════════════════════════════════════════
@@ -910,6 +958,18 @@ serve(async (req) => {
       }
       const geocode = await forwardGeocode(addr);
       return json({ ok: true, data: { geocode } });
+    }
+
+    if (requestedModules.length === 1 && requestedModules[0] === "reverse") {
+      log("request", `modules=reverse, lat=${lat}, lng=${lng}`);
+      if (lat == null || lng == null || (lat === 0 && lng === 0)) {
+        return json({
+          ok: true,
+          data: { reverse: { sourceType: "unavailable", availabilityReason: "no_match", sourceLabel: "OpenStreetMap Nominatim" } },
+        });
+      }
+      const reverse = await reverseGeocodeStreet(lat, lng);
+      return json({ ok: true, data: { reverse } });
     }
 
     if (lat == null || lng == null) {

@@ -4,6 +4,9 @@ import {
   GEO_HIGH_ACCURACY_OPTIONS,
   GEO_STANDALONE_WATCHDOG_MS,
   GeoRequestError,
+  LOCATION_CAMERA_ASK,
+  LOCATION_USE_DETAIL,
+  LOCATION_USE_PROMPT,
   isValidGeoPosition,
   requestGeolocation,
   requestGeolocationWithFallback,
@@ -199,6 +202,16 @@ describe("standalone watchdog", () => {
     const expectation = expect(pending).rejects.toMatchObject({ code: "standalone_watchdog" });
     await vi.advanceTimersByTimeAsync(GEO_STANDALONE_WATCHDOG_MS);
     await expectation;
+  });
+});
+
+describe("clear Italian location permission copy", () => {
+  it("asks to enable location Durante l'uso before using the camera", () => {
+    expect(LOCATION_USE_PROMPT).toMatch(/Durante l'uso/);
+    expect(LOCATION_USE_PROMPT).toMatch(/OMI/);
+    expect(LOCATION_USE_DETAIL).toMatch(/inserisci l'indirizzo/i);
+    expect(LOCATION_CAMERA_ASK).toMatch(/Durante l'uso/);
+    expect(LOCATION_CAMERA_ASK).toMatch(/inserisci l'indirizzo/i);
   });
 });
 

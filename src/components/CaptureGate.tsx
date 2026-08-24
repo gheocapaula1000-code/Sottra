@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import {
   GEO_GATE_PROMPT_OPTIONS,
   GeoRequestError,
+  LOCATION_USE_DETAIL,
+  LOCATION_USE_PROMPT,
   STANDALONE_LOCATION_ASK_HINT,
   isStandaloneDisplay,
   isValidGeoPosition,
@@ -108,12 +110,12 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
   const checks: { icon: React.ReactNode; label: string; sublabel: string; status: "ok" | "warn" | "neutral" }[] = [
     {
       icon: <MapPin className="h-5 w-5" />,
-      label: "Geolocalizzazione attiva",
+      label: "Posizione Durante l'uso",
       sublabel: geoStatus === "granted"
         ? "Posizione disponibile"
         : geoFailed
           ? "Puoi continuare e inserire l'indirizzo"
-          : "Tocca Continua o Usa la mia posizione. Puoi anche inserire l'indirizzo.",
+          : LOCATION_USE_DETAIL,
       status: geoStatus === "granted" ? "ok" : geoFailed ? "warn" : "neutral",
     },
     {
@@ -143,10 +145,13 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
         </div>
 
         <h1 className="text-xl font-bold text-foreground mb-2 text-center">
-          Prima di iniziare
+          Attiva la posizione per questa analisi
         </h1>
+        <p className="text-sm text-foreground text-center mb-3 leading-relaxed font-medium">
+          {LOCATION_USE_PROMPT}
+        </p>
         <p className="text-sm text-muted-foreground text-center mb-8 leading-relaxed">
-          Per un'analisi accurata, verifica questi elementi
+          Non apriamo le Impostazioni al posto tuo. Se la richiesta non compare o viene negata, inserisci l'indirizzo.
         </p>
 
         {/* Checklist */}
