@@ -117,14 +117,14 @@ serve(async (req) => {
 
     // ── 4. Forward to Core API ────────────────────────────
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const timeoutId = setTimeout(() => controller.abort(), safeTimeout);
 
     try {
       const coreUrl = buildSottraCoreUrl(CORE_API_URL, endpoint);
       console.log(`[core-proxy] FORWARD → ${coreUrl}`);
 
       const response = await fetch(coreUrl, {
-        method,
+        method: upstreamMethod,
         headers: {
           "Content-Type": "application/json",
           "x-internal-secret": CORE_API_KEY,
