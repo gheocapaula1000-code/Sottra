@@ -34,6 +34,12 @@ import type {
   IstatDemographicData, OmiZoneData,
 } from "@/types";
 import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
+import { IstatSubMunicipalAreasTable } from "@/components/report/IstatSubMunicipalAreasTable";
+import {
+  hasRenderableIstatAreas,
+  isIstatDemographicsRenderable,
+  sanitizeComunalePopolazione,
+} from "@/lib/istatSubMunicipalAreas";
 import { calculateNeighborhoodIndex, type NeighborhoodIndex, type SubDimension } from "@/lib/neighborhoodIndex";
 import {
   ProfiloRapidoCard, ImmobileFacciataCard, ContestoVicinatoCard,
@@ -1255,10 +1261,20 @@ function OmiCard({ data, loading }: { data: import("@/types").OmiZoneData | null
 
 /* ── ISTAT Card ───────────────────────────────────────── */
 
-function IstatCard({ data, loading }: { data: import("@/types").IstatDemographicData | null; loading: boolean }) {
+function IstatCard({
+  data,
+  loading,
+  omiZoneLabel,
+}: {
+  data: import("@/types").IstatDemographicData | null;
+  loading: boolean;
+  omiZoneLabel?: string | null;
+}) {
   if (loading) return <SectionSkeleton />;
   if (!data || data.sourceType === "unavailable") return null;
-  const hasAnyMetric = data.popolazione != null
+  const popolazione = sanitizeComunalePopolazione(data.popolazione, data.comuneIstatCode, data.comuneLabel);
+  const hasAreas = hasRenderableIstatAreas(data.areas);
+  const hasAnyMetric = isIstatDemographicsRenderable(data)
     || data.nucleiFamiliari != null
     || data.densita != null
     || data.indiceVecchiaia != null
@@ -1303,10 +1319,10 @@ function IstatCard({ data, loading }: { data: import("@/types").IstatDemographic
         </div>
       )}
       <div className="grid grid-cols-2 gap-2 mb-3">
-        {data.popolazione != null && (
+        {popolazione != null && (
         <div className="rounded-lg bg-muted/50 px-3 py-2">
           <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Popolazione{geoSuffix}</span>
-          <p className="font-bold text-foreground text-sm mt-0.5">{fmt(data.popolazione)}</p>
+          <p className="font-bold text-foreground text-sm mt-0.5">{fmt(popolazione)}</p>
         </div>
         )}
         {data.nucleiFamiliari != null && (
@@ -1354,6 +1370,9 @@ function IstatCard({ data, loading }: { data: import("@/types").IstatDemographic
             </p>
           )}
         </div>
+      )}
+      {hasAreas && (
+        <IstatSubMunicipalAreasTable areas={data.areas} omiZoneLabel={omiZoneLabel} />
       )}
       <SourceTag meta={data} />
     </Section>
@@ -2468,7 +2487,11 @@ const Result = () => {
                 <PublishableAccordionItem id="istat" title="Dati Demografici" icon={Users} defaultOpen={false}
                   loading={isModuleLoading(result.istatDemographic.status) || isModuleLoading(result.trendDemografico.status)}
                   publishable={isDemographicsPublishable(istatData, trendData)}>
-                  <IstatCard data={istatData} loading={isModuleLoading(result.istatDemographic.status)} />
+                  <IstatCard
+                    data={istatData}
+                    omiZoneLabel={officialOmi.data?.zonaOmiLabel ?? officialOmi.data?.zonaOmi}
+                    loading={isModuleLoading(result.istatDemographic.status)}
+                  />
                   <TrendDemograficoCard data={trendData} loading={isModuleLoading(result.trendDemografico.status)} />
                 </PublishableAccordionItem>
               </SectionSafe>

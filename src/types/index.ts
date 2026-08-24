@@ -382,6 +382,21 @@ export interface OmiZoneData extends SourceMetadata {
   matchConfidence?: number;
 }
 
+/** Official ISTAT 2021 sub-municipal area (pop + famiglie). No invented geometry. */
+export interface IstatSubMunicipalArea {
+  name: string;
+  code?: string | null;
+  popolazione?: number | null;
+  nucleiFamiliari?: number | null;
+  densita?: number | null;
+  etaMedia?: number | null;
+  sourceLabel?: string | null;
+  sourceYear?: number | null;
+  comuneIstatCode?: string | null;
+  /** Name-only OMI hint (Est / Forcellini / …). Not a polygon match. */
+  suggestedNameOnly?: boolean;
+}
+
 /** ISTAT enhanced demographic data */
 export interface IstatDemographicData extends SourceMetadata {
   popolazione?: number | null;
@@ -390,6 +405,9 @@ export interface IstatDemographicData extends SourceMetadata {
   indiceVecchiaia?: number | null;
   percentualeStranieri?: number | null;
   comuneLabel?: string | null;
+  comuneIstatCode?: string | null;
+  /** Official ISTAT 2021 areas for this comune (empty = hide table). */
+  areas?: IstatSubMunicipalArea[] | null;
   annoRilevazione?: string | null;
   /** Geographic level of the data (comune, quartiere, microzona) */
   geoLevel?: GeoLevel | null;

@@ -217,6 +217,18 @@ async function reverseGeocodeStreet(lat: number, lng: number): Promise<Record<st
    ISTAT — Real SDMX REST API query for demographic data
    ══════════════════════════════════════════════════════ */
 
+interface IstatSubMunicipalArea {
+  name: string;
+  code?: string | null;
+  popolazione?: number | null;
+  nucleiFamiliari?: number | null;
+  densita?: number | null;
+  etaMedia?: number | null;
+  sourceLabel?: string;
+  sourceYear?: number | null;
+  comuneIstatCode?: string | null;
+}
+
 interface IstatResult {
   popolazione?: number | null;
   nucleiFamiliari?: number | null;
@@ -224,6 +236,8 @@ interface IstatResult {
   indiceVecchiaia?: number | null;
   percentualeStranieri?: number | null;
   comuneLabel?: string | null;
+  comuneIstatCode?: string | null;
+  areas?: IstatSubMunicipalArea[];
   annoRilevazione?: string | null;
   sourceType: string;
   sourceProvider: string;
@@ -234,6 +248,95 @@ interface IstatResult {
   geoLabel?: string;
   availabilityReason?: string;
   licensingNote?: string;
+}
+
+const PADOVA_ISTAT_CODE = "028060";
+const PADOVA_BROKEN_COMUNI_POP = 11185;
+const ISTAT_SUB_MUNICIPAL_SOURCE_LABEL = "ISTAT 2021 / area sub-comunale";
+
+function normalizeIstatComuneCode(code: string | null | undefined): string | null {
+  if (!code) return null;
+  const digits = String(code).replace(/\D/g, "");
+  if (!digits) return null;
+  return digits.padStart(6, "0");
+}
+
+function isPadovaComuneLabel(name: string | null | undefined): boolean {
+  const label = (name ?? "").trim().toLowerCase();
+  return label === "padova" || label === "comune di padova";
+}
+
+function sanitizePadovaComunalePop(
+  popolazione: number | null | undefined,
+  istatCode: string | null | undefined,
+  comuneLabel: string | null | undefined,
+): number | null {
+  if (typeof popolazione !== "number" || !Number.isFinite(popolazione) || popolazione <= 0) return null;
+  const padova = normalizeIstatComuneCode(istatCode) === PADOVA_ISTAT_CODE || isPadovaComuneLabel(comuneLabel);
+  if (padova && popolazione === PADOVA_BROKEN_COMUNI_POP) return null;
+  return Math.round(popolazione);
+}
+
+function mapOfficialSubMunicipalAreaRows(rows: Record<string, unknown>[]): IstatSubMunicipalArea[] {
+  const areas: IstatSubMunicipalArea[] = [];
+  for (const r of rows) {
+    const name = typeof r.area_name === "string" ? r.area_name.trim() : "";
+    if (!name) continue;
+    const popolazione = typeof r.popolazione === "number" ? r.popolazione : null;
+    const nucleiFamiliari = typeof r.nuclei_familiari === "number" ? r.nuclei_familiari : null;
+    if (popolazione == null && nucleiFamiliari == null) continue;
+    areas.push({
+      name,
+      code: typeof r.area_code === "string" ? r.area_code : null,
+      popolazione,
+      nucleiFamiliari,
+      densita: typeof r.densita === "number" ? r.densita : null,
+      etaMedia: typeof r.eta_media === "number" ? r.eta_media : null,
+      sourceLabel: ISTAT_SUB_MUNICIPAL_SOURCE_LABEL,
+      sourceYear: typeof r.source_year === "number" ? r.source_year : 2021,
+      comuneIstatCode: normalizeIstatComuneCode(typeof r.comune_istat_code === "string" ? r.comune_istat_code : null),
+    });
+  }
+  const order = ["Centro", "Est", "Nord", "Ovest", "Sud-Est", "Sud-Ovest"];
+  return areas.sort((a, b) => {
+    const ia = order.findIndex((n) => n.toLowerCase() === a.name.toLowerCase());
+    const ib = order.findIndex((n) => n.toLowerCase() === b.name.toLowerCase());
+    if (ia !== -1 || ib !== -1) {
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    }
+    return a.name.localeCompare(b.name, "it");
+  });
+}
+
+/** Official ISTAT 2021 areas by comune code. Does not require polygons or centroids. */
+async function queryOfficialSubMunicipalAreas(
+  istatCode: string | null,
+  comuneLabel: string | null,
+  supabase: ReturnType<typeof createClient>,
+): Promise<IstatSubMunicipalArea[]> {
+  let code = normalizeIstatComuneCode(istatCode);
+  if (!code && isPadovaComuneLabel(comuneLabel)) code = PADOVA_ISTAT_CODE;
+  if (!code) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from("sub_municipal_areas_2021")
+      .select("area_name, area_code, popolazione, nuclei_familiari, densita, eta_media, source_label, source_year, comune_istat_code")
+      .eq("comune_istat_code", code);
+
+    if (error) {
+      log("istat areas", error.message);
+      return [];
+    }
+    const mapped = mapOfficialSubMunicipalAreaRows((data ?? []) as Record<string, unknown>[]);
+    log("istat areas", `comune=${code} rows=${mapped.length}`);
+    return mapped;
+  } catch (e) {
+    log("istat areas exception", String(e));
+    return [];
+  }
 }
 
 async function queryIstatSdmx(istatCode: string, comuneLabel: string): Promise<IstatResult> {
@@ -1123,6 +1226,58 @@ serve(async (req) => {
         log("istat post-process", `upgraded to sub-municipal via OMI zone: ${subWithOmi.geoLabel}`);
         results.istat = subWithOmi;
       }
+    }
+
+    // Official ISTAT 2021 areas by comune (no polygons required). Does not overwrite OMI
+    // and does not invent a D8-only population or a polygon match.
+    const officialAreas = requestedModules.includes("istat")
+      ? await queryOfficialSubMunicipalAreas(
+          geoId?.istatCode ?? null,
+          geoId?.comuneLabel ?? null,
+          supabaseAdmin,
+        )
+      : [];
+    const istatCodeNorm = normalizeIstatComuneCode(geoId?.istatCode ?? null)
+      ?? (isPadovaComuneLabel(geoId?.comuneLabel) ? PADOVA_ISTAT_CODE : null);
+
+    if (results.istat && typeof results.istat === "object") {
+      const istat = results.istat as IstatResult;
+      istat.comuneIstatCode = istatCodeNorm;
+      if (officialAreas.length > 0) istat.areas = officialAreas;
+      istat.popolazione = sanitizePadovaComunalePop(
+        istat.popolazione,
+        istatCodeNorm,
+        istat.comuneLabel ?? geoId?.comuneLabel,
+      );
+      if (istat.sourceType === "unavailable" && officialAreas.length > 0) {
+        results.istat = {
+          popolazione: null,
+          comuneLabel: geoId?.comuneLabel ?? null,
+          comuneIstatCode: istatCodeNorm,
+          areas: officialAreas,
+          geoLevel: "comune",
+          geoLabel: geoId?.comuneLabel ? `Comune di ${geoId.comuneLabel}` : undefined,
+          sourceType: "official",
+          sourceProvider: "istat",
+          sourceLabel: ISTAT_SUB_MUNICIPAL_SOURCE_LABEL,
+          sourceCoverageLevel: "comune",
+          licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
+        };
+      }
+    } else if (officialAreas.length > 0) {
+      results.istat = {
+        popolazione: null,
+        comuneLabel: geoId?.comuneLabel ?? null,
+        comuneIstatCode: istatCodeNorm,
+        areas: officialAreas,
+        geoLevel: "comune",
+        geoLabel: geoId?.comuneLabel ? `Comune di ${geoId.comuneLabel}` : undefined,
+        sourceType: "official",
+        sourceProvider: "istat",
+        sourceLabel: ISTAT_SUB_MUNICIPAL_SOURCE_LABEL,
+        sourceCoverageLevel: "comune",
+        licensingNote: "Dati ISTAT — Istituto Nazionale di Statistica — CC BY 3.0 IT",
+      };
     }
 
     // ── Sub-Municipal ASC layer (non-invasive enrichment) ──
