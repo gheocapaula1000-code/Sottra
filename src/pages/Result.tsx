@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { isValidGps, isValidImageDataUrl } from "@/lib/imageUtils";
 import { loadLastScanPhoto, saveLastScanPhoto, type LastScanRecord } from "@/lib/lastScanPhotoStore";
+import { buildHistoryDraft, shouldRecordFinishedScan } from "@/lib/scanHistoryStore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
@@ -1548,7 +1549,7 @@ function ReportFooter({ excludedCount, totalPublished }: { excludedCount: number
 
 /* ── page ─────────────────────────────────────────────── */
 
-interface ResultState { photo: string; lat: number | null; lng: number | null; manualAddress?: string; savedResult?: Partial<ScanResult>; }
+interface ResultState { photo: string; lat: number | null; lng: number | null; manualAddress?: string; savedResult?: Partial<ScanResult>; historyId?: string; }
 
 const LOW_CONFIDENCE_THRESHOLD = 0.4;
 
@@ -1947,10 +1948,18 @@ const Result = () => {
   const { saveScan } = useScanHistory();
   const { toast } = useToast();
   const started = useRef(false);
+  const historyIdRef = useRef<string | null>(null);
+  const historySignatureRef = useRef<string | null>(null);
+  const officialOmi = resolveOfficialOmiOverlay({
+    omiZone: result.omiZone,
+    photoWow: result.photoWow,
+    pricing: result.pricing,
+  });
 
   useEffect(() => {
     if (isValidImageDataUrl(routerState?.photo)) {
       setHydrateDone(true);
+      if (routerState.historyId) historyIdRef.current = routerState.historyId;
       // Live scan (not a history thumbnail) — keep the actual JPEG for reload.
       if (!routerState?.savedResult) {
         void saveLastScanPhoto({
@@ -1958,6 +1967,7 @@ const Result = () => {
           lat: routerState.lat ?? null,
           lng: routerState.lng ?? null,
           manualAddress: routerState.manualAddress,
+          historyId: historyIdRef.current ?? undefined,
         });
       }
       return;
@@ -1965,6 +1975,7 @@ const Result = () => {
     let cancelled = false;
     loadLastScanPhoto().then((rec) => {
       if (cancelled) return;
+      if (rec?.historyId) historyIdRef.current = rec.historyId;
       setPersisted(rec);
       setHydrateDone(true);
     });
@@ -2007,6 +2018,71 @@ const Result = () => {
     devLog("identify start", { lat: state!.lat, lng: state!.lng });
     scan(state!.photo, state!.lat!, state!.lng!, state?.manualAddress);
   }, [hydrateDone, state, scan, restoreResult, hasValidPhoto, hasValidCoords, hasSavedResult]);
+
+  useEffect(() => {
+    if (!hydrateDone || scanning || hasSavedResult || !hasValidPhoto || !state) return;
+    const identifyOk = result.identify.status === "success" && result.identify.data != null;
+    if (!shouldRecordFinishedScan({
+      scanning,
+      hasPhoto: hasValidPhoto,
+      officialOmi: officialOmi.data,
+      identifyOk,
+    })) return;
+
+    const signature = [
+      state.photo.slice(0, 64),
+      state.lat,
+      state.lng,
+      state.manualAddress ?? "",
+      officialOmi.data?.zonaOmi ?? "",
+      officialOmi.data?.comuneLabel ?? "",
+      result.identify.status,
+    ].join("|");
+    if (historySignatureRef.current === signature) return;
+
+    let cancelled = false;
+    void (async () => {
+      const thumbnail = await compressToThumbnail(state.photo);
+      if (cancelled) return;
+      const snapshot = serializeResult(result);
+      const geo = resolveGeoContext(result);
+      const primaryGeo = geo.geoLevel !== "non_determinato" ? geo.geoLevel : null;
+      const convergenza = result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null;
+      if (!historyIdRef.current) historyIdRef.current = crypto.randomUUID();
+      const draft = buildHistoryDraft({
+        id: historyIdRef.current,
+        photoThumbnail: thumbnail,
+        resultSnapshot: snapshot,
+        officialOmi: officialOmi.data,
+        lat: state.lat,
+        lng: state.lng,
+        manualAddress: state.manualAddress,
+        identifyAddress: (result.identify.data as IdentifyResult | null)?.address ?? null,
+        primaryGeoLevel: primaryGeo,
+        convergenzaTerritoriale: convergenza ? {
+          score: convergenza.score,
+          band: convergenza.band,
+        } : null,
+      });
+      await saveScan(draft);
+      if (cancelled) return;
+      historySignatureRef.current = signature;
+      void saveLastScanPhoto({
+        photo: state.photo,
+        lat: state.lat,
+        lng: state.lng,
+        manualAddress: state.manualAddress,
+        historyId: historyIdRef.current,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    hydrateDone, scanning, hasSavedResult, hasValidPhoto, state, officialOmi,
+    result, saveScan,
+  ]);
 
   const handlePullRefresh = useCallback(async () => {
     if (!state?.photo) return;
@@ -2150,12 +2226,6 @@ const Result = () => {
   const wowSnapshot = wowAndDiff?.snapshot ?? null;
   const houseDiff = wowAndDiff?.houseDiff ?? null;
   const caseResult = wowAndDiff?.caseResult ?? null;
-
-  const officialOmi = resolveOfficialOmiOverlay({
-    omiZone: result.omiZone,
-    photoWow: result.photoWow,
-    pricing: result.pricing,
-  });
 
   const marketData = result.marketContext.data as MarketContextData | null;
   const facciataData = result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null;
@@ -2495,25 +2565,24 @@ const Result = () => {
           const convergenza = result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null;
           const thumbnail = await compressToThumbnail(state.photo);
           const snapshot = serializeResult(result);
-          // Use resolveGeoContext for consistency with report display
           const geo = resolveGeoContext(result);
           const primaryGeo = geo.geoLevel !== "non_determinato" ? geo.geoLevel : null;
-          saveScan({
-            locality: identifyData.address
-              ? identifyData.address.split(",").slice(-2, -1)[0]?.trim() || "Posizione sconosciuta"
-              : "Posizione sconosciuta",
-            moodScore: null,
+          if (!historyIdRef.current) historyIdRef.current = crypto.randomUUID();
+          saveScan(buildHistoryDraft({
+            id: historyIdRef.current,
+            photoThumbnail: thumbnail,
+            resultSnapshot: snapshot,
+            officialOmi: officialOmi.data,
+            lat: state.lat,
+            lng: state.lng,
+            manualAddress: state.manualAddress,
+            identifyAddress: identifyData.address ?? null,
+            primaryGeoLevel: primaryGeo,
             convergenzaTerritoriale: convergenza ? {
               score: convergenza.score,
               band: convergenza.band,
             } : null,
-            lat: state.lat,
-            lng: state.lng,
-            photoThumbnail: thumbnail,
-            resultSnapshot: snapshot,
-            primaryGeoLevel: primaryGeo,
-            restorable: !!(thumbnail && snapshot),
-          });
+          }));
           toast({ title: "Report salvato", description: "Trovi questo report nella cronologia." });
         }}><Bookmark className="h-4 w-4" /></Button>
       </div>
