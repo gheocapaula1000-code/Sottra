@@ -39,7 +39,7 @@ function d8Snapshot() {
     omiZone: { status: "success" as const, data: PADOVA_D8, message: null },
     identify: {
       status: "success" as const,
-      data: { address: "Via Forcellini 12, Padova", confidence: 0.9 },
+      data: { address: "Via Forcellini 12, Padova", buildingId: "bld-test", confidence: 0.9 },
       message: null,
     },
   };
@@ -84,7 +84,7 @@ vi.mock("@/hooks/useBuildingScan", () => ({
     result: new Proxy({
       identify: {
         status: "success",
-        data: { address: "Via Forcellini 12, Padova", confidence: 0.9 },
+        data: { address: "Via Forcellini 12, Padova", buildingId: "bld-test", confidence: 0.9 },
         message: null,
       },
       omiZone: { status: "success", data: PADOVA_D8, message: null },
@@ -166,7 +166,7 @@ describe("history draft helpers — zero mock", () => {
   it("does not invent OMI when official data is missing", () => {
     const draft = buildHistoryDraft({
       photoThumbnail: FIXTURE,
-      resultSnapshot: { identify: { status: "success", data: { address: "Via Roma 1, Milano" }, message: null } },
+      resultSnapshot: { identify: { status: "success", data: { address: "Via Roma 1, Milano", buildingId: "bld-test", confidence: 0.9 }, message: null } },
       officialOmi: null,
       lat: 45.46,
       lng: 9.19,

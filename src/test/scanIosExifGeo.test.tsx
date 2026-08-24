@@ -84,7 +84,7 @@ async function continuePastGate() {
 async function pickCaptureFile(bytes: Uint8Array) {
   const input = document.querySelector('[data-testid="scan-capture-input"]') as HTMLInputElement;
   expect(input).toBeTruthy();
-  const file = new File([bytes], "scatto.jpg", { type: "image/jpeg" });
+  const file = new File([bytes as unknown as BlobPart], "scatto.jpg", { type: "image/jpeg" });
   await act(async () => {
     fireEvent.change(input, { target: { files: [file] } });
   });

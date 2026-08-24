@@ -51,8 +51,8 @@ describe("extractExifGps", () => {
   });
 
   it("reads GPS from a File and ignores files without EXIF", async () => {
-    const withGps = new File([buildJpegWithGps(REAL.lat, REAL.lng)], "shot.jpg", { type: "image/jpeg" });
-    const empty = new File([buildJpegWithoutExif()], "plain.jpg", { type: "image/jpeg" });
+    const withGps = new File([buildJpegWithGps(REAL.lat, REAL.lng) as unknown as BlobPart], "shot.jpg", { type: "image/jpeg" });
+    const empty = new File([buildJpegWithoutExif() as unknown as BlobPart], "plain.jpg", { type: "image/jpeg" });
     await expect(extractExifGpsFromFile(withGps)).resolves.toEqual(REAL);
     await expect(extractExifGpsFromFile(empty)).resolves.toBeNull();
   });
