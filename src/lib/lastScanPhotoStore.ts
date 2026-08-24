@@ -2,7 +2,7 @@
  * Persist the last scan JPEG + geo so /result survives PWA reload,
  * backgrounding, and browser pull-to-refresh (router location.state is gone).
  *
- * IndexedDB holds the real dataURL (too large for sessionStorage).
+ * IndexedDB holds the real dataURL (too large for Web Storage quotas).
  * Memory cache covers the same JS session. Never invents a photo or coords.
  */
 

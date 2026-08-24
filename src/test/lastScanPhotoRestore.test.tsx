@@ -211,7 +211,9 @@ describe("last-scan photo wiring (no invented bytes)", () => {
     const store = readFileSync("src/lib/lastScanPhotoStore.ts", "utf-8");
     const scan = readFileSync("src/pages/Scan.tsx", "utf-8");
     expect(store).toContain("indexedDB");
-    expect(store).not.toContain("sessionStorage");
+    expect(store).not.toMatch(/sessionStorage\.(get|set|remove)Item/);
+    expect(result).not.toMatch(/sessionStorage\.(get|set|remove)Item/);
+    expect(scan).not.toMatch(/sessionStorage\.(get|set|remove)Item/);
     expect(result).toContain("loadLastScanPhoto");
     expect(result).toContain("saveLastScanPhoto");
     expect(scan).toContain("saveLastScanPhoto");
