@@ -67,9 +67,11 @@ const fetchProSources = vi.fn().mockResolvedValue({
   istat: null,
 });
 const geocodeAddress = vi.fn().mockResolvedValue(null);
+const reverseGeocode = vi.fn().mockResolvedValue(null);
 vi.mock("@/services/proSources", () => ({
   fetchProSources: (...args: unknown[]) => fetchProSources(...args),
   geocodeAddress: (...args: unknown[]) => geocodeAddress(...args),
+  reverseGeocode: (...args: unknown[]) => reverseGeocode(...args),
 }));
 
 const getPhotoWow = vi.fn().mockResolvedValue({
@@ -107,6 +109,8 @@ describe("useBuildingScan", () => {
     getPhotoWow.mockClear();
     geocodeAddress.mockReset();
     geocodeAddress.mockResolvedValue(null);
+    reverseGeocode.mockReset();
+    reverseGeocode.mockResolvedValue(null);
     identifyBuilding.mockResolvedValue({
       error: false, message: null,
       data: { address: "Via Roma 1, Padova", buildingId: "PD-VR1", confidence: 0.95 },
@@ -438,5 +442,54 @@ describe("useBuildingScan", () => {
     expect(result.current.result.photoWow?.status).toBe("success");
     expect(result.current.result.omiZone.status).toBe("success");
     expect(result.current.result.omiZone.data?.comuneLabel).toBe("Padova");
+  });
+
+  it("reverse-geocodes granted GPS and uses real coords, not 0,0", async () => {
+    reverseGeocode.mockResolvedValueOnce("Via San Francesco 2, Padova");
+
+    const { result } = renderHook(() => useBuildingScan());
+
+    await act(async () => {
+      await result.current.scan("base64photo", 45.4064, 11.8768);
+    });
+
+    expect(reverseGeocode).toHaveBeenCalledWith(45.4064, 11.8768);
+    expect(reverseGeocode).not.toHaveBeenCalledWith(0, 0);
+    expect(geocodeAddress).not.toHaveBeenCalled();
+    expect(getPhotoWow).toHaveBeenCalledWith(
+      "base64photo",
+      45.4064,
+      11.8768,
+      "device",
+      "Via San Francesco 2, Padova",
+    );
+    expect(identifyBuilding).toHaveBeenCalledWith(
+      "base64photo",
+      45.4064,
+      11.8768,
+      "Via San Francesco 2, Padova",
+    );
+    expect(fetchProSources).toHaveBeenCalledWith(45.4064, 11.8768);
+    expect(fetchProSources).not.toHaveBeenCalledWith(0, 0);
+    expect(result.current.result.identify.data?.address).toBe("Via San Francesco 2, Padova");
+    expect(result.current.result.omiZone.status).toBe("success");
+  });
+
+  it("does not reverse-geocode the 0,0 sentinel", async () => {
+    const { result } = renderHook(() => useBuildingScan());
+
+    await act(async () => {
+      await result.current.scan("base64photo", 0, 0);
+    });
+
+    expect(reverseGeocode).not.toHaveBeenCalled();
+    expect(fetchProSources).not.toHaveBeenCalledWith(0, 0);
+    expect(getPhotoWow).not.toHaveBeenCalledWith(
+      expect.anything(),
+      0,
+      0,
+      expect.anything(),
+      expect.anything(),
+    );
   });
 });

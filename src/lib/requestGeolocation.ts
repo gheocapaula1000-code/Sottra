@@ -54,6 +54,16 @@ export const GEO_WATCHDOG_GRACE_MS = 1_500;
 export const STANDALONE_LOCATION_ASK_HINT =
   "Impostazioni → Privacy e sicurezza → Localizzazione → Safari/Sottra → Durante l'uso (non «Chiedi»).";
 
+/** Clear Italian ask before / while using the camera. iOS cannot open Settings. */
+export const LOCATION_USE_PROMPT =
+  "Per la quotazione ufficiale OMI, consenti la posizione Durante l'uso di Sottra.";
+
+export const LOCATION_USE_DETAIL =
+  "Tocca Continua: il telefono chiederà l'accesso alla posizione per questa analisi. Se Safari è su «Chiedi» e non compare nulla, inserisci l'indirizzo.";
+
+export const LOCATION_CAMERA_ASK =
+  "Consenti la posizione Durante l'uso per questo scatto. Se non compare la richiesta, inserisci l'indirizzo.";
+
 type StandaloneNavigator = Navigator & { standalone?: boolean };
 
 export function isStandaloneDisplay(): boolean {

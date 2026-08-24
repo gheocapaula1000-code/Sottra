@@ -134,6 +134,43 @@ describe("data-gated accordion titles", () => {
     expect(screen.getByText(/2400–3400/)).toBeInTheDocument();
   });
 
+  it("shows Quotazioni OMI defaultOpen for official D7 950–1200 and does not force B1", () => {
+    const omi = officialOmiFromCore({
+      hits: [
+        {
+          link_zona: "PD00002830",
+          zona_omi: "D7",
+          zona_descr: "Arcella Nord / Mortise",
+          comune_label: "Padova",
+          quotazione_min: 950,
+          quotazione_max: 1200,
+          stato_conservazione: "NORMALE",
+          polygonMatch: true,
+        },
+      ],
+    });
+    expect(isOmiPublishable(omi)).toBe(true);
+    expect(omi!.zonaOmi).toBe("D7");
+    expect(omi!.quotazioneMinResidenziale).toBe(950);
+    expect(omi!.quotazioneMaxResidenziale).toBe(1200);
+    expect(omi!.zonaOmi).not.toBe("B1");
+
+    render(
+      <PublishableAccordionItem
+        id="omi"
+        title="Quotazioni OMI"
+        defaultOpen
+        loading={false}
+        publishable={isOmiPublishable(omi)}
+      >
+        <p>D7 · 950–1200 €/m²</p>
+      </PublishableAccordionItem>,
+    );
+    expect(screen.getByRole("button", { name: /quotazioni omi/i })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/950–1200/)).toBeInTheDocument();
+    expect(screen.queryByText(/B1/)).not.toBeInTheDocument();
+  });
+
   it("still shows Quotazioni OMI when official zone prices exist", () => {
     const omi: OmiZoneData = {
       sourceType: "official",

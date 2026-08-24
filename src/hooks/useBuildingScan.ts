@@ -1,7 +1,7 @@
 import { useReducer, useState, useCallback, useRef } from "react";
 import { identifyBuilding, getPricing, getOffmarket, getZoneIntelligence, getListings, getCondominio, getStoricoTransazioni, getMoodScore, getEnergy, getNeighborhood, getPoiEnrichment } from "@/services/scan";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
-import { fetchProSources, geocodeAddress } from "@/services/proSources";
+import { fetchProSources, geocodeAddress, reverseGeocode } from "@/services/proSources";
 import { getPhotoWow } from "@/services/photoWow";
 import { supabase } from "@/integrations/supabase/client";
 import { mapScanToReportSections } from "@/lib/reportMapper";
@@ -289,14 +289,21 @@ export function useBuildingScan() {
 
     const runOfficialPipeline = async (
       geocoded: { lat: number; lng: number } | null,
+      reverseAddress?: string | null,
     ): Promise<DerivedScanGeo | null> => {
       const trimmedManual = manualAddrInput?.trim() ?? "";
       const identifyLat = trimmedManual ? (geocoded?.lat ?? 0) : lat;
       const identifyLng = trimmedManual ? (geocoded?.lng ?? 0) : lng;
-      const idRes = await identifyBuilding(photo, identifyLat, identifyLng, manualAddrInput);
+      const addressForIdentify = trimmedManual || reverseAddress?.trim() || undefined;
+      const idRes = await identifyBuilding(photo, identifyLat, identifyLng, addressForIdentify);
+      const identifyRaw = (idRes.error || !idRes.data) ? null : (idRes.data as IdentifyResult);
+      const street = reverseAddress?.trim() ?? "";
+      const identifyData: IdentifyResult | null = street
+        ? { ...(identifyRaw ?? { buildingId: "", confidence: 0 }), address: street }
+        : identifyRaw;
       set("identify", {
-        status: idRes.error ? "error" : "success",
-        data: idRes.data,
+        status: identifyData ? "success" : (idRes.error ? "error" : "success"),
+        data: identifyData,
         message: idRes.message,
       });
 
@@ -337,8 +344,7 @@ export function useBuildingScan() {
         }
       }
 
-      const identifyData = (idRes.error || !idRes.data) ? null : (idRes.data as IdentifyResult);
-      const geo = deriveGeoFromIdentify(identifyData, manualAddrInput, lat, lng, geocoded);
+      const geo = deriveGeoFromIdentify(identifyData, manualAddrInput, lat, lng, geocoded, reverseAddress);
       await launchOfficialModules(identifyData, geo);
       return geo;
     };
@@ -380,26 +386,31 @@ export function useBuildingScan() {
 
     const trimmedManual = manualAddrInput?.trim() ?? "";
     const geocoded = trimmedManual ? await geocodeAddress(trimmedManual) : null;
-    const preGeo = deriveGeoFromIdentify(null, manualAddrInput, lat, lng, geocoded);
+    const reverseAddress = (!trimmedManual && isValidGps(lat, lng))
+      ? await reverseGeocode(lat, lng)
+      : null;
+    const preGeo = deriveGeoFromIdentify(null, manualAddrInput, lat, lng, geocoded, reverseAddress);
     const wowSource: "device" | "address" = trimmedManual ? "address" : "device";
+    const addressForWow = trimmedManual || reverseAddress || undefined;
 
     // Photo-first opener + official Sottra modules in parallel when coords are known.
     // Typed address: geocode (or later identify) wins over indoor/device GPS.
+    // GPS path: reverse-geocoded street is the address; coords stay the real GPS (never 0,0).
     if (
       preGeo.finalLat != null
       && preGeo.finalLng != null
       && isValidGps(preGeo.finalLat, preGeo.finalLng)
     ) {
       await Promise.allSettled([
-        runPhotoWow(preGeo.finalLat, preGeo.finalLng, wowSource, trimmedManual || undefined),
-        runOfficialPipeline(geocoded),
+        runPhotoWow(preGeo.finalLat, preGeo.finalLng, wowSource, addressForWow),
+        runOfficialPipeline(geocoded, reverseAddress),
       ]);
     } else {
-      const geo = await runOfficialPipeline(geocoded);
+      const geo = await runOfficialPipeline(geocoded, reverseAddress);
       if (geo?.finalLat != null && geo.finalLng != null && isValidGps(geo.finalLat, geo.finalLng)) {
-        await runPhotoWow(geo.finalLat, geo.finalLng, "address", trimmedManual || undefined);
+        await runPhotoWow(geo.finalLat, geo.finalLng, "address", addressForWow);
       } else {
-        await runPhotoWow(null, null, "address", trimmedManual || undefined);
+        await runPhotoWow(null, null, "address", addressForWow);
       }
     }
 

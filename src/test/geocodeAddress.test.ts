@@ -7,7 +7,8 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
-import { geocodeAddress } from "@/services/proSources";
+import { geocodeAddress, reverseGeocode } from "@/services/proSources";
+import { formatNominatimStreetAddress } from "@/lib/reverseGeocodeAddress";
 
 describe("geocodeAddress", () => {
   beforeEach(() => {
@@ -44,5 +45,58 @@ describe("geocodeAddress", () => {
   it("returns null for empty input without calling the network", async () => {
     await expect(geocodeAddress("  ")).resolves.toBeNull();
     expect(mockInvoke).not.toHaveBeenCalled();
+  });
+});
+
+describe("formatNominatimStreetAddress", () => {
+  it("formats Via San Francesco 2, Padova from Nominatim parts", () => {
+    expect(formatNominatimStreetAddress({
+      road: "Via San Francesco",
+      house_number: "2",
+      city: "Padova",
+    })).toBe("Via San Francesco 2, Padova");
+  });
+
+  it("formats Via Tiziano Aspetti 245, Padova", () => {
+    expect(formatNominatimStreetAddress({
+      road: "Via Tiziano Aspetti",
+      house_number: "245",
+      city: "Padova",
+    })).toBe("Via Tiziano Aspetti 245, Padova");
+  });
+
+  it("does not invent a street when Nominatim has no road", () => {
+    expect(formatNominatimStreetAddress({ city: "Padova" })).toBe("Padova");
+    expect(formatNominatimStreetAddress({})).toBeNull();
+    expect(formatNominatimStreetAddress(null)).toBeNull();
+  });
+});
+
+describe("reverseGeocode", () => {
+  beforeEach(() => {
+    mockInvoke.mockReset();
+  });
+
+  it("returns the street from pro-sources reverse and never looks up 0,0", async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: { ok: true, data: { reverse: { address: "Via San Francesco 2, Padova", sourceType: "verified_geo" } } },
+      error: null,
+    });
+
+    await expect(reverseGeocode(45.4064, 11.8768)).resolves.toBe("Via San Francesco 2, Padova");
+    expect(mockInvoke).toHaveBeenCalledWith("pro-sources", {
+      body: { lat: 45.4064, lng: 11.8768, modules: ["reverse"] },
+    });
+
+    await expect(reverseGeocode(0, 0)).resolves.toBeNull();
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns null when reverse is unavailable — no invented street", async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: { ok: true, data: { reverse: { sourceType: "unavailable", availabilityReason: "no_match" } } },
+      error: null,
+    });
+    await expect(reverseGeocode(45.4064, 11.8768)).resolves.toBeNull();
   });
 });
