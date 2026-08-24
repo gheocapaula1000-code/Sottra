@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { clearLastScanPhoto } from "@/lib/lastScanPhotoStore";
 import type { ScanResult, SectionState } from "@/types";
 
 /**
@@ -256,6 +257,7 @@ export function ScanHistoryProvider({ children }: { children: ReactNode }) {
   const clearAll = useCallback(() => {
     setScans([]);
     localStorage.removeItem(STORAGE_KEY);
+    void clearLastScanPhoto();
   }, []);
 
   const getScans = useCallback(() => scans, [scans]);

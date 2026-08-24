@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, Component, type ReactNode, type ErrorInfo } from "react";
+import { useCallback, useEffect, useRef, useState, Component, type ReactNode, type ErrorInfo } from "react";
 import AppHeader from "@/components/AppHeader";
 import PullToRefresh from "@/components/PullToRefresh";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -7,6 +7,7 @@ import { useScanHistory, compressToThumbnail, serializeResult } from "@/contexts
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { isValidGps, isValidImageDataUrl } from "@/lib/imageUtils";
+import { loadLastScanPhoto, saveLastScanPhoto, type LastScanRecord } from "@/lib/lastScanPhotoStore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
@@ -1939,11 +1940,50 @@ function EnergySection({ data, loading }: { data: EnergyData | null; loading: bo
 const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as ResultState | null;
+  const routerState = location.state as ResultState | null;
+  const [persisted, setPersisted] = useState<LastScanRecord | null>(null);
+  const [hydrateDone, setHydrateDone] = useState(() => isValidImageDataUrl(routerState?.photo));
   const { result, scanning, refining, manualAddress, scan, refresh, refineAddress, restoreResult, forceShowResult, setForceShowResult } = useBuildingScan();
   const { saveScan } = useScanHistory();
   const { toast } = useToast();
   const started = useRef(false);
+
+  useEffect(() => {
+    if (isValidImageDataUrl(routerState?.photo)) {
+      setHydrateDone(true);
+      // Live scan (not a history thumbnail) — keep the actual JPEG for reload.
+      if (!routerState?.savedResult) {
+        void saveLastScanPhoto({
+          photo: routerState.photo,
+          lat: routerState.lat ?? null,
+          lng: routerState.lng ?? null,
+          manualAddress: routerState.manualAddress,
+        });
+      }
+      return;
+    }
+    let cancelled = false;
+    loadLastScanPhoto().then((rec) => {
+      if (cancelled) return;
+      setPersisted(rec);
+      setHydrateDone(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [routerState]);
+
+  const state: ResultState | null = isValidImageDataUrl(routerState?.photo)
+    ? routerState
+    : persisted
+      ? {
+          photo: persisted.photo,
+          lat: persisted.lat,
+          lng: persisted.lng,
+          manualAddress: persisted.manualAddress,
+          savedResult: routerState?.savedResult,
+        }
+      : routerState;
 
   const hasValidPhoto = isValidImageDataUrl(state?.photo);
   const hasManualAddress = !!(state?.manualAddress && state.manualAddress.trim().length >= 3);
@@ -1952,19 +1992,21 @@ const Result = () => {
 
   useEffect(() => {
     if (started.current) return;
-    started.current = true;
+    if (!hydrateDone) return;
 
     // If navigating from history with a saved result, restore it instead of re-scanning
     if (hasSavedResult) {
+      started.current = true;
       devLog("restoring saved result from history");
       restoreResult(state!.savedResult!);
       return;
     }
 
     if (!hasValidPhoto || !hasValidCoords) return;
+    started.current = true;
     devLog("identify start", { lat: state!.lat, lng: state!.lng });
     scan(state!.photo, state!.lat!, state!.lng!, state?.manualAddress);
-  }, [state, scan, restoreResult, hasValidPhoto, hasValidCoords, hasSavedResult]);
+  }, [hydrateDone, state, scan, restoreResult, hasValidPhoto, hasValidCoords, hasSavedResult]);
 
   const handlePullRefresh = useCallback(async () => {
     if (!state?.photo) return;
@@ -1973,6 +2015,14 @@ const Result = () => {
     const lng = isValidGps(state.lat, state.lng) ? state.lng : 0;
     await refresh(state.photo, lat, lng, address);
   }, [state, manualAddress, refresh]);
+
+  if (!hydrateDone) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   if (!hasValidPhoto) {
     return (
