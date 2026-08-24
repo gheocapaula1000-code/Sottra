@@ -11,6 +11,7 @@ import {
   type ExifGps,
 } from "@/lib/exifGps";
 import { prefersSystemCameraCapture } from "@/lib/iosCapture";
+import { clearLastScanPhoto, saveLastScanPhoto } from "@/lib/lastScanPhotoStore";
 import { Button } from "@/components/ui/button";
 import CaptureGate from "@/components/CaptureGate";
 import {
@@ -105,11 +106,23 @@ const Scan = () => {
     return canvas.toDataURL("image/jpeg", 0.85);
   }, []);
 
-  const navigateWithTypedAddress = useCallback(
-    (photo: string, address: string) => {
-      navigate("/result", { state: { photo, lat: 0, lng: 0, manualAddress: address } });
+  const persistAndNavigate = useCallback(
+    async (payload: { photo: string; lat: number; lng: number; manualAddress?: string }) => {
+      try {
+        await saveLastScanPhoto(payload);
+      } catch {
+        /* IDB failure must not block the shot — router state still carries it. */
+      }
+      navigate("/result", { state: payload });
     },
     [navigate],
+  );
+
+  const navigateWithTypedAddress = useCallback(
+    (photo: string, address: string) => {
+      void persistAndNavigate({ photo, lat: 0, lng: 0, manualAddress: address });
+    },
+    [persistAndNavigate],
   );
 
   const processAndNavigate = useCallback(
@@ -173,9 +186,9 @@ const Scan = () => {
       } else {
         devLog(`exif gps used: ${resolved.lat}, ${resolved.lng}`);
       }
-      navigate("/result", { state: { photo, lat: resolved.lat, lng: resolved.lng } });
+      void persistAndNavigate({ photo, lat: resolved.lat, lng: resolved.lng });
     },
-    [navigate, navigateWithTypedAddress, toast]
+    [persistAndNavigate, navigateWithTypedAddress, toast]
   );
 
   const retryGps = useCallback(() => {
@@ -363,7 +376,7 @@ const Scan = () => {
         {/* Header */}
         <header className="z-10 flex items-center justify-between px-5 pt-safe pb-2">
           <span className="text-base font-bold text-white/90 drop-shadow">Sottra</span>
-          <button onClick={() => { streamRef.current?.getTracks().forEach((t) => t.stop()); navigate("/"); }} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
+          <button onClick={() => { streamRef.current?.getTracks().forEach((t) => t.stop()); void clearLastScanPhoto(); navigate("/"); }} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
             <X className="h-5 w-5 text-white" />
           </button>
         </header>
