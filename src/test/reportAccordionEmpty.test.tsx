@@ -17,7 +17,10 @@ import {
   isPricingPublishable,
   isStoricoPublishable,
   shouldRenderAccordion,
+  shouldShowEmptyScanAddressPrompt,
 } from "@/lib/reportSectionPublishable";
+import { officialOmiFromCore } from "@/lib/officialOmiFromCore";
+import AddressOverrideForm from "@/components/AddressOverrideForm";
 import type { OmiZoneData, PricingData } from "@/types";
 
 function EmptyCard() {
@@ -102,6 +105,33 @@ describe("data-gated accordion titles", () => {
     expect(screen.getByText("Condominio")).toBeInTheDocument();
     expect(screen.getByText("Dati Demografici")).toBeInTheDocument();
     expect(screen.queryByText("Servizi e POI")).not.toBeInTheDocument();
+  });
+
+  it("shows Quotazioni OMI defaultOpen when official Padova B1 2400–3400 is publishable", () => {
+    const omi = officialOmiFromCore({
+      zona: "Centro (OMI B1)",
+      officialMicrozona: "B1",
+      prezzoMqMin: 2400,
+      prezzoMqMax: 3400,
+      sourceType: "official",
+      polygonMatch: true,
+    });
+    expect(isOmiPublishable(omi)).toBe(true);
+    render(
+      <PublishableAccordionItem
+        id="omi"
+        title="Quotazioni OMI"
+        defaultOpen
+        loading={false}
+        publishable={isOmiPublishable(omi)}
+      >
+        <p>Centro B1 · 2400–3400 €/m²</p>
+      </PublishableAccordionItem>,
+    );
+    const trigger = screen.getByRole("button", { name: /quotazioni omi/i });
+    expect(trigger).toBeInTheDocument();
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/2400–3400/)).toBeInTheDocument();
   });
 
   it("still shows Quotazioni OMI when official zone prices exist", () => {
@@ -210,5 +240,39 @@ describe("shouldRenderAccordion + publishability", () => {
 
     expect(isStoricoPublishable({ totale: 0, transazioni: [] })).toBe(false);
     expect(isStoricoPublishable({ totale: 2, transazioni: [{ prezzo: 240000 }] })).toBe(true);
+  });
+});
+
+describe("empty finished scan — address prompt, no invented quotes", () => {
+  it("keeps the Italian address form and hides Quotazioni OMI when nothing is publishable", () => {
+    expect(shouldShowEmptyScanAddressPrompt(false, false)).toBe(true);
+    expect(shouldShowEmptyScanAddressPrompt(true, false)).toBe(false);
+    expect(shouldShowEmptyScanAddressPrompt(false, true)).toBe(false);
+
+    const emptyOmi = officialOmiFromCore({ zona: { nomeComune: "Padova" }, scores: null });
+    expect(isOmiPublishable(emptyOmi)).toBe(false);
+
+    render(
+      <>
+        <AddressOverrideForm defaultOpen onSubmit={() => undefined} />
+        <PublishableAccordionItem
+          id="omi"
+          title="Quotazioni OMI"
+          defaultOpen
+          loading={false}
+          publishable={isOmiPublishable(emptyOmi)}
+        >
+          <p>2400–3400</p>
+        </PublishableAccordionItem>
+      </>,
+    );
+
+    expect(screen.getByText("Indirizzo immobile")).toBeInTheDocument();
+    expect(screen.getByText(/inserisci l'indirizzo/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/via \/ piazza/i)).toBeInTheDocument();
+    expect(screen.queryByText("Quotazioni OMI")).not.toBeInTheDocument();
+    expect(screen.queryByText("2400–3400")).not.toBeInTheDocument();
+    expect(screen.queryByText(/catasto/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/APE/i)).not.toBeInTheDocument();
   });
 });

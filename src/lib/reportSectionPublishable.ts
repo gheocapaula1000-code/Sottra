@@ -52,6 +52,17 @@ export function shouldRenderAccordion(loading: boolean, publishable: boolean): b
   return loading || publishable;
 }
 
+/**
+ * After a finished scan with zero publishable tendine, keep the address form
+ * visible. Do not invent OMI / catasto / APE / scores to fill the report.
+ */
+export function shouldShowEmptyScanAddressPrompt(
+  scanning: boolean,
+  hasPublishableTendine: boolean,
+): boolean {
+  return !scanning && !hasPublishableTendine;
+}
+
 function sourceUnavailable(data: { sourceType?: string } | null | undefined): boolean {
   return !data || data.sourceType === "unavailable";
 }

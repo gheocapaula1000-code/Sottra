@@ -180,8 +180,8 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
     return () => clearTimeout(t);
   }, [status, data]);
 
-  // Show panel as soon as data exists OR pipeline is no longer loading OR timeout fired
-  const ready = !!data || status === "success" || status === "error" || timedOut;
+  // Show panel as soon as data exists OR pipeline is no longer in-flight OR timeout fired
+  const ready = !!data || status !== "loading" || timedOut;
   const partial = ready && !data;
 
   // Phase reveal timings (relative to data arrival)

@@ -5,6 +5,9 @@ import {
   resolveOfficialOmiOverlay,
   formatZonaOmiLabel,
   unwrapCoreEnvelope,
+  pickPreferredOmiHit,
+  collectOmiHits,
+  mergeOfficialOmiData,
 } from "@/lib/officialOmiFromCore";
 
 const PADOVA_WRAPPED = {
@@ -116,7 +119,96 @@ describe("officialOmiFromCore — Padova centro Core 3.4.4 shapes", () => {
     const omi = officialOmiFromCore({ zona: { nomeComune: "Padova" }, scores: null });
     expect(omi).toBeNull();
   });
+
+  it("prefers official PD00000015 B1 over overlapping B2 from omi_zone_by_point", () => {
+    const omi = officialOmiFromCore({
+      ok: true,
+      data: {
+        hits: [
+          { link_zona: "G224-B1", zona_omi: "B1", zona_descr: "Gold B1" },
+          {
+            link_zona: "PD00000015",
+            zona_omi: "B1",
+            zona_descr: "ZONA ENTRO RIVIERE-VIA XX SETTEMBRE",
+            comune_label: "Padova",
+            quotazione_min: 2400,
+            quotazione_max: 3400,
+            stato_conservazione: "NORMALE",
+            tipologia: "Abitazioni civili",
+          },
+          {
+            link_zona: "PD00000016",
+            zona_omi: "B2",
+            zona_descr: "ZONA B2 overlap",
+            comune_label: "Padova",
+            quotazione_min: 1800,
+            quotazione_max: 2500,
+            stato_conservazione: "NORMALE",
+          },
+        ],
+        sourceType: "official",
+      },
+    });
+    expect(omi).not.toBeNull();
+    expect(omi!.zonaOmi).toBe("B1");
+    expect(omi!.quotazioneMinResidenziale).toBe(2400);
+    expect(omi!.quotazioneMaxResidenziale).toBe(3400);
+    expect(omi!.comuneLabel).toBe("Padova");
+    expect(omi!.sourceType).toBe("official");
+    expect(isOmiLabelB1(omi!.zonaOmiLabel)).toBe(true);
+  });
+
+  it("accepts gold G224-B1 when it carries the official 2400–3400 range", () => {
+    const omi = officialOmiFromCore({
+      hits: [
+        {
+          link_zona: "G224-B1",
+          zona_omi: "B1",
+          nomeZonaOmi: "Centro (OMI B1)",
+          comune_label: "Padova",
+          valoreMinOmi: 2400,
+          valoreMaxOmi: 3400,
+          sourceType: "official",
+        },
+        { link_zona: "PD00000016", zona_omi: "B2", quotazione_min: 1800, quotazione_max: 2500 },
+      ],
+    });
+    expect(omi!.zonaOmi).toBe("B1");
+    expect(omi!.zonaOmiLabel).toBe("Centro (OMI B1)");
+    expect(omi!.quotazioneMinResidenziale).toBe(2400);
+    expect(omi!.quotazioneMaxResidenziale).toBe(3400);
+  });
+
+  it("maps Via San Francesco / 45.4064,11.8768 Core quotes into publishable Centro B1", () => {
+    const omi = officialOmiFromCore({
+      ok: true,
+      zona: "Centro (OMI B1)",
+      officialMicrozona: "B1",
+      prezzoMqMin: 2400,
+      prezzoMqMax: 3400,
+      sourceType: "official",
+      polygonMatch: true,
+      omi_zone_by_point: [
+        { link_zona: "G224-B1", zona_omi: "B1" },
+        { link_zona: "PD00000015", zona_omi: "B1", zona_descr: "ZONA ENTRO RIVIERE-VIA XX SETTEMBRE" },
+        { link_zona: "PD00000016", zona_omi: "B2" },
+      ],
+    });
+    expect(omi!.zonaOmi).toBe("B1");
+    expect(omi!.zonaOmiLabel).toBe("Centro (OMI B1)");
+    expect(omi!.quotazioneMinResidenziale).toBe(2400);
+    expect(omi!.quotazioneMaxResidenziale).toBe(3400);
+  });
+
+  it("does not invent a zone when omi_zone_by_point is empty", () => {
+    expect(officialOmiFromCore({ hits: [], scores: null })).toBeNull();
+    expect(officialOmiFromCore({ omi_zone_by_point: [] })).toBeNull();
+  });
 });
+
+function isOmiLabelB1(label: string | null | undefined): boolean {
+  return !!label && /B1/i.test(label);
+}
 
 describe("normalizePhotoWow", () => {
   it("unwraps {ok,data} and keeps official zona on the cinematic object", () => {
@@ -207,5 +299,66 @@ describe("resolveOfficialOmiOverlay", () => {
     });
     expect(overlay.status).toBe("loading");
     expect(overlay.data).toBeNull();
+  });
+
+  it("does not let a B2 overlap overwrite official Padova B1 2400–3400", () => {
+    const overlay = resolveOfficialOmiOverlay({
+      omiZone: {
+        status: "success",
+        data: {
+          zonaOmi: "B2",
+          zonaOmiLabel: "Semicentro",
+          comuneLabel: "Padova",
+          quotazioneMinResidenziale: 1800,
+          quotazioneMaxResidenziale: 2500,
+          sourceType: "official",
+        },
+      },
+      photoWow: { status: "success", data: PADOVA_DUAL },
+      pricing: { status: "success", data: null },
+    });
+    expect(overlay.data?.zonaOmi).toBe("B1");
+    expect(overlay.data?.quotazioneMinResidenziale).toBe(2400);
+    expect(overlay.data?.quotazioneMaxResidenziale).toBe(3400);
+  });
+});
+
+describe("pickPreferredOmiHit — Padova overlap", () => {
+  it("ranks PD00000015 B1 above G224-B1 and PD00000016 B2", () => {
+    const hits = collectOmiHits({
+      hits: [
+        { link_zona: "G224-B1", zona_omi: "B1" },
+        { link_zona: "PD00000015", zona_omi: "B1", quotazione_min: 2400, quotazione_max: 3400 },
+        { link_zona: "PD00000016", zona_omi: "B2", quotazione_min: 1800, quotazione_max: 2500 },
+      ],
+    });
+    const preferred = pickPreferredOmiHit(hits);
+    expect(preferred?.linkZona).toBe("PD00000015");
+    expect(preferred?.fascia).toBe("B1");
+    expect(preferred?.min).toBe(2400);
+  });
+
+  it("keeps official B1 quotes when merging a later B2 pro-sources row", () => {
+    const merged = mergeOfficialOmiData(
+      {
+        zonaOmi: "B1",
+        zonaOmiLabel: "Centro (OMI B1)",
+        comuneLabel: "Padova",
+        quotazioneMinResidenziale: 2400,
+        quotazioneMaxResidenziale: 3400,
+        sourceType: "official",
+      },
+      {
+        zonaOmi: "B2",
+        zonaOmiLabel: "Semicentro",
+        comuneLabel: "Padova",
+        quotazioneMinResidenziale: 1800,
+        quotazioneMaxResidenziale: 2500,
+        sourceType: "official",
+      },
+    );
+    expect(merged.zonaOmi).toBe("B1");
+    expect(merged.quotazioneMinResidenziale).toBe(2400);
+    expect(merged.quotazioneMaxResidenziale).toBe(3400);
   });
 });

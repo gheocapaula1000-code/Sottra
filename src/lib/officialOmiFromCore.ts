@@ -80,8 +80,183 @@ function parseOmiCode(label: string | null): string | null {
   if (!label) return null;
   const omi = label.match(/\bOMI\s*[:-]?\s*([A-Z]\d{1,2})\b/i);
   if (omi) return omi[1].toUpperCase();
-  const bare = label.match(/\b([A-Z]\d{1,2})\b/);
+  const gold = label.match(/^[A-Z]\d{3}-([A-E]\d{1,2})$/i);
+  if (gold) return gold[1].toUpperCase();
+  const bare = label.match(/\b([A-E]\d{1,2})\b/i);
   return bare ? bare[1].toUpperCase() : null;
+}
+
+const HIT_ARRAY_KEYS = [
+  "hits", "zones", "omiZones", "omi_zones", "omi_zone_by_point",
+  "results", "rows", "matches", "items",
+];
+
+/** One official / gold / overlapping zone row from Core omi_zone_by_point. */
+export interface OmiZoneHit {
+  raw: Record<string, unknown>;
+  linkZona: string | null;
+  fascia: string | null;
+  label: string | null;
+  comune: string | null;
+  min: number | null;
+  max: number | null;
+  stato: string | null;
+  tipologia: string | null;
+}
+
+/** Official Agenzia microzona id (PD00000015), not a gold G224-* layer. */
+export function isOfficialPdLink(id: string | null | undefined): boolean {
+  return !!id && /^PD\d+$/i.test(id.trim());
+}
+
+/** Padova gold layer — same B1 as PD00000015, acceptable if quotes are official. */
+export function isGoldG224Link(id: string | null | undefined): boolean {
+  return !!id && /^G224(?:[-_]?[A-E]\d{1,2})?$/i.test(id.trim());
+}
+
+/** Fascia OMI (B1) from zona_omi, G224-B1, or a label. Does not invent. */
+export function extractOmiFascia(...vals: unknown[]): string | null {
+  for (const v of vals) {
+    const s = asTrimmedString(v);
+    if (!s) continue;
+    const parsed = parseOmiCode(s);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
+export function scoreOmiHit(hit: OmiZoneHit): number {
+  const fascia = hit.fascia;
+  const link = hit.linkZona;
+  const hasQuotes = hit.min != null || hit.max != null;
+  let score = 0;
+  if (hasQuotes) score += 40;
+  if (fascia === "B1") score += 50;
+  if (isOfficialPdLink(link) && fascia === "B1") score += 40;
+  if (isGoldG224Link(link) && fascia === "B1") score += 25;
+  if (isOfficialPdLink(link)) score += 10;
+  if (fascia === "B2") score -= 40;
+  if (hit.stato && /normale/i.test(hit.stato)) score += 5;
+  return score;
+}
+
+export function pickPreferredOmiHit(hits: OmiZoneHit[]): OmiZoneHit | null {
+  if (hits.length === 0) return null;
+  let best = hits[0];
+  let bestScore = scoreOmiHit(best);
+  for (let i = 1; i < hits.length; i++) {
+    const s = scoreOmiHit(hits[i]);
+    if (s > bestScore) {
+      best = hits[i];
+      bestScore = s;
+    }
+  }
+  return best;
+}
+
+function readOmiHit(raw: unknown): OmiZoneHit | null {
+  if (!isPlainObject(raw)) return null;
+  const explicitLink = firstString(raw.link_zona, raw.linkZona, raw.LinkZona, raw.zone_id, raw.zoneId);
+  const idCandidate = firstString(explicitLink, raw.officialMicrozona, raw.id);
+  const linkZona = idCandidate && (
+    isOfficialPdLink(idCandidate)
+    || isGoldG224Link(idCandidate)
+    || /^[A-E]\d{1,2}$/i.test(idCandidate)
+    || /^[A-Z]\d{3}-[A-E]\d{1,2}$/i.test(idCandidate)
+    || /OMI/i.test(idCandidate)
+  ) ? idCandidate : explicitLink;
+
+  const fascia = extractOmiFascia(
+    raw.zona_omi, raw.zonaOmi, raw.fascia, raw.officialMicrozona, linkZona,
+  );
+  const label = firstString(
+    raw.nomeZonaOmi, raw.zonaOmiLabel, raw.zona_descr, raw.zonaDescr,
+    raw.descrizione, raw.label, typeof raw.zona === "string" ? raw.zona : null,
+  );
+  const comune = firstString(raw.comune_label, raw.comuneLabel, raw.nomeComune, raw.comune);
+  const min = firstNumber(
+    raw.quotazioneMinResidenziale, raw.quotazione_min, raw.valoreMinOmi,
+    raw.prezzoMqMin, raw.compr_min, raw.valore_min,
+  );
+  const max = firstNumber(
+    raw.quotazioneMaxResidenziale, raw.quotazione_max, raw.valoreMaxOmi,
+    raw.prezzoMqMax, raw.compr_max, raw.valore_max,
+  );
+  const stato = firstString(raw.stato_conservazione, raw.statoConservazione, raw.stato);
+  const tipologia = firstString(raw.tipologia, raw.descr_tipologia, raw.Descr_Tipologia);
+  if (!linkZona && !fascia && !label && min == null && max == null) return null;
+  return { raw, linkZona, fascia, label, comune, min, max, stato, tipologia };
+}
+
+function collectFromArray(arr: unknown): OmiZoneHit[] {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(readOmiHit).filter((h): h is OmiZoneHit => h != null);
+}
+
+export function collectOmiHits(root: Record<string, unknown>): OmiZoneHit[] {
+  const out: OmiZoneHit[] = [];
+  if (Array.isArray(root.data)) out.push(...collectFromArray(root.data));
+  for (const key of HIT_ARRAY_KEYS) out.push(...collectFromArray(root[key]));
+  if (isPlainObject(root.omi)) {
+    const omi = root.omi;
+    for (const key of HIT_ARRAY_KEYS) out.push(...collectFromArray(omi[key]));
+    if (Array.isArray(omi.data)) out.push(...collectFromArray(omi.data));
+  }
+  if (Array.isArray(root.zona)) out.push(...collectFromArray(root.zona));
+  if (isPlainObject(root.pricing)) {
+    for (const key of HIT_ARRAY_KEYS) out.push(...collectFromArray(root.pricing[key]));
+  }
+  if (isPlainObject(root.data)) {
+    const nested = root.data;
+    for (const key of HIT_ARRAY_KEYS) out.push(...collectFromArray(nested[key]));
+    if (Array.isArray(nested.zona)) out.push(...collectFromArray(nested.zona));
+  }
+  return out;
+}
+
+/** Overlay a preferred omi_zone_by_point hit onto the Core envelope. Does not invent values. */
+function applyPreferredHit(
+  root: Record<string, unknown>,
+  hit: OmiZoneHit,
+): Record<string, unknown> {
+  const fascia = hit.fascia;
+  const existingZonaLabel = typeof root.zona === "string" ? asTrimmedString(root.zona) : null;
+  const zonaBag = isPlainObject(root.zona) ? { ...root.zona } : {};
+  if (hit.label && zonaBag.nomeZonaOmi == null) zonaBag.nomeZonaOmi = hit.label;
+  if (hit.comune && zonaBag.nomeComune == null) zonaBag.nomeComune = hit.comune;
+  if (fascia && zonaBag.officialMicrozona == null) zonaBag.officialMicrozona = fascia;
+  if (fascia && zonaBag.zonaOmi == null) zonaBag.zonaOmi = fascia;
+  if (hit.min != null && zonaBag.valoreMinOmi == null) zonaBag.valoreMinOmi = hit.min;
+  if (hit.max != null && zonaBag.valoreMaxOmi == null) zonaBag.valoreMaxOmi = hit.max;
+
+  const preferredLabel = firstString(
+    existingZonaLabel,
+    root.nomeZonaOmi,
+    root.zonaOmiLabel,
+    isPlainObject(root.zona) ? (root.zona as Record<string, unknown>).nomeZonaOmi : null,
+    hit.label,
+  );
+
+  return {
+    ...root,
+    officialMicrozona: fascia ?? root.officialMicrozona,
+    zonaOmi: fascia ?? hit.linkZona ?? root.zonaOmi,
+    zonaOmiLabel: preferredLabel,
+    nomeZonaOmi: preferredLabel,
+    comuneLabel: firstString(root.comuneLabel, root.nomeComune, hit.comune),
+    quotazioneMinResidenziale: firstNumber(hit.min, root.quotazioneMinResidenziale, root.prezzoMqMin, root.valoreMinOmi),
+    quotazioneMaxResidenziale: firstNumber(hit.max, root.quotazioneMaxResidenziale, root.prezzoMqMax, root.valoreMaxOmi),
+    prezzoMqMin: firstNumber(hit.min, root.prezzoMqMin, root.valoreMinOmi),
+    prezzoMqMax: firstNumber(hit.max, root.prezzoMqMax, root.valoreMaxOmi),
+    valoreMinOmi: firstNumber(hit.min, root.valoreMinOmi),
+    valoreMaxOmi: firstNumber(hit.max, root.valoreMaxOmi),
+    statoConservazione: firstString(hit.stato, root.statoConservazione),
+    tipologia: firstString(hit.tipologia, root.tipologia),
+    polygonMatch: true,
+    zona: existingZonaLabel
+      ? existingZonaLabel
+      : (Object.keys(zonaBag).length > 0 ? zonaBag : root.zona),
+  };
 }
 
 /** Prefer an existing "Centro (OMI B1)" label; otherwise compose from name + code. */
@@ -115,10 +290,17 @@ function readZonaBag(zona: unknown): { obj: Record<string, unknown>; asString: s
 /**
  * Extract official OMI overlay fields from any Core / pro-sources / pricing payload.
  * Returns null when there is nothing official to show (or sourceType is unavailable).
+ * When omi_zone_by_point returns overlapping Padova hits, prefers official PD* B1
+ * (PD00000015) over a conflicting B2; gold G224-B1 is the same B1.
  */
 export function officialOmiFromCore(raw: unknown): OmiZoneData | null {
-  const root = unwrapCoreEnvelope(raw);
-  if (!root) return null;
+  if (Array.isArray(raw)) return officialOmiFromCore({ hits: raw });
+  const unwrapped = unwrapCoreEnvelope(raw);
+  if (!unwrapped) return null;
+
+  const hits = collectOmiHits(unwrapped);
+  const preferred = pickPreferredOmiHit(hits);
+  const root = preferred ? applyPreferredHit(unwrapped, preferred) : unwrapped;
 
   const pricing = readPricingBag(root);
   const zona = readZonaBag(root.zona);
@@ -237,36 +419,54 @@ export function hasRenderableOfficialOmi(d: OmiZoneData | null | undefined): boo
     || !!d.zonaOmi;
 }
 
-/** Fill gaps only — never invent values that neither side sent. */
+function omiDataAsHit(d: OmiZoneData): OmiZoneHit {
+  return {
+    raw: {},
+    linkZona: d.zonaOmi ?? null,
+    fascia: extractOmiFascia(d.zonaOmi, d.zonaOmiLabel),
+    label: d.zonaOmiLabel ?? null,
+    comune: d.comuneLabel ?? null,
+    min: d.quotazioneMinResidenziale ?? null,
+    max: d.quotazioneMaxResidenziale ?? null,
+    stato: d.statoConservazione ?? null,
+    tipologia: d.tipologia ?? null,
+  };
+}
+
+/** Prefer official PD* / B1 over a conflicting B2 overlap. Fill gaps only. */
 export function mergeOfficialOmiData(
   current: OmiZoneData | null | undefined,
   incoming: OmiZoneData,
 ): OmiZoneData {
   if (!current || current.sourceType === "unavailable") return incoming;
+  const preferred = scoreOmiHit(omiDataAsHit(incoming)) > scoreOmiHit(omiDataAsHit(current))
+    ? incoming
+    : current;
+  const other = preferred === incoming ? current : incoming;
   return {
-    ...current,
-    ...incoming,
-    zonaOmi: incoming.zonaOmi ?? current.zonaOmi,
-    zonaOmiLabel: incoming.zonaOmiLabel ?? current.zonaOmiLabel,
-    comuneLabel: incoming.comuneLabel ?? current.comuneLabel,
-    quotazioneMinResidenziale: incoming.quotazioneMinResidenziale ?? current.quotazioneMinResidenziale,
-    quotazioneMaxResidenziale: incoming.quotazioneMaxResidenziale ?? current.quotazioneMaxResidenziale,
-    semestre: incoming.semestre ?? current.semestre,
-    tipologia: incoming.tipologia ?? current.tipologia,
-    statoConservazione: incoming.statoConservazione ?? current.statoConservazione,
-    polygonMatch: incoming.polygonMatch === true || current.polygonMatch === true,
-    omiGeoLevel: incoming.omiGeoLevel ?? current.omiGeoLevel,
-    matchMethod: incoming.matchMethod ?? current.matchMethod,
-    matchConfidence: incoming.matchConfidence ?? current.matchConfidence,
-    sourceType: incoming.sourceType === "official" || current.sourceType === "official"
+    ...other,
+    ...preferred,
+    zonaOmi: preferred.zonaOmi ?? other.zonaOmi,
+    zonaOmiLabel: preferred.zonaOmiLabel ?? other.zonaOmiLabel,
+    comuneLabel: preferred.comuneLabel ?? other.comuneLabel,
+    quotazioneMinResidenziale: preferred.quotazioneMinResidenziale ?? other.quotazioneMinResidenziale,
+    quotazioneMaxResidenziale: preferred.quotazioneMaxResidenziale ?? other.quotazioneMaxResidenziale,
+    semestre: preferred.semestre ?? other.semestre,
+    tipologia: preferred.tipologia ?? other.tipologia,
+    statoConservazione: preferred.statoConservazione ?? other.statoConservazione,
+    polygonMatch: preferred.polygonMatch === true || other.polygonMatch === true,
+    omiGeoLevel: preferred.omiGeoLevel ?? other.omiGeoLevel,
+    matchMethod: preferred.matchMethod ?? other.matchMethod,
+    matchConfidence: preferred.matchConfidence ?? other.matchConfidence,
+    sourceType: preferred.sourceType === "official" || other.sourceType === "official"
       ? "official"
-      : (incoming.sourceType ?? current.sourceType),
-    sourceProvider: incoming.sourceProvider ?? current.sourceProvider,
-    sourceLabel: incoming.sourceLabel ?? current.sourceLabel,
-    sourcePeriod: incoming.sourcePeriod ?? current.sourcePeriod,
-    sourceFreshness: incoming.sourceFreshness ?? current.sourceFreshness,
-    sourceCoverageLevel: incoming.sourceCoverageLevel ?? current.sourceCoverageLevel,
-    licensingNote: incoming.licensingNote ?? current.licensingNote,
+      : (preferred.sourceType ?? other.sourceType),
+    sourceProvider: preferred.sourceProvider ?? other.sourceProvider,
+    sourceLabel: preferred.sourceLabel ?? other.sourceLabel,
+    sourcePeriod: preferred.sourcePeriod ?? other.sourcePeriod,
+    sourceFreshness: preferred.sourceFreshness ?? other.sourceFreshness,
+    sourceCoverageLevel: preferred.sourceCoverageLevel ?? other.sourceCoverageLevel,
+    licensingNote: preferred.licensingNote ?? other.licensingNote,
   };
 }
 

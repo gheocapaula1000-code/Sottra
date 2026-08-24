@@ -37,10 +37,12 @@ interface Props {
   onSubmit: (address: ManualAddressInput) => void;
   loading?: boolean;
   className?: string;
+  /** Open the form so a finished empty scan is not a blank report. */
+  defaultOpen?: boolean;
 }
 
-export default function AddressOverrideForm({ onSubmit, loading, className }: Props) {
-  const [open, setOpen] = useState(false);
+export default function AddressOverrideForm({ onSubmit, loading, className, defaultOpen = false }: Props) {
+  const [open, setOpen] = useState(defaultOpen);
   const [form, setForm] = useState<ManualAddressInput>(EMPTY);
 
   const set = useCallback((field: keyof ManualAddressInput, value: string) => {

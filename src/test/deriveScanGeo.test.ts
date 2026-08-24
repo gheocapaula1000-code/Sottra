@@ -94,4 +94,11 @@ describe("deriveGeoFromIdentify — manual address vs device GPS", () => {
     expect(geo.finalLng).toBe(padova.lng);
     expect(geo.geoSource).toBe("identify");
   });
+
+  it("does not treat 0,0 as a lookup coordinate when nothing else resolved", () => {
+    const geo = deriveGeoFromIdentify(identifyPadova, undefined, 0, 0, null);
+    expect(geo.finalLat).toBeNull();
+    expect(geo.finalLng).toBeNull();
+    expect(geo.geoSource).toBe("none");
+  });
 });

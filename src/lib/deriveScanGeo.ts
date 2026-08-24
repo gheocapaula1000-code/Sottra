@@ -110,9 +110,10 @@ export function deriveGeoFromIdentify(
     finalLng = resolved.lng;
     geoSource = "identify";
   } else {
-    finalLat = lat;
-    finalLng = lng;
-    geoSource = "device";
+    // 0,0 is a sentinel ("no GPS yet"), never a lookup coordinate.
+    finalLat = null;
+    finalLng = null;
+    geoSource = "none";
   }
 
   return {
