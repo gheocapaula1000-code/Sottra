@@ -186,8 +186,8 @@ describe("standalone watchdog", () => {
     const err = await pending.catch((e) => e);
     await expectation;
     expect(err).toBeInstanceOf(GeoRequestError);
-    expect(err.message).toContain("Durante l'uso");
-    expect(err.message).toContain("Chiedi");
+    expect(err.message).toMatch(/non è comparsa/i);
+    expect(err.message).not.toMatch(/Impostazioni →/);
     expect(shouldRetryGeoFix(err)).toBe(false);
   });
 
@@ -206,12 +206,15 @@ describe("standalone watchdog", () => {
 });
 
 describe("clear Italian location permission copy", () => {
-  it("asks to enable location Durante l'uso before using the camera", () => {
-    expect(LOCATION_USE_PROMPT).toMatch(/Durante l'uso/);
+  it("asks for position from GPS or photo, not Impostazioni", () => {
     expect(LOCATION_USE_PROMPT).toMatch(/OMI/);
-    expect(LOCATION_USE_DETAIL).toMatch(/inserisci l'indirizzo/i);
-    expect(LOCATION_CAMERA_ASK).toMatch(/Durante l'uso/);
-    expect(LOCATION_CAMERA_ASK).toMatch(/inserisci l'indirizzo/i);
+    expect(LOCATION_USE_PROMPT).toMatch(/foto/);
+    expect(LOCATION_USE_DETAIL).toMatch(/Durante l'uso/);
+    expect(LOCATION_USE_DETAIL).toMatch(/coordinate/);
+    expect(LOCATION_CAMERA_ASK).toMatch(/GPS o dalla foto/i);
+    expect(LOCATION_CAMERA_ASK).toMatch(/indirizzo/i);
+    expect(LOCATION_USE_PROMPT).not.toMatch(/Impostazioni →/);
+    expect(LOCATION_CAMERA_ASK).not.toMatch(/Impostazioni →/);
   });
 });
 

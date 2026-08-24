@@ -48,8 +48,9 @@ describe("CaptureGate iOS Permissions API must not lock Continua", () => {
     const continua = await screen.findByRole("button", { name: /continua allo scatto/i });
     expect(continua).toBeEnabled();
     expect(screen.queryByText("Attiva la geolocalizzazione per continuare")).toBeNull();
-    expect(screen.getByText(/consenti la posizione Durante l'uso/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/coordinate della foto/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Attiva la posizione per questa analisi/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Impostazioni →/)).toBeNull();
   });
 
   it("keeps Continua enabled when permissions.query reports prompt", async () => {
@@ -185,8 +186,9 @@ describe("CaptureGate / Scan source invariants", () => {
     expect(gate).not.toContain("disabled={geoDenied}");
     expect(gate).not.toContain("Attiva la geolocalizzazione per continuare");
     expect(gate).toContain("LOCATION_USE_PROMPT");
-    expect(gate).toContain("Durante l'uso");
+    expect(gate).toContain("coordinate della foto");
     expect(gate).toContain("requestGeolocation");
+    expect(gate).not.toContain("Impostazioni →");
     expect(gate).toContain("Usa la mia posizione");
     expect(gate).toContain("await requestGeolocation");
     expect(gate).toMatch(/onContinue\(\{/);
@@ -202,7 +204,7 @@ describe("CaptureGate / Scan source invariants", () => {
     expect(scan).toContain("Riprova posizione");
     expect(scan).toContain("Continua con l'indirizzo");
     expect(scan).toContain("LOCATION_CAMERA_ASK");
-    expect(scan).toContain("Durante l'uso");
+    expect(scan).toContain("extractExifGpsFromFile");
     expect(scan).toContain("navigateWithTypedAddress");
     expect(scan).not.toContain("timeout: 8000");
   });
@@ -214,8 +216,11 @@ describe("CaptureGate / Scan source invariants", () => {
     const shoot = scan.slice(shootStart, fileStart);
     const kickoff = shoot.indexOf("const gpsPromise = startShootGeolocation");
     const flashDelay = shoot.indexOf("setTimeout(() => {");
+    const iosFile = shoot.indexOf("fileInputRef.current?.click()");
     expect(kickoff).toBeGreaterThan(-1);
     expect(flashDelay).toBeGreaterThan(-1);
+    expect(iosFile).toBeGreaterThan(-1);
+    expect(kickoff).toBeLessThan(iosFile);
     expect(kickoff).toBeLessThan(flashDelay);
   });
 

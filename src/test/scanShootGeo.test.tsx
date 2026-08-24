@@ -108,7 +108,7 @@ describe("Scan shutter GPS gesture", () => {
 
     await continuePastGate();
     expect(getCurrentPosition).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(/Durante l'uso per questo scatto/i)).toBeInTheDocument();
+    expect(screen.getByText(/GPS o dalla foto/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /scatta foto/i }));
 
