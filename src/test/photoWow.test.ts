@@ -1,21 +1,25 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// getPhotoWow now routes through core-proxy via supabase.functions.invoke
+const mockInvoke = vi.fn();
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    functions: { invoke: (...args: unknown[]) => mockInvoke(...args) },
+  },
+}));
+
 import { getPhotoWow } from "@/services/photoWow";
+import { _resetCircuitBreaker } from "@/services/api";
 
 describe("getPhotoWow", () => {
-  const originalFetch = globalThis.fetch;
-
   beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
+    mockInvoke.mockReset();
+    _resetCircuitBreaker();
   });
 
   it("unwraps dual-readable Core envelope into PhotoWowResponse + official zona", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
+    mockInvoke.mockResolvedValue({
+      data: {
         ok: true,
         data: {
           scores: { vendibilita: null, opportunitaInvestimento: null, pressioneEreditaria: null },
@@ -26,8 +30,9 @@ describe("getPhotoWow", () => {
         prezzoMqMax: 3400,
         sourceType: "official",
         polygonMatch: true,
-      }),
-    }) as unknown as typeof fetch;
+      },
+      error: null,
+    });
 
     const res = await getPhotoWow("data:image/jpeg;base64,xx", 45.407, 11.876);
     expect(res.error).toBe(false);
@@ -38,10 +43,10 @@ describe("getPhotoWow", () => {
   });
 
   it("returns error when Core says ok:false", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: false, error: { message: "no geo" } }),
-    }) as unknown as typeof fetch;
+    mockInvoke.mockResolvedValue({
+      data: { ok: false, error: { message: "no geo" } },
+      error: null,
+    });
 
     const res = await getPhotoWow("data:image/jpeg;base64,xx", 45.407, 11.876);
     expect(res.error).toBe(true);
@@ -49,25 +54,21 @@ describe("getPhotoWow", () => {
   });
 
   it("refuses 0,0 without calling Core — no invented cinematic zona", async () => {
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
-
     const res = await getPhotoWow("data:image/jpeg;base64,xx", 0, 0, "address", "Via San Francesco 2, Padova");
     expect(res.error).toBe(true);
     expect(res.data).toBeNull();
     expect(res.message).toMatch(/non disponibile/i);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockInvoke).not.toHaveBeenCalled();
   });
 
   it("pairs the photo with address coords when geoSource is address", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
+    mockInvoke.mockResolvedValue({
+      data: {
         ok: true,
         data: { scores: { vendibilita: null, opportunitaInvestimento: null, pressioneEreditaria: null } },
-      }),
+      },
+      error: null,
     });
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     await getPhotoWow(
       "data:image/jpeg;base64,xx",
@@ -77,13 +78,15 @@ describe("getPhotoWow", () => {
       "Via San Francesco 2, Padova",
     );
 
-    expect(fetchMock).toHaveBeenCalled();
-    const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
-    expect(body.payload.geo).toEqual({
+    expect(mockInvoke).toHaveBeenCalled();
+    const [fn, opts] = mockInvoke.mock.calls[0] as [string, { body: Record<string, any> }];
+    expect(fn).toBe("core-proxy");
+    expect(opts.body.endpoint).toBe("/scan/photo-wow");
+    expect(opts.body.payload.geo).toEqual({
       latitude: 45.407,
       longitude: 11.876,
       source: "address",
     });
-    expect(body.payload.quickFacts.address).toBe("Via San Francesco 2, Padova");
+    expect(opts.body.payload.address).toBe("Via San Francesco 2, Padova");
   });
 });
