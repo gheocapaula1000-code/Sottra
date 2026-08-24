@@ -598,14 +598,13 @@ async function queryOmiWithPolygons(
       }
     }
 
-    // ── Step 2: Query quotazioni ──
+    // ── Step 2: Query quotazioni — every official tipologia × stato row ──
     let query = supabase
       .from("omi_quotazioni")
       .select("*")
-      .eq("tipologia", "Abitazioni civili")
       .order("anno", { ascending: false })
       .order("semestre", { ascending: false })
-      .limit(20);
+      .limit(80);
 
     if (polygonMatch && matchedZone && matchedCodCatastale) {
       // Exact zone match from polygon
@@ -667,22 +666,41 @@ async function queryOmiWithPolygons(
       return unavailableOmi("no_coverage");
     }
 
-    // Get the most recent semester — prefer NORMALE civile when that band exists.
+    // Latest semester — keep every official row. Headline is civile NORMALE,
+    // not the mashed NORMALE+OTTIMO civile envelope.
     const latest = data[0];
     const samePeriod = data.filter(
       (d: Record<string, unknown>) => d.anno === latest.anno && d.semestre === latest.semestre
     );
-    const normale = samePeriod.filter((d: Record<string, unknown>) =>
-      /normale/i.test(String(d.stato_conservazione ?? ""))
+    const asNum = (v: unknown): number | null => {
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+      if (typeof v === "string" && v.trim()) {
+        const n = Number(String(v).replace(",", "."));
+        return Number.isFinite(n) ? n : null;
+      }
+      return null;
+    };
+    const quotes = samePeriod.map((d: Record<string, unknown>) => ({
+      tipologia: String(d.tipologia ?? ""),
+      stato: typeof d.stato_conservazione === "string" ? d.stato_conservazione : null,
+      comprMin: asNum(d.quotazione_min),
+      comprMax: asNum(d.quotazione_max),
+      locMin: asNum(d.loc_min ?? d.locazione_min ?? d.locazioneMqMin),
+      locMax: asNum(d.loc_max ?? d.locazione_max ?? d.locazioneMqMax),
+      semestre: `${latest.semestre}° semestre ${latest.anno}`,
+    })).filter((q: { tipologia: string; comprMin: number | null; comprMax: number | null }) =>
+      !!q.tipologia || q.comprMin != null || q.comprMax != null
     );
-    const quoteRows = normale.length > 0 ? normale : samePeriod;
-
-    const allMin = Math.min(...quoteRows.map((d: Record<string, unknown>) => Number(d.quotazione_min)));
-    const allMax = Math.max(...quoteRows.map((d: Record<string, unknown>) => Number(d.quotazione_max)));
+    const civile = quotes.filter((q: { tipologia: string }) => /abitazioni\s+civili/i.test(q.tipologia));
+    const headline = civile.find((q: { stato: string | null }) => /normale/i.test(q.stato ?? ""))
+      ?? civile[0]
+      ?? null;
+    const headlineMin = headline?.comprMin ?? null;
+    const headlineMax = headline?.comprMax ?? null;
 
     const zones = [...new Set(samePeriod.map((d: Record<string, unknown>) => String(d.zona_omi)))];
 
-    log("omi result", `zones=${zones.join(",")}, range=${allMin}-${allMax}, period=${latest.semestre}S${latest.anno}, polygonMatch=${polygonMatch}`);
+    log("omi result", `zones=${zones.join(",")}, quotes=${quotes.length}, headline=${headlineMin}-${headlineMax}, period=${latest.semestre}S${latest.anno}, polygonMatch=${polygonMatch}`);
 
     // Get zone descriptions
     let zoneDescriptions: string[] = [];
@@ -715,11 +733,12 @@ async function queryOmiWithPolygons(
       zonaOmi: zones.length === 1 ? zones[0] : zones.join(", "),
       zonaOmiLabel: zoneLabel,
       comuneLabel: latest.comune_label ?? comuneLabel,
-      quotazioneMinResidenziale: allMin,
-      quotazioneMaxResidenziale: allMax,
+      quotazioneMinResidenziale: headlineMin,
+      quotazioneMaxResidenziale: headlineMax,
+      quotes,
       semestre: `${latest.semestre}° semestre ${latest.anno}`,
-      tipologia: latest.tipologia,
-      statoConservazione: (quoteRows[0] as Record<string, unknown> | undefined)?.stato_conservazione ?? latest.stato_conservazione,
+      tipologia: headline?.tipologia ?? latest.tipologia,
+      statoConservazione: headline?.stato ?? latest.stato_conservazione,
       sourceType: "official",
       sourceProvider: "omi",
       sourceLabel: "OMI / Agenzia delle Entrate",

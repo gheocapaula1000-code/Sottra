@@ -103,7 +103,11 @@ export function isPoiPublishable(data: PoiEnrichmentData | null | undefined): bo
 
 export function isIstatPublishable(data: IstatDemographicData | null | undefined): boolean {
   if (sourceUnavailable(data)) return false;
-  return data!.popolazione != null;
+  return data!.popolazione != null
+    || data!.nucleiFamiliari != null
+    || data!.densita != null
+    || data!.indiceVecchiaia != null
+    || data!.percentualeStranieri != null;
 }
 
 export function isDemographicsPublishable(

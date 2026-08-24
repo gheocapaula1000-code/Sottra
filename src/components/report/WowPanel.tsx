@@ -272,7 +272,13 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
                   <span className="ml-1 text-sm font-semibold text-white/60">/m²</span>
                 </p>
                 <p className="text-sm text-white/75">
-                  {[omi?.zonaOmiLabel, omi?.comuneLabel, omi?.semestre].filter(Boolean).join(" · ")}
+                  {[
+                    omi?.tipologia,
+                    omi?.statoConservazione,
+                    omi?.zonaOmiLabel,
+                    omi?.comuneLabel,
+                    omi?.semestre,
+                  ].filter(Boolean).join(" · ")}
                 </p>
                 {!omi?.polygonMatch && (
                   <p className="text-[11px] text-amber-200/90">

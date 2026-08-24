@@ -6,6 +6,11 @@
  * Does not invent scores, catasto, or APE. Missing numbers stay null.
  */
 
+import {
+  collectOmiQuotes,
+  mergeOmiQuotes,
+  pickCivileHeadline,
+} from "@/lib/omiQuotes";
 import type { OmiZoneData, SectionStatus, SourceType } from "@/types";
 import type { PhotoWowImmobile, PhotoWowResponse, PhotoWowScores, PhotoWowZona } from "@/types/photoWow";
 
@@ -410,7 +415,20 @@ export function officialOmiFromCore(raw: unknown): OmiZoneData | null {
   const matchMethod = firstString(root.matchMethod, pricing.matchMethod, zona.obj.matchMethod);
   const matchConfidence = firstNumber(root.matchConfidence, pricing.matchConfidence, zona.obj.matchConfidence) ?? undefined;
 
-  const hasQuotes = quotazioneMinResidenziale != null || quotazioneMaxResidenziale != null;
+  const preferredLink = preferred?.linkZona
+    ?? firstString(root.link_zona, root.linkZona, pricing.link_zona, zona.obj.link_zona);
+  const quotes = collectOmiQuotes(root, preferredLink);
+  const headline = pickCivileHeadline(quotes);
+  const headlineMin = headline.min ?? quotazioneMinResidenziale;
+  const headlineMax = headline.max ?? quotazioneMaxResidenziale;
+  const headlineTipologia = quotes.find((q) =>
+    headline.min != null && q.comprMin === headline.min && q.comprMax === headline.max
+      && /civili/i.test(q.tipologia),
+  );
+  const resolvedTipologia = headlineTipologia?.tipologia ?? tipologia;
+  const resolvedStato = headlineTipologia?.stato ?? statoConservazione;
+
+  const hasQuotes = headlineMin != null || headlineMax != null || quotes.length > 0;
   const hasZone = !!(zonaOmiLabel || zonaOmi);
   if (!hasQuotes && !hasZone) return null;
 
@@ -421,11 +439,12 @@ export function officialOmiFromCore(raw: unknown): OmiZoneData | null {
     zonaOmi,
     zonaOmiLabel,
     comuneLabel,
-    quotazioneMinResidenziale,
-    quotazioneMaxResidenziale,
+    quotazioneMinResidenziale: headlineMin,
+    quotazioneMaxResidenziale: headlineMax,
+    quotes: quotes.length > 0 ? quotes : undefined,
     semestre,
-    tipologia,
-    statoConservazione,
+    tipologia: resolvedTipologia,
+    statoConservazione: resolvedStato,
     polygonMatch,
     omiGeoLevel: omiGeoLevel as OmiZoneData["omiGeoLevel"],
     matchMethod: matchMethod ?? undefined,
@@ -445,6 +464,7 @@ export function hasRenderableOfficialOmi(d: OmiZoneData | null | undefined): boo
   if (!d || d.sourceType === "unavailable") return false;
   return d.quotazioneMinResidenziale != null
     || d.quotazioneMaxResidenziale != null
+    || (d.quotes?.length ?? 0) > 0
     || !!d.zonaOmiLabel
     || !!d.zonaOmi;
 }
@@ -475,14 +495,21 @@ export function mergeOfficialOmiData(
     ? incoming
     : current;
   const other = preferred === incoming ? current : incoming;
+  const quotes = mergeOmiQuotes(current.quotes, incoming.quotes);
+  const headline = pickCivileHeadline(quotes);
   return {
     ...other,
     ...preferred,
     zonaOmi: preferred.zonaOmi ?? other.zonaOmi,
     zonaOmiLabel: preferred.zonaOmiLabel ?? other.zonaOmiLabel,
     comuneLabel: preferred.comuneLabel ?? other.comuneLabel,
-    quotazioneMinResidenziale: preferred.quotazioneMinResidenziale ?? other.quotazioneMinResidenziale,
-    quotazioneMaxResidenziale: preferred.quotazioneMaxResidenziale ?? other.quotazioneMaxResidenziale,
+    quotazioneMinResidenziale: headline.min
+      ?? preferred.quotazioneMinResidenziale
+      ?? other.quotazioneMinResidenziale,
+    quotazioneMaxResidenziale: headline.max
+      ?? preferred.quotazioneMaxResidenziale
+      ?? other.quotazioneMaxResidenziale,
+    quotes: quotes.length > 0 ? quotes : preferred.quotes ?? other.quotes,
     semestre: preferred.semestre ?? other.semestre,
     tipologia: preferred.tipologia ?? other.tipologia,
     statoConservazione: preferred.statoConservazione ?? other.statoConservazione,

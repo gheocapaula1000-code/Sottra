@@ -110,16 +110,27 @@ export async function fetchProSources(
   }
 }
 
+function asFiniteNumber(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) {
+    const n = Number(v.replace(",", "."));
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
 function parsePoiResult(raw: unknown): PoiEnrichmentData | null {
   if (!raw || typeof raw !== "object") return null;
   const d = raw as Record<string, unknown>;
   if (d.sourceType === "unavailable") return null;
 
+  const totalPois = asFiniteNumber(d.totalPois) ?? (Array.isArray(d.pois) ? d.pois.length : 0);
+
   return {
-    totalPois: typeof d.totalPois === "number" ? d.totalPois : 0,
+    totalPois,
     categories: Array.isArray(d.categories) ? d.categories : [],
     pois: Array.isArray(d.pois) ? d.pois : [],
-    searchRadius: typeof d.searchRadius === "number" ? d.searchRadius : 800,
+    searchRadius: asFiniteNumber(d.searchRadius) ?? 800,
     sourceType: (d.sourceType as PoiEnrichmentData["sourceType"]) ?? "verified_geo",
     sourceProvider: (d.sourceProvider as PoiEnrichmentData["sourceProvider"]) ?? "overpass",
     sourceLabel: typeof d.sourceLabel === "string" ? d.sourceLabel : "OpenStreetMap",
@@ -139,11 +150,11 @@ function parseIstatResult(raw: unknown): IstatDemographicData | null {
   if (d.sourceType === "unavailable") return null;
 
   return {
-    popolazione: typeof d.popolazione === "number" ? d.popolazione : null,
-    nucleiFamiliari: typeof d.nucleiFamiliari === "number" ? d.nucleiFamiliari : null,
-    densita: typeof d.densita === "number" ? d.densita : null,
-    indiceVecchiaia: typeof d.indiceVecchiaia === "number" ? d.indiceVecchiaia : null,
-    percentualeStranieri: typeof d.percentualeStranieri === "number" ? d.percentualeStranieri : null,
+    popolazione: asFiniteNumber(d.popolazione),
+    nucleiFamiliari: asFiniteNumber(d.nucleiFamiliari ?? d.nuclei_familiari),
+    densita: asFiniteNumber(d.densita),
+    indiceVecchiaia: asFiniteNumber(d.indiceVecchiaia ?? d.indice_vecchiaia),
+    percentualeStranieri: asFiniteNumber(d.percentualeStranieri ?? d.percentuale_stranieri),
     comuneLabel: typeof d.comuneLabel === "string" ? d.comuneLabel : null,
     annoRilevazione: typeof d.annoRilevazione === "string" ? d.annoRilevazione : null,
     geoLevel: typeof d.geoLevel === "string" ? d.geoLevel as IstatDemographicData["geoLevel"] : null,

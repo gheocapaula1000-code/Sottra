@@ -8,7 +8,8 @@ import { mapScanToReportSections } from "@/lib/reportMapper";
 import { deriveGeoFromIdentify, type DerivedScanGeo } from "@/lib/deriveScanGeo";
 import { isValidGps } from "@/lib/imageUtils";
 import { hasRenderableOfficialOmi, mergeOfficialOmiData, officialOmiFromCore } from "@/lib/officialOmiFromCore";
-import type { OmiZoneData, ScanResult, SectionState, IdentifyResult } from "@/types";
+import { preferPoiData } from "@/lib/poiPrefer";
+import type { OmiZoneData, PoiEnrichmentData, ScanResult, SectionState, IdentifyResult } from "@/types";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
 import { formatManualAddress } from "@/components/AddressOverrideForm";
 
@@ -61,6 +62,7 @@ type Action =
   | { type: "SET"; key: keyof ScanResult; value: SectionState }
   | { type: "MAP_REPORT"; lat: number | null; lng: number | null }
   | { type: "MERGE_OFFICIAL_OMI"; data: OmiZoneData }
+  | { type: "MERGE_POI"; data: PoiEnrichmentData | null; message?: string | null }
   | { type: "OMI_UNAVAILABLE_IF_EMPTY"; message: string };
 
 function reducer(state: ScanResult, action: Action): ScanResult {
@@ -97,6 +99,17 @@ function reducer(state: ScanResult, action: Action): ScanResult {
     case "MERGE_OFFICIAL_OMI": {
       const merged = mergeOfficialOmiData(state.omiZone.data, action.data);
       return { ...state, omiZone: { status: "success", data: merged, message: null } };
+    }
+    case "MERGE_POI": {
+      const merged = preferPoiData(state.poiEnrichment.data as PoiEnrichmentData | null, action.data);
+      return {
+        ...state,
+        poiEnrichment: {
+          status: merged && (merged.totalPois ?? 0) > 0 ? "success" : "success",
+          data: merged,
+          message: action.message ?? null,
+        },
+      };
     }
     case "OMI_UNAVAILABLE_IF_EMPTY": {
       if (hasRenderableOfficialOmi(state.omiZone.data)) return state;
@@ -253,11 +266,20 @@ export function useBuildingScan() {
         getMoodScore(finalLat, finalLng).then(resolve("moodScore")).catch(reject("moodScore")),
         ...(address ? [getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy"))] : []),
         getNeighborhood(finalLat, finalLng, address).then(resolve("neighborhood")).catch(reject("neighborhood")),
-        getPoiEnrichment(finalLat, finalLng, address).then(resolve("poiEnrichment")).catch(reject("poiEnrichment")),
+        getPoiEnrichment(finalLat, finalLng, address).then((r) => {
+          if (r.error) {
+            dispatch({ type: "MERGE_POI", data: null, message: r.message });
+            return;
+          }
+          dispatch({ type: "MERGE_POI", data: r.data as PoiEnrichmentData | null });
+        }).catch((err) => {
+          console.error("[SCAN] poiEnrichment rejected:", err);
+          dispatch({ type: "MERGE_POI", data: null, message: err instanceof Error ? err.message : "Errore imprevisto" });
+        }),
         fetchProSources(finalLat, finalLng).then((proData) => {
-          // Official OMI/ISTAT from Sottra DB — never overwrite a prior POI success with null.
+          // Official OMI/ISTAT from Sottra DB — never overwrite a prior POI success with empty.
           if (proData.poi) {
-            set("poiEnrichment", { status: "success", data: proData.poi, message: null });
+            dispatch({ type: "MERGE_POI", data: proData.poi });
           }
           if (proData.omi) {
             dispatch({ type: "MERGE_OFFICIAL_OMI", data: proData.omi });
@@ -524,7 +546,7 @@ export function useBuildingScan() {
       getConvergenzaTerritoriale(finalLat, finalLng, confidence, manualAddr).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
       fetchProSources(finalLat, finalLng).then((proData) => {
         if (proData.poi) {
-          set("poiEnrichment", { status: "success", data: proData.poi, message: null });
+          dispatch({ type: "MERGE_POI", data: proData.poi });
         }
         if (proData.omi) {
           dispatch({ type: "MERGE_OFFICIAL_OMI", data: proData.omi });
