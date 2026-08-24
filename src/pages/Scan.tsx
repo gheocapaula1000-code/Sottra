@@ -11,7 +11,7 @@ import {
   type ExifGps,
 } from "@/lib/exifGps";
 import { prefersSystemCameraCapture } from "@/lib/iosCapture";
-import { clearLastScanPhoto, saveLastScanPhoto } from "@/lib/lastScanPhotoStore";
+import { saveLastScanPhoto } from "@/lib/lastScanPhotoStore";
 import { Button } from "@/components/ui/button";
 import CaptureGate from "@/components/CaptureGate";
 import {
@@ -113,7 +113,8 @@ const Scan = () => {
       } catch {
         /* IDB failure must not block the shot — router state still carries it. */
       }
-      navigate("/result", { state: payload });
+      // replace: camera must not sit under the report — Android/header back goes Home, not an empty shutter.
+      navigate("/result", { replace: true, state: payload });
     },
     [navigate],
   );
@@ -376,7 +377,7 @@ const Scan = () => {
         {/* Header */}
         <header className="z-10 flex items-center justify-between px-5 pt-safe pb-2">
           <span className="text-base font-bold text-white/90 drop-shadow">Sottra</span>
-          <button onClick={() => { streamRef.current?.getTracks().forEach((t) => t.stop()); void clearLastScanPhoto(); navigate("/"); }} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
+          <button onClick={() => { streamRef.current?.getTracks().forEach((t) => t.stop()); navigate("/app"); }} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
             <X className="h-5 w-5 text-white" />
           </button>
         </header>

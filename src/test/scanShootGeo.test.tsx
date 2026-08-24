@@ -188,6 +188,7 @@ describe("Scan shutter GPS gesture", () => {
 
     await waitFor(() => {
       expect(navigate).toHaveBeenCalledWith("/result", {
+        replace: true,
         state: {
           photo: expect.stringMatching(/^data:image\//),
           lat: 0,

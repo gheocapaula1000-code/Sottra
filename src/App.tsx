@@ -119,7 +119,7 @@ const App = () => (
                     <Route path="/territorial-report" element={<ProtectedRoute><TerritorialReport /></ProtectedRoute>} />
                     <Route path="/scan" element={<TrialProtectedRoute><Scan /></TrialProtectedRoute>} />
                     <Route path="/result" element={<TrialProtectedRoute><Result /></TrialProtectedRoute>} />
-                    <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+                    <Route path="/history" element={<TrialProtectedRoute><History /></TrialProtectedRoute>} />
                     <Route path="/app/imports" element={<ProtectedRoute><ImportedDrafts /></ProtectedRoute>} />
                     <Route path="/app/imports/:id" element={<ProtectedRoute><ImportedDraftDetail /></ProtectedRoute>} />
                     <Route path="/privacy-policy" element={<PrivacyPolicy />} />

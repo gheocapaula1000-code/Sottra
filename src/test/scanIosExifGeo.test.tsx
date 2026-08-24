@@ -137,6 +137,7 @@ describe("iPhone scan uses photo EXIF when Geolocation fails", () => {
 
     await waitFor(() => {
       expect(navigate).toHaveBeenCalledWith("/result", {
+        replace: true,
         state: {
           photo: expect.stringMatching(/^data:image\//),
           lat: 45.4012,
@@ -207,6 +208,7 @@ describe("iPhone scan uses photo EXIF when Geolocation fails", () => {
 
     await waitFor(() => {
       expect(navigate).toHaveBeenCalledWith("/result", {
+        replace: true,
         state: {
           photo: expect.stringMatching(/^data:image\//),
           lat: 45.4064,
@@ -268,6 +270,7 @@ describe("Android scan still uses device GPS + getUserMedia", () => {
 
     await waitFor(() => {
       expect(navigate).toHaveBeenCalledWith("/result", {
+        replace: true,
         state: {
           photo: expect.stringMatching(/^data:image\//),
           lat: 45.4064,

@@ -1,12 +1,14 @@
 /**
- * Persist the last scan JPEG + geo so /result survives PWA reload,
- * backgrounding, and browser pull-to-refresh (router location.state is gone).
+ * Persist the last scan JPEG + geo + finished report snapshot so /result
+ * survives Back, Home, PWA reload, and browser pull-to-refresh
+ * (router location.state is gone).
  *
  * IndexedDB holds the real dataURL (too large for Web Storage quotas).
- * Memory cache covers the same JS session. Never invents a photo or coords.
+ * Memory cache covers the same JS session. Never invents a photo, coords, or tendine.
  */
 
 import { isValidImageDataUrl } from "@/lib/imageUtils";
+import type { ScanResult } from "@/types";
 
 export const LAST_SCAN_DB_NAME = "sottra-last-scan";
 export const LAST_SCAN_STORE = "scan";
@@ -19,9 +21,15 @@ export interface LastScanRecord {
   manualAddress?: string;
   /** Stable history row id so reload / PTR updates the same Cronologia entry. */
   historyId?: string;
+  /** Finished report sections (success only). Restore these — do not rescan. */
+  savedResult?: Partial<ScanResult>;
 }
 
 let memoryRecord: LastScanRecord | null = null;
+
+export function isSavedResultSnapshot(value: unknown): value is Partial<ScanResult> {
+  return !!value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0;
+}
 
 function normalizeRecord(input: LastScanRecord): LastScanRecord | null {
   if (!isValidImageDataUrl(input.photo)) return null;
@@ -34,12 +42,14 @@ function normalizeRecord(input: LastScanRecord): LastScanRecord | null {
   const historyId = typeof input.historyId === "string" && input.historyId.trim()
     ? input.historyId.trim()
     : undefined;
+  const savedResult = isSavedResultSnapshot(input.savedResult) ? input.savedResult : undefined;
   return {
     photo: input.photo,
     lat,
     lng,
     ...(trimmed ? { manualAddress: trimmed } : {}),
     ...(historyId ? { historyId } : {}),
+    ...(savedResult ? { savedResult } : {}),
   };
 }
 
@@ -51,16 +61,35 @@ export function isUsableLastScan(value: unknown): value is LastScanRecord {
   const lngOk = rec.lng == null || (typeof rec.lng === "number" && Number.isFinite(rec.lng));
   if (!latOk || !lngOk) return false;
   if (rec.manualAddress != null && typeof rec.manualAddress !== "string") return false;
+  if (rec.savedResult != null && (typeof rec.savedResult !== "object" || Array.isArray(rec.savedResult))) return false;
   return true;
 }
 
-/** Router state wins when it still has the shot; otherwise restore IndexedDB. */
-export function mergeResultScanState<T extends { photo?: unknown }>(
+/**
+ * Router photo wins. Attach persisted savedResult only when it belongs to
+ * the same JPEG — never graft an older report onto a new capture.
+ */
+export function mergeResultScanState<T extends { photo?: unknown; savedResult?: unknown }>(
   routerState: T | null | undefined,
   persisted: LastScanRecord | null,
 ): T | LastScanRecord | null {
-  if (routerState && isValidImageDataUrl(routerState.photo)) return routerState;
-  if (persisted && isValidImageDataUrl(persisted.photo)) return persisted;
+  const persistOk = persisted && isValidImageDataUrl(persisted.photo) ? persisted : null;
+
+  if (routerState && isValidImageDataUrl(routerState.photo)) {
+    if (isSavedResultSnapshot(routerState.savedResult)) return routerState;
+    if (persistOk && persistOk.photo === routerState.photo && isSavedResultSnapshot(persistOk.savedResult)) {
+      return { ...routerState, savedResult: persistOk.savedResult };
+    }
+    return routerState;
+  }
+
+  if (persistOk) {
+    if (isSavedResultSnapshot(routerState?.savedResult)) {
+      return { ...persistOk, savedResult: routerState!.savedResult as Partial<ScanResult> };
+    }
+    return persistOk;
+  }
+
   return routerState ?? null;
 }
 
@@ -135,6 +164,11 @@ export async function saveLastScanPhoto(input: LastScanRecord): Promise<void> {
   await idbPut(record);
 }
 
+/** Same-session read — no IDB wait. Used so /result can restore before scan(). */
+export function peekLastScanPhoto(): LastScanRecord | null {
+  return memoryRecord && isValidImageDataUrl(memoryRecord.photo) ? memoryRecord : null;
+}
+
 export async function loadLastScanPhoto(): Promise<LastScanRecord | null> {
   if (memoryRecord && isValidImageDataUrl(memoryRecord.photo)) {
     return memoryRecord;
@@ -147,7 +181,7 @@ export async function loadLastScanPhoto(): Promise<LastScanRecord | null> {
   return null;
 }
 
-/** Home / clear / new flow — drop the last shot. */
+/** Explicit Cronologia wipe only — Home / Back must not call this. */
 export async function clearLastScanPhoto(): Promise<void> {
   memoryRecord = null;
   await idbDelete();

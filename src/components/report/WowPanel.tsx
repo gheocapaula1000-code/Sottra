@@ -8,12 +8,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
-  MapPin, Zap, FileText, Brain, Target, Share2, Camera,
+  MapPin, Zap, FileText, Brain, Target,
   CheckCircle2, AlertTriangle, ExternalLink, TrendingUp,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import type { PhotoWowResponse, PhotoWowLiveSignal } from "@/types/photoWow";
 import type { OmiZoneData, SectionStatus } from "@/types";
 
@@ -163,7 +161,6 @@ function fmtEur(n: number | null | undefined): string {
 }
 
 export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPanelProps) {
-  const navigate = useNavigate();
   const omi = officialOmi?.data ?? null;
   const omiStatus = officialOmi?.status ?? "idle";
   const hasOfficialOmi = !!(
@@ -204,15 +201,6 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
   const zoneOmiLine = [data?.zona?.nomeZonaOmi ?? omi?.zonaOmiLabel, data?.zona?.classificazioneZona]
     .filter((x, i, arr) => !!x && arr.indexOf(x) === i && x !== zoneTitle)
     .join(" · ");
-
-  const handleShare = async () => {
-    const shareData = { title: "Report Sottra", text: "Guarda il mio report territoriale", url: window.location.href };
-    if (navigator.share) {
-      try { await navigator.share(shareData); } catch { /* user cancelled */ }
-    } else {
-      try { await navigator.clipboard.writeText(window.location.href); } catch { /* noop */ }
-    }
-  };
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl">
@@ -499,24 +487,13 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
               </Reveal>
             )}
 
-            {/* PHASE 9 — Actions */}
-            <Reveal show={p9}>
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={handleShare} variant="secondary" className="bg-white/10 text-white border border-white/20 hover:bg-white/20 min-h-[44px]">
-                    <Share2 className="h-4 w-4" />Condividi report
-                  </Button>
-                  <Button onClick={() => navigate("/scan")} className="min-h-[44px]">
-                    <Camera className="h-4 w-4" />Nuova scansione
-                  </Button>
-                </div>
-                {data.fontiUsate?.length > 0 && (
-                  <p className="text-[10px] text-white/40 text-center leading-relaxed">
-                    Anteprima: {data.fontiUsate.join(" · ")}. Le quotazioni ufficiali OMI/ISTAT sono nel report sotto.
-                  </p>
-                )}
-              </div>
-            </Reveal>
+            {data.fontiUsate?.length > 0 && (
+              <Reveal show={p9}>
+                <p className="text-[10px] text-white/40 text-center leading-relaxed">
+                  Anteprima: {data.fontiUsate.join(" · ")}. Le quotazioni ufficiali OMI/ISTAT sono nel report sotto.
+                </p>
+              </Reveal>
+            )}
           </>
         )}
       </div>

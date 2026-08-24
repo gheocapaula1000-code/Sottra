@@ -7,8 +7,15 @@ import { useScanHistory, compressToThumbnail, serializeResult } from "@/contexts
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { isValidGps, isValidImageDataUrl } from "@/lib/imageUtils";
-import { loadLastScanPhoto, saveLastScanPhoto, type LastScanRecord } from "@/lib/lastScanPhotoStore";
+import { isSavedResultSnapshot, loadLastScanPhoto, mergeResultScanState, peekLastScanPhoto, saveLastScanPhoto, type LastScanRecord } from "@/lib/lastScanPhotoStore";
 import { buildHistoryDraft, shouldRecordFinishedScan } from "@/lib/scanHistoryStore";
+import {
+  buildReportShareFile,
+  buildShareTitle,
+  captureReportElement,
+  shareOrDownloadReportFile,
+  waitForCaptureLayout,
+} from "@/lib/shareReportImage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
@@ -37,7 +44,7 @@ import {
 import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData, ScenarioTemporaleData } from "@/types/report";
 import AddressOverrideForm, { formatManualAddress } from "@/components/AddressOverrideForm";
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
-import { GeoLevelHeroBanner, PublishableAccordionItem, resolveReportGeoStatus } from "@/components/report/ReportAccordion";
+import { GeoLevelHeroBanner, PublishableAccordionItem, ReportCaptureOpenContext, resolveReportGeoStatus } from "@/components/report/ReportAccordion";
 import {
   isCondominioPublishable,
   isConvergenzaPublishable,
@@ -1942,14 +1949,18 @@ const Result = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const routerState = location.state as ResultState | null;
-  const [persisted, setPersisted] = useState<LastScanRecord | null>(null);
-  const [hydrateDone, setHydrateDone] = useState(() => isValidImageDataUrl(routerState?.photo));
+  const [persisted, setPersisted] = useState<LastScanRecord | null>(() => peekLastScanPhoto());
+  const [hydrateDone, setHydrateDone] = useState(
+    () => isValidImageDataUrl(routerState?.photo) || isValidImageDataUrl(peekLastScanPhoto()?.photo),
+  );
   const { result, scanning, refining, manualAddress, scan, refresh, refineAddress, restoreResult, forceShowResult, setForceShowResult } = useBuildingScan();
   const { saveScan } = useScanHistory();
   const { toast } = useToast();
   const started = useRef(false);
   const historyIdRef = useRef<string | null>(null);
   const historySignatureRef = useRef<string | null>(null);
+  const reportRootRef = useRef<HTMLDivElement>(null);
+  const [capturing, setCapturing] = useState(false);
   const officialOmi = resolveOfficialOmiOverlay({
     omiZone: result.omiZone,
     photoWow: result.photoWow,
@@ -1961,14 +1972,21 @@ const Result = () => {
       setHydrateDone(true);
       if (routerState.historyId) historyIdRef.current = routerState.historyId;
       // Live scan (not a history thumbnail) — keep the actual JPEG for reload.
+      // Same JPEG: keep the finished snapshot. New JPEG: overwrite (no grafted tendine).
       if (!routerState?.savedResult) {
+        const existing = peekLastScanPhoto();
+        const samePhoto = existing?.photo === routerState.photo;
         void saveLastScanPhoto({
           photo: routerState.photo,
           lat: routerState.lat ?? null,
           lng: routerState.lng ?? null,
           manualAddress: routerState.manualAddress,
-          historyId: historyIdRef.current ?? undefined,
+          historyId: routerState.historyId ?? existing?.historyId ?? historyIdRef.current ?? undefined,
+          ...(samePhoto && isSavedResultSnapshot(existing?.savedResult)
+            ? { savedResult: existing.savedResult }
+            : {}),
         });
+        if (samePhoto && existing) setPersisted(existing);
       }
       return;
     }
@@ -1984,22 +2002,12 @@ const Result = () => {
     };
   }, [routerState]);
 
-  const state: ResultState | null = isValidImageDataUrl(routerState?.photo)
-    ? routerState
-    : persisted
-      ? {
-          photo: persisted.photo,
-          lat: persisted.lat,
-          lng: persisted.lng,
-          manualAddress: persisted.manualAddress,
-          savedResult: routerState?.savedResult,
-        }
-      : routerState;
+  const state = mergeResultScanState(routerState, persisted) as ResultState | null;
 
   const hasValidPhoto = isValidImageDataUrl(state?.photo);
   const hasManualAddress = !!(state?.manualAddress && state.manualAddress.trim().length >= 3);
   const hasValidCoords = isValidGps(state?.lat, state?.lng) || hasManualAddress;
-  const hasSavedResult = state?.savedResult != null && Object.keys(state.savedResult).length > 0;
+  const hasSavedResult = isSavedResultSnapshot(state?.savedResult);
 
   useEffect(() => {
     if (started.current) return;
@@ -2073,6 +2081,7 @@ const Result = () => {
         lng: state.lng,
         manualAddress: state.manualAddress,
         historyId: historyIdRef.current,
+        ...(snapshot && isSavedResultSnapshot(snapshot) ? { savedResult: snapshot } : {}),
       });
     })();
 
@@ -2126,43 +2135,31 @@ const Result = () => {
   const excludedCount = completedModules.length - publishedCount;
 
   const handleShare = async () => {
-    const addr = (result?.identify?.data as any)?.resolvedAddress
-      ?? result?.identify?.data?.address
-      ?? state?.manualAddress
-      ?? "Indirizzo non disponibile";
-
-    const prezzo = (result?.pricing?.data as any)?.prezzoMedioMq
-      ?? (result as any)?.market?.data?.prezzoMedioMq
-      ?? null;
-
-    const zona = (result?.pricing?.data as any)?.zonaOmi
-      ?? (result?.identify?.data as any)?.zonaOmi
-      ?? null;
-
-    const rischio = (result?.rischioZona?.data as any)?.livelloRischio
-      ?? (result?.rischioZona?.data as any)?.livello
-      ?? null;
-
-    const opportunity = result?.opportunity?.data?.score ?? null;
-
-    const lines = [
-      `📍 ${addr}`,
-      prezzo ? `💶 ${prezzo} €/m²` : null,
-      zona ? `🏘️ Zona OMI: ${zona}` : null,
-      opportunity ? `📊 Opportunità: ${opportunity}/100` : null,
-      rischio ? `⚠️ Rischio: ${rischio}` : null,
-      `🔍 Analisi Sottra — sottra.app`,
-    ].filter(Boolean).join("\n");
-
+    const root = reportRootRef.current;
+    if (!root || capturing) return;
+    const title = buildShareTitle({
+      comuneLabel: officialOmi.data?.comuneLabel ?? null,
+      zonaOmi: officialOmi.data?.zonaOmi ?? null,
+    });
+    setCapturing(true);
+    document.documentElement.setAttribute("data-sottra-capture", "1");
     try {
-      if (navigator.share) {
-        await navigator.share({ title: "Report Sottra", text: lines });
-      } else {
-        await navigator.clipboard.writeText(lines);
-        toast({ title: "Copiato!", description: "Report copiato negli appunti." });
+      await waitForCaptureLayout();
+      const file = await buildReportShareFile({
+        root,
+        title,
+        capture: captureReportElement,
+      });
+      const outcome = await shareOrDownloadReportFile(file, title);
+      if (outcome === "downloaded") {
+        toast({ title: "Immagine salvata", description: file.name });
       }
-    } catch {
-      /* user cancelled share or clipboard unavailable */
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return;
+      toast({ title: "Condivisione non riuscita", description: "Riprova tra poco.", variant: "destructive" });
+    } finally {
+      document.documentElement.removeAttribute("data-sottra-capture");
+      setCapturing(false);
     }
   };
 
@@ -2276,18 +2273,30 @@ const Result = () => {
   const showAddressForm = identifyDone || emptyScanNeedsAddress;
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background">
-      <AppHeader rightContent={
-        <>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/scan")} aria-label="Indietro">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          {scanning && <span className="text-[11px] text-primary font-medium animate-pulse">Elaborazione…</span>}
-        </>
-      } />
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-background">
+      <div data-capture-hide>
+        <AppHeader rightContent={
+          <>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/app")} aria-label="Indietro">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            {scanning && <span className="text-[11px] text-primary font-medium animate-pulse">Elaborazione…</span>}
+          </>
+        } />
+      </div>
 
-      <PullToRefresh onRefresh={handlePullRefresh} disabled={scanning || refining}>
-        <div className="space-y-3 px-4 sm:px-5 pb-32 pt-2">
+      <PullToRefresh
+        data-testid="result-scroll"
+        onRefresh={handlePullRefresh}
+        disabled={scanning || refining || capturing}
+        className="overflow-y-auto"
+      >
+        <ReportCaptureOpenContext.Provider value={capturing}>
+        <div
+          ref={reportRootRef}
+          data-testid="result-report-root"
+          className="space-y-3 px-4 sm:px-5 pb-6 pt-2"
+        >
           {/* Identify error gate rimosso: il pipeline civiko-property-from-photo
               gestisce autonomamente la qualità foto con fallback sicuro
               (WowPanel mostra qualita: "minima" quando necessario). */}
@@ -2542,21 +2551,44 @@ const Result = () => {
             </>
           )}
         </div>
+        </ReportCaptureOpenContext.Provider>
       </PullToRefresh>
 
-      {/* Share Report Button */}
-      <button
-        onClick={handleShare}
-        className="fixed bottom-16 left-4 right-4 h-12 rounded-2xl bg-blue-600 text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-lg z-40"
+      <footer
+        data-capture-hide
+        data-testid="result-action-bar"
+        className="shrink-0 border-t border-border/50 bg-background/90 backdrop-blur-xl px-4 sm:px-5 pt-3 z-40"
+        style={{
+          paddingBottom: "max(12px, env(safe-area-inset-bottom, 0px))",
+          paddingLeft: "max(env(safe-area-inset-left, 0px), 16px)",
+          paddingRight: "max(env(safe-area-inset-right, 0px), 16px)",
+        }}
       >
-        <Share2 className="h-5 w-5" />
-        Condividi Report
-      </button>
-
-      {/* Bottom bar */}
-      <div className="fixed bottom-0 inset-x-0 bg-background/90 backdrop-blur-xl border-t border-border/50 px-4 sm:px-5 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-3 flex gap-3 z-40" style={{ paddingLeft: 'max(env(safe-area-inset-left, 0px), 16px)', paddingRight: 'max(env(safe-area-inset-right, 0px), 16px)' }}>
-        <Button className="flex-1 min-h-[48px] active:scale-[0.97] transition-transform" size="lg" onClick={() => navigate("/scan")}>Nuova scansione</Button>
-        <Button variant="outline" size="lg" className="shrink-0 min-h-[48px]" disabled={!identifyData || lowConfidence || identifyFailed || scanning} onClick={async () => {
+        <div className="flex items-center gap-2">
+          <Button
+            className="flex-1 min-h-[48px] active:scale-[0.97] transition-transform"
+            size="lg"
+            onClick={() => void handleShare()}
+            disabled={capturing || scanning}
+          >
+            <Share2 className="h-4 w-4" />
+            {capturing ? "Preparazione…" : "Condividi"}
+          </Button>
+          <Button
+            variant="secondary"
+            className="flex-1 min-h-[48px] active:scale-[0.97] transition-transform"
+            size="lg"
+            onClick={() => navigate("/scan")}
+          >
+            Nuova scansione
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-12 w-12 shrink-0"
+            aria-label="Salva in cronologia"
+            disabled={!identifyData || lowConfidence || identifyFailed || scanning}
+            onClick={async () => {
           if (!state) return;
           if (!identifyData) {
             toast({ title: "Report non salvabile", description: "L'identificazione dell'edificio non è ancora completa.", variant: "destructive" });
@@ -2583,9 +2615,18 @@ const Result = () => {
               band: convergenza.band,
             } : null,
           }));
+          void saveLastScanPhoto({
+            photo: state.photo,
+            lat: state.lat,
+            lng: state.lng,
+            manualAddress: state.manualAddress,
+            historyId: historyIdRef.current,
+            ...(snapshot && isSavedResultSnapshot(snapshot) ? { savedResult: snapshot } : {}),
+          });
           toast({ title: "Report salvato", description: "Trovi questo report nella cronologia." });
         }}><Bookmark className="h-4 w-4" /></Button>
-      </div>
+        </div>
+      </footer>
     </div>
   );
 };

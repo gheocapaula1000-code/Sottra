@@ -60,7 +60,7 @@
   }
 
   html {
-    /* Prevent iOS bounce / overscroll */
+    /* Prevent iOS bounce / overscroll on the document (page scrollers own it) */
     overscroll-behavior: none;
     /* Smooth momentum scroll on iOS */
     -webkit-overflow-scrolling: touch;
@@ -69,6 +69,14 @@
     text-size-adjust: 100%;
     /* Use small viewport height as base for mobile keyboard awareness */
     height: 100%;
+  }
+
+  #root {
+    height: 100%;
+  }
+
+  html[data-sottra-capture="1"] [data-capture-hide] {
+    display: none !important;
   }
 
   body {
