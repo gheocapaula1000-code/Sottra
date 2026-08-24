@@ -32,7 +32,7 @@ const D8_SNAPSHOT = {
   },
   identify: {
     status: "success" as const,
-    data: { address: "Via Forcellini 12, Padova", confidence: 0.9 },
+    data: { address: "Via Forcellini 12, Padova", buildingId: "bld-test", confidence: 0.9 },
     message: null,
   },
 };
