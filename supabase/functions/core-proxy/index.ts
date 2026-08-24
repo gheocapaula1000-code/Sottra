@@ -75,14 +75,32 @@ serve(async (req) => {
       return jsonResponse({ error: { message: "Sessione non valida o scaduta" } }, 401, req);
     }
 
-    // ── 2. Parse request body ─────────────────────────────
+    // ── 2. Server-side entitlement gate (trial / subscription) ──
+    const entitlement = await checkEntitlement(userData.user.id);
+    if (!entitlement.allowed) {
+      return jsonResponse(
+        { error: { message: "Abbonamento non attivo o periodo di prova esaurito" }, limit_reached: true },
+        403,
+        req,
+      );
+    }
+
+    // ── 3. Parse and validate request body ────────────────
     const { endpoint, method = "POST", payload, timeout = 10000 } = await req.json();
 
-    if (!endpoint || typeof endpoint !== "string") {
+    if (!endpoint || typeof endpoint !== "string" || !isAllowedEndpoint(endpoint)) {
       return jsonResponse({ error: { message: "Parametri della richiesta non validi" } }, 400, req);
     }
 
-    console.log(`[core-proxy] IN endpoint=${endpoint} method=${method} user=${userData.user.id}`);
+    const upstreamMethod = typeof method === "string" ? method.toUpperCase() : "";
+    if (!ALLOWED_METHODS.includes(upstreamMethod)) {
+      return jsonResponse({ error: { message: "Metodo non consentito" } }, 405, req);
+    }
+
+    const safeTimeout = typeof timeout === "number" && timeout > 0 && timeout <= 60000 ? timeout : 10000;
+
+    console.log(`[core-proxy] IN endpoint=${endpoint} method=${upstreamMethod} user=${userData.user.id}`);
+
 
     // ── 3. Check backend configuration ────────────────────
     const CORE_API_URL = (Deno.env.get("CORE_API_URL") || "").replace(/\/+$/, "");
