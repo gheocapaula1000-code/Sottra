@@ -80,7 +80,43 @@ describe("CaptureGate iOS Permissions API must not lock Continua", () => {
     });
 
     expect(getCurrentPosition).toHaveBeenCalled();
-    expect(onContinue).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(onContinue).toHaveBeenCalledTimes(1);
+    });
+    expect(onContinue).toHaveBeenCalledWith({ position: null, errorCode: "denied" });
+  });
+
+  it("awaits getCurrentPosition before onContinue and passes granted coords", async () => {
+    let succeed: PositionCallback = () => {};
+    const getCurrentPosition = vi.fn((success: PositionCallback) => {
+      succeed = success;
+    });
+    mockGeolocation(getCurrentPosition);
+    mockPermissions("prompt");
+    const onContinue = vi.fn();
+
+    render(<CaptureGate onContinue={onContinue} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /continua allo scatto/i }));
+
+    expect(getCurrentPosition).toHaveBeenCalled();
+    expect(onContinue).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /richiesta posizione/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /usa la mia posizione/i })).toBeDisabled();
+
+    await act(async () => {
+      succeed({
+        coords: { latitude: 45.4064, longitude: 11.8768, accuracy: 8 },
+      } as GeolocationPosition);
+    });
+
+    await waitFor(() => {
+      expect(onContinue).toHaveBeenCalledTimes(1);
+    });
+    expect(onContinue).toHaveBeenCalledWith({
+      position: { lat: 45.4064, lng: 11.8768 },
+      errorCode: null,
+    });
   });
 
   it("Usa la mia posizione calls getCurrentPosition without leaving the gate", async () => {
@@ -135,7 +171,9 @@ describe("CaptureGate iOS Permissions API must not lock Continua", () => {
     await act(async () => {
       fireEvent.click(continua);
     });
-    expect(onContinue).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onContinue).toHaveBeenCalled();
+    });
   });
 });
 
@@ -146,7 +184,8 @@ describe("CaptureGate / Scan source invariants", () => {
     expect(gate).not.toContain("Attiva la geolocalizzazione per continuare");
     expect(gate).toContain("requestGeolocation");
     expect(gate).toContain("Usa la mia posizione");
-    expect(gate).toContain("onContinue()");
+    expect(gate).toContain("await requestGeolocation");
+    expect(gate).toMatch(/onContinue\(\{/);
     expect(gate).toMatch(/perm\.state === "granted"/);
     expect(gate).not.toMatch(/perm\.state === "denied"\) setGeoStatus\("denied"\)/);
   });
@@ -154,10 +193,29 @@ describe("CaptureGate / Scan source invariants", () => {
   it("Scan still skips GPS when a typed address is present", () => {
     const scan = src("src/pages/Scan.tsx");
     expect(scan).toContain("manual address provided, skipping GPS");
-    expect(scan).toContain("requestGeolocationWithFallback");
+    expect(scan).toContain("startShootGeolocation");
     expect(scan).toContain('shootPhase === "gps_denied"');
     expect(scan).toContain("Riprova posizione");
+    expect(scan).toContain("Continua con l'indirizzo");
+    expect(scan).toContain("navigateWithTypedAddress");
     expect(scan).not.toContain("timeout: 8000");
+  });
+
+  it("shutter starts GPS in the click tick, before setTimeout", () => {
+    const scan = src("src/pages/Scan.tsx");
+    const shootStart = scan.indexOf("const handleShoot");
+    const fileStart = scan.indexOf("const handleFileUpload");
+    const shoot = scan.slice(shootStart, fileStart);
+    const kickoff = shoot.indexOf("const gpsPromise = startShootGeolocation");
+    const flashDelay = shoot.indexOf("setTimeout(() => {");
+    expect(kickoff).toBeGreaterThan(-1);
+    expect(flashDelay).toBeGreaterThan(-1);
+    expect(kickoff).toBeLessThan(flashDelay);
+  });
+
+  it("does not change PWA manifest display", () => {
+    expect(src("public/manifest.webmanifest")).toContain('"display": "standalone"');
+    expect(src("vite.config.ts")).toMatch(/display:\s*"standalone"/);
   });
 
   it("does not invent coordinates on GPS failure", () => {

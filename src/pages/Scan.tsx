@@ -5,7 +5,13 @@ import { useToast } from "@/hooks/use-toast";
 import { normalizeImage, isValidImageDataUrl } from "@/lib/imageUtils";
 import { Button } from "@/components/ui/button";
 import CaptureGate from "@/components/CaptureGate";
-import { requestGeolocationWithFallback } from "@/lib/requestGeolocation";
+import {
+  STANDALONE_LOCATION_ASK_HINT,
+  isStandaloneDisplay,
+  isValidGeoPosition,
+  startShootGeolocation,
+  type GeoPosition,
+} from "@/lib/requestGeolocation";
 
 type CameraState = "loading" | "active" | "denied" | "unavailable";
 type ShootPhase = "idle" | "flash" | "gps" | "compressing" | "gps_denied";
@@ -25,7 +31,16 @@ const Scan = () => {
   const [freezeFrame, setFreezeFrame] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(true);
   const [manualAddress, setManualAddress] = useState<string>("");
+  const [gatePosition, setGatePosition] = useState<GeoPosition | null>(null);
+  const [standaloneAskHint, setStandaloneAskHint] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    };
+  }, []);
 
   // Start camera only when moving past gate
   useEffect(() => {
@@ -77,8 +92,15 @@ const Scan = () => {
     return canvas.toDataURL("image/jpeg", 0.85);
   }, []);
 
+  const navigateWithTypedAddress = useCallback(
+    (photo: string, address: string) => {
+      navigate("/result", { state: { photo, lat: 0, lng: 0, manualAddress: address } });
+    },
+    [navigate],
+  );
+
   const processAndNavigate = useCallback(
-    async (rawPhoto: string) => {
+    async (rawPhoto: string, gpsPromise: Promise<GeoPosition> | null, address: string) => {
       setShootPhase("compressing");
       let photo: string;
       try {
@@ -96,12 +118,17 @@ const Scan = () => {
         return;
       }
 
-      const trimmedAddr = manualAddress.trim();
+      const trimmedAddr = address.trim();
 
       // If user provided manual address, skip GPS and rely on backend geocoding.
       if (trimmedAddr.length >= 3) {
         devLog("manual address provided, skipping GPS:", trimmedAddr);
-        navigate("/result", { state: { photo, lat: 0, lng: 0, manualAddress: trimmedAddr } });
+        navigateWithTypedAddress(photo, trimmedAddr);
+        return;
+      }
+
+      if (!gpsPromise) {
+        setShootPhase("gps_denied");
         return;
       }
 
@@ -109,7 +136,12 @@ const Scan = () => {
       devLog("gps acquisition started");
 
       try {
-        const { lat, lng } = await requestGeolocationWithFallback();
+        const { lat, lng } = await gpsPromise;
+        if (!isValidGeoPosition({ lat, lng })) {
+          devLog("gps rejected invalid coords");
+          setShootPhase("gps_denied");
+          return;
+        }
         devLog(`gps granted: ${lat}, ${lng}`);
         navigate("/result", { state: { photo, lat, lng } });
       } catch (err) {
@@ -118,24 +150,39 @@ const Scan = () => {
         setShootPhase("gps_denied");
       }
     },
-    [navigate, toast, manualAddress]
+    [navigate, navigateWithTypedAddress, toast]
   );
 
   const retryGps = useCallback(() => {
     if (!freezeFrame) return;
-    processAndNavigate(freezeFrame);
+    // Riprova is a fresh user gesture — start GPS in this tick.
+    const gpsPromise = startShootGeolocation({ skipForAddress: false, gatePosition: null });
+    processAndNavigate(freezeFrame, gpsPromise, "");
   }, [freezeFrame, processAndNavigate]);
+
+  const proceedWithTypedAddress = useCallback(() => {
+    const trimmed = manualAddress.trim();
+    if (!freezeFrame || trimmed.length < 3) return;
+    processAndNavigate(freezeFrame, null, trimmed);
+  }, [freezeFrame, manualAddress, processAndNavigate]);
 
   const handleShoot = useCallback(() => {
     const rawPhoto = captureFrame();
     if (!rawPhoto) return;
+    const trimmedAddr = manualAddress.trim();
+    // Same tick as the shutter tap, before setTimeout/await — iOS 18 keeps the gesture.
+    const gpsPromise = startShootGeolocation({
+      skipForAddress: trimmedAddr.length >= 3,
+      gatePosition,
+    });
     streamRef.current?.getTracks().forEach((t) => t.stop());
     setFreezeFrame(rawPhoto);
     setShootPhase("flash");
-    setTimeout(() => {
-      processAndNavigate(rawPhoto);
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => {
+      processAndNavigate(rawPhoto, gpsPromise, trimmedAddr);
     }, 150);
-  }, [captureFrame, processAndNavigate]);
+  }, [captureFrame, processAndNavigate, manualAddress, gatePosition]);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,17 +191,32 @@ const Scan = () => {
       const reader = new FileReader();
       reader.onload = () => {
         const rawPhoto = reader.result as string;
+        const trimmedAddr = manualAddress.trim();
+        const gpsPromise = startShootGeolocation({
+          skipForAddress: trimmedAddr.length >= 3,
+          gatePosition,
+        });
         setFreezeFrame(rawPhoto);
-        processAndNavigate(rawPhoto);
+        processAndNavigate(rawPhoto, gpsPromise, trimmedAddr);
       };
       reader.readAsDataURL(file);
     },
-    [processAndNavigate]
+    [processAndNavigate, manualAddress, gatePosition]
   );
 
   // Show capture gate first
   if (pagePhase === "gate") {
-    return <CaptureGate onContinue={() => setPagePhase("camera")} />;
+    return (
+      <CaptureGate
+        onContinue={({ position, errorCode }) => {
+          if (isValidGeoPosition(position)) setGatePosition(position);
+          if (errorCode === "standalone_watchdog" || (isStandaloneDisplay() && !isValidGeoPosition(position))) {
+            setStandaloneAskHint(true);
+          }
+          setPagePhase("camera");
+        }}
+      />
+    );
   }
 
   return (
@@ -210,12 +272,37 @@ const Scan = () => {
             </div>
             <p className="text-base font-semibold text-white">Posizione non disponibile</p>
             <p className="text-sm text-white/70 leading-relaxed">
-              Per analizzare correttamente l'edificio serve la posizione del dispositivo. Consenti la geolocalizzazione e riprova.
+              Puoi riprovare la geolocalizzazione oppure inserire l'indirizzo dell'immobile.
             </p>
+            {(standaloneAskHint || isStandaloneDisplay()) && (
+              <p className="text-xs text-white/55 leading-relaxed">
+                {STANDALONE_LOCATION_ASK_HINT}
+              </p>
+            )}
             <div className="flex flex-col gap-3 w-full">
               <Button onClick={retryGps} className="w-full min-h-[48px]" size="lg">
                 <MapPin className="h-4 w-4 mr-2" />
                 Riprova posizione
+              </Button>
+              <input
+                id="scan-denied-address"
+                type="text"
+                value={manualAddress}
+                onChange={(e) => setManualAddress(e.target.value)}
+                placeholder="es. Via Roma 15, Padova"
+                autoComplete="street-address"
+                style={{ backgroundColor: "#ffffff", color: "#1a1a1a", caretColor: "#1a1a1a" }}
+                className="w-full h-11 rounded-lg px-3 text-[16px] outline-none focus:ring-2 focus:ring-primary"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={proceedWithTypedAddress}
+                disabled={manualAddress.trim().length < 3}
+                className="w-full min-h-[48px] bg-white/10 border-white/20 text-white hover:bg-white/20"
+                size="lg"
+              >
+                Continua con l'indirizzo
               </Button>
               <Button
                 variant="outline"
@@ -271,6 +358,11 @@ const Scan = () => {
               <p className="text-[11px] text-white/70 mt-1">
                 Inserisci l'indirizzo per analisi precisa anche da desktop. Senza indirizzo verrà usato il GPS.
               </p>
+              {standaloneAskHint && (
+                <p className="text-[11px] text-white/55 mt-1 leading-relaxed">
+                  {STANDALONE_LOCATION_ASK_HINT}
+                </p>
+              )}
             </div>
           </div>
         )}
