@@ -8,7 +8,8 @@ export type GeoRequestErrorCode =
   | "denied"
   | "timeout"
   | "position_unavailable"
-  | "zero_coords";
+  | "zero_coords"
+  | "standalone_watchdog";
 
 export class GeoRequestError extends Error {
   readonly code: GeoRequestErrorCode;
@@ -41,6 +42,43 @@ export const GEO_GATE_PROMPT_OPTIONS: PositionOptions = {
   maximumAge: 0,
 };
 
+/**
+ * iOS standalone PWA + Safari Location=Ask: getCurrentPosition never shows a
+ * prompt and never fires timeout. JS watchdog settles so she can type the address.
+ */
+export const GEO_STANDALONE_WATCHDOG_MS = 10_000;
+
+/** Extra JS wait after the native timeout so a real TIMEOUT can win first. */
+export const GEO_WATCHDOG_GRACE_MS = 1_500;
+
+export const STANDALONE_LOCATION_ASK_HINT =
+  "Impostazioni → Privacy e sicurezza → Localizzazione → Safari/Sottra → Durante l'uso (non «Chiedi»).";
+
+type StandaloneNavigator = Navigator & { standalone?: boolean };
+
+export function isStandaloneDisplay(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  const nav = navigator as StandaloneNavigator;
+  if (nav.standalone === true) return true;
+  if (typeof window.matchMedia === "function") {
+    try {
+      if (window.matchMedia("(display-mode: standalone)").matches) return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+export function isValidGeoPosition(pos: GeoPosition | null | undefined): pos is GeoPosition {
+  if (!pos) return false;
+  if (typeof pos.lat !== "number" || typeof pos.lng !== "number") return false;
+  if (!Number.isFinite(pos.lat) || !Number.isFinite(pos.lng)) return false;
+  if (pos.lat === 0 && pos.lng === 0) return false;
+  if (pos.lat < -90 || pos.lat > 90 || pos.lng < -180 || pos.lng > 180) return false;
+  return true;
+}
+
 function mapPositionError(err: GeolocationPositionError): GeoRequestError {
   if (err.code === err.PERMISSION_DENIED) {
     return new GeoRequestError("denied", err.message);
@@ -58,6 +96,14 @@ export function shouldRetryGeoFix(err: unknown): boolean {
   return false;
 }
 
+export function watchdogMsForRequest(options: PositionOptions = GEO_HIGH_ACCURACY_OPTIONS): number {
+  const nativeTimeout = options.timeout ?? GEO_HIGH_ACCURACY_OPTIONS.timeout ?? 20_000;
+  if (isStandaloneDisplay()) {
+    return Math.min(GEO_STANDALONE_WATCHDOG_MS, nativeTimeout);
+  }
+  return nativeTimeout + GEO_WATCHDOG_GRACE_MS;
+}
+
 export function requestGeolocation(
   options: PositionOptions = GEO_HIGH_ACCURACY_OPTIONS,
 ): Promise<GeoPosition> {
@@ -67,18 +113,40 @@ export function requestGeolocation(
       return;
     }
 
+    let settled = false;
+    const standalone = isStandaloneDisplay();
+    const watchdogDelay = watchdogMsForRequest(options);
+
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(watchdog);
+      fn();
+    };
+
+    const watchdog = setTimeout(() => {
+      settle(() => {
+        reject(
+          new GeoRequestError(
+            standalone ? "standalone_watchdog" : "timeout",
+            standalone ? STANDALONE_LOCATION_ASK_HINT : "timeout",
+          ),
+        );
+      });
+    }, watchdogDelay);
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         if (lat === 0 && lng === 0) {
-          reject(new GeoRequestError("zero_coords"));
+          settle(() => reject(new GeoRequestError("zero_coords")));
           return;
         }
-        resolve({ lat, lng });
+        settle(() => resolve({ lat, lng }));
       },
       (err) => {
-        reject(mapPositionError(err));
+        settle(() => reject(mapPositionError(err)));
       },
       options,
     );
@@ -94,4 +162,22 @@ export async function requestGeolocationWithFallback(): Promise<GeoPosition> {
     }
     return requestGeolocation(GEO_FALLBACK_OPTIONS);
   }
+}
+
+/**
+ * Kick off shutter GPS in the same user-gesture tick (before setTimeout / await).
+ * Typed address skips GPS. Valid gate coords are reused. Never invents coords.
+ */
+export function startShootGeolocation(args: {
+  skipForAddress: boolean;
+  gatePosition?: GeoPosition | null;
+}): Promise<GeoPosition> | null {
+  if (args.skipForAddress) return null;
+  if (isValidGeoPosition(args.gatePosition)) {
+    return Promise.resolve(args.gatePosition);
+  }
+  const pending = requestGeolocationWithFallback();
+  // Fast iOS deny can reject before processAndNavigate awaits (setTimeout 150ms).
+  void pending.catch(() => {});
+  return pending;
 }
