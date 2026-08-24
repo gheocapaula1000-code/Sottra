@@ -79,16 +79,16 @@ describe("Padova D8 official OMI quotes", () => {
 
     expect(screen.getAllByTestId("omi-quote-row")).toHaveLength(7);
     expect(screen.getAllByText("Abitazioni civili").length).toBe(2);
-    expect(screen.getByText("1400 – 1850 €/m²")).toBeInTheDocument();
-    expect(screen.getByText("1800 – 2750 €/m²")).toBeInTheDocument();
-    expect(screen.getByText("1150 – 1400 €/m²")).toBeInTheDocument();
-    expect(screen.getByText("1200 – 1500 €/m²")).toBeInTheDocument();
-    expect(screen.getByText("1700 – 2550 €/m²")).toBeInTheDocument();
-    expect(screen.getByText("1450 – 1950 €/m²")).toBeInTheDocument();
-    expect(screen.getByText("1800 – 2300 €/m²")).toBeInTheDocument();
-    expect(screen.getByText("6.5 – 9 €/m²/mese")).toBeInTheDocument();
+    expect(screen.getByText(/Vendita 1400 – 1850 €\/m²/)).toBeInTheDocument();
+    expect(screen.getByText(/Vendita 1800 – 2750 €\/m²/)).toBeInTheDocument();
+    expect(screen.getByText(/Vendita 1150 – 1400 €\/m²/)).toBeInTheDocument();
+    expect(screen.getByText(/Vendita 1200 – 1500 €\/m²/)).toBeInTheDocument();
+    expect(screen.getByText(/Vendita 1700 – 2550 €\/m²/)).toBeInTheDocument();
+    expect(screen.getByText(/Vendita 1450 – 1950 €\/m²/)).toBeInTheDocument();
+    expect(screen.getByText(/Vendita 1800 – 2300 €\/m²/)).toBeInTheDocument();
+    expect(screen.getByText(/Affitto 6\.5 – 9 €\/m²\/mese/)).toBeInTheDocument();
     expect(screen.getAllByText("OTTIMO").length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByText("1400 – 2750 €/m²")).not.toBeInTheDocument();
+    expect(screen.queryByText(/1400 – 2750 €\/m²/)).not.toBeInTheDocument();
   });
 
   it("keeps missing loc_* blank and does not invent a rent figure", () => {
@@ -97,7 +97,7 @@ describe("Padova D8 official OMI quotes", () => {
     ];
     expect(formatOmiRentRange(withoutRent[0])).toBeNull();
     render(<OmiQuotesTable quotes={withoutRent} />);
-    expect(screen.getByText("1200 – 1500 €/m²")).toBeInTheDocument();
+    expect(screen.getByText(/Vendita 1200 – 1500 €\/m²/)).toBeInTheDocument();
     expect(screen.queryByText(/€\/m²\/mese/)).not.toBeInTheDocument();
     expect(screen.getByTestId("omi-quote-rent-blank")).toBeInTheDocument();
     expect(screen.getByTestId("omi-quote-rent-blank").textContent).toBe("");
