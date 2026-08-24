@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +13,6 @@ import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { useImportCount } from "@/hooks/useImportCount";
 import AppHeader from "@/components/AppHeader";
 import PullToRefresh from "@/components/PullToRefresh";
-import { clearLastScanPhoto } from "@/lib/lastScanPhotoStore";
 
 import {
   ScanLine,
@@ -38,10 +36,6 @@ const Dashboard = () => {
   const { toast } = useToast();
   const { scans } = useScanHistory();
   const { count: importCount, refetch: refetchImports } = useImportCount();
-
-  useEffect(() => {
-    void clearLastScanPhoto();
-  }, []);
 
   const handlePullRefresh = async () => {
     await Promise.all([refresh(), refetchImports()]);

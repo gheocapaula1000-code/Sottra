@@ -282,5 +282,8 @@ describe("history wiring", () => {
     expect(history).toContain("canReopenHistoryScan");
     expect(ctx).toContain("sottra_scans");
     expect(ctx).toContain("upsert");
+    expect(readFileSync("src/App.tsx", "utf-8")).toMatch(
+      /path="\/history"\s+element=\{<TrialProtectedRoute>/,
+    );
   });
 });
