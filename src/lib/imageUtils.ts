@@ -39,7 +39,10 @@ function dataUrlByteSize(dataUrl: string): number {
 /**
  * Normalize an image: resize to max 1280px long side, compress JPEG,
  * progressively reduce quality to stay under ~350KB.
- * 
+ *
+ * Canvas toDataURL strips EXIF — read GPS with extractExifGps / extractExifGpsFromFile
+ * from the original File or bytes before calling this.
+ *
  * @returns Compressed JPEG data URL
  * @throws Error if image cannot be processed
  */

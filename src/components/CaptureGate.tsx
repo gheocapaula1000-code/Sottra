@@ -7,8 +7,6 @@ import {
   GeoRequestError,
   LOCATION_USE_DETAIL,
   LOCATION_USE_PROMPT,
-  STANDALONE_LOCATION_ASK_HINT,
-  isStandaloneDisplay,
   isValidGeoPosition,
   requestGeolocation,
   type GeoPosition,
@@ -31,12 +29,8 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
   const [locating, setLocating] = useState(false);
   const [continuing, setContinuing] = useState(false);
   const [grantedPos, setGrantedPos] = useState<GeoPosition | null>(null);
-  const [errorCode, setErrorCode] = useState<GeoRequestErrorCode | null>(null);
-  const [standalone, setStandalone] = useState(false);
 
   useEffect(() => {
-    setStandalone(isStandaloneDisplay());
-
     if (!navigator.geolocation) {
       setGeoStatus("unavailable");
       return;
@@ -63,13 +57,11 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
   const applySuccess = (pos: GeoPosition) => {
     setGrantedPos(pos);
     setGeoStatus("granted");
-    setErrorCode(null);
     return pos;
   };
 
   const applyFailure = (err: unknown) => {
     const code = err instanceof GeoRequestError ? err.code : navigator.geolocation ? "position_unavailable" : "unavailable";
-    setErrorCode(code);
     setGeoStatus((prev) => (prev === "granted" ? prev : navigator.geolocation ? "failed" : "unavailable"));
     return code;
   };
@@ -104,7 +96,6 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
   };
 
   const geoFailed = geoStatus === "failed" || geoStatus === "unavailable";
-  const showStandaloneHint = standalone && (geoFailed || errorCode === "standalone_watchdog");
   const busy = locating || continuing;
 
   const checks: { icon: React.ReactNode; label: string; sublabel: string; status: "ok" | "warn" | "neutral" }[] = [
@@ -151,7 +142,7 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
           {LOCATION_USE_PROMPT}
         </p>
         <p className="text-sm text-muted-foreground text-center mb-8 leading-relaxed">
-          Non apriamo le Impostazioni al posto tuo. Se la richiesta non compare o viene negata, inserisci l'indirizzo.
+          Se la richiesta di posizione non compare, scatta comunque: su iPhone usiamo le coordinate della foto. L'indirizzo è l'ultima opzione.
         </p>
 
         {/* Checklist */}
@@ -205,12 +196,7 @@ export default function CaptureGate({ onContinue }: CaptureGateProps) {
 
         {geoFailed && (
           <p className="text-xs text-muted-foreground/70 text-center mt-3 leading-relaxed">
-            Posizione non disponibile. Puoi continuare e inserire l'indirizzo.
-          </p>
-        )}
-        {showStandaloneHint && (
-          <p className="text-xs text-muted-foreground/80 text-center mt-2 leading-relaxed">
-            {STANDALONE_LOCATION_ASK_HINT}
+            Posizione non disponibile dal GPS. Continua: la foto può contenere le coordinate, altrimenti inserisci l'indirizzo.
           </p>
         )}
       </div>

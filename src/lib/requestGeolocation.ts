@@ -51,18 +51,19 @@ export const GEO_STANDALONE_WATCHDOG_MS = 10_000;
 /** Extra JS wait after the native timeout so a real TIMEOUT can win first. */
 export const GEO_WATCHDOG_GRACE_MS = 1_500;
 
+/** Fail-closed copy — not a Settings lecture. Photo EXIF is the next step. */
 export const STANDALONE_LOCATION_ASK_HINT =
-  "Impostazioni → Privacy e sicurezza → Localizzazione → Safari/Sottra → Durante l'uso (non «Chiedi»).";
+  "La richiesta di posizione non è comparsa. Proviamo con le coordinate della foto.";
 
-/** Clear Italian ask before / while using the camera. iOS cannot open Settings. */
+/** Clear Italian ask before / while using the camera. Do not send her to Impostazioni. */
 export const LOCATION_USE_PROMPT =
-  "Per la quotazione ufficiale OMI, consenti la posizione Durante l'uso di Sottra.";
+  "Per la quotazione ufficiale OMI serve la posizione di questo punto: GPS oppure coordinate della foto.";
 
 export const LOCATION_USE_DETAIL =
-  "Tocca Continua: il telefono chiederà l'accesso alla posizione per questa analisi. Se Safari è su «Chiedi» e non compare nulla, inserisci l'indirizzo.";
+  "Tocca Continua: il telefono può chiedere la posizione Durante l'uso. Se la richiesta non compare, scatta: su iPhone la foto può contenere le coordinate.";
 
 export const LOCATION_CAMERA_ASK =
-  "Consenti la posizione Durante l'uso per questo scatto. Se non compare la richiesta, inserisci l'indirizzo.";
+  "La posizione arriva dal GPS o dalla foto. L'indirizzo è solo se entrambi mancano.";
 
 type StandaloneNavigator = Navigator & { standalone?: boolean };
 

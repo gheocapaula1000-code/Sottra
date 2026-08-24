@@ -3,18 +3,24 @@ import { useNavigate } from "react-router-dom";
 import { X, Upload, Camera, MapPin, ImagePlus, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeImage, isValidImageDataUrl } from "@/lib/imageUtils";
+import {
+  extractExifGpsFromDataUrl,
+  extractExifGpsFromFile,
+  readFileAsDataUrl,
+  resolveScanCoords,
+  type ExifGps,
+} from "@/lib/exifGps";
+import { prefersSystemCameraCapture } from "@/lib/iosCapture";
 import { Button } from "@/components/ui/button";
 import CaptureGate from "@/components/CaptureGate";
 import {
   LOCATION_CAMERA_ASK,
-  STANDALONE_LOCATION_ASK_HINT,
-  isStandaloneDisplay,
   isValidGeoPosition,
   startShootGeolocation,
   type GeoPosition,
 } from "@/lib/requestGeolocation";
 
-type CameraState = "loading" | "active" | "denied" | "unavailable";
+type CameraState = "loading" | "active" | "system" | "denied" | "unavailable";
 type ShootPhase = "idle" | "flash" | "gps" | "compressing" | "gps_denied";
 type PagePhase = "gate" | "camera";
 
@@ -33,9 +39,10 @@ const Scan = () => {
   const [showTips, setShowTips] = useState(true);
   const [manualAddress, setManualAddress] = useState<string>("");
   const [gatePosition, setGatePosition] = useState<GeoPosition | null>(null);
-  const [standaloneAskHint, setStandaloneAskHint] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingShootGeoRef = useRef<Promise<GeoPosition> | null>(null);
+  const lastExifRef = useRef<ExifGps | null>(null);
 
   useEffect(() => {
     return () => {
@@ -43,13 +50,18 @@ const Scan = () => {
     };
   }, []);
 
-  // Start camera only when moving past gate
+  // Start camera only when moving past gate.
+  // iOS: skip getUserMedia — canvas capture drops EXIF GPS. System camera keeps it.
   useEffect(() => {
     if (pagePhase !== "camera") return;
     let cancelled = false;
 
     const start = async () => {
       try {
+        if (prefersSystemCameraCapture()) {
+          setCameraState("system");
+          return;
+        }
         if (!navigator.mediaDevices?.getUserMedia) {
           setCameraState("unavailable");
           return;
@@ -101,7 +113,12 @@ const Scan = () => {
   );
 
   const processAndNavigate = useCallback(
-    async (rawPhoto: string, gpsPromise: Promise<GeoPosition> | null, address: string) => {
+    async (
+      rawPhoto: string,
+      gpsPromise: Promise<GeoPosition> | null,
+      address: string,
+      exifPos?: ExifGps | null,
+    ) => {
       setShootPhase("compressing");
       let photo: string;
       try {
@@ -128,37 +145,44 @@ const Scan = () => {
         return;
       }
 
-      if (!gpsPromise) {
-        setShootPhase("gps_denied");
-        return;
-      }
+      const exif = exifPos ?? extractExifGpsFromDataUrl(rawPhoto);
+      lastExifRef.current = exif;
 
       setShootPhase("gps");
       devLog("gps acquisition started");
 
-      try {
-        const { lat, lng } = await gpsPromise;
-        if (!isValidGeoPosition({ lat, lng })) {
-          devLog("gps rejected invalid coords");
-          setShootPhase("gps_denied");
-          return;
+      let geo: GeoPosition | null = null;
+      if (gpsPromise) {
+        try {
+          const pos = await gpsPromise;
+          geo = isValidGeoPosition(pos) ? pos : null;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "unavailable";
+          devLog("gps denied:", message);
         }
-        devLog(`gps granted: ${lat}, ${lng}`);
-        navigate("/result", { state: { photo, lat, lng } });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "unavailable";
-        devLog("gps denied:", message);
-        setShootPhase("gps_denied");
       }
+
+      const resolved = resolveScanCoords(geo, exif);
+      if (!resolved) {
+        devLog("no valid geo or EXIF coords");
+        setShootPhase("gps_denied");
+        return;
+      }
+      if (geo && resolved.lat === geo.lat && resolved.lng === geo.lng) {
+        devLog(`gps granted: ${resolved.lat}, ${resolved.lng}`);
+      } else {
+        devLog(`exif gps used: ${resolved.lat}, ${resolved.lng}`);
+      }
+      navigate("/result", { state: { photo, lat: resolved.lat, lng: resolved.lng } });
     },
     [navigate, navigateWithTypedAddress, toast]
   );
 
   const retryGps = useCallback(() => {
     if (!freezeFrame) return;
-    // Riprova is a fresh user gesture — start GPS in this tick.
+    // Riprova is a fresh user gesture — start GPS in this tick. EXIF stays as fallback.
     const gpsPromise = startShootGeolocation({ skipForAddress: false, gatePosition: null });
-    processAndNavigate(freezeFrame, gpsPromise, "");
+    processAndNavigate(freezeFrame, gpsPromise, "", lastExifRef.current ?? extractExifGpsFromDataUrl(freezeFrame));
   }, [freezeFrame, processAndNavigate]);
 
   const proceedWithTypedAddress = useCallback(() => {
@@ -168,52 +192,69 @@ const Scan = () => {
   }, [freezeFrame, manualAddress, processAndNavigate]);
 
   const handleShoot = useCallback(() => {
-    const rawPhoto = captureFrame();
-    if (!rawPhoto) return;
     const trimmedAddr = manualAddress.trim();
     // Same tick as the shutter tap, before setTimeout/await — iOS 18 keeps the gesture.
     const gpsPromise = startShootGeolocation({
       skipForAddress: trimmedAddr.length >= 3,
       gatePosition,
     });
+
+    if (prefersSystemCameraCapture()) {
+      pendingShootGeoRef.current = gpsPromise;
+      fileInputRef.current?.click();
+      return;
+    }
+
+    const rawPhoto = captureFrame();
+    if (!rawPhoto) return;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     setFreezeFrame(rawPhoto);
     setShootPhase("flash");
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     flashTimerRef.current = setTimeout(() => {
-      processAndNavigate(rawPhoto, gpsPromise, trimmedAddr);
+      // Live getUserMedia canvas has no EXIF — Android uses device GPS.
+      processAndNavigate(rawPhoto, gpsPromise, trimmedAddr, null);
     }, 150);
   }, [captureFrame, processAndNavigate, manualAddress, gatePosition]);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
+      const input = e.target;
+      const file = input.files?.[0];
+      input.value = "";
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const rawPhoto = reader.result as string;
+
+      void (async () => {
+        // Read EXIF from the original File before canvas normalize strips it.
+        const exif = await extractExifGpsFromFile(file);
+        lastExifRef.current = exif;
+        let rawPhoto: string;
+        try {
+          rawPhoto = await readFileAsDataUrl(file);
+        } catch {
+          toast({ title: "Immagine non elaborabile", description: "Riprova con un'altra foto.", variant: "destructive" });
+          return;
+        }
         const trimmedAddr = manualAddress.trim();
-        const gpsPromise = startShootGeolocation({
-          skipForAddress: trimmedAddr.length >= 3,
-          gatePosition,
-        });
+        const gpsPromise = pendingShootGeoRef.current
+          ?? startShootGeolocation({
+            skipForAddress: trimmedAddr.length >= 3,
+            gatePosition,
+          });
+        pendingShootGeoRef.current = null;
         setFreezeFrame(rawPhoto);
-        processAndNavigate(rawPhoto, gpsPromise, trimmedAddr);
-      };
-      reader.readAsDataURL(file);
+        processAndNavigate(rawPhoto, gpsPromise, trimmedAddr, exif);
+      })();
     },
-    [processAndNavigate, manualAddress, gatePosition]
+    [processAndNavigate, manualAddress, gatePosition, toast]
   );
 
   // Show capture gate first
   if (pagePhase === "gate") {
     return (
       <CaptureGate
-        onContinue={({ position, errorCode }) => {
+        onContinue={({ position }) => {
           if (isValidGeoPosition(position)) setGatePosition(position);
-          if (errorCode === "standalone_watchdog" || (isStandaloneDisplay() && !isValidGeoPosition(position))) {
-            setStandaloneAskHint(true);
-          }
           setPagePhase("camera");
         }}
       />
@@ -273,13 +314,8 @@ const Scan = () => {
             </div>
             <p className="text-base font-semibold text-white">Posizione non disponibile</p>
             <p className="text-sm text-white/70 leading-relaxed">
-              Consenti la posizione Durante l'uso, riprova, oppure inserisci l'indirizzo dell'immobile.
+              GPS e foto senza coordinate. Puoi riprovare oppure inserire l'indirizzo dell'immobile.
             </p>
-            {(standaloneAskHint || isStandaloneDisplay()) && (
-              <p className="text-xs text-white/55 leading-relaxed">
-                {STANDALONE_LOCATION_ASK_HINT}
-              </p>
-            )}
             <div className="flex flex-col gap-3 w-full">
               <Button onClick={retryGps} className="w-full min-h-[48px]" size="lg">
                 <MapPin className="h-4 w-4 mr-2" />
@@ -361,23 +397,25 @@ const Scan = () => {
                   ? "Posizione acquisita. Lo scatto userà le coordinate e l'indirizzo automatico. Puoi comunque scrivere un indirizzo se vuoi."
                   : LOCATION_CAMERA_ASK}
               </p>
-              {(standaloneAskHint || (!isValidGeoPosition(gatePosition) && isStandaloneDisplay())) && (
-                <p className="text-[11px] text-white/55 mt-1 leading-relaxed">
-                  {STANDALONE_LOCATION_ASK_HINT}
-                </p>
-              )}
             </div>
           </div>
         )}
 
         <div className="flex flex-1 flex-col items-center justify-center">
-          {cameraState === "active" && shootPhase === "idle" && (
+          {(cameraState === "active" || cameraState === "system") && shootPhase === "idle" && (
             <>
               <Viewfinder />
-              <p className="mt-6 text-sm font-medium text-white/70 drop-shadow">Inquadra un edificio</p>
+              <p className="mt-6 text-sm font-medium text-white/70 drop-shadow">
+                {cameraState === "system" ? "Scatta con la fotocamera iPhone" : "Inquadra un edificio"}
+              </p>
+              {cameraState === "system" && (
+                <p className="mt-2 max-w-xs text-center text-xs text-white/55 leading-relaxed">
+                  La fotocamera di sistema può includere le coordinate nella foto.
+                </p>
+              )}
 
               {/* Non-invasive shooting tips */}
-              {showTips && (
+              {showTips && cameraState === "active" && (
                 <div className="mt-4 flex flex-wrap justify-center gap-2 px-6 animate-in fade-in duration-500">
                   {["Facciata intera", "Frontalmente", "Civico visibile"].map((tip) => (
                     <span key={tip} className="rounded-full bg-white/10 backdrop-blur-sm px-3 py-1.5 text-xs text-white/60">
@@ -422,7 +460,7 @@ const Scan = () => {
         </div>
 
         {/* Bottom controls */}
-        {cameraState === "active" && shootPhase === "idle" && (
+        {(cameraState === "active" || cameraState === "system") && shootPhase === "idle" && (
           <div className="z-10 flex items-center justify-center gap-8 pb-safe pt-4 px-6" style={{ paddingBottom: 'max(var(--safe-bottom), 24px)' }}>
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -450,6 +488,7 @@ const Scan = () => {
         type="file"
         accept="image/*"
         capture="environment"
+        data-testid="scan-capture-input"
         className="hidden"
         onChange={handleFileUpload}
       />
