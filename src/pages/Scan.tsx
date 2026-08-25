@@ -150,10 +150,18 @@ const Scan = () => {
         photo = await normalizeImage(rawPhoto);
         devLog("image normalized successfully");
       } catch {
-        toast({ title: "Immagine non elaborabile", description: "Riprova con una foto più semplice o più vicina.", variant: "destructive" });
-        setShootPhase("idle");
-        return;
+        // Already a valid JPEG data URL (iOS conversion path): ship it uncompressed
+        // rather than losing the shot.
+        if (isValidImageDataUrl(rawPhoto)) {
+          photo = rawPhoto;
+          devLog("normalize failed, using converted JPEG as-is");
+        } else {
+          toast({ title: "Immagine non elaborabile", description: "Riprova con una foto più semplice o più vicina.", variant: "destructive" });
+          setShootPhase("idle");
+          return;
+        }
       }
+
 
       if (!isValidImageDataUrl(photo)) {
         toast({ title: "Immagine non valida", description: "Riprova con un'altra foto.", variant: "destructive" });
