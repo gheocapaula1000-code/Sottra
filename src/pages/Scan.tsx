@@ -239,14 +239,27 @@ const Scan = () => {
       if (!file) return;
 
       void (async () => {
-        // Read EXIF from the original File before canvas normalize strips it.
+        // Read EXIF from the original File before canvas conversion strips it.
         const exif = await extractExifGpsFromFile(file);
         lastExifRef.current = exif;
         let rawPhoto: string;
         try {
-          rawPhoto = await readFileAsDataUrl(file);
+          // iPhone system camera can return HEIC/HEIF: always decode to real JPEG first.
+          rawPhoto = await fileToJpegDataUrl(file);
         } catch {
-          toast({ title: "Immagine non elaborabile", description: "Riprova con un'altra foto.", variant: "destructive" });
+          try {
+            rawPhoto = await readFileAsDataUrl(file);
+          } catch {
+            rawPhoto = "";
+          }
+        }
+        if (!isValidImageDataUrl(rawPhoto)) {
+          toast({
+            title: "Foto non leggibile",
+            description: "Il formato della foto non è supportato. Riprova con un nuovo scatto.",
+            variant: "destructive",
+          });
+          setShootPhase("idle");
           return;
         }
         const trimmedAddr = manualAddress.trim();
@@ -259,6 +272,7 @@ const Scan = () => {
         setFreezeFrame(rawPhoto);
         processAndNavigate(rawPhoto, gpsPromise, trimmedAddr, exif);
       })();
+
     },
     [processAndNavigate, manualAddress, gatePosition, toast]
   );
