@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Upload, Camera, MapPin, ImagePlus, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { normalizeImage, isValidImageDataUrl } from "@/lib/imageUtils";
+import { normalizeImage, isValidImageDataUrl, fileToJpegDataUrl } from "@/lib/imageUtils";
 import {
   extractExifGpsFromDataUrl,
   extractExifGpsFromFile,
@@ -108,6 +108,16 @@ const Scan = () => {
 
   const persistAndNavigate = useCallback(
     async (payload: { photo: string; lat: number; lng: number; manualAddress?: string }) => {
+      // Never open /result without a real JPEG — an empty report is worse than staying here.
+      if (!isValidImageDataUrl(payload.photo)) {
+        toast({
+          title: "Foto non disponibile",
+          description: "Lo scatto non è stato salvato correttamente. Riprova.",
+          variant: "destructive",
+        });
+        setShootPhase("idle");
+        return;
+      }
       try {
         await saveLastScanPhoto(payload);
       } catch {
@@ -116,8 +126,9 @@ const Scan = () => {
       // replace: camera must not sit under the report — Android/header back goes Home, not an empty shutter.
       navigate("/result", { replace: true, state: payload });
     },
-    [navigate],
+    [navigate, toast],
   );
+
 
   const navigateWithTypedAddress = useCallback(
     (photo: string, address: string) => {
@@ -139,10 +150,18 @@ const Scan = () => {
         photo = await normalizeImage(rawPhoto);
         devLog("image normalized successfully");
       } catch {
-        toast({ title: "Immagine non elaborabile", description: "Riprova con una foto più semplice o più vicina.", variant: "destructive" });
-        setShootPhase("idle");
-        return;
+        // Already a valid JPEG data URL (iOS conversion path): ship it uncompressed
+        // rather than losing the shot.
+        if (isValidImageDataUrl(rawPhoto)) {
+          photo = rawPhoto;
+          devLog("normalize failed, using converted JPEG as-is");
+        } else {
+          toast({ title: "Immagine non elaborabile", description: "Riprova con una foto più semplice o più vicina.", variant: "destructive" });
+          setShootPhase("idle");
+          return;
+        }
       }
+
 
       if (!isValidImageDataUrl(photo)) {
         toast({ title: "Immagine non valida", description: "Riprova con un'altra foto.", variant: "destructive" });
@@ -239,14 +258,27 @@ const Scan = () => {
       if (!file) return;
 
       void (async () => {
-        // Read EXIF from the original File before canvas normalize strips it.
+        // Read EXIF from the original File before canvas conversion strips it.
         const exif = await extractExifGpsFromFile(file);
         lastExifRef.current = exif;
         let rawPhoto: string;
         try {
-          rawPhoto = await readFileAsDataUrl(file);
+          // iPhone system camera can return HEIC/HEIF: always decode to real JPEG first.
+          rawPhoto = await fileToJpegDataUrl(file);
         } catch {
-          toast({ title: "Immagine non elaborabile", description: "Riprova con un'altra foto.", variant: "destructive" });
+          try {
+            rawPhoto = await readFileAsDataUrl(file);
+          } catch {
+            rawPhoto = "";
+          }
+        }
+        if (!isValidImageDataUrl(rawPhoto)) {
+          toast({
+            title: "Foto non leggibile",
+            description: "Il formato della foto non è supportato. Riprova con un nuovo scatto.",
+            variant: "destructive",
+          });
+          setShootPhase("idle");
           return;
         }
         const trimmedAddr = manualAddress.trim();
@@ -259,6 +291,7 @@ const Scan = () => {
         setFreezeFrame(rawPhoto);
         processAndNavigate(rawPhoto, gpsPromise, trimmedAddr, exif);
       })();
+
     },
     [processAndNavigate, manualAddress, gatePosition, toast]
   );
