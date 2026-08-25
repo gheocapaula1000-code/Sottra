@@ -1,6 +1,10 @@
 import { officialOmiFromCore } from "@/lib/officialOmiFromCore";
 import { isValidGps } from "@/lib/imageUtils";
 import { readReverseGeocodeAddress } from "@/lib/reverseGeocodeAddress";
+import {
+  mapOfficialSubMunicipalAreas,
+  sanitizeComunalePopolazione,
+} from "@/lib/istatSubMunicipalAreas";
 import { supabase } from "@/integrations/supabase/client";
 import type { PoiEnrichmentData, OmiZoneData, IstatDemographicData, SubMunicipalMatchData } from "@/types";
 
@@ -144,18 +148,27 @@ function parseOmiResult(raw: unknown): OmiZoneData | null {
   return officialOmiFromCore(raw);
 }
 
-function parseIstatResult(raw: unknown): IstatDemographicData | null {
+export function parseIstatResult(raw: unknown): IstatDemographicData | null {
   if (!raw || typeof raw !== "object") return null;
   const d = raw as Record<string, unknown>;
-  if (d.sourceType === "unavailable") return null;
+  const comuneIstatCode = typeof d.comuneIstatCode === "string"
+    ? d.comuneIstatCode
+    : typeof d.comune_istat_code === "string"
+      ? d.comune_istat_code
+      : null;
+  const comuneLabel = typeof d.comuneLabel === "string" ? d.comuneLabel : null;
+  const areas = mapOfficialSubMunicipalAreas(d.areas, comuneIstatCode);
+  if (d.sourceType === "unavailable" && areas.length === 0) return null;
 
   return {
-    popolazione: asFiniteNumber(d.popolazione),
+    popolazione: sanitizeComunalePopolazione(asFiniteNumber(d.popolazione), comuneIstatCode, comuneLabel),
     nucleiFamiliari: asFiniteNumber(d.nucleiFamiliari ?? d.nuclei_familiari),
     densita: asFiniteNumber(d.densita),
     indiceVecchiaia: asFiniteNumber(d.indiceVecchiaia ?? d.indice_vecchiaia),
     percentualeStranieri: asFiniteNumber(d.percentualeStranieri ?? d.percentuale_stranieri),
-    comuneLabel: typeof d.comuneLabel === "string" ? d.comuneLabel : null,
+    comuneLabel,
+    comuneIstatCode,
+    areas,
     annoRilevazione: typeof d.annoRilevazione === "string" ? d.annoRilevazione : null,
     geoLevel: typeof d.geoLevel === "string" ? d.geoLevel as IstatDemographicData["geoLevel"] : null,
     geoLabel: typeof d.geoLabel === "string" ? d.geoLabel : null,
