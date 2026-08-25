@@ -103,6 +103,32 @@ export async function normalizeImage(dataUrl: string): Promise<string> {
 }
 
 /**
+ * Decode any camera File (JPEG, PNG, and iOS HEIC/HEIF) into a real JPEG data URL.
+ * Safari decodes HEIC natively through an <img> pointed at a blob URL, so the
+ * canvas re-encode gives us a format the rest of the pipeline can handle.
+ * EXIF is stripped by the canvas — read GPS from the File before calling this.
+ */
+export async function fileToJpegDataUrl(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImage(url);
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    if (!canvas.width || !canvas.height) throw new Error("Immagine senza dimensioni");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas non supportato");
+    ctx.drawImage(img, 0, 0);
+    const out = canvas.toDataURL("image/jpeg", 0.9);
+    if (!isValidImageDataUrl(out)) throw new Error("Conversione JPEG non riuscita");
+    devLog(`file → jpeg: ${canvas.width}x${canvas.height}, ${(dataUrlByteSize(out) / 1024).toFixed(0)} KB`);
+    return out;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
  * Validate that a string is a valid image data URL.
  */
 export function isValidImageDataUrl(value: unknown): value is string {
