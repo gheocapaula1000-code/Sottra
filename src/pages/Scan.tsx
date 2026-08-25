@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Upload, Camera, MapPin, ImagePlus, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { normalizeImage, isValidImageDataUrl } from "@/lib/imageUtils";
+import { normalizeImage, isValidImageDataUrl, fileToJpegDataUrl } from "@/lib/imageUtils";
 import {
   extractExifGpsFromDataUrl,
   extractExifGpsFromFile,
