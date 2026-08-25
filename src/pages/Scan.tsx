@@ -108,6 +108,16 @@ const Scan = () => {
 
   const persistAndNavigate = useCallback(
     async (payload: { photo: string; lat: number; lng: number; manualAddress?: string }) => {
+      // Never open /result without a real JPEG — an empty report is worse than staying here.
+      if (!isValidImageDataUrl(payload.photo)) {
+        toast({
+          title: "Foto non disponibile",
+          description: "Lo scatto non è stato salvato correttamente. Riprova.",
+          variant: "destructive",
+        });
+        setShootPhase("idle");
+        return;
+      }
       try {
         await saveLastScanPhoto(payload);
       } catch {
@@ -116,8 +126,9 @@ const Scan = () => {
       // replace: camera must not sit under the report — Android/header back goes Home, not an empty shutter.
       navigate("/result", { replace: true, state: payload });
     },
-    [navigate],
+    [navigate, toast],
   );
+
 
   const navigateWithTypedAddress = useCallback(
     (photo: string, address: string) => {
