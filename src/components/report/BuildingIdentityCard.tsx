@@ -62,6 +62,8 @@ export interface BuildingIdentityCardProps {
   lowConfidence?: boolean;
   /** Public homepage esempio chrome */
   esempio?: boolean;
+  /** Extra photo reads (intonaco, persiane). Never invented market data. */
+  visualNotes?: string[] | null;
   className?: string;
 }
 
@@ -73,6 +75,7 @@ export function BuildingIdentityCard({
   lng = null,
   lowConfidence = false,
   esempio = false,
+  visualNotes = null,
   className,
 }: BuildingIdentityCardProps) {
   const showPhoto = hasDisplayablePhoto(photo);
@@ -85,6 +88,7 @@ export function BuildingIdentityCard({
     : null;
   const buildingType = analysis?.buildingType?.trim() || null;
   const address = identify?.address?.trim() || null;
+  const notes = (visualNotes ?? []).map((s) => s.trim()).filter(Boolean);
 
   return (
     <div
@@ -158,7 +162,25 @@ export function BuildingIdentityCard({
           )}
         </div>
 
-        {(buildingType || floors != null || facade || readability) && (
+        {notes.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {notes.map((n) => (
+              <span
+                key={n}
+                className="inline-flex items-center rounded-md border border-primary/25 bg-primary/10 px-2 py-1 text-xs font-semibold text-foreground"
+              >
+                {n}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <p className="text-sm font-medium text-foreground leading-snug">
+          In venti secondi, su questo palazzo: c'è un appartamento in vendita,
+          stanno vendendo lo stabile, è una successione.
+        </p>
+
+        {!esempio && (buildingType || floors != null || facade || readability) && (
           <div className="grid grid-cols-2 gap-2">
             {buildingType && (
               <div className="rounded-lg bg-muted/40 border border-border/30 px-3 py-2">

@@ -14,7 +14,6 @@ import {
   CheckCircle2, AlertTriangle, ExternalLink, TrendingUp,
 } from "lucide-react";
 import type {
-  PhotoWowImmobile,
   PhotoWowLiveSignal,
   PhotoWowPianoEsclusiva,
   PhotoWowResponse,
@@ -34,17 +33,6 @@ export function hasZonaIntelligenceContent(
   return false;
 }
 
-
-/** Hide the photo-read strip when Core sent nothing visual. */
-export function hasImmobileVisual(im: PhotoWowImmobile | null | undefined): boolean {
-  if (!im) return false;
-  if (typeof im.tipologiaProbabile === "string" && im.tipologiaProbabile.trim()) return true;
-  if (typeof im.pianoStimato === "string" && im.pianoStimato.trim()) return true;
-  if (typeof im.statoApparente === "string" && im.statoApparente.trim()) return true;
-  if (typeof im.materialePresunto === "string" && im.materialePresunto.trim()) return true;
-  if ((im.puntiDiForzaVisivi?.length ?? 0) > 0) return true;
-  return false;
-}
 
 /** Hide Il tuo piano esclusiva when Core sent no body. */
 export function hasPianoEsclusivaContent(
@@ -350,45 +338,6 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
               </div>
             )}
 
-
-            {/* PHASE 2b — What the photo actually showed */}
-            {hasImmobileVisual(data.immobile) && data.immobile && (
-              <Reveal show={p2}>
-                <div
-                  data-testid="wow-from-photo"
-                  className="rounded-2xl border border-white/30 bg-black/80 backdrop-blur-md px-5 py-5 space-y-2"
-                >
-                  <p className="text-[11px] uppercase tracking-widest text-white/50">Dalla foto</p>
-                  {data.immobile.tipologiaProbabile?.trim() && (
-                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
-                      {data.immobile.tipologiaProbabile.trim()}
-                    </h2>
-                  )}
-                  <div className="flex flex-wrap gap-1.5">
-                    {data.immobile.materialePresunto?.trim() && (
-                      <span className="rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs font-semibold">
-                        {data.immobile.materialePresunto.trim()}
-                      </span>
-                    )}
-                    {data.immobile.statoApparente?.trim() && (
-                      <span className="rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs font-semibold">
-                        {data.immobile.statoApparente.trim()}
-                      </span>
-                    )}
-                    {data.immobile.pianoStimato?.trim() && (
-                      <span className="rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs font-semibold">
-                        Piano {data.immobile.pianoStimato.trim()}
-                      </span>
-                    )}
-                    {(data.immobile.puntiDiForzaVisivi ?? []).filter((x) => typeof x === "string" && x.trim()).map((x) => (
-                      <span key={x} className="rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs font-semibold">
-                        {x.trim()}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </Reveal>
-            )}
 
             {/* PHASE 2 — Zona identified */}
             <Reveal show={p2}>

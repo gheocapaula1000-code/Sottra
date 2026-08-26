@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BuildingIdentityCard } from "@/components/report/BuildingIdentityCard";
-import { CivicoSignalsCard } from "@/components/report/CivicoSignalsCard";
 import { WowPanel } from "@/components/report/WowPanel";
 import {
   DEMO_IDENTIFY,
@@ -13,9 +12,8 @@ import {
 import demoPadovaEst from "@/assets/demo-padova-est.jpg";
 
 /**
- * Public WOW vetrina. Labeled Esempio.
- * Visual facts are what THIS facade photo actually shows.
- * OMI D8 Est 1400–1850 is the official zone quote, not this unit.
+ * Public WOW vetrina. One photo card, then official OMI.
+ * Visual facts are what THIS facade shows. Labeled Esempio.
  * No invented civico, listings, whole-building sale, or successione.
  */
 export default function HomepageWowDemo() {
@@ -47,13 +45,7 @@ export default function HomepageWowDemo() {
           photo={demoPadovaEst}
           identify={DEMO_IDENTIFY}
           esempio
-        />
-
-        <CivicoSignalsCard
-          esempio
-          buildingType={DEMO_PHOTO_FACTS.buildingType}
-          materiale={DEMO_PHOTO_FACTS.materiale}
-          strengths={DEMO_PHOTO_FACTS.strengths}
+          visualNotes={[DEMO_PHOTO_FACTS.materiale, ...DEMO_PHOTO_FACTS.strengths]}
         />
 
         <WowPanel

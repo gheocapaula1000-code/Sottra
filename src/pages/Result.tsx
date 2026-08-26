@@ -86,7 +86,6 @@ import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
 import { OmiQuotesTable } from "@/components/report/OmiQuotesTable";
 import { WowPanel } from "@/components/report/WowPanel";
 import { BuildingIdentityCard } from "@/components/report/BuildingIdentityCard";
-import { CivicoSignalsCard } from "@/components/report/CivicoSignalsCard";
 import { resolveOfficialOmiOverlay } from "@/lib/officialOmiFromCore";
 import { RESULT_SAFE_BOTTOM_PAD } from "@/lib/resultChrome";
 import {
@@ -2322,14 +2321,6 @@ const Result = () => {
             lowConfidence={lowConfidence}
           />
 
-          <CivicoSignalsCard
-            viaCivico={identifyData?.address ?? null}
-            buildingType={identifyData?.streetEvidence?.photoAnalysis?.buildingType}
-            visibleFloors={identifyData?.streetEvidence?.photoAnalysis?.visibleFloors}
-            pianoStimato={result.photoWow?.data?.immobile?.pianoStimato}
-            materiale={result.photoWow?.data?.immobile?.materialePresunto}
-            strengths={result.photoWow?.data?.immobile?.puntiDiForzaVisivi}
-          />
 
           {!lowConfidence && !identifyFailed && (
             <SectionSafe><HouseDifferentiationCard diff={houseDiff} loading={scanning} /></SectionSafe>
