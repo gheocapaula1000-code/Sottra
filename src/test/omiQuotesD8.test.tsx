@@ -191,7 +191,6 @@ it("drops a mashed civile 1400–2750 row when NORMALE 1400–1850 is present", 
     expect(screen.getByText(/Vendita 1800 – 2750 €\/m²/)).toBeInTheDocument();
     expect(screen.getAllByTestId("omi-quote-row")).toHaveLength(7);
   });
-});
 
 describe("POI hide-empty", () => {
   const emptyPoi: PoiEnrichmentData = {
