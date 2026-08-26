@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ChevronDown, CreditCard, CalendarOff, ScanLine, Clock } from "lucide-react";
+import { ArrowRight, CreditCard, CalendarOff, ScanLine, Clock } from "lucide-react";
 import SottraMark from "@/components/SottraMark";
 import logoS from "@/assets/logo-s-icon.png";
 
@@ -16,7 +16,7 @@ export default function HeroSection() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative min-h-dvh flex flex-col overflow-hidden px-5 pt-[env(safe-area-inset-top,0px)] sm:px-10 lg:px-20">
+    <section className="relative flex flex-col overflow-hidden px-5 pt-[env(safe-area-inset-top,0px)] sm:px-10 lg:px-20">
       {/* Ambient glow */}
       <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[420px] w-[660px] rounded-full bg-primary/8 blur-[140px]" />
 
@@ -44,7 +44,7 @@ export default function HeroSection() {
       </nav>
 
       {/* Hero content */}
-      <div className="relative mx-auto flex flex-1 max-w-3xl flex-col items-center justify-center text-center pb-24">
+      <div className="relative mx-auto flex max-w-3xl flex-col items-center justify-center text-center pb-12 pt-6 sm:pb-16">
         <span className="mb-5 inline-block rounded-full border border-border bg-secondary/60 px-4 py-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Strumento operativo per il settore immobiliare
         </span>
@@ -105,10 +105,6 @@ export default function HeroSection() {
         </div>
       </div>
 
-      {/* Scroll hint */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce">
-        <ChevronDown className="h-5 w-5 text-muted-foreground/50" />
-      </div>
     </section>
   );
 }

@@ -50,3 +50,27 @@ describe("Landing and scan copy stay honest", () => {
     expect(hook).toContain("runPhotoWow");
   });
 });
+
+describe("Homepage WOW vetrina stays honest", () => {
+  it("public demo is mounted on Index and uses official D8 1400–1850, not invented catasto", () => {
+    const index = src("src/pages/Index.tsx");
+    const demo = src("src/components/landing/HomepageWowDemo.tsx");
+    const data = src("src/lib/homepageWowDemo.ts");
+    expect(index).toContain("HomepageWowDemo");
+    expect(demo).toContain("Esempio");
+    expect(demo).toContain("Prova gratis 3 giorni");
+    expect(data).toContain("1400");
+    expect(data).toContain("1850");
+    expect(data).toMatch(/1° semestre 2025/);
+    expect(data).toMatch(/Est \(OMI D8\)/);
+    expect(data).not.toMatch(/visura|superbonus|reddito medio/i);
+    expect(demo).not.toMatch(/visura|superbonus|reddito medio/i);
+    expect(demo).toMatch(/catastale/i);
+  });
+
+  it("WowPanel states OMI is not a municipal average", () => {
+    const wow = src("src/components/report/WowPanel.tsx");
+    expect(wow).toMatch(/non è una media comunale/i);
+    expect(wow).toMatch(/né il valore di questo civico/i);
+  });
+});

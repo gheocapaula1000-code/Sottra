@@ -85,6 +85,7 @@ import { buildWowSnapshot } from "@/lib/sottraWowSnapshot";
 import type { WowSnapshot } from "@/lib/sottraWowSnapshot";
 import { OmiQuotesTable } from "@/components/report/OmiQuotesTable";
 import { WowPanel } from "@/components/report/WowPanel";
+import { BuildingIdentityCard } from "@/components/report/BuildingIdentityCard";
 import { resolveOfficialOmiOverlay } from "@/lib/officialOmiFromCore";
 import { RESULT_SAFE_BOTTOM_PAD } from "@/lib/resultChrome";
 import {
@@ -407,40 +408,6 @@ function HouseDifferentiationCard({ diff, loading }: { diff: HouseDifferentiatio
 }
 
 /* ── cards ────────────────────────────────────────────── */
-
-function HeaderCard({ photo, identify, loading, lat, lng, lowConfidence }: { photo: string; identify: IdentifyResult | null; loading: boolean; lat: number | null; lng: number | null; lowConfidence: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  return (
-    <Section className="p-0 overflow-hidden">
-      <div className="relative">
-        <img src={photo} alt="Edificio acquisito" className="w-full aspect-[16/10] object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
-      </div>
-      {identify && (
-        <div className="px-5 pb-5 -mt-10 relative z-10">
-          {!lowConfidence && identify.address && (
-            <h2 className="text-lg font-bold text-foreground leading-snug break-anywhere">{identify.address}</h2>
-          )}
-          {lowConfidence && identify.address && (
-            <h2 className="text-lg font-bold text-foreground/60 leading-snug break-anywhere">{identify.address}</h2>
-          )}
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            {!lowConfidence && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                <CheckCircle2 className="h-3 w-3" />Posizione rilevata
-              </span>
-            )}
-            {lat != null && lng != null && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/60">
-                <MapPin className="h-3 w-3" />{lat.toFixed(4)}, {lng.toFixed(4)}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-    </Section>
-  );
-}
 
 function PricingCard({ data, loading }: { data: PricingData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
@@ -2245,6 +2212,10 @@ const Result = () => {
         building_profile: null,
         identify_hints: identifyData ? {
           confidence: identifyData.confidence ?? 0.5,
+          building_type: streetEvidence?.photoAnalysis?.buildingType ?? null,
+          facade_visible: streetEvidence?.facadeConsistencyLevel === "strong"
+            || streetEvidence?.facadeConsistencyLevel === "good"
+            || streetEvidence?.photoAnalysis?.photoReadability === "clear",
         } : null,
       });
       const snap = buildWowSnapshot({ value, renovation: reno, growth: null, corr: stubCorr as any, specificity_strength: hDiff.specificity.specificity_strength, specificity_status: hDiff.specificity.specificity_status });
@@ -2341,7 +2312,18 @@ const Result = () => {
               gestisce autonomamente la qualità foto con fallback sicuro
               (WowPanel mostra qualita: "minima" quando necessario). */}
 
-          <HeaderCard photo={state.photo} identify={identifyData} loading={result.identify.status === "loading"} lat={state.lat} lng={state.lng} lowConfidence={lowConfidence} />
+          <BuildingIdentityCard
+            photo={state.photo}
+            identify={identifyData}
+            loading={result.identify.status === "loading"}
+            lat={state.lat}
+            lng={state.lng}
+            lowConfidence={lowConfidence}
+          />
+
+          {!lowConfidence && !identifyFailed && (
+            <SectionSafe><HouseDifferentiationCard diff={houseDiff} loading={scanning} /></SectionSafe>
+          )}
 
           {/* ═══ HERO GEO-LEVEL BANNER — verità del dato immediata ═══ */}
           {identifyDone && !lowConfidence && !identifyFailed && (() => {
@@ -2402,9 +2384,8 @@ const Result = () => {
 
           {!lowConfidence && !identifyFailed && (
             <>
-              {/* ═══ ALWAYS OPEN — Profilo Rapido + Specificità ═══ */}
+              {/* ═══ ALWAYS OPEN — Profilo Rapido (specificità already leads, above zone WOW) ═══ */}
               <SectionSafe><ProfiloRapidoCard data={result.profiloRapido.data as import("@/types/report").ProfiloRapidoData | null} loading={result.profiloRapido.status === "loading"} /></SectionSafe>
-              <SectionSafe><HouseDifferentiationCard diff={houseDiff} loading={scanning} /></SectionSafe>
 
               {/* Accordion tendine: title only when THIS scan has data for that section. */}
 
