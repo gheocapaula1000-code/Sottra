@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { render, screen } from "@testing-library/react";
 import { OmiQuotesTable } from "@/components/report/OmiQuotesTable";
 import { PublishableAccordionItem } from "@/components/report/ReportAccordion";
@@ -107,6 +108,7 @@ describe("Padova D8 official OMI quotes", () => {
     expect(screen.getAllByTestId("omi-quote-row")).toHaveLength(7);
     expect(screen.getAllByText("Abitazioni civili").length).toBe(2);
     expect(screen.getByText(/Vendita 1400 – 1850 €\/m²/)).toBeInTheDocument();
+    expect(screen.getByText("Riferimento")).toBeInTheDocument();
     expect(screen.getByText(/Vendita 1800 – 2750 €\/m²/)).toBeInTheDocument();
     expect(screen.getByText(/Vendita 1150 – 1400 €\/m²/)).toBeInTheDocument();
     expect(screen.getByText(/Vendita 1200 – 1500 €\/m²/)).toBeInTheDocument();
@@ -200,5 +202,18 @@ describe("POI hide-empty", () => {
     expect(preferPoiData(livePoi, emptyPoi)?.totalPois).toBe(4);
     expect(preferPoiData(emptyPoi, livePoi)?.totalPois).toBe(4);
     expect(isPoiPublishable(preferPoiData(livePoi, emptyPoi))).toBe(true);
+  });
+});
+
+describe("field UX: POI visible in the 20s story", () => {
+  it("Result mounts a POI strip after WowPanel, not only a closed accordion", () => {
+    const result = readFileSync("src/pages/Result.tsx", "utf8");
+    const wow = result.indexOf("<WowPanel");
+    const strip = result.indexOf("<PoiWowStrip");
+    const accordion = result.indexOf('id="poi"');
+    expect(wow).toBeGreaterThan(0);
+    expect(strip).toBeGreaterThan(wow);
+    expect(accordion).toBeGreaterThan(strip);
+    expect(result).toContain('data-testid="poi-wow-strip"');
   });
 });

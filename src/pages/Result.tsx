@@ -1447,6 +1447,34 @@ function NeighborhoodIndexCard({ index, loading }: { index: NeighborhoodIndex | 
 
 
 
+
+function PoiWowStrip({ data }: { data: PoiEnrichmentData }) {
+  if (data.totalPois === 0 || !data.categories?.length) return null;
+  return (
+    <div
+      data-testid="poi-wow-strip"
+      className="rounded-2xl border border-border/60 bg-card overflow-hidden min-w-0 px-5 py-4 space-y-3"
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">
+        Servizi a {data.searchRadius} m
+      </p>
+      <h3 className="text-base font-bold text-foreground leading-snug">
+        {data.totalPois} nelle vicinanze
+      </h3>
+      <div className="grid grid-cols-2 gap-2">
+        {data.categories.slice(0, 8).map((cat, i) => (
+          <div key={`${cat.category}-${i}`} className="rounded-lg bg-muted/40 px-3 py-2">
+            <p className="text-xs font-semibold text-foreground truncate">{cat.categoryLabel}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {cat.count}{cat.nearest?.distance != null ? ` · ${cat.nearest.distance}m` : ""}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PoiEnrichmentCard({ data, loading }: { data: PoiEnrichmentData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
   if (!data || data.sourceType === "unavailable" || data.totalPois === 0) return null;
@@ -2354,6 +2382,12 @@ const Result = () => {
               officialOmi={officialOmi}
             />
           </SectionSafe>
+
+          {isPoiPublishable(poiData) && poiData && (
+            <SectionSafe>
+              <PoiWowStrip data={poiData} />
+            </SectionSafe>
+          )}
 
           {/* Address form: after identify, or when the finished scan has no tendine (iPhone GPS miss). */}
           {showAddressForm && !lowConfidence && !identifyFailed && (

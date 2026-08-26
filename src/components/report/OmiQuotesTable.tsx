@@ -1,4 +1,5 @@
-import { formatOmiRentRange, formatOmiSaleRange } from "@/lib/omiQuotes";
+import { formatOmiRentRange, formatOmiSaleRange, isCivileTipologia, isNormaleStato } from "@/lib/omiQuotes";
+import { cn } from "@/lib/utils";
 import type { OmiQuote } from "@/types";
 
 export function formatOmiSaleDisplay(q: OmiQuote): string {
@@ -11,6 +12,10 @@ export function formatOmiRentDisplay(q: OmiQuote): string {
   return range ? `${range} €/m²/mese` : "";
 }
 
+function isReferenceQuote(q: OmiQuote): boolean {
+  return isCivileTipologia(q.tipologia) && isNormaleStato(q.stato);
+}
+
 export function OmiQuotesTable({ quotes }: { quotes: OmiQuote[] }) {
   if (quotes.length === 0) return null;
 
@@ -19,20 +24,32 @@ export function OmiQuotesTable({ quotes }: { quotes: OmiQuote[] }) {
       {quotes.map((q, i) => {
         const sale = formatOmiSaleDisplay(q);
         const rent = formatOmiRentDisplay(q);
+        const reference = isReferenceQuote(q);
         return (
           <div
             key={`${q.tipologia}|${q.stato ?? ""}|${i}`}
             data-testid="omi-quote-row"
-            className="rounded-lg bg-muted/50 px-3 py-2 space-y-1"
+            data-omi-reference={reference ? "true" : undefined}
+            className={cn(
+              "rounded-lg px-3 py-2 space-y-1",
+              reference ? "bg-emerald-500/10 border border-emerald-500/25" : "bg-muted/50",
+            )}
           >
             <div className="flex items-baseline justify-between gap-2 flex-wrap">
               <p className="text-xs font-semibold text-foreground">{q.tipologia}</p>
-              {q.stato && (
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{q.stato}</span>
-              )}
+              <span className="flex items-center gap-1.5">
+                {reference && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                    Riferimento
+                  </span>
+                )}
+                {q.stato && (
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{q.stato}</span>
+                )}
+              </span>
             </div>
             {sale && (
-              <p className="text-sm font-bold text-foreground">
+              <p className={cn("font-bold text-foreground", reference ? "text-base" : "text-sm")}>
                 Vendita {sale}
               </p>
             )}
