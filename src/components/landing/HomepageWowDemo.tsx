@@ -2,19 +2,21 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BuildingIdentityCard } from "@/components/report/BuildingIdentityCard";
+import { CivicoSignalsCard } from "@/components/report/CivicoSignalsCard";
 import { WowPanel } from "@/components/report/WowPanel";
 import {
   DEMO_IDENTIFY,
   DEMO_OMI,
+  DEMO_PHOTO_FACTS,
   emptyDemoWow,
 } from "@/lib/homepageWowDemo";
 import demoPadovaEst from "@/assets/demo-padova-est.jpg";
 
 /**
- * Public WOW vetrina. Photo: real Padova street facade (Via San Francesco /
- * Santa Sofia, Falk2, CC BY-SA 4.0). No faces, no plates, not a private civico.
- * OMI numbers remain official D8 Est 1400–1850, labeled Esempio.
- * The photo is not that microzona and is not this-civico.
+ * Public WOW vetrina. Labeled Esempio.
+ * Visual facts are what THIS facade photo actually shows.
+ * OMI D8 Est 1400–1850 is the official zone quote, not this unit.
+ * No invented civico, listings, whole-building sale, or successione.
  */
 export default function HomepageWowDemo() {
   const navigate = useNavigate();
@@ -32,19 +34,26 @@ export default function HomepageWowDemo() {
             Esempio · senza registrazione
           </p>
           <h2 className="mt-1 text-xl font-black tracking-tight text-foreground sm:text-2xl">
-            Cosa vedi dopo una foto
+            Una foto. Questo palazzo.
           </h2>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Report di esempio su Padova, microzona OMI D8 Est. Le quotazioni sono
-          quelle ufficiali del 1° semestre 2025. Non è il catastale, non è una
-          media comunale. La foto è una palazzina padovana di esempio, non questo civico.
+          Sottra legge la facciata. OMI sotto è la microzona D8 Est di Padova,
+          1° semestre 2025 — non il valore di questo interno, non una media
+          comunale, non un dato catastale.
         </p>
 
         <BuildingIdentityCard
           photo={demoPadovaEst}
           identify={DEMO_IDENTIFY}
           esempio
+        />
+
+        <CivicoSignalsCard
+          esempio
+          buildingType={DEMO_PHOTO_FACTS.buildingType}
+          materiale={DEMO_PHOTO_FACTS.materiale}
+          strengths={DEMO_PHOTO_FACTS.strengths}
         />
 
         <WowPanel

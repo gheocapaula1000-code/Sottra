@@ -63,6 +63,7 @@ describe("Result leads with this-building WOW then zone", () => {
   it("BuildingIdentityCard and HouseDifferentiation appear before WowPanel; engines stay", () => {
     const result = readFileSync("src/pages/Result.tsx", "utf8");
     const id = result.indexOf("<BuildingIdentityCard");
+    const sig = result.indexOf("<CivicoSignalsCard");
     const diff = result.indexOf("<HouseDifferentiationCard");
     const wow = result.indexOf("<WowPanel");
     const omi = result.indexOf('id="omi"');
@@ -70,7 +71,8 @@ describe("Result leads with this-building WOW then zone", () => {
     const poi = result.indexOf('id="poi"');
     const rischio = result.indexOf('id="rischio"');
     expect(id).toBeGreaterThan(0);
-    expect(diff).toBeGreaterThan(id);
+    expect(sig).toBeGreaterThan(id);
+    expect(diff).toBeGreaterThan(sig);
     expect(wow).toBeGreaterThan(diff);
     expect(omi).toBeGreaterThan(wow);
     expect(istat).toBeGreaterThan(omi);

@@ -49,8 +49,13 @@ describe("homepage WOW demo is public", () => {
     expect(OMI_MICROZONA_HONESTY).toMatch(/non è una media comunale/i);
     expect(screen.getByRole("button", { name: /prova gratis 3 giorni/i })).toBeInTheDocument();
     expect(screen.getByAltText("Edificio acquisito")).toBeInTheDocument();
-    expect(screen.getByText(/Questo edificio/i)).toBeInTheDocument();
-    expect(screen.getByText(/Palazzina con portici/)).toBeInTheDocument();
+    expect(screen.getByTestId("civico-signals")).toBeInTheDocument();
+    expect(screen.getAllByText(/Dalla foto/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Palazzina/).length).toBeGreaterThanOrEqual(1);
+    expect(document.body.textContent).toMatch(/Intonaco ocra/);
+    expect(document.body.textContent).toMatch(/Persiane verdi/);
+    expect(document.body.textContent).not.toMatch(/Questo edificio/i);
+    expect(document.body.textContent).not.toMatch(/appartamenti in vendita/i);
   });
 
   it("does not invent catasto, APE, reddito or Superbonus on the demo", () => {

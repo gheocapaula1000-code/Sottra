@@ -66,6 +66,9 @@ describe("Homepage WOW vetrina stays honest", () => {
     expect(data).not.toMatch(/visura|superbonus|reddito medio/i);
     expect(demo).not.toMatch(/visura|superbonus|reddito medio/i);
     expect(demo).toMatch(/catastale/i);
+    expect(demo).toMatch(/Dalla foto/);
+    expect(demo).toContain("CivicoSignalsCard");
+    expect(demo).not.toMatch(/3 appartamenti in vendita/i);
   });
 
   it("WowPanel states OMI is not a municipal average", () => {
