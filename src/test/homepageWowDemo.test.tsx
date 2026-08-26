@@ -50,7 +50,7 @@ describe("homepage WOW demo is public", () => {
     expect(screen.getByRole("button", { name: /prova gratis 3 giorni/i })).toBeInTheDocument();
     expect(screen.getByAltText("Edificio acquisito")).toBeInTheDocument();
     expect(screen.getByText(/Questo edificio/i)).toBeInTheDocument();
-    expect(screen.getByText(/Edificio residenziale/)).toBeInTheDocument();
+    expect(screen.getByText(/Palazzina con portici/)).toBeInTheDocument();
   });
 
   it("does not invent catasto, APE, reddito or Superbonus on the demo", () => {

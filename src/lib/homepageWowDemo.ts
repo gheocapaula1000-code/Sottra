@@ -38,14 +38,14 @@ export const DEMO_OMI: OmiZoneData = {
 
 /** Street-level esempio identity — no cadastral id, no invented civico plate. */
 export const DEMO_IDENTIFY: IdentifyResult = {
-  address: "Quartiere Forcellini–Terranegra, Padova",
+  address: "Padova",
   buildingId: "demo-homepage-d8",
   confidence: 0.82,
   comune: "Padova",
   streetEvidence: {
     facadeConsistencyLevel: "good",
     photoAnalysis: {
-      buildingType: "Edificio residenziale",
+      buildingType: "Palazzina con portici",
       photoReadability: "clear",
     },
   },
@@ -54,7 +54,7 @@ export const DEMO_IDENTIFY: IdentifyResult = {
 export function emptyDemoWow(overrides: Partial<PhotoWowResponse> = {}): PhotoWowResponse {
   return {
     immobile: {
-      tipologiaProbabile: "Edificio residenziale",
+      tipologiaProbabile: "Palazzina con portici",
       pianoStimato: null,
       statoApparente: null,
       puntiDiForzaVisivi: [],

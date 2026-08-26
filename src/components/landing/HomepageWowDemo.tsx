@@ -11,9 +11,10 @@ import {
 import demoPadovaEst from "@/assets/demo-padova-est.jpg";
 
 /**
- * Public, no-auth WOW vetrina. Photo is a real Padova street facade
- * (1960s palazzina), not a Tuscan villa. OMI numbers are official D8 Est.
- * Labeled Esempio. Photo is not this-civico.
+ * Public WOW vetrina. Photo: real Padova street facade (Via San Francesco /
+ * Santa Sofia, Falk2, CC BY-SA 4.0). No faces, no plates, not a private civico.
+ * OMI numbers remain official D8 Est 1400–1850, labeled Esempio.
+ * The photo is not that microzona and is not this-civico.
  */
 export default function HomepageWowDemo() {
   const navigate = useNavigate();
@@ -26,15 +27,13 @@ export default function HomepageWowDemo() {
       className="px-5 py-10 sm:px-10 lg:px-20"
     >
       <div className="mx-auto max-w-lg space-y-4">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
-              Esempio · senza registrazione
-            </p>
-            <h2 className="mt-1 text-xl font-black tracking-tight text-foreground sm:text-2xl">
-              Cosa vedi dopo una foto
-            </h2>
-          </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+            Esempio · senza registrazione
+          </p>
+          <h2 className="mt-1 text-xl font-black tracking-tight text-foreground sm:text-2xl">
+            Cosa vedi dopo una foto
+          </h2>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">
           Report di esempio su Padova, microzona OMI D8 Est. Le quotazioni sono
@@ -56,7 +55,8 @@ export default function HomepageWowDemo() {
         />
 
         <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-          Foto di esempio: facciata a Padova (Claudio Caramel, CC BY-SA 4.0). Non è il civico scansionato.
+          Foto di esempio: Padova, Via San Francesco (Falk2, CC BY-SA 4.0).
+          Non è il civico scansionato.
         </p>
 
         <Button
