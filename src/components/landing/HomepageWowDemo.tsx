@@ -38,7 +38,7 @@ export default function HomepageWowDemo() {
         <p className="text-sm text-muted-foreground leading-relaxed">
           Report di esempio su Padova, microzona OMI D8 Est. Le quotazioni sono
           quelle ufficiali del 1° semestre 2025. Non è il catastale, non è una
-          media comunale. La foto è una facciata padovana di esempio, non questo civico.
+          media comunale. La foto è una palazzina padovana di esempio, non questo civico.
         </p>
 
         <BuildingIdentityCard
@@ -55,8 +55,7 @@ export default function HomepageWowDemo() {
         />
 
         <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-          Foto di esempio: Padova, Via San Francesco (Falk2, CC BY-SA 4.0).
-          Non è il civico scansionato.
+          Foto di esempio: palazzina a Padova (Falk2, CC BY-SA 4.0). Non è il civico scansionato.
         </p>
 
         <Button
