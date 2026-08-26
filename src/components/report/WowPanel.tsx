@@ -376,7 +376,12 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
               </Reveal>
             )}
 
-            {/* PHASE 4 — Scores (elaborated, never official) */}
+            {/* PHASE 4 — Scores (elaborated, never official). Hide when Core sent none. */}
+            {([
+              data.scores?.vendibilita,
+              data.scores?.opportunitaInvestimento,
+              data.scores?.pressioneEreditaria,
+            ].some((v) => typeof v === "number" && Number.isFinite(v))) && (
             <Reveal show={p4}>
               <p className="text-[10px] uppercase tracking-widest text-white/45 mb-2">
                 Stime elaborate — non sono quotazioni OMI
@@ -393,6 +398,7 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
                 </div>
               </div>
             </Reveal>
+            )}
 
             {/* PHASE 5 — Live signals */}
             {data.liveSignals && data.liveSignals.length > 0 && (

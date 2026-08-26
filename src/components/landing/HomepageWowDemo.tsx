@@ -8,12 +8,12 @@ import {
   DEMO_OMI,
   emptyDemoWow,
 } from "@/lib/homepageWowDemo";
-import heroProperty from "@/assets/hero-property.jpg";
+import demoPadovaEst from "@/assets/demo-padova-est.jpg";
 
 /**
- * Public, no-auth WOW vetrina. A visitor sees a real-looking D8 Est report
- * without hitting /scan → /login. Numbers are the official civile NORMALE
- * 1400–1850 from Paula's Padova D8 scan, labeled Esempio.
+ * Public, no-auth WOW vetrina. Photo is a real Padova street facade
+ * (1960s palazzina), not a Tuscan villa. OMI numbers are official D8 Est.
+ * Labeled Esempio. Photo is not this-civico.
  */
 export default function HomepageWowDemo() {
   const navigate = useNavigate();
@@ -39,21 +39,25 @@ export default function HomepageWowDemo() {
         <p className="text-sm text-muted-foreground leading-relaxed">
           Report di esempio su Padova, microzona OMI D8 Est. Le quotazioni sono
           quelle ufficiali del 1° semestre 2025. Non è il catastale, non è una
-          media comunale.
+          media comunale. La foto è una facciata padovana di esempio, non questo civico.
         </p>
 
         <BuildingIdentityCard
-          photo={heroProperty}
+          photo={demoPadovaEst}
           identify={DEMO_IDENTIFY}
           esempio
         />
 
         <WowPanel
           data={wow}
-          photo={heroProperty}
+          photo={demoPadovaEst}
           status="success"
           officialOmi={{ status: "success", data: DEMO_OMI }}
         />
+
+        <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+          Foto di esempio: facciata a Padova (Claudio Caramel, CC BY-SA 4.0). Non è il civico scansionato.
+        </p>
 
         <Button
           size="lg"
