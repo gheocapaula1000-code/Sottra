@@ -264,13 +264,10 @@ const Scan = () => {
         let rawPhoto: string;
         try {
           // iPhone system camera can return HEIC/HEIF: always decode to real JPEG first.
+          // Do not fall back to a raw HEIC data URL — it looks empty on Result.
           rawPhoto = await fileToJpegDataUrl(file);
         } catch {
-          try {
-            rawPhoto = await readFileAsDataUrl(file);
-          } catch {
-            rawPhoto = "";
-          }
+          rawPhoto = "";
         }
         if (!isValidImageDataUrl(rawPhoto)) {
           toast({

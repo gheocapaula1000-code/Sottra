@@ -180,6 +180,19 @@ describe("Padova D8 official OMI quotes", () => {
   });
 });
 
+it("drops a mashed civile 1400–2750 row when NORMALE 1400–1850 is present", () => {
+    const quotes = [
+      ...PADOVA_D8_OFFICIAL_QUOTES,
+      { tipologia: "Abitazioni civili", stato: null, comprMin: 1400, comprMax: 2750 },
+    ];
+    render(<OmiQuotesTable quotes={quotes} />);
+    expect(screen.queryByText(/1400 – 2750 €\/m²/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Vendita 1400 – 1850 €\/m²/)).toBeInTheDocument();
+    expect(screen.getByText(/Vendita 1800 – 2750 €\/m²/)).toBeInTheDocument();
+    expect(screen.getAllByTestId("omi-quote-row")).toHaveLength(7);
+  });
+});
+
 describe("POI hide-empty", () => {
   const emptyPoi: PoiEnrichmentData = {
     totalPois: 0, categories: [], pois: [], searchRadius: 800, sourceType: "verified_geo",

@@ -119,6 +119,16 @@ export async function fileToJpegDataUrl(file: File): Promise<string> {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas non supportato");
     ctx.drawImage(img, 0, 0);
+    if (canvas.width < 32 || canvas.height < 32) throw new Error("Immagine troppo piccola");
+    const sample = ctx.getImageData(0, 0, Math.min(8, canvas.width), Math.min(8, canvas.height)).data;
+    let same = true;
+    for (let i = 4; i < sample.length; i += 4) {
+      if (sample[i] !== sample[0] || sample[i + 1] !== sample[1] || sample[i + 2] !== sample[2]) {
+        same = false;
+        break;
+      }
+    }
+    if (same) throw new Error("Conversione JPEG vuota");
     const out = canvas.toDataURL("image/jpeg", 0.9);
     if (!isValidImageDataUrl(out)) throw new Error("Conversione JPEG non riuscita");
     devLog(`file → jpeg: ${canvas.width}x${canvas.height}, ${(dataUrlByteSize(out) / 1024).toFixed(0)} KB`);

@@ -1,4 +1,4 @@
-import { formatOmiRentRange, formatOmiSaleRange, isCivileTipologia, isNormaleStato } from "@/lib/omiQuotes";
+import { formatOmiRentRange, formatOmiSaleRange, isCivileTipologia, isNormaleStato, withoutMashedCivileEnvelope } from "@/lib/omiQuotes";
 import { cn } from "@/lib/utils";
 import type { OmiQuote } from "@/types";
 
@@ -17,11 +17,12 @@ function isReferenceQuote(q: OmiQuote): boolean {
 }
 
 export function OmiQuotesTable({ quotes }: { quotes: OmiQuote[] }) {
-  if (quotes.length === 0) return null;
+  const rows = withoutMashedCivileEnvelope(quotes);
+  if (rows.length === 0) return null;
 
   return (
     <div className="space-y-2 mb-3" data-testid="omi-quotes-table">
-      {quotes.map((q, i) => {
+      {rows.map((q, i) => {
         const sale = formatOmiSaleDisplay(q);
         const rent = formatOmiRentDisplay(q);
         const reference = isReferenceQuote(q);

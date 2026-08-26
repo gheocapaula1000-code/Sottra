@@ -206,6 +206,29 @@ export function formatOmiRentRange(q: OmiQuote): string | null {
   return `${q.locMax}`;
 }
 
+
+/**
+ * Drop a civile row with no stato whose range is the mashed NORMALE+OTTIMO
+ * envelope (e.g. 1400–2750) when a reale NORMALE row is already present.
+ */
+export function withoutMashedCivileEnvelope(quotes: OmiQuote[]): OmiQuote[] {
+  const civile = quotes.filter((q) => isCivileTipologia(q.tipologia));
+  const normale = civile.find((q) => isNormaleStato(q.stato));
+  if (!normale || civile.length < 2) return quotes;
+  const mins = civile.map((q) => q.comprMin).filter((n): n is number => n != null);
+  const maxs = civile.map((q) => q.comprMax).filter((n): n is number => n != null);
+  if (mins.length === 0 || maxs.length === 0) return quotes;
+  const envMin = Math.min(...mins);
+  const envMax = Math.max(...maxs);
+  return quotes.filter((q) => {
+    if (!isCivileTipologia(q.tipologia)) return true;
+    if (isNormaleStato(q.stato) || isOttimoStato(q.stato)) return true;
+    const noStato = !(q.stato && q.stato.trim());
+    if (noStato && q.comprMin === envMin && q.comprMax === envMax) return false;
+    return true;
+  });
+}
+
 /** True when the only published sale figure is a mashed civile envelope. */
 export function isMashedCivileEnvelope(
   quotes: OmiQuote[],
