@@ -310,6 +310,9 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
                     omi?.semestre,
                   ].filter(Boolean).join(" · ")}
                 </p>
+                <p data-testid="omi-honesty-line" className="text-[11px] text-white/55 leading-relaxed">
+                  Quotazione della microzona OMI — non è una media comunale né il valore di questo civico.
+                </p>
                 {!omi?.polygonMatch && (
                   <p className="text-[11px] text-amber-200/90">
                     Riferimento di zona o comunale — non è il valore del singolo immobile.
