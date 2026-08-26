@@ -6,6 +6,7 @@ import type { PoiEnrichmentData } from "@/types";
 
 /**
  * Cinematic photo opener — NOT the official Sottra report.
+ * Official numbers still come from pro-sources (OMI / ISTAT / ISPRA) on Result.
  *
  * Routes through Sottra `core-proxy` → Central Core `/sottra/scan/photo-wow`
  * (same auth path as identify/pricing/forecast). Accepts both flat lat/lng

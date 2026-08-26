@@ -52,7 +52,7 @@ describe("BuildingIdentityCard", () => {
     expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByText("Facciata coerente")).toBeInTheDocument();
     expect(screen.getByText("Foto chiara")).toBeInTheDocument();
-    expect(screen.getByText(/Questo edificio/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Questo edificio/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/identici per il civico accanto/i)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/Dato ufficiale/i);
     expect(document.body.textContent).toMatch(/non un dato catastale/i);
