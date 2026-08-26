@@ -6,14 +6,15 @@ import { WowPanel } from "@/components/report/WowPanel";
 import {
   DEMO_IDENTIFY,
   DEMO_OMI,
+  DEMO_PHOTO_FACTS,
   emptyDemoWow,
 } from "@/lib/homepageWowDemo";
-import heroProperty from "@/assets/hero-property.jpg";
+import demoPadovaEst from "@/assets/demo-padova-est.jpg";
 
 /**
- * Public, no-auth WOW vetrina. A visitor sees a real-looking D8 Est report
- * without hitting /scan → /login. Numbers are the official civile NORMALE
- * 1400–1850 from Paula's Padova D8 scan, labeled Esempio.
+ * Public WOW vetrina. One photo card, then official OMI.
+ * Visual facts are what THIS facade shows. Labeled Esempio.
+ * No invented civico, listings, whole-building sale, or successione.
  */
 export default function HomepageWowDemo() {
   const navigate = useNavigate();
@@ -26,34 +27,37 @@ export default function HomepageWowDemo() {
       className="px-5 py-10 sm:px-10 lg:px-20"
     >
       <div className="mx-auto max-w-lg space-y-4">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
-              Esempio · senza registrazione
-            </p>
-            <h2 className="mt-1 text-xl font-black tracking-tight text-foreground sm:text-2xl">
-              Cosa vedi dopo una foto
-            </h2>
-          </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+            Esempio · senza registrazione
+          </p>
+          <h2 className="mt-1 text-xl font-black tracking-tight text-foreground sm:text-2xl">
+            Una foto. Questo palazzo.
+          </h2>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Report di esempio su Padova, microzona OMI D8 Est. Le quotazioni sono
-          quelle ufficiali del 1° semestre 2025. Non è il catastale, non è una
-          media comunale.
+          Sottra legge la facciata. OMI sotto è la microzona D8 Est di Padova,
+          1° semestre 2025 — non il valore di questo interno, non una media
+          comunale, non un dato catastale.
         </p>
 
         <BuildingIdentityCard
-          photo={heroProperty}
+          photo={demoPadovaEst}
           identify={DEMO_IDENTIFY}
           esempio
+          visualNotes={[DEMO_PHOTO_FACTS.materiale, ...DEMO_PHOTO_FACTS.strengths]}
         />
 
         <WowPanel
           data={wow}
-          photo={heroProperty}
+          photo={demoPadovaEst}
           status="success"
           officialOmi={{ status: "success", data: DEMO_OMI }}
         />
+
+        <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+          Foto di esempio: palazzina a Padova (Falk2, CC BY-SA 4.0). Non è il civico scansionato.
+        </p>
 
         <Button
           size="lg"

@@ -33,6 +33,7 @@ export function hasZonaIntelligenceContent(
   return false;
 }
 
+
 /** Hide Il tuo piano esclusiva when Core sent no body. */
 export function hasPianoEsclusivaContent(
   p: PhotoWowPianoEsclusiva | null | undefined,
@@ -337,6 +338,7 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
               </div>
             )}
 
+
             {/* PHASE 2 — Zona identified */}
             <Reveal show={p2}>
               <div className="rounded-2xl border border-white/30 bg-black/80 backdrop-blur-md px-5 py-5 space-y-2">
@@ -376,7 +378,12 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
               </Reveal>
             )}
 
-            {/* PHASE 4 — Scores (elaborated, never official) */}
+            {/* PHASE 4 — Scores (elaborated, never official). Hide when Core sent none. */}
+            {([
+              data.scores?.vendibilita,
+              data.scores?.opportunitaInvestimento,
+              data.scores?.pressioneEreditaria,
+            ].some((v) => typeof v === "number" && Number.isFinite(v))) && (
             <Reveal show={p4}>
               <p className="text-[10px] uppercase tracking-widest text-white/45 mb-2">
                 Stime elaborate — non sono quotazioni OMI
@@ -393,6 +400,7 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
                 </div>
               </div>
             </Reveal>
+            )}
 
             {/* PHASE 5 — Live signals */}
             {data.liveSignals && data.liveSignals.length > 0 && (

@@ -2321,6 +2321,7 @@ const Result = () => {
             lowConfidence={lowConfidence}
           />
 
+
           {!lowConfidence && !identifyFailed && (
             <SectionSafe><HouseDifferentiationCard diff={houseDiff} loading={scanning} /></SectionSafe>
           )}

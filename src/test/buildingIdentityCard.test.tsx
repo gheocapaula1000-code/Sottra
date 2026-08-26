@@ -72,6 +72,7 @@ describe("Result leads with this-building WOW then zone", () => {
     expect(id).toBeGreaterThan(0);
     expect(diff).toBeGreaterThan(id);
     expect(wow).toBeGreaterThan(diff);
+    expect(result).not.toContain("CivicoSignalsCard");
     expect(omi).toBeGreaterThan(wow);
     expect(istat).toBeGreaterThan(omi);
     expect(poi).toBeGreaterThan(0);

@@ -62,6 +62,8 @@ export interface BuildingIdentityCardProps {
   lowConfidence?: boolean;
   /** Public homepage esempio chrome */
   esempio?: boolean;
+  /** Extra photo reads (intonaco, persiane). Never invented market data. */
+  visualNotes?: string[] | null;
   className?: string;
 }
 
@@ -73,6 +75,7 @@ export function BuildingIdentityCard({
   lng = null,
   lowConfidence = false,
   esempio = false,
+  visualNotes = null,
   className,
 }: BuildingIdentityCardProps) {
   const showPhoto = hasDisplayablePhoto(photo);
@@ -85,6 +88,7 @@ export function BuildingIdentityCard({
     : null;
   const buildingType = analysis?.buildingType?.trim() || null;
   const address = identify?.address?.trim() || null;
+  const notes = (visualNotes ?? []).map((s) => s.trim()).filter(Boolean);
 
   return (
     <div
@@ -111,17 +115,22 @@ export function BuildingIdentityCard({
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-card via-card/25 to-transparent pointer-events-none" />
         <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-          <Chip className="bg-black/70 border-white/15 text-white">Questo edificio</Chip>
-          {esempio && (
+          {esempio ? (
             <Chip className="bg-amber-500/90 border-amber-300/40 text-black font-semibold uppercase tracking-wider">
               Esempio
             </Chip>
+          ) : (
+            <Chip className="bg-black/70 border-white/15 text-white">Questo edificio</Chip>
           )}
         </div>
       </div>
 
       <div className="px-5 pb-5 -mt-8 relative z-10 space-y-3">
-        {address ? (
+        {esempio ? (
+          <h2 className="text-lg font-bold leading-snug text-foreground">
+            {buildingType ?? "Questa facciata"}
+          </h2>
+        ) : address ? (
           <h2 className={cn(
             "text-lg font-bold leading-snug break-anywhere",
             lowConfidence ? "text-foreground/60" : "text-foreground",
@@ -135,11 +144,13 @@ export function BuildingIdentityCard({
         )}
 
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-          Identità di questo civico — da foto e posizione, non un dato catastale
+          {esempio
+            ? "Letto dalla foto — non un dato catastale"
+            : "Identità di questo civico — da foto e posizione, non un dato catastale"}
         </p>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {!lowConfidence && address && (
+          {!esempio && !lowConfidence && address && (
             <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
               <CheckCircle2 className="h-3 w-3" />Civico distinto dal vicino
             </span>
@@ -151,7 +162,25 @@ export function BuildingIdentityCard({
           )}
         </div>
 
-        {(buildingType || floors != null || facade || readability) && (
+        {notes.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {notes.map((n) => (
+              <span
+                key={n}
+                className="inline-flex items-center rounded-md border border-primary/25 bg-primary/10 px-2 py-1 text-xs font-semibold text-foreground"
+              >
+                {n}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <p className="text-sm font-medium text-foreground leading-snug">
+          In venti secondi, su questo palazzo: c'è un appartamento in vendita,
+          stanno vendendo lo stabile, è una successione.
+        </p>
+
+        {!esempio && (buildingType || floors != null || facade || readability) && (
           <div className="grid grid-cols-2 gap-2">
             {buildingType && (
               <div className="rounded-lg bg-muted/40 border border-border/30 px-3 py-2">
@@ -185,8 +214,9 @@ export function BuildingIdentityCard({
         )}
 
         <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-          OMI, ISTAT e POI a 800 m sono di zona: identici per il civico accanto.
-          Qui distinguiamo questo edificio.
+          {esempio
+            ? "OMI sotto è di microzona, non di questo interno."
+            : "OMI, ISTAT e POI a 800 m sono di zona: identici per il civico accanto. Qui distinguiamo questo edificio."}
         </p>
       </div>
     </div>

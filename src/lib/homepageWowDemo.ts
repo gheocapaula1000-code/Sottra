@@ -36,16 +36,23 @@ export const DEMO_OMI: OmiZoneData = {
   omiGeoLevel: "microzona_omi",
 };
 
+/** What THIS demo facade actually shows. No invented civico, floors count, or listings. */
+export const DEMO_PHOTO_FACTS = {
+  buildingType: "Palazzina",
+  materiale: "Intonaco ocra",
+  strengths: ["Persiane verdi", "Più piani visibili"],
+} as const;
+
 /** Street-level esempio identity — no cadastral id, no invented civico plate. */
 export const DEMO_IDENTIFY: IdentifyResult = {
-  address: "Forcellini / Terranegra, Padova",
+  address: "",
   buildingId: "demo-homepage-d8",
-  confidence: 0.82,
+  confidence: 0,
   comune: "Padova",
   streetEvidence: {
     facadeConsistencyLevel: "good",
     photoAnalysis: {
-      buildingType: "Condominio residenziale",
+      buildingType: DEMO_PHOTO_FACTS.buildingType,
       photoReadability: "clear",
     },
   },
@@ -54,11 +61,11 @@ export const DEMO_IDENTIFY: IdentifyResult = {
 export function emptyDemoWow(overrides: Partial<PhotoWowResponse> = {}): PhotoWowResponse {
   return {
     immobile: {
-      tipologiaProbabile: "Condominio residenziale",
+      tipologiaProbabile: DEMO_PHOTO_FACTS.buildingType,
       pianoStimato: null,
       statoApparente: null,
-      puntiDiForzaVisivi: [],
-      materialePresunto: null,
+      puntiDiForzaVisivi: [...DEMO_PHOTO_FACTS.strengths],
+      materialePresunto: DEMO_PHOTO_FACTS.materiale,
       annoPresunto: null,
     },
     zona: {
@@ -96,7 +103,7 @@ export function emptyDemoWow(overrides: Partial<PhotoWowResponse> = {}): PhotoWo
     },
     qualita: "buona",
     tempoElaborazione: 0,
-    fontiUsate: ["OMI Agenzia delle Entrate"],
+    fontiUsate: [],
     ...overrides,
   };
 }
