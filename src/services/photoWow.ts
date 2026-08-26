@@ -1,7 +1,8 @@
 import { isValidGps } from "@/lib/imageUtils";
-import { normalizePhotoWow } from "@/lib/officialOmiFromCore";
+import { extractPoiEnrichment, normalizePhotoWow } from "@/lib/officialOmiFromCore";
 import { coreRequest, isError } from "@/services/api";
 import type { PhotoWowResponse } from "@/types/photoWow";
+import type { PoiEnrichmentData } from "@/types";
 
 /**
  * Cinematic photo opener — NOT the official Sottra report.
@@ -16,7 +17,7 @@ export async function getPhotoWow(
   lng: number,
   geoSource: "device" | "address" = "device",
   address?: string,
-): Promise<{ error: boolean; message: string | null; data: PhotoWowResponse | null }> {
+): Promise<{ error: boolean; message: string | null; data: PhotoWowResponse | null; poi?: PoiEnrichmentData | null }> {
   if (!isValidGps(lat, lng)) {
     return { error: true, message: "Posizione dell'indirizzo non disponibile", data: null };
   }
@@ -38,7 +39,7 @@ export async function getPhotoWow(
     if (!data) {
       return { error: true, message: "Risposta photoWow non valida", data: null };
     }
-    return { error: false, message: null, data };
+    return { error: false, message: null, data, poi: extractPoiEnrichment(res) };
   } catch (err) {
     return {
       error: true,
