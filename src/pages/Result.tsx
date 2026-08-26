@@ -175,6 +175,7 @@ function sourceTypeToTier(sourceType?: string): DataTier {
     case "commercial_partial": return "mercato_parziale";
     case "elaborated": return "elaborato";
     case "estimate": return "elaborato";
+    case "estimated": return "elaborato";
     case "derived": return "elaborato";
     case "unavailable": return "non_disponibile";
     default: return "elaborato";
@@ -1448,6 +1449,13 @@ function NeighborhoodIndexCard({ index, loading }: { index: NeighborhoodIndex | 
 
 
 
+function poiCategoryTitle(cat: { category?: string; categoryLabel?: string }): string {
+  const k = (cat.category ?? "").toLowerCase();
+  if (k === "leisure" || k === "parks") return cat.categoryLabel?.trim() || "Parchi / verde";
+  if (k === "worship") return cat.categoryLabel?.trim() || "Luoghi di culto";
+  return (cat.categoryLabel ?? cat.category ?? "").trim();
+}
+
 function PoiWowStrip({ data }: { data: PoiEnrichmentData }) {
   if (data.totalPois === 0 || !data.categories?.length) return null;
   return (
@@ -1464,7 +1472,7 @@ function PoiWowStrip({ data }: { data: PoiEnrichmentData }) {
       <div className="grid grid-cols-2 gap-2">
         {data.categories.slice(0, 8).map((cat, i) => (
           <div key={`${cat.category}-${i}`} className="rounded-lg bg-muted/40 px-3 py-2">
-            <p className="text-xs font-semibold text-foreground truncate">{cat.categoryLabel}</p>
+            <p className="text-xs font-semibold text-foreground truncate">{poiCategoryTitle(cat)}</p>
             <p className="text-[10px] text-muted-foreground">
               {cat.count}{cat.nearest?.distance != null ? ` · ${cat.nearest.distance}m` : ""}
             </p>
@@ -1496,7 +1504,7 @@ function PoiEnrichmentCard({ data, loading }: { data: PoiEnrichmentData | null; 
             <div key={i} className="rounded-lg bg-muted/40 px-3 py-2 flex items-center gap-2">
               <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-foreground truncate">{cat.categoryLabel}</p>
+                <p className="text-xs font-semibold text-foreground truncate">{poiCategoryTitle(cat)}</p>
                 <p className="text-[10px] text-muted-foreground">{cat.count}{cat.nearest?.distance != null ? ` · ${cat.nearest.distance}m` : ""}</p>
               </div>
             </div>
@@ -1943,7 +1951,7 @@ function EnergySection({ data, loading }: { data: EnergyData | null; loading: bo
             <div className="flex flex-wrap items-center gap-2">
               {data.classeEnergetica && (
                 <span className={cn("inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-semibold", classClass(data.classeEnergetica))}>
-                  Classe {toText(data.classeEnergetica)}
+                  Classe stimata {toText(data.classeEnergetica)}
                 </span>
               )}
               {typeof data.epglKwhM2Anno === "number" && (
@@ -1972,6 +1980,11 @@ function EnergySection({ data, loading }: { data: EnergyData | null; loading: bo
             <p className="text-[10px] text-muted-foreground italic leading-relaxed border-t border-border pt-2">
               Stima da caratteristiche tipologiche della zona — non sostituisce APE ufficiale.
             </p>
+            <SourceTag meta={{
+              ...data,
+              sourceType: data.sourceType === "official" ? "estimate" : (data.sourceType ?? "estimate"),
+              sourceLabel: data.sourceLabel ?? "Stima di zona — non è un APE ufficiale",
+            }} />
           </>
         )}
       </div>

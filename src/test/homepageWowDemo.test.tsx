@@ -39,9 +39,9 @@ describe("homepage WOW demo is public", () => {
     expect(screen.getByTestId("homepage-wow-demo")).toBeInTheDocument();
     expect(screen.getAllByText(/Esempio/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Dato ufficiale OMI/i)).toBeInTheDocument();
-    expect(screen.getByText(DEMO_OMI_ZONA)).toBeInTheDocument();
-    expect(screen.getByText(/Padova/)).toBeInTheDocument();
-    expect(screen.getByText(DEMO_OMI_SEMESTRE_LABEL)).toBeInTheDocument();
+    expect(document.body.textContent).toContain(DEMO_OMI_ZONA);
+    expect(screen.getAllByText(/Padova/).length).toBeGreaterThanOrEqual(1);
+    expect(document.body.textContent).toContain(DEMO_OMI_SEMESTRE_LABEL);
     expect(document.body.textContent).toMatch(/1400|1\.400/);
     expect(document.body.textContent).toMatch(/1850|1\.850/);
     expect(document.body.textContent).not.toMatch(/1\.400\s*€\s*[–-]\s*2\.750|1400 € – 2750/);

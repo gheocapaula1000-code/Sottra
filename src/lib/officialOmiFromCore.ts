@@ -12,7 +12,7 @@ import {
   pickCivileHeadline,
 } from "@/lib/omiQuotes";
 import { attachOfficialPadovaD8Quotes } from "@/lib/officialPadovaD8";
-import type { OmiZoneData, SectionStatus, SourceType } from "@/types";
+import type { OmiZoneData, PoiEnrichmentData, SectionStatus, SourceType } from "@/types";
 import type { PhotoWowImmobile, PhotoWowResponse, PhotoWowScores, PhotoWowZona } from "@/types/photoWow";
 
 const ENVELOPE_KEYS = new Set([
@@ -433,8 +433,13 @@ export function officialOmiFromCore(raw: unknown): OmiZoneData | null {
   const hasZone = !!(zonaOmiLabel || zonaOmi);
   if (!hasQuotes && !hasZone) return null;
 
-  const resolvedType: SourceType = sourceType
-    ?? (hasQuotes ? "official" : "official");
+  const weakMatch = /ai_estimate|catastale_fallback/i.test(matchMethod ?? "");
+  const hasOfficialFooting = polygonMatch || !!(preferredLink && preferredLink.trim()) || quotes.length > 0;
+  const resolvedType: SourceType = (() => {
+    if (weakMatch && !hasOfficialFooting) return sourceType && sourceType !== "official" ? sourceType : "estimate";
+    if (sourceType) return sourceType;
+    return hasOfficialFooting || hasQuotes ? "official" : "estimate";
+  })();
 
   return attachOfficialPadovaD8Quotes({
     zonaOmi,
@@ -616,6 +621,30 @@ function readZonaObject(root: Record<string, unknown>): PhotoWowZona {
  * Normalize a live Core photoWow payload into PhotoWowResponse.
  * Scores stay null when Core omitted them — never coerced to 0.
  */
+
+/** Pass through Core POI if present. Never invent counts or categories. */
+export function extractPoiEnrichment(raw: unknown): PoiEnrichmentData | null {
+  const root = unwrapCoreEnvelope(raw);
+  if (!root) return null;
+  const nested = isPlainObject(root.data) ? root.data : null;
+  const bag = [root.poiEnrichment, root.poi, nested?.poiEnrichment, nested?.poi].find(isPlainObject);
+  if (!bag) return null;
+  const pois = Array.isArray(bag.pois) ? bag.pois : [];
+  const categories = Array.isArray(bag.categories) ? bag.categories : [];
+  const total = asFiniteNumber(bag.totalPois) ?? (pois.length > 0 ? pois.length : null);
+  if (total == null || total <= 0) return null;
+  if (categories.length === 0 && pois.length === 0) return null;
+  return {
+    totalPois: total,
+    categories: categories as PoiEnrichmentData["categories"],
+    pois: pois as PoiEnrichmentData["pois"],
+    searchRadius: asFiniteNumber(bag.searchRadius) ?? 800,
+    sourceType: (typeof bag.sourceType === "string" && bag.sourceType.trim()
+      ? bag.sourceType.trim()
+      : "verified_geo") as PoiEnrichmentData["sourceType"],
+  };
+}
+
 export function normalizePhotoWow(raw: unknown): PhotoWowResponse | null {
   const root = unwrapCoreEnvelope(raw);
   if (!root) return null;

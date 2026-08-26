@@ -8,7 +8,9 @@ import {
   pickPreferredOmiHit,
   collectOmiHits,
   mergeOfficialOmiData,
+  extractPoiEnrichment,
 } from "@/lib/officialOmiFromCore";
+import { readFileSync } from "node:fs";
 
 const PADOVA_WRAPPED = {
   ok: true,
@@ -414,5 +416,62 @@ describe("pickPreferredOmiHit — Padova overlap", () => {
     expect(merged.zonaOmi).toBe("D7");
     expect(merged.quotazioneMinResidenziale).toBe(950);
     expect(merged.quotazioneMaxResidenziale).toBe(1200);
+  });
+});
+
+describe("honesty: no invented microzona, no fake official APE", () => {
+  it("does not keep sourceType official on ai_estimate without polygon or quotes", () => {
+    const omi = officialOmiFromCore({
+      zona: "Zona stimata",
+      comuneLabel: "Milano",
+      prezzoMqMin: 4000,
+      prezzoMqMax: 6000,
+      matchMethod: "ai_estimate",
+      polygonMatch: false,
+      sourceType: "official",
+    });
+    expect(omi?.sourceType).toBe("estimate");
+    expect(omi?.quotes ?? []).toHaveLength(0);
+    expect(JSON.stringify(omi?.quotes ?? [])).not.toMatch(/1400/);
+  });
+
+  it("Padova D8 mashed payload is still official NORMALE 1400–1850", () => {
+    const omi = officialOmiFromCore({
+      zona: "S. GREGORIO / TERRANEGRA / FORCELLINI EST (OMI D8)",
+      officialMicrozona: "D8",
+      comuneLabel: "Padova",
+      prezzoMqMin: 1400,
+      prezzoMqMax: 2750,
+      sourceType: "official",
+      polygonMatch: true,
+      link_zona: "PD00002850",
+    });
+    expect(omi?.sourceType).toBe("official");
+    expect(omi?.quotazioneMinResidenziale).toBe(1400);
+    expect(omi?.quotazioneMaxResidenziale).toBe(1850);
+  });
+
+  it("extractPoiEnrichment is fail-closed and passes through Core POI", () => {
+    expect(extractPoiEnrichment({})).toBeNull();
+    expect(extractPoiEnrichment({ poiEnrichment: { totalPois: 0, categories: [], pois: [] } })).toBeNull();
+    const poi = extractPoiEnrichment({
+      poiEnrichment: {
+        totalPois: 3,
+        searchRadius: 800,
+        sourceType: "verified_geo",
+        categories: [{ category: "leisure", categoryLabel: "Parchi / verde", count: 2 }],
+        pois: [],
+      },
+    });
+    expect(poi?.totalPois).toBe(3);
+    expect(poi?.categories[0].category).toBe("leisure");
+  });
+
+  it("energy section never wears Dato ufficiale; classe is stimata", () => {
+    const result = readFileSync("src/pages/Result.tsx", "utf8");
+    expect(result).toMatch(/Classe stimata/);
+    expect(result).toMatch(/non è un APE ufficiale/);
+    const energy = result.split("function EnergySection")[1].split("const Result")[0];
+    expect(energy).not.toMatch(/Dato ufficiale OMI/);
   });
 });

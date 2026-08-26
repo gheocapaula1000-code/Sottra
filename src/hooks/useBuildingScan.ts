@@ -399,6 +399,7 @@ export function useBuildingScan() {
         if (!photoRes.error && photoRes.data) {
           set("photoWow", { status: "success", data: photoRes.data, message: null });
           applyCoreOmi(photoRes.data, 2);
+          if (photoRes.poi) dispatch({ type: "MERGE_POI", data: photoRes.poi });
         } else {
           console.warn("[SCAN] photoWow opener failed (official pipeline continues):", photoRes.message);
           set("photoWow", { status: "error", data: null, message: photoRes.message });

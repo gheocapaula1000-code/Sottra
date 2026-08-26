@@ -2,7 +2,7 @@
  * Public homepage demo — Padova OMI D8 Est numbers from Paula's live
  * iPhone scan (civile NORMALE 1400–1850, 1° semestre 2025).
  * Not invented. Not a municipal average. Labeled Esempio.
- * No catasto, APE, reddito medio, or Superbonus.
+ * Fail-closed: no unofficial cadastre, energy class, or income figures.
  */
 
 import type { IdentifyResult, OmiZoneData } from "@/types";

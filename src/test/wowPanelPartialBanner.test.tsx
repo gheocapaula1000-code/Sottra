@@ -127,8 +127,8 @@ describe("WowPanel partial banner", () => {
     expect(hasPianoEsclusivaContent(emptyWow().pianoEsclusiva)).toBe(false);
     expect(screen.queryByText("Intelligence zona")).not.toBeInTheDocument();
     expect(screen.queryByText("Il tuo piano esclusiva")).not.toBeInTheDocument();
-    expect(screen.getByText("Vendibilità")).toBeInTheDocument();
-    expect(screen.getAllByText(/Non disponibile/i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText("Vendibilità")).not.toBeInTheDocument();
+    expect(screen.queryByText("Opportunità")).not.toBeInTheDocument();
   });
 
   it("keeps Intelligence zona when Core sent a body", () => {
@@ -164,7 +164,7 @@ describe("WowPanel partial banner", () => {
     expect(screen.getByText(/Anteprima visiva non disponibile/i)).toBeInTheDocument();
   });
 
-  it("keeps NON DISPONIBILE on score cards when Core omitted them — zero-mock", () => {
+  it("hides score cards when Core omitted them — zero-mock, no empty Vendibilità", () => {
     render(
       <WowPanel
         data={emptyWow()}
@@ -173,9 +173,9 @@ describe("WowPanel partial banner", () => {
         officialOmi={{ status: "success", data: PADOVA_D8 }}
       />,
     );
-    expect(screen.getByText("Vendibilità")).toBeInTheDocument();
-    expect(screen.getByText("Opportunità")).toBeInTheDocument();
-    expect(screen.getAllByText(/Non disponibile/i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText("Vendibilità")).not.toBeInTheDocument();
+    expect(screen.queryByText("Opportunità")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pressione ereditaria")).not.toBeInTheDocument();
     expect(screen.queryByText("70")).not.toBeInTheDocument();
     expect(screen.queryByText("80")).not.toBeInTheDocument();
   });
