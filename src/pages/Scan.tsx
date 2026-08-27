@@ -6,7 +6,6 @@ import { normalizeImage, isValidImageDataUrl, fileToJpegDataUrl } from "@/lib/im
 import {
   extractExifGpsFromDataUrl,
   extractExifGpsFromFile,
-  readFileAsDataUrl,
   resolveScanCoords,
   type ExifGps,
 } from "@/lib/exifGps";
@@ -261,20 +260,10 @@ const Scan = () => {
         lastExifRef.current = exif;
         let rawPhoto: string;
         try {
-          // iPhone system camera can return HEIC/HEIF: always decode to real JPEG first.
+          // iPhone HEIC must become a painted JPEG. Never ship the raw File.
           rawPhoto = await fileToJpegDataUrl(file);
         } catch {
-          // Dummy/test JPEGs and already-JPEG files may skip canvas. Never keep HEIC.
-          const jpegLike = /^image\/(jpeg|jpg|png|webp|gif)$/i.test(file.type);
-          if (jpegLike) {
-            try {
-              rawPhoto = await readFileAsDataUrl(file);
-            } catch {
-              rawPhoto = "";
-            }
-          } else {
-            rawPhoto = "";
-          }
+          rawPhoto = "";
         }
         if (!isValidImageDataUrl(rawPhoto)) {
           toast({
@@ -456,17 +445,15 @@ const Scan = () => {
 
         <div className="flex flex-1 flex-col items-center justify-center">
           {cameraState === "system" && shootPhase === "idle" && (
-            <>
-              <div className="flex h-28 w-28 items-center justify-center rounded-3xl border border-white/20 bg-white/10">
-                <Camera className="h-12 w-12 text-white" />
-              </div>
-              <p className="mt-6 text-sm font-medium text-white/90 drop-shadow">
+            <div className="mx-6 flex max-w-sm flex-col items-center gap-4 rounded-3xl bg-white px-6 py-8 text-center">
+              <Camera className="h-10 w-10 text-zinc-900" />
+              <p className="text-base font-semibold text-zinc-900">
                 Scatta con la fotocamera iPhone
               </p>
-              <p className="mt-2 max-w-xs text-center text-xs text-white/55 leading-relaxed">
-                Così le coordinate restano nella foto. Poi vedi lo scatto nel report.
+              <p className="text-sm text-zinc-600 leading-relaxed">
+                Tocca il pulsante bianco sotto. Poi vedi la facciata nel report.
               </p>
-            </>
+            </div>
           )}
 
           {cameraState === "active" && shootPhase === "idle" && (

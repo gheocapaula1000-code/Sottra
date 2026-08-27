@@ -25,7 +25,7 @@ describe("Scan iPhone capture does not keep raw HEIC", () => {
     const scan = readFileSync(resolve(process.cwd(), "src/pages/Scan.tsx"), "utf8");
     expect(scan).toContain("fileToJpegDataUrl");
     expect(scan).toContain("prefersSystemCameraCapture");
-    expect(scan).toContain("jpeg|jpg|png|webp|gif");
+    expect(scan).not.toContain("readFileAsDataUrl");
     expect(scan).toContain("Scatta con la fotocamera iPhone");
     expect(scan).toContain("cameraState !== \"system\"");
   });
@@ -38,5 +38,7 @@ describe("fileToJpegDataUrl stays small enough for iPhone", () => {
     expect(src).toContain("canvasToBudgetJpeg");
     expect(src).toContain("MAX_LONG_SIDE");
     expect(src).toContain("MAX_SIZE_BYTES");
+    expect(src).toContain("wipeIfBlank");
+    expect(src).toContain("createObjectURL");
   });
 });

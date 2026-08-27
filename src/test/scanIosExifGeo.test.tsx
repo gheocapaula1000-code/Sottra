@@ -23,7 +23,9 @@ vi.mock("@/lib/imageUtils", async () => {
     normalizeImage: vi.fn(async (src: string) =>
       src.startsWith("data:image/") ? src : `data:image/jpeg;base64,${"A".repeat(200)}`,
     ),
-    isValidImageDataUrl: () => true,
+    fileToJpegDataUrl: vi.fn(async () => `data:image/jpeg;base64,${"A".repeat(200)}`),
+    isValidImageDataUrl: (value: unknown) =>
+      typeof value === "string" && value.startsWith("data:image/jpeg") && value.length > 100,
   };
 });
 
