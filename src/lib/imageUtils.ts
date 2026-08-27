@@ -119,22 +119,61 @@ function canvasIsUniform(ctx: CanvasRenderingContext2D, w: number, h: number): b
   return true;
 }
 
+function fitLongSide(sw: number, sh: number): { w: number; h: number } | null {
+  if (sw < 32 || sh < 32) return null;
+  const long = Math.max(sw, sh);
+  if (long <= MAX_LONG_SIDE) return { w: sw, h: sh };
+  const scale = MAX_LONG_SIDE / long;
+  return { w: Math.round(sw * scale), h: Math.round(sh * scale) };
+}
+
+function canvasToBudgetJpeg(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): string {
+  let quality = INITIAL_QUALITY;
+  let result = canvas.toDataURL("image/jpeg", quality);
+  let size = dataUrlByteSize(result);
+  while (size > MAX_SIZE_BYTES && quality > MIN_QUALITY) {
+    quality -= QUALITY_STEP;
+    result = canvas.toDataURL("image/jpeg", quality);
+    size = dataUrlByteSize(result);
+  }
+  if (size > MAX_SIZE_BYTES) {
+    const tmp = document.createElement("canvas");
+    tmp.width = canvas.width;
+    tmp.height = canvas.height;
+    tmp.getContext("2d")!.drawImage(canvas, 0, 0);
+    canvas.width = Math.max(32, Math.round(canvas.width * 0.7));
+    canvas.height = Math.max(32, Math.round(canvas.height * 0.7));
+    ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
+    result = canvas.toDataURL("image/jpeg", MIN_QUALITY);
+    size = dataUrlByteSize(result);
+  }
+  if (!isValidImageDataUrl(result)) throw new Error("Conversione JPEG non riuscita");
+  if (size > MAX_SIZE_BYTES * 2) throw new Error("JPEG troppo grande per iPhone");
+  return result;
+}
+
 export async function fileToJpegDataUrl(file: File): Promise<string> {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas non supportato");
 
+  const paint = (sw: number, sh: number, source: CanvasImageSource) => {
+    const fit = fitLongSide(sw, sh);
+    if (!fit) return false;
+    canvas.width = fit.w;
+    canvas.height = fit.h;
+    ctx.drawImage(source, 0, 0, fit.w, fit.h);
+    return true;
+  };
+
   if (typeof createImageBitmap === "function") {
     try {
       const bitmap = await createImageBitmap(file);
-      const w = bitmap.width;
-      const h = bitmap.height;
-      if (w >= 32 && h >= 32) {
-        canvas.width = w;
-        canvas.height = h;
-        ctx.drawImage(bitmap, 0, 0);
+      try {
+        paint(bitmap.width, bitmap.height, bitmap);
+      } finally {
+        bitmap.close?.();
       }
-      bitmap.close?.();
     } catch {
       /* Safari HEIC sometimes needs the <img> blob path instead. */
     }
@@ -147,12 +186,9 @@ export async function fileToJpegDataUrl(file: File): Promise<string> {
       if (typeof img.decode === "function") {
         try { await img.decode(); } catch { /* onload already fired */ }
       }
-      const w = img.naturalWidth || img.width;
-      const h = img.naturalHeight || img.height;
-      if (!w || !h) throw new Error("Immagine senza dimensioni");
-      canvas.width = w;
-      canvas.height = h;
-      ctx.drawImage(img, 0, 0);
+      const sw = img.naturalWidth || img.width;
+      const sh = img.naturalHeight || img.height;
+      if (!paint(sw, sh, img)) throw new Error("Immagine senza dimensioni");
     } finally {
       URL.revokeObjectURL(url);
     }
@@ -160,8 +196,7 @@ export async function fileToJpegDataUrl(file: File): Promise<string> {
 
   if (canvas.width < 32 || canvas.height < 32) throw new Error("Immagine troppo piccola");
   if (canvasIsUniform(ctx, canvas.width, canvas.height)) throw new Error("Conversione JPEG vuota");
-  const out = canvas.toDataURL("image/jpeg", 0.9);
-  if (!isValidImageDataUrl(out)) throw new Error("Conversione JPEG non riuscita");
+  const out = canvasToBudgetJpeg(canvas, ctx);
   devLog(`file → jpeg: ${canvas.width}x${canvas.height}, ${(dataUrlByteSize(out) / 1024).toFixed(0)} KB`);
   return out;
 }
