@@ -98,35 +98,32 @@ export function BuildingIdentityCard({
         className,
       )}
     >
-      <div className="relative">
-        {showPhoto ? (
-          <img
-            src={photo}
-            alt="Edificio acquisito"
-            className="w-full aspect-[16/10] object-cover"
-          />
-        ) : (
-          <div
-            data-testid="building-identity-empty-photo"
-            className="w-full aspect-[16/10] bg-muted flex items-center justify-center text-xs text-muted-foreground"
-          >
-            Nessuna foto
-          </div>
-        )}
-        {/* Bottom fade only — a full-card veil screenshots black on iPhone. */}
-        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-        <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+      {showPhoto ? (
+        <img
+          src={photo}
+          alt="Edificio acquisito"
+          className="w-full aspect-[16/10] object-cover [dynamic-range-limit:standard]"
+        />
+      ) : (
+        <div
+          data-testid="building-identity-empty-photo"
+          className="w-full aspect-[16/10] bg-muted flex items-center justify-center text-xs text-muted-foreground"
+        >
+          Nessuna foto
+        </div>
+      )}
+
+      {/* Opaque bar BELOW the photo — never overlay the facade (iOS screenshots go black). */}
+      <div className="px-5 pt-4 pb-5 space-y-3 bg-card">
+        <div className="flex flex-wrap gap-1.5">
           {esempio ? (
-            <Chip className="bg-amber-500/90 border-amber-300/40 text-black font-semibold uppercase tracking-wider">
+            <Chip className="bg-amber-500 border-amber-300 text-black font-semibold uppercase tracking-wider">
               Esempio
             </Chip>
           ) : (
-            <Chip className="bg-black/70 border-white/15 text-white">Questo edificio</Chip>
+            <Chip className="bg-zinc-900 border-zinc-700 text-white">Questo edificio</Chip>
           )}
         </div>
-      </div>
-
-      <div className="px-5 pb-5 -mt-8 relative z-10 space-y-3">
         {esempio ? (
           <h2 className="text-lg font-bold leading-snug text-foreground">
             {buildingType ?? "Questa facciata"}

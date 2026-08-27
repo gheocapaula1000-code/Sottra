@@ -90,9 +90,14 @@ describe("Result leads with this-building WOW then zone", () => {
 });
 
 describe("identity photo screenshots on iPhone", () => {
-  it("does not veil the whole facade with a card gradient", () => {
+  it("does not overlay the facade — no full-card or bottom fade, meta below the photo", () => {
     const src = readFileSync("src/components/report/BuildingIdentityCard.tsx", "utf8");
     expect(src).not.toMatch(/inset-0 bg-gradient-to-t from-card via-card\/25/);
-    expect(src).toContain("bottom-0 h-20");
+    expect(src).not.toContain("bottom-0 h-20");
+    expect(src).not.toContain("bg-gradient-to-t from-card");
+    expect(src).not.toContain("-mt-8");
+    expect(src).not.toMatch(/mix-blend|backdrop-filter|filter:\s*blur/);
+    expect(src).toContain("[dynamic-range-limit:standard]");
+    expect(src).toContain("bg-card");
   });
 });

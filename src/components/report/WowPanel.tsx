@@ -209,6 +209,8 @@ export function hasOfficialOmiQuotes(
 }
 
 export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPanelProps) {
+  // Callers still pass photo; never paint it as a CSS background (iOS HDR/gain-map screenshots black).
+  void photo;
   const omi = officialOmi?.data ? attachOfficialPadovaD8Quotes(officialOmi.data) : null;
   const omiStatus = officialOmi?.status ?? "idle";
   const hasOfficialOmi = hasOfficialOmiQuotes(omi, omiStatus);
@@ -248,13 +250,8 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl">
-      {/* PHASE 0 — Background */}
-      <div
-        className="absolute inset-0 bg-cover bg-center scale-110 opacity-40"
-        style={{ backgroundImage: `url(${photo})` }}
-        aria-hidden
-      />
-      <div className="absolute inset-0 bg-black/70" aria-hidden />
+      {/* PHASE 0 — solid opaque dark bg. Do not paint the user photo here. */}
+      <div className="absolute inset-0 bg-zinc-950" aria-hidden />
 
       {/* Content */}
       <div className="relative z-10 px-4 sm:px-6 py-6 space-y-6 text-white">
