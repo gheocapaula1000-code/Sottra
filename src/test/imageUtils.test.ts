@@ -42,3 +42,21 @@ describe("fileToJpegDataUrl stays small enough for iPhone", () => {
     expect(src).toContain("createObjectURL");
   });
 });
+
+describe("JPEG encode flattens HDR/gain-map to SDR", () => {
+  it("requests sRGB and round-trips getImageData before toDataURL", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/lib/imageUtils.ts"), "utf8");
+    expect(src).toContain('colorSpace: "srgb"');
+    expect(src).toContain("flattenSdr");
+    expect(src).toContain("getImageData");
+    expect(src).toContain("putImageData");
+    // flatten runs inside the shared JPEG encoder used by fileToJpegDataUrl + normalizeImage
+    const flattenIdx = src.indexOf("function flattenSdr");
+    const budgetIdx = src.indexOf("function canvasToBudgetJpeg");
+    const toDataIdx = src.indexOf('toDataURL("image/jpeg"', budgetIdx);
+    expect(flattenIdx).toBeGreaterThan(0);
+    expect(budgetIdx).toBeGreaterThan(flattenIdx);
+    expect(toDataIdx).toBeGreaterThan(budgetIdx);
+    expect(src.slice(budgetIdx, toDataIdx)).toContain("flattenSdr");
+  });
+});

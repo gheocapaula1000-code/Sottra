@@ -36,6 +36,27 @@ function dataUrlByteSize(dataUrl: string): number {
   return Math.ceil(base64.length * 0.75);
 }
 
+/** sRGB 2d context so HDR / Display P3 sources encode as display-referred SDR. */
+function getSrgb2dContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  const settings = { colorSpace: "srgb" } as CanvasRenderingContext2DSettings;
+  const ctx =
+    canvas.getContext("2d", settings) ??
+    canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas non supportato");
+  return ctx;
+}
+
+/**
+ * Force SDR pixels. iOS HDR / gain-map photos can survive a plain drawImage +
+ * toDataURL and screenshot as a black rectangle in Safari. Round-tripping
+ * through getImageData rasterizes display-referred sRGB so gain maps cannot survive.
+ */
+function flattenSdr(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  if (w < 1 || h < 1) return;
+  const pixels = ctx.getImageData(0, 0, w, h);
+  ctx.putImageData(pixels, 0, 0);
+}
+
 /**
  * Normalize an image: resize to max 1280px long side, compress JPEG,
  * progressively reduce quality to stay under ~350KB.
@@ -71,33 +92,13 @@ export async function normalizeImage(dataUrl: string): Promise<string> {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas non supportato");
+  const ctx = getSrgb2dContext(canvas);
 
   ctx.drawImage(img, 0, 0, w, h);
 
-  // Progressive quality reduction
-  let quality = INITIAL_QUALITY;
-  let result = canvas.toDataURL("image/jpeg", quality);
-  let size = dataUrlByteSize(result);
+  const result = canvasToBudgetJpeg(canvas, ctx);
 
-  while (size > MAX_SIZE_BYTES && quality > MIN_QUALITY) {
-    quality -= QUALITY_STEP;
-    result = canvas.toDataURL("image/jpeg", quality);
-    size = dataUrlByteSize(result);
-  }
-
-  // If still too large, further reduce dimensions
-  if (size > MAX_SIZE_BYTES) {
-    const extraScale = 0.7;
-    canvas.width = Math.round(w * extraScale);
-    canvas.height = Math.round(h * extraScale);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    result = canvas.toDataURL("image/jpeg", MIN_QUALITY);
-    size = dataUrlByteSize(result);
-  }
-
-  devLog(`Normalized: ${w}x${h} → ${canvas.width}x${canvas.height}, quality=${quality.toFixed(2)}, size=${(size / 1024).toFixed(0)} KB`);
+  devLog(`Normalized: ${w}x${h} → ${canvas.width}x${canvas.height}, size=${(dataUrlByteSize(result) / 1024).toFixed(0)} KB`);
 
   return result;
 }
@@ -107,6 +108,7 @@ export async function normalizeImage(dataUrl: string): Promise<string> {
  * Safari decodes HEIC natively through an <img> pointed at a blob URL, so the
  * canvas re-encode gives us a format the rest of the pipeline can handle.
  * EXIF is stripped by the canvas — read GPS from the File before calling this.
+ * Original HEIC is never used as img src after this returns.
  */
 function canvasIsUniform(ctx: CanvasRenderingContext2D, w: number, h: number): boolean {
   if (w < 32 || h < 32) return false;
@@ -128,6 +130,7 @@ function fitLongSide(sw: number, sh: number): { w: number; h: number } | null {
 }
 
 function canvasToBudgetJpeg(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): string {
+  flattenSdr(ctx, canvas.width, canvas.height);
   let quality = INITIAL_QUALITY;
   let result = canvas.toDataURL("image/jpeg", quality);
   let size = dataUrlByteSize(result);
@@ -140,10 +143,11 @@ function canvasToBudgetJpeg(canvas: HTMLCanvasElement, ctx: CanvasRenderingConte
     const tmp = document.createElement("canvas");
     tmp.width = canvas.width;
     tmp.height = canvas.height;
-    tmp.getContext("2d")!.drawImage(canvas, 0, 0);
+    getSrgb2dContext(tmp).drawImage(canvas, 0, 0);
     canvas.width = Math.max(32, Math.round(canvas.width * 0.7));
     canvas.height = Math.max(32, Math.round(canvas.height * 0.7));
     ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
+    flattenSdr(ctx, canvas.width, canvas.height);
     result = canvas.toDataURL("image/jpeg", MIN_QUALITY);
     size = dataUrlByteSize(result);
   }
@@ -154,8 +158,7 @@ function canvasToBudgetJpeg(canvas: HTMLCanvasElement, ctx: CanvasRenderingConte
 
 export async function fileToJpegDataUrl(file: File): Promise<string> {
   const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas non supportato");
+  const ctx = getSrgb2dContext(canvas);
 
   const paint = (sw: number, sh: number, source: CanvasImageSource) => {
     const fit = fitLongSide(sw, sh);
