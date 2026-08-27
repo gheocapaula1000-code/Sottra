@@ -113,7 +113,8 @@ export function BuildingIdentityCard({
             Nessuna foto
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/25 to-transparent pointer-events-none" />
+        {/* Bottom fade only — a full-card veil screenshots black on iPhone. */}
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card to-transparent pointer-events-none" />
         <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
           {esempio ? (
             <Chip className="bg-amber-500/90 border-amber-300/40 text-black font-semibold uppercase tracking-wider">

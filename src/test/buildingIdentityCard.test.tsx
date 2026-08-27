@@ -88,3 +88,11 @@ describe("Result leads with this-building WOW then zone", () => {
     expect(result).toContain("Fonti e Metodologia");
   });
 });
+
+describe("identity photo screenshots on iPhone", () => {
+  it("does not veil the whole facade with a card gradient", () => {
+    const src = readFileSync("src/components/report/BuildingIdentityCard.tsx", "utf8");
+    expect(src).not.toMatch(/inset-0 bg-gradient-to-t from-card via-card\/25/);
+    expect(src).toContain("bottom-0 h-20");
+  });
+});

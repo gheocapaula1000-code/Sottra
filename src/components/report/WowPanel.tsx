@@ -250,15 +250,11 @@ export function WowPanel({ data, photo, status = "loading", officialOmi }: WowPa
     <div className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl">
       {/* PHASE 0 — Background */}
       <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: `url(${photo})`,
-          filter: "blur(24px) brightness(0.35)",
-          transform: "scale(1.08)",
-        }}
+        className="absolute inset-0 bg-cover bg-center scale-110 opacity-40"
+        style={{ backgroundImage: `url(${photo})` }}
         aria-hidden
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/30" aria-hidden />
+      <div className="absolute inset-0 bg-black/70" aria-hidden />
 
       {/* Content */}
       <div className="relative z-10 px-4 sm:px-6 py-6 space-y-6 text-white">
