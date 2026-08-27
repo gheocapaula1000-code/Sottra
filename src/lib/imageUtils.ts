@@ -166,31 +166,39 @@ export async function fileToJpegDataUrl(file: File): Promise<string> {
     return true;
   };
 
-  if (typeof createImageBitmap === "function") {
+  const wipeIfBlank = () => {
+    if (canvas.width >= 32 && canvasIsUniform(ctx, canvas.width, canvas.height)) {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+  };
+
+  // Safari HEIC: <img> + blob URL paints. createImageBitmap often yields a black frame.
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImage(url);
+    if (typeof img.decode === "function") {
+      try { await img.decode(); } catch { /* onload already fired */ }
+    }
+    paint(img.naturalWidth || img.width, img.naturalHeight || img.height, img);
+    wipeIfBlank();
+  } catch {
+    /* bitmap next */
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+
+  if ((canvas.width < 32 || canvas.height < 32) && typeof createImageBitmap === "function") {
     try {
       const bitmap = await createImageBitmap(file);
       try {
         paint(bitmap.width, bitmap.height, bitmap);
+        wipeIfBlank();
       } finally {
         bitmap.close?.();
       }
     } catch {
-      /* Safari HEIC sometimes needs the <img> blob path instead. */
-    }
-  }
-
-  if (canvas.width < 32 || canvas.height < 32) {
-    const url = URL.createObjectURL(file);
-    try {
-      const img = await loadImage(url);
-      if (typeof img.decode === "function") {
-        try { await img.decode(); } catch { /* onload already fired */ }
-      }
-      const sw = img.naturalWidth || img.width;
-      const sh = img.naturalHeight || img.height;
-      if (!paint(sw, sh, img)) throw new Error("Immagine senza dimensioni");
-    } finally {
-      URL.revokeObjectURL(url);
+      /* both paths failed */
     }
   }
 
