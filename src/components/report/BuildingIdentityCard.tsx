@@ -6,7 +6,7 @@
  * If a photo exists, it is always shown — never a blank skeleton slot.
  */
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Building2, CheckCircle2, Layers, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isValidImageDataUrl } from "@/lib/imageUtils";
@@ -40,6 +40,49 @@ export function photoReadabilityLabel(level: PhotoAnalysis["photoReadability"] |
     case "poor": return "Foto poco leggibile";
     default: return null;
   }
+}
+
+/** Visible pixels are a 2d canvas so iOS screenshots / WhatsApp get SDR, not a black <img>. */
+function FacadeCanvas({ src }: { src: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled || !ref.current) return;
+      const nw = img.naturalWidth || img.width;
+      const nh = img.naturalHeight || img.height;
+      if (nw < 1 || nh < 1) return;
+      const cssW = Math.max(1, canvas.clientWidth || 360);
+      const dpr = typeof window !== "undefined" ? Math.min(2, window.devicePixelRatio || 1) : 1;
+      const outW = Math.max(1, Math.round(cssW * dpr));
+      const outH = Math.max(1, Math.round((outW * 10) / 16));
+      canvas.width = outW;
+      canvas.height = outH;
+      const settings = { colorSpace: "srgb", willReadFrequently: true } as CanvasRenderingContext2DSettings;
+      const ctx = canvas.getContext("2d", settings) ?? canvas.getContext("2d");
+      if (!ctx) return;
+      const scale = Math.max(outW / nw, outH / nh);
+      const dw = nw * scale;
+      const dh = nh * scale;
+      ctx.drawImage(img, (outW - dw) / 2, (outH - dh) / 2, dw, dh);
+      ctx.putImageData(ctx.getImageData(0, 0, outW, outH), 0, 0);
+    };
+    img.onerror = () => { /* fail-closed: empty canvas, no invented facade */ };
+    img.src = src;
+    return () => { cancelled = true; };
+  }, [src]);
+  return (
+    <canvas
+      ref={ref}
+      data-testid="building-identity-photo"
+      role="img"
+      aria-label="Edificio acquisito"
+      className="w-full aspect-[16/10] block bg-muted [dynamic-range-limit:standard]"
+    />
+  );
 }
 
 function Chip({ children, className }: { children: ReactNode; className?: string }) {
@@ -99,11 +142,7 @@ export function BuildingIdentityCard({
       )}
     >
       {showPhoto ? (
-        <img
-          src={photo}
-          alt="Edificio acquisito"
-          className="w-full aspect-[16/10] object-cover [dynamic-range-limit:standard]"
-        />
+        <FacadeCanvas src={photo} />
       ) : (
         <div
           data-testid="building-identity-empty-photo"

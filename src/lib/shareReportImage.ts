@@ -40,6 +40,36 @@ export async function waitForCaptureLayout(): Promise<void> {
   });
 }
 
+
+async function flattenShareJpeg(blob: Blob): Promise<Blob> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("flatten load"));
+      el.src = url;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    if (canvas.width < 1 || canvas.height < 1) return blob;
+    const settings = { colorSpace: "srgb", willReadFrequently: true } as CanvasRenderingContext2DSettings;
+    const ctx = canvas.getContext("2d", settings) ?? canvas.getContext("2d");
+    if (!ctx) return blob;
+    ctx.drawImage(img, 0, 0);
+    ctx.putImageData(ctx.getImageData(0, 0, canvas.width, canvas.height), 0, 0);
+    const out = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/jpeg", 0.92);
+    });
+    return out && out.size > 0 ? out : blob;
+  } catch {
+    return blob;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export type ReportCaptureFn = (root: HTMLElement) => Promise<Blob>;
 
 /** Rasterize the live report root. Does not invent fields — pixels come from the DOM. */
@@ -62,7 +92,7 @@ export async function captureReportElement(root: HTMLElement): Promise<Blob> {
   if (!blob || blob.size === 0) {
     throw new Error("capture empty");
   }
-  return blob;
+  return flattenShareJpeg(blob);
 }
 
 export async function buildReportShareFile(opts: {

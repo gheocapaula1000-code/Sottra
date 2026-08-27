@@ -32,8 +32,9 @@ describe("BuildingIdentityCard", () => {
         lng={11.9172}
       />,
     );
-    const img = screen.getByAltText("Edificio acquisito");
-    expect(img).toHaveAttribute("src", PHOTO);
+    const photoEl = screen.getByTestId("building-identity-photo");
+    expect(photoEl.tagName).toBe("CANVAS");
+    expect(screen.getByRole("img", { name: "Edificio acquisito" })).toBe(photoEl);
     expect(screen.queryByTestId("building-identity-empty-photo")).not.toBeInTheDocument();
     expect(screen.getByText(/Riconoscimento civico/i)).toBeInTheDocument();
   });
@@ -99,5 +100,9 @@ describe("identity photo screenshots on iPhone", () => {
     expect(src).not.toMatch(/mix-blend|backdrop-filter|filter:\s*blur/);
     expect(src).toContain("[dynamic-range-limit:standard]");
     expect(src).toContain("bg-card");
+    expect(src).toContain("<canvas");
+    expect(src).toContain("FacadeCanvas");
+    expect(src).not.toMatch(/<img\s+src=\{photo\}/);
+    expect(src).toContain("getImageData");
   });
 });
