@@ -83,6 +83,8 @@ describe("share wiring — not KeyDraft JSON", () => {
     expect(result).toContain("result-report-root");
     expect(result).not.toContain("sottraExportBridge");
     expect(helper).toContain("toJpeg");
+    expect(helper).toContain("flattenShareJpeg");
+    expect(helper).toContain("getImageData");
     expect(helper).not.toContain("quotazioneMinResidenziale: 1400");
     expect(helper).not.toContain("zonaOmi: \"D8\"");
   });
