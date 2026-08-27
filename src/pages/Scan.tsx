@@ -150,9 +150,8 @@ const Scan = () => {
         photo = await normalizeImage(rawPhoto);
         devLog("image normalized successfully");
       } catch {
-        // Already a valid JPEG data URL (iOS conversion path): ship it uncompressed
-        // rather than losing the shot.
-        if (isValidImageDataUrl(rawPhoto)) {
+        // iPhone cannot keep a 12MP data URL in history/IDB. Only ship a small JPEG.
+        if (isValidImageDataUrl(rawPhoto) && rawPhoto.length < 700_000) {
           photo = rawPhoto;
           devLog("normalize failed, using converted JPEG as-is");
         } else {
@@ -162,8 +161,7 @@ const Scan = () => {
         }
       }
 
-
-      if (!isValidImageDataUrl(photo)) {
+      if (!isValidImageDataUrl(photo) || photo.length > 900_000) {
         toast({ title: "Immagine non valida", description: "Riprova con un'altra foto.", variant: "destructive" });
         setShootPhase("idle");
         return;
