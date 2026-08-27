@@ -108,31 +108,71 @@ export async function normalizeImage(dataUrl: string): Promise<string> {
  * canvas re-encode gives us a format the rest of the pipeline can handle.
  * EXIF is stripped by the canvas — read GPS from the File before calling this.
  */
-export async function fileToJpegDataUrl(file: File): Promise<string> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await loadImage(url);
-    const canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth || img.width;
-    canvas.height = img.naturalHeight || img.height;
-    if (!canvas.width || !canvas.height) throw new Error("Immagine senza dimensioni");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Canvas non supportato");
-    ctx.drawImage(img, 0, 0);
-    const out = canvas.toDataURL("image/jpeg", 0.9);
-    if (!isValidImageDataUrl(out)) throw new Error("Conversione JPEG non riuscita");
-    devLog(`file → jpeg: ${canvas.width}x${canvas.height}, ${(dataUrlByteSize(out) / 1024).toFixed(0)} KB`);
-    return out;
-  } finally {
-    URL.revokeObjectURL(url);
+function canvasIsUniform(ctx: CanvasRenderingContext2D, w: number, h: number): boolean {
+  if (w < 32 || h < 32) return false;
+  const sampleW = Math.min(32, w);
+  const sampleH = Math.min(32, h);
+  const { data } = ctx.getImageData(0, 0, sampleW, sampleH);
+  for (let i = 4; i < data.length; i += 4) {
+    if (data[i] !== data[0] || data[i + 1] !== data[1] || data[i + 2] !== data[2]) return false;
   }
+  return true;
+}
+
+export async function fileToJpegDataUrl(file: File): Promise<string> {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas non supportato");
+
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const w = bitmap.width;
+      const h = bitmap.height;
+      if (w >= 32 && h >= 32) {
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(bitmap, 0, 0);
+      }
+      bitmap.close?.();
+    } catch {
+      /* Safari HEIC sometimes needs the <img> blob path instead. */
+    }
+  }
+
+  if (canvas.width < 32 || canvas.height < 32) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await loadImage(url);
+      if (typeof img.decode === "function") {
+        try { await img.decode(); } catch { /* onload already fired */ }
+      }
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      if (!w || !h) throw new Error("Immagine senza dimensioni");
+      canvas.width = w;
+      canvas.height = h;
+      ctx.drawImage(img, 0, 0);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  if (canvas.width < 32 || canvas.height < 32) throw new Error("Immagine troppo piccola");
+  if (canvasIsUniform(ctx, canvas.width, canvas.height)) throw new Error("Conversione JPEG vuota");
+  const out = canvas.toDataURL("image/jpeg", 0.9);
+  if (!isValidImageDataUrl(out)) throw new Error("Conversione JPEG non riuscita");
+  devLog(`file → jpeg: ${canvas.width}x${canvas.height}, ${(dataUrlByteSize(out) / 1024).toFixed(0)} KB`);
+  return out;
 }
 
 /**
  * Validate that a string is a valid image data URL.
  */
 export function isValidImageDataUrl(value: unknown): value is string {
-  return typeof value === "string" && value.startsWith("data:image/") && value.length > 100;
+  return typeof value === "string"
+    && /^data:image\/(jpeg|jpg|png|webp|gif)(;|,)/i.test(value)
+    && value.length > 100;
 }
 
 /**

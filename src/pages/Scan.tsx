@@ -266,9 +266,15 @@ const Scan = () => {
           // iPhone system camera can return HEIC/HEIF: always decode to real JPEG first.
           rawPhoto = await fileToJpegDataUrl(file);
         } catch {
-          try {
-            rawPhoto = await readFileAsDataUrl(file);
-          } catch {
+          // Dummy/test JPEGs and already-JPEG files may skip canvas. Never keep HEIC.
+          const jpegLike = /^image\/(jpeg|jpg|png|webp|gif)$/i.test(file.type);
+          if (jpegLike) {
+            try {
+              rawPhoto = await readFileAsDataUrl(file);
+            } catch {
+              rawPhoto = "";
+            }
+          } else {
             rawPhoto = "";
           }
         }
@@ -310,13 +316,15 @@ const Scan = () => {
 
   return (
     <div className="fixed inset-0 bg-black">
-      <video
-        ref={videoRef}
-        className="absolute inset-0 h-full w-full object-cover"
-        playsInline
-        muted
-        autoPlay
-      />
+      {cameraState !== "system" && (
+        <video
+          ref={videoRef}
+          className="absolute inset-0 h-full w-full object-cover"
+          playsInline
+          muted
+          autoPlay
+        />
+      )}
 
       {/* Flash overlay */}
       {shootPhase === "flash" && (
@@ -449,20 +457,27 @@ const Scan = () => {
         )}
 
         <div className="flex flex-1 flex-col items-center justify-center">
-          {(cameraState === "active" || cameraState === "system") && shootPhase === "idle" && (
+          {cameraState === "system" && shootPhase === "idle" && (
+            <>
+              <div className="flex h-28 w-28 items-center justify-center rounded-3xl border border-white/20 bg-white/10">
+                <Camera className="h-12 w-12 text-white" />
+              </div>
+              <p className="mt-6 text-sm font-medium text-white/90 drop-shadow">
+                Scatta con la fotocamera iPhone
+              </p>
+              <p className="mt-2 max-w-xs text-center text-xs text-white/55 leading-relaxed">
+                Così le coordinate restano nella foto. Poi vedi lo scatto nel report.
+              </p>
+            </>
+          )}
+
+          {cameraState === "active" && shootPhase === "idle" && (
             <>
               <Viewfinder />
               <p className="mt-6 text-sm font-medium text-white/70 drop-shadow">
-                {cameraState === "system" ? "Scatta con la fotocamera iPhone" : "Inquadra un edificio"}
+                Inquadra un edificio
               </p>
-              {cameraState === "system" && (
-                <p className="mt-2 max-w-xs text-center text-xs text-white/55 leading-relaxed">
-                  La fotocamera di sistema può includere le coordinate nella foto.
-                </p>
-              )}
-
-              {/* Non-invasive shooting tips */}
-              {showTips && cameraState === "active" && (
+              {showTips && (
                 <div className="mt-4 flex flex-wrap justify-center gap-2 px-6 animate-in fade-in duration-500">
                   {["Facciata intera", "Frontalmente", "Civico visibile"].map((tip) => (
                     <span key={tip} className="rounded-full bg-white/10 backdrop-blur-sm px-3 py-1.5 text-xs text-white/60">
