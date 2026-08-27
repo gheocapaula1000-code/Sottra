@@ -285,6 +285,7 @@ describe("iPhone EXIF / Settings product invariants", () => {
   it("Scan uses system camera + EXIF fallback and does not lecture Impostazioni", () => {
     const scan = src("src/pages/Scan.tsx");
     expect(scan).toContain("prefersSystemCameraCapture");
+    expect(scan).toContain("fileToJpegDataUrl");
     expect(scan).toContain("extractExifGpsFromFile");
     expect(scan).toContain("resolveScanCoords");
     expect(scan).toContain("getUserMedia");
