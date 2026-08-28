@@ -84,15 +84,12 @@ export function CivicoSignalsCard({
         {address && (
           <p className="text-sm font-semibold text-foreground">{address}</p>
         )}
-        <p className="text-sm font-medium text-foreground leading-snug">
-          In venti secondi, su questo palazzo: c'è un appartamento in vendita,
-          stanno vendendo lo stabile, è una successione.
-        </p>
         <p className="text-[10px] text-muted-foreground leading-relaxed">
           {esempio
-            ? "Letto da questa facciata. Via, civico, vendita e eredità escono dalla scansione vera, non li inventiamo."
-            : "Vendita, intero stabile e eredità solo se il segnale è su questo civico. Gli annunci di zona non sono questo palazzo."}
+            ? "Letto da questa facciata. Via e civico escono dalla scansione vera, non li inventiamo."
+            : "Solo ciò che la foto e la posizione hanno dato su questo civico. Gli annunci di zona non sono questo palazzo."}
         </p>
+
       </div>
     </div>
   );
