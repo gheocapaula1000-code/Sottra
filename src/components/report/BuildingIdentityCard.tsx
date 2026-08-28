@@ -254,7 +254,7 @@ export function BuildingIdentityCard({
         {!esempio && (() => {
           const fields: Array<{ key: string; label: string; value: string; icon?: ReactNode }> = [];
           if (photoCivico) fields.push({ key: "photo-civico", label: "Civico letto sulla facciata", value: photoCivico, icon: <Hash className="h-3 w-3" /> });
-          if (photoStreet) fields.push({ key: "photo-street", label: "Via letta sulla targa", value: photoStreet, icon: <SignpostBig className="h-3 w-3" /> });
+          if (photoStreet) fields.push({ key: "photo-street", label: "Via letta sulla targa", value: photoStreet, icon: <Signpost className="h-3 w-3" /> });
           if (gpsCivico) fields.push({ key: "gps-civico", label: "Civico da GPS", value: gpsCivico, icon: <MapPin className="h-3 w-3" /> });
           if (gpsStreet) fields.push({ key: "gps-street", label: "Via da GPS", value: gpsStreet, icon: <MapPin className="h-3 w-3" /> });
           if (capComune) fields.push({ key: "cap", label: "CAP / Comune", value: capComune });
