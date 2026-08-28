@@ -190,17 +190,28 @@ export async function compositeFacadeStamps(
     for (const stamp of stamps) {
       try {
         const img = await loadImage(stamp.src);
-        ctx.drawImage(
-          img,
-          stamp.left * scale,
-          stamp.top * scale,
-          stamp.width * scale,
-          stamp.height * scale,
-        );
+        const nw = img.naturalWidth || img.width;
+        const nh = img.naturalHeight || img.height;
+        if (nw < 1 || nh < 1) continue;
+        const dx = stamp.left * scale;
+        const dy = stamp.top * scale;
+        const outW = stamp.width * scale;
+        const outH = stamp.height * scale;
+        // Same cover-crop math as FacadeCanvas (object-fit: cover, centered).
+        const coverScale = Math.max(outW / nw, outH / nh);
+        const dw = nw * coverScale;
+        const dh = nh * coverScale;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(dx, dy, outW, outH);
+        ctx.clip();
+        ctx.drawImage(img, dx + (outW - dw) / 2, dy + (outH - dh) / 2, dw, dh);
+        ctx.restore();
       } catch {
         /* fail-closed: keep whatever the capture produced */
       }
     }
+
     const out = await new Promise<Blob | null>((resolve) => {
       canvas.toBlob(resolve, "image/jpeg", 0.92);
     });
