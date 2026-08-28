@@ -7,16 +7,17 @@
  */
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { Building2, CheckCircle2, Layers, MapPin } from "lucide-react";
+import { Building2, CheckCircle2, Hash, Layers, MapPin, Signpost } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isValidImageDataUrl } from "@/lib/imageUtils";
 import type { IdentifyResult, PhotoAnalysis, StreetEvidence } from "@/types";
 
 export function hasDisplayablePhoto(photo: unknown): photo is string {
   if (typeof photo !== "string") return false;
-  const t = photo.trim();
+  const t: string = photo.trim();
   if (t.length === 0) return false;
-  if (isValidImageDataUrl(t)) return true;
+  const isDataUrl: boolean = isValidImageDataUrl(t);
+  if (isDataUrl) return true;
   // Imported assets / http(s) URLs used by the public demo
   if (t.startsWith("data:")) return false;
   return t.startsWith("/") || t.startsWith("http://") || t.startsWith("https://") || t.startsWith("blob:");
@@ -78,6 +79,7 @@ function FacadeCanvas({ src }: { src: string }) {
     <canvas
       ref={ref}
       data-testid="building-identity-photo"
+      data-facade-src={src}
       role="img"
       aria-label="Edificio acquisito"
       className="w-full aspect-[16/10] block bg-muted [dynamic-range-limit:standard]"
@@ -133,6 +135,26 @@ export function BuildingIdentityCard({
   const address = identify?.address?.trim() || null;
   const notes = (visualNotes ?? []).map((s) => s.trim()).filter(Boolean);
 
+  // Photo-read facts (never official)
+  const photoCivico = analysis?.visibleHouseNumber?.trim() || null;
+  const photoStreet = analysis?.visibleStreetName?.trim() || null;
+  // GPS-resolved facts (never catasto)
+  const geo = identify?.geoResolution;
+  const gpsCivico = geo?.resolvedHouseNumber?.trim() || null;
+  const gpsStreet = geo?.resolvedStreet?.trim() || null;
+  const cap = geo?.resolvedPostalCode?.trim() || null;
+  const comune = geo?.resolvedComune?.trim() || null;
+  const provincia = geo?.resolvedProvincia?.trim() || null;
+  const capComune = [cap, comune ? (provincia ? `${comune} (${provincia})` : comune) : null]
+    .filter(Boolean).join(" · ") || null;
+  const civicoConfirmed = street?.houseNumberConfirmed === true;
+  const streetConfirmed = street?.streetConfirmed === true;
+  const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, "");
+  // Fail-closed: never pick a winner between photo and GPS civico
+  const civicoMismatch =
+    !civicoConfirmed && !!photoCivico && !!gpsCivico && norm(photoCivico) !== norm(gpsCivico);
+
+
   return (
     <div
       data-testid="building-identity"
@@ -187,7 +209,25 @@ export function BuildingIdentityCard({
         </p>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {!esempio && !lowConfidence && address && (
+          {!esempio && civicoConfirmed && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+              <CheckCircle2 className="h-3 w-3" />Civico confermato: foto = GPS
+            </span>
+          )}
+          {!esempio && !civicoConfirmed && streetConfirmed && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+              <CheckCircle2 className="h-3 w-3" />Via confermata: targa = GPS
+            </span>
+          )}
+          {!esempio && civicoMismatch && (
+            <span
+              data-testid="civico-mismatch"
+              className="inline-flex items-center rounded-md bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 text-[10px] font-medium text-amber-400"
+            >
+              Civico foto e civico GPS non coincidono
+            </span>
+          )}
+          {!esempio && !lowConfidence && !civicoConfirmed && !civicoMismatch && address && (
             <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
               <CheckCircle2 className="h-3 w-3" />Civico distinto dal vicino
             </span>
@@ -212,43 +252,32 @@ export function BuildingIdentityCard({
           </div>
         )}
 
-        <p className="text-sm font-medium text-foreground leading-snug">
-          In venti secondi, su questo palazzo: c'è un appartamento in vendita,
-          stanno vendendo lo stabile, è una successione.
-        </p>
+        {!esempio && (() => {
+          const fields: Array<{ key: string; label: string; value: string; icon?: ReactNode }> = [];
+          if (photoCivico) fields.push({ key: "photo-civico", label: "Civico letto sulla facciata", value: photoCivico, icon: <Hash className="h-3 w-3" /> });
+          if (photoStreet) fields.push({ key: "photo-street", label: "Via letta sulla targa", value: photoStreet, icon: <Signpost className="h-3 w-3" /> });
+          if (gpsCivico) fields.push({ key: "gps-civico", label: "Civico da GPS", value: gpsCivico, icon: <MapPin className="h-3 w-3" /> });
+          if (gpsStreet) fields.push({ key: "gps-street", label: "Via da GPS", value: gpsStreet, icon: <MapPin className="h-3 w-3" /> });
+          if (capComune) fields.push({ key: "cap", label: "CAP / Comune", value: capComune });
+          if (buildingType) fields.push({ key: "type", label: "Tipo (da foto)", value: buildingType, icon: <Building2 className="h-3 w-3" /> });
+          if (floors != null) fields.push({ key: "floors", label: "Piani visibili", value: String(floors), icon: <Layers className="h-3 w-3" /> });
+          if (facade) fields.push({ key: "facade", label: "Coerenza facciata", value: facade });
+          if (readability) fields.push({ key: "read", label: "Leggibilità foto", value: readability });
+          if (fields.length === 0) return null;
+          return (
+            <div data-testid="building-identity-facts" className="grid grid-cols-2 gap-2">
+              {fields.map((f) => (
+                <div key={f.key} className="rounded-lg bg-muted/40 border border-border/30 px-3 py-2 min-w-0">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    {f.icon}{f.label}
+                  </p>
+                  <p className="text-xs font-semibold text-foreground mt-0.5 break-anywhere">{f.value}</p>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
-        {!esempio && (buildingType || floors != null || facade || readability) && (
-          <div className="grid grid-cols-2 gap-2">
-            {buildingType && (
-              <div className="rounded-lg bg-muted/40 border border-border/30 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                  <Building2 className="h-3 w-3" />Tipo (da foto)
-                </p>
-                <p className="text-xs font-semibold text-foreground mt-0.5">{buildingType}</p>
-              </div>
-            )}
-            {floors != null && (
-              <div className="rounded-lg bg-muted/40 border border-border/30 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                  <Layers className="h-3 w-3" />Piani visibili
-                </p>
-                <p className="text-xs font-semibold text-foreground mt-0.5">{floors}</p>
-              </div>
-            )}
-            {facade && (
-              <div className="rounded-lg bg-muted/40 border border-border/30 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Coerenza facciata</p>
-                <p className="text-xs font-semibold text-foreground mt-0.5">{facade}</p>
-              </div>
-            )}
-            {readability && (
-              <div className="rounded-lg bg-muted/40 border border-border/30 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Leggibilità foto</p>
-                <p className="text-xs font-semibold text-foreground mt-0.5">{readability}</p>
-              </div>
-            )}
-          </div>
-        )}
 
         <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
           {esempio

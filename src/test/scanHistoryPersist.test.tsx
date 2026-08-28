@@ -233,7 +233,7 @@ describe("History page after a finished D8 result", () => {
     const { rerender } = render(<Result />, { wrapper: providers() });
 
     await waitFor(() => {
-      expect(screen.getByAltText("Edificio acquisito")).toBeInTheDocument();
+      expect(screen.getAllByRole("img", { name: "Edificio acquisito" })[0]).toBeInTheDocument();
     });
     await waitFor(async () => {
       const rows = await loadHistoryRows();

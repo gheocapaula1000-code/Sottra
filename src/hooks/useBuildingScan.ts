@@ -388,7 +388,8 @@ export function useBuildingScan() {
         set("photoWow", { status: "loading", data: null, message: null });
       }
       const PHOTO_WOW_TIMEOUT_MS = 30000;
-      const photoWowTimeout = new Promise<{ error: true; message: string; data: null }>((res) =>
+      type PhotoWowRes = Awaited<ReturnType<typeof getPhotoWow>>;
+      const photoWowTimeout = new Promise<PhotoWowRes>((res) =>
         setTimeout(() => res({ error: true, message: "Timeout anteprima visiva", data: null }), PHOTO_WOW_TIMEOUT_MS),
       );
       try {

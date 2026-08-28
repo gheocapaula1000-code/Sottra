@@ -200,8 +200,8 @@ describe("Result restores persisted photo after missing router state", () => {
 
     renderResult(undefined);
 
-    const img = await screen.findByAltText("Edificio acquisito");
-    expect(img).toHaveAttribute("src", FIXTURE_A);
+    const img = await screen.findByTestId("building-identity-photo");
+    expect(img).toHaveAttribute("data-facade-src", FIXTURE_A);
     expect(screen.queryByText("Nessuna immagine disponibile.")).not.toBeInTheDocument();
 
     await waitFor(() => {
@@ -215,8 +215,8 @@ describe("Result restores persisted photo after missing router state", () => {
 
     renderResult(undefined);
 
-    const img = await screen.findByAltText("Edificio acquisito");
-    expect(img).toHaveAttribute("src", FIXTURE_A);
+    const img = await screen.findByTestId("building-identity-photo");
+    expect(img).toHaveAttribute("data-facade-src", FIXTURE_A);
 
     await waitFor(() => {
       expect(scan).toHaveBeenCalledWith(FIXTURE_A, 45.4066, 11.9172, undefined);
@@ -230,9 +230,9 @@ describe("Result restores persisted photo after missing router state", () => {
 
     renderResult(undefined);
 
-    const img = await screen.findByAltText("Edificio acquisito");
-    expect(img).toHaveAttribute("src", FIXTURE_B);
-    expect(img).not.toHaveAttribute("src", FIXTURE_A);
+    const img = await screen.findByTestId("building-identity-photo");
+    expect(img).toHaveAttribute("data-facade-src", FIXTURE_B);
+    expect(img).not.toHaveAttribute("data-facade-src", FIXTURE_A);
 
     await waitFor(() => {
       expect(scan).toHaveBeenCalledWith(FIXTURE_B, 45.4066, 11.9172, undefined);
@@ -255,7 +255,7 @@ describe("Result restores persisted photo after missing router state", () => {
       expect(scan).toHaveBeenCalledWith(FIXTURE_A, 0, 0, "Via San Francesco 2, Padova");
     });
     expect(scan).not.toHaveBeenCalledWith(expect.anything(), 45.407, 11.876, expect.anything());
-    expect(await screen.findByAltText("Edificio acquisito")).toHaveAttribute("src", FIXTURE_A);
+    expect(await screen.findByTestId("building-identity-photo")).toHaveAttribute("data-facade-src", FIXTURE_A);
   });
 
   it("0,0 + typed address + snapshot restores without inventing coords or rescanning", async () => {
@@ -274,14 +274,14 @@ describe("Result restores persisted photo after missing router state", () => {
     });
     expect(scan).not.toHaveBeenCalled();
     expect(scan).not.toHaveBeenCalledWith(expect.anything(), 45.407, 11.876, expect.anything());
-    expect(await screen.findByAltText("Edificio acquisito")).toHaveAttribute("src", FIXTURE_A);
+    expect(await screen.findByTestId("building-identity-photo")).toHaveAttribute("data-facade-src", FIXTURE_A);
   });
 
   it("does not invent a photo when nothing was persisted", async () => {
     renderResult(undefined);
 
     expect(await screen.findByText("Nessuna immagine disponibile.")).toBeInTheDocument();
-    expect(screen.queryByAltText("Edificio acquisito")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("building-identity-photo")).not.toBeInTheDocument();
     expect(scan).not.toHaveBeenCalled();
     expect(restoreResult).not.toHaveBeenCalled();
   });
@@ -291,8 +291,8 @@ describe("Result restores persisted photo after missing router state", () => {
 
     renderResult({ photo: FIXTURE_B, lat: 45.41, lng: 11.87 });
 
-    const img = await screen.findByAltText("Edificio acquisito");
-    expect(img).toHaveAttribute("src", FIXTURE_B);
+    const img = await screen.findByTestId("building-identity-photo");
+    expect(img).toHaveAttribute("data-facade-src", FIXTURE_B);
 
     await waitFor(() => {
       expect(scan).toHaveBeenCalledWith(FIXTURE_B, 45.41, 11.87, undefined);

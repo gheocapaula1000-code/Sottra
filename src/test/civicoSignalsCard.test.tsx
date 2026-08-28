@@ -16,9 +16,9 @@ describe("CivicoSignalsCard is photo-first and fail-closed", () => {
     expect(screen.getByText("Palazzina")).toBeInTheDocument();
     expect(screen.getByText("Intonaco ocra")).toBeInTheDocument();
     expect(screen.getByText("Persiane verdi")).toBeInTheDocument();
-    expect(document.body.textContent).toMatch(/in vendita/i);
-    expect(document.body.textContent).toMatch(/stabile/i);
-    expect(document.body.textContent).toMatch(/successione/i);
+    expect(document.body.textContent).not.toMatch(/in vendita/i);
+    expect(document.body.textContent).not.toMatch(/intero stabile/i);
+    expect(document.body.textContent).not.toMatch(/successione/i);
     expect(document.body.textContent).not.toMatch(/Via San Francesco/i);
     expect(document.body.textContent).not.toMatch(/3 appartamenti/i);
     expect(document.body.textContent).not.toMatch(/Non disponibile per questo civico/);
