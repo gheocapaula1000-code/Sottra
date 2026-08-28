@@ -20,11 +20,22 @@ export interface PhotoAnalysis {
   buildingType?: string;
   visibleFloors?: number;
   photoReadability?: "clear" | "partial" | "poor";
+  /** Civic number physically read on the facade plate (never official) */
+  visibleHouseNumber?: string;
+  /** Street name read on the plate (never official) */
+  visibleStreetName?: string;
+  /** 0..1 confidence of the facade read */
+  facadeConfidence?: number;
 }
 
 /** Street evidence sub-fields from enriched identify */
 export interface StreetEvidence {
   facadeConsistencyLevel?: "strong" | "good" | "partial" | "weak" | "none";
+  /** true only when the photo-read civic matches the GPS-resolved civic */
+  houseNumberConfirmed?: boolean;
+  /** true only when the photo-read street matches the GPS-resolved street */
+  streetConfirmed?: boolean;
+  identityVerificationLevel?: "strong" | "good" | "partial" | "weak" | "none";
   photoAnalysis?: PhotoAnalysis;
 }
 
@@ -35,7 +46,11 @@ export interface IdentifyGeoResolution {
   resolvedComune?: string;
   resolvedProvincia?: string;
   resolvedAddress?: string;
+  resolvedStreet?: string;
+  resolvedHouseNumber?: string;
+  resolvedPostalCode?: string;
 }
+
 
 /** Dati identificazione edificio */
 export interface IdentifyResult {
