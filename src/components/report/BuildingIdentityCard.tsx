@@ -16,7 +16,8 @@ export function hasDisplayablePhoto(photo: unknown): photo is string {
   if (typeof photo !== "string") return false;
   const t: string = photo.trim();
   if (t.length === 0) return false;
-  if (isValidImageDataUrl(t)) return true;
+  const isDataUrl: boolean = isValidImageDataUrl(t);
+  if (isDataUrl) return true;
   // Imported assets / http(s) URLs used by the public demo
   if (t.startsWith("data:")) return false;
   return t.startsWith("/") || t.startsWith("http://") || t.startsWith("https://") || t.startsWith("blob:");
