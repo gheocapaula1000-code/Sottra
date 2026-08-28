@@ -225,7 +225,7 @@ describe("capture stamps the live facade canvas (no blank clone in WhatsApp)", (
       expect(out).not.toBe(blob);
       // Second drawImage = facade stamp. Cover scale = max(366/400, 229/900) = 0.915.
       const stamp = drawCalls[1];
-      const [, sx, sy, sw, sh] = stamp;
+      const [sx, sy, sw, sh] = stamp;
       expect(sw).toBeCloseTo(366, 1); // fills box width
       expect(sh).toBeCloseTo(900 * 0.915, 1); // scaled height overflows, cropped via clip
       expect(sx).toBeCloseTo(12, 1); // horizontally centered (dw === outW)
