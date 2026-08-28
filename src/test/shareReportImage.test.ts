@@ -140,8 +140,9 @@ describe("capture stamps the live facade canvas (no blank clone in WhatsApp)", (
     canvas.setAttribute("data-testid", "building-identity-photo");
     canvas.width = 8;
     canvas.height = 8;
-    const ctx = canvas.getContext("2d");
-    ctx?.fillRect(0, 0, 8, 8);
+    canvas.getContext = vi.fn(() => ({
+      getImageData: () => ({ data: new Uint8ClampedArray(8 * 8 * 4) }),
+    })) as typeof canvas.getContext;
     canvas.toDataURL = () => `data:image/jpeg;base64,${"0".repeat(120)}`;
     canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 240 }) as DOMRect;
     root.appendChild(canvas);
