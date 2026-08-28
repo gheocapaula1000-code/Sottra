@@ -80,6 +80,7 @@ describe("share wiring — not KeyDraft JSON", () => {
     const helper = readFileSync("src/lib/shareReportImage.ts", "utf-8");
     expect(result).toContain("buildReportShareFile");
     expect(result).toContain("captureReportElement");
+    expect(result).toContain("captureReportElement(reportRoot, { facadeSrc: state.photo })");
     expect(result).toContain("result-report-root");
     expect(result).not.toContain("sottraExportBridge");
     expect(helper).toContain("toJpeg");
@@ -110,6 +111,47 @@ describe("capture stamps the live facade canvas (no blank clone in WhatsApp)", (
     expect(stamps[0].src).toContain("data:image/jpeg;base64,");
     expect(stamps[0].left).toBe(12);
     expect(stamps[0].width).toBe(366);
+  });
+
+  it("prefers the explicit real scan photo over data-facade-src and canvas pixels", async () => {
+    const { collectFacadeStamps } = await import("@/lib/shareReportImage");
+    const root = document.createElement("div");
+    root.getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 900 }) as DOMRect;
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("data-testid", "building-identity-photo");
+    canvas.setAttribute("data-facade-src", "https://example.com/embedded.jpg");
+    canvas.width = 10;
+    canvas.height = 10;
+    canvas.toDataURL = () => `data:image/jpeg;base64,${"B".repeat(120)}`;
+    canvas.getBoundingClientRect = () => ({ left: 8, top: 20, width: 374, height: 230 }) as DOMRect;
+    root.appendChild(canvas);
+
+    const facadeSrc = `data:image/jpeg;base64,${"R".repeat(120)}`;
+    const stamps = collectFacadeStamps(root, { facadeSrc });
+    expect(stamps).toHaveLength(1);
+    expect(stamps[0].src).toBe(facadeSrc);
+  });
+
+  it("does not let a black canvas win over the real photo", async () => {
+    const { collectFacadeStamps } = await import("@/lib/shareReportImage");
+    const root = document.createElement("div");
+    root.getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 900 }) as DOMRect;
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("data-testid", "building-identity-photo");
+    canvas.width = 8;
+    canvas.height = 8;
+    const ctx = canvas.getContext("2d");
+    ctx?.fillRect(0, 0, 8, 8);
+    canvas.toDataURL = () => `data:image/jpeg;base64,${"0".repeat(120)}`;
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 240 }) as DOMRect;
+    root.appendChild(canvas);
+
+    const facadeSrc = "blob:https://sottra.app/real-scan";
+    const stamps = collectFacadeStamps(root, { facadeSrc });
+    expect(stamps[0]?.src).toBe(facadeSrc);
+
+    const withoutPhoto = collectFacadeStamps(root);
+    expect(withoutPhoto).toHaveLength(0);
   });
 
   it("fails closed when there is no facade: no invented pixels", async () => {

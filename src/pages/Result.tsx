@@ -2195,7 +2195,7 @@ const Result = () => {
       const file = await buildReportShareFile({
         root,
         title,
-        capture: captureReportElement,
+        capture: (reportRoot) => captureReportElement(reportRoot, { facadeSrc: state.photo }),
       });
       const outcome = await shareOrDownloadReportFile(file, title);
       if (outcome === "downloaded") {

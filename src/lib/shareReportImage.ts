@@ -73,7 +73,7 @@ async function flattenShareJpeg(blob: Blob): Promise<Blob> {
 export type ReportCaptureFn = (root: HTMLElement) => Promise<Blob>;
 
 export interface FacadeStamp {
-  /** JPEG/PNG data URL of the live canvas pixels (or data-facade-src fallback). */
+  /** Real scan photo, data-facade-src, or validated live-canvas fallback. */
   src: string;
   /** CSS-px box relative to the report root. */
   left: number;
@@ -82,31 +82,66 @@ export interface FacadeStamp {
   height: number;
 }
 
+export interface ReportCaptureOptions {
+  facadeSrc?: string | null;
+}
+
+function isAllowedFacadeSrc(value?: string | null): value is string {
+  if (typeof value !== "string") return false;
+  const src = value.trim();
+  return /^data:image\//i.test(src) || /^blob:/i.test(src) || /^https?:\/\//i.test(src);
+}
+
+function canvasHasVisiblePixels(canvas: HTMLCanvasElement): boolean {
+  if (canvas.width < 1 || canvas.height < 1) return false;
+  try {
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return false;
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const pixelCount = pixels.length / 4;
+    const stride = Math.max(1, Math.floor(pixelCount / 1024));
+    let sampled = 0;
+    let nearlyBlackOrTransparent = 0;
+    for (let pixel = 0; pixel < pixelCount; pixel += stride) {
+      const i = pixel * 4;
+      sampled += 1;
+      if (pixels[i + 3] < 16 || (pixels[i] < 16 && pixels[i + 1] < 16 && pixels[i + 2] < 16)) {
+        nearlyBlackOrTransparent += 1;
+      }
+    }
+    return sampled > 0 && nearlyBlackOrTransparent / sampled < 0.95;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * html-to-image clones the DOM and a cloned <canvas> can come back blank
  * (tainted / not re-rasterized), which is why WhatsApp got a black house.
  * Read the pixels from the LIVE canvas before capture. Fail-closed: no pixels,
  * no stamp — we never invent a facade.
  */
-export function collectFacadeStamps(root: HTMLElement): FacadeStamp[] {
+export function collectFacadeStamps(
+  root: HTMLElement,
+  options: ReportCaptureOptions = {},
+): FacadeStamp[] {
   const nodes = Array.from(
     root.querySelectorAll<HTMLCanvasElement>('canvas[data-testid="building-identity-photo"]'),
   );
   const rootRect = root.getBoundingClientRect();
   const stamps: FacadeStamp[] = [];
   for (const canvas of nodes) {
-    let src = "";
-    try {
-      if (canvas.width > 0 && canvas.height > 0 && typeof canvas.toDataURL === "function") {
+    // The original scan is authoritative. The canvas supplies only its CSS box.
+    let src = isAllowedFacadeSrc(options.facadeSrc) ? options.facadeSrc.trim() : "";
+    const embeddedSrc = canvas.getAttribute("data-facade-src");
+    if (!src && isAllowedFacadeSrc(embeddedSrc)) src = embeddedSrc.trim();
+    if (!src && canvasHasVisiblePixels(canvas) && typeof canvas.toDataURL === "function") {
+      try {
         const url = canvas.toDataURL("image/jpeg", 0.92);
-        if (typeof url === "string" && url.startsWith("data:image/") && url.length > 64) src = url;
+        if (isAllowedFacadeSrc(url) && url.length > 64) src = url;
+      } catch {
+        src = "";
       }
-    } catch {
-      src = "";
-    }
-    if (!src) {
-      const fallback = canvas.getAttribute("data-facade-src") ?? "";
-      if (fallback.startsWith("data:image/") || /^https?:/.test(fallback)) src = fallback;
     }
     if (!src) continue; // fail-closed
     const rect = canvas.getBoundingClientRect();
@@ -178,11 +213,14 @@ export async function compositeFacadeStamps(
 }
 
 /** Rasterize the live report root. Does not invent fields — pixels come from the DOM. */
-export async function captureReportElement(root: HTMLElement): Promise<Blob> {
+export async function captureReportElement(
+  root: HTMLElement,
+  options: ReportCaptureOptions = {},
+): Promise<Blob> {
   const pixelRatio = typeof window !== "undefined"
     ? Math.min(2, window.devicePixelRatio || 1)
     : 1;
-  const stamps = collectFacadeStamps(root);
+  const stamps = collectFacadeStamps(root, options);
   const stampBySrc = new Map(stamps.map((s) => [s.src, s]));
   const dataUrl = await toJpeg(root, {
     quality: 0.92,
