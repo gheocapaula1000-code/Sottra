@@ -213,6 +213,7 @@ describe("capture stamps the live facade canvas (no blank clone in WhatsApp)", (
       }
     }
     vi.stubGlobal("Image", FakeImage);
+    vi.stubGlobal("URL", { createObjectURL: () => "blob:capture", revokeObjectURL: () => {} });
 
     try {
       const blob = new Blob(["capture"], { type: "image/jpeg" });
