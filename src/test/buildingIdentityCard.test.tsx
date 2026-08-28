@@ -57,6 +57,56 @@ describe("BuildingIdentityCard", () => {
     expect(screen.getByText(/identici per il civico accanto/i)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/Dato ufficiale/i);
     expect(document.body.textContent).toMatch(/non un dato catastale/i);
+    expect(document.body.textContent).not.toMatch(/successione|in vendita|intero stabile/i);
+  });
+
+  it("shows photo-read and GPS civic facts only when Core sends them", () => {
+    render(
+      <BuildingIdentityCard
+        photo={PHOTO}
+        identify={{
+          ...IDENTIFY,
+          streetEvidence: {
+            ...IDENTIFY.streetEvidence,
+            houseNumberConfirmed: true,
+            photoAnalysis: {
+              ...IDENTIFY.streetEvidence!.photoAnalysis,
+              visibleHouseNumber: "18",
+              visibleStreetName: "Via Forcellini",
+            },
+          },
+          geoResolution: {
+            resolvedHouseNumber: "18",
+            resolvedStreet: "Via Forcellini",
+            resolvedPostalCode: "35128",
+            resolvedComune: "Padova",
+            resolvedProvincia: "PD",
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText("Civico letto sulla facciata")).toBeInTheDocument();
+    expect(screen.getByText("Via letta sulla targa")).toBeInTheDocument();
+    expect(screen.getByText("35128 · Padova (PD)")).toBeInTheDocument();
+    expect(screen.getByText(/Civico confermato: foto = GPS/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("civico-mismatch")).not.toBeInTheDocument();
+  });
+
+  it("fails closed on a photo/GPS civic conflict — no winner picked", () => {
+    render(
+      <BuildingIdentityCard
+        photo={PHOTO}
+        identify={{
+          ...IDENTIFY,
+          streetEvidence: {
+            photoAnalysis: { visibleHouseNumber: "20" },
+          },
+          geoResolution: { resolvedHouseNumber: "18" },
+        }}
+      />,
+    );
+    expect(screen.getByTestId("civico-mismatch")).toBeInTheDocument();
+    expect(screen.queryByText(/Civico confermato/i)).not.toBeInTheDocument();
   });
 });
 
