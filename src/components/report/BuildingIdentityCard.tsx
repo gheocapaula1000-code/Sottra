@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { Building2, CheckCircle2, Layers, MapPin } from "lucide-react";
+import { Building2, CheckCircle2, Hash, Layers, MapPin, Signpost } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isValidImageDataUrl } from "@/lib/imageUtils";
 import type { IdentifyResult, PhotoAnalysis, StreetEvidence } from "@/types";
