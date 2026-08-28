@@ -89,3 +89,54 @@ describe("share wiring — not KeyDraft JSON", () => {
     expect(helper).not.toContain("zonaOmi: \"D8\"");
   });
 });
+
+describe("capture stamps the live facade canvas (no blank clone in WhatsApp)", () => {
+  it("collects pixels from the live canvas, with data-facade-src fallback", async () => {
+    const { collectFacadeStamps } = await import("@/lib/shareReportImage");
+    const root = document.createElement("div");
+    root.getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 2000 }) as DOMRect;
+
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("data-testid", "building-identity-photo");
+    canvas.setAttribute("data-facade-src", `data:image/jpeg;base64,${"F".repeat(120)}`);
+    canvas.width = 360;
+    canvas.height = 225;
+    canvas.toDataURL = () => { throw new Error("tainted"); };
+    canvas.getBoundingClientRect = () => ({ left: 12, top: 40, width: 366, height: 229 }) as DOMRect;
+    root.appendChild(canvas);
+
+    const stamps = collectFacadeStamps(root);
+    expect(stamps).toHaveLength(1);
+    expect(stamps[0].src).toContain("data:image/jpeg;base64,");
+    expect(stamps[0].left).toBe(12);
+    expect(stamps[0].width).toBe(366);
+  });
+
+  it("fails closed when there is no facade: no invented pixels", async () => {
+    const { collectFacadeStamps } = await import("@/lib/shareReportImage");
+    const root = document.createElement("div");
+    root.getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 900 }) as DOMRect;
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("data-testid", "building-identity-photo");
+    canvas.width = 0;
+    canvas.height = 0;
+    root.appendChild(canvas);
+    expect(collectFacadeStamps(root)).toHaveLength(0);
+  });
+
+  it("compositeFacadeStamps returns the original blob when there is nothing to stamp", async () => {
+    const { compositeFacadeStamps } = await import("@/lib/shareReportImage");
+    const blob = new Blob(["pixels"], { type: "image/jpeg" });
+    expect(await compositeFacadeStamps(blob, [], 390)).toBe(blob);
+  });
+
+  it("capture keeps toJpeg + flattenShareJpeg and swaps the cloned canvas via onclone", () => {
+    const helper = readFileSync("src/lib/shareReportImage.ts", "utf-8");
+    expect(helper).toContain("toJpeg");
+    expect(helper).toContain("flattenShareJpeg");
+    expect(helper).toContain("onclone");
+    expect(helper).toContain('canvas[data-testid="building-identity-photo"]');
+    expect(helper).toContain("collectFacadeStamps");
+    expect(helper).toContain("compositeFacadeStamps");
+  });
+});
