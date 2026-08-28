@@ -14,7 +14,7 @@ import type { IdentifyResult, PhotoAnalysis, StreetEvidence } from "@/types";
 
 export function hasDisplayablePhoto(photo: unknown): photo is string {
   if (typeof photo !== "string") return false;
-  const t = photo.trim();
+  const t: string = photo.trim();
   if (t.length === 0) return false;
   if (isValidImageDataUrl(t)) return true;
   // Imported assets / http(s) URLs used by the public demo
