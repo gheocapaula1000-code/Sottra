@@ -173,6 +173,72 @@ describe("capture stamps the live facade canvas (no blank clone in WhatsApp)", (
     expect(await compositeFacadeStamps(blob, [], 390)).toBe(blob);
   });
 
+  it("cover-crops a tall source into a wide box like FacadeCanvas (no naive stretch)", async () => {
+    const { compositeFacadeStamps } = await import("@/lib/shareReportImage");
+
+    const drawCalls: number[][] = [];
+    const ctx = {
+      drawImage: vi.fn((img: unknown, ...args: number[]) => drawCalls.push(args)),
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      rect: vi.fn(),
+      clip: vi.fn(),
+    };
+    const outCanvas = {
+      width: 0,
+      height: 0,
+      getContext: () => ctx,
+      toBlob: (cb: (b: Blob | null) => void) => cb(new Blob(["stamped"], { type: "image/jpeg" })),
+    };
+    const realCreate = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag: string) =>
+      tag === "canvas" ? (outCanvas as unknown as HTMLCanvasElement) : realCreate(tag as "div"),
+    );
+
+    // Tall photo (400x900) composited into a wide 366x229 stamp box.
+    const images = [
+      { naturalWidth: 390, naturalHeight: 900, width: 390, height: 900 }, // base capture
+      { naturalWidth: 400, naturalHeight: 900, width: 400, height: 900 }, // facade photo
+    ];
+    class FakeImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      crossOrigin = "";
+      naturalWidth = 0; naturalHeight = 0; width = 0; height = 0;
+      set src(_v: string) {
+        const next = images.shift();
+        if (next) Object.assign(this, next);
+        queueMicrotask(() => this.onload?.());
+      }
+    }
+    vi.stubGlobal("Image", FakeImage);
+
+    try {
+      const blob = new Blob(["capture"], { type: "image/jpeg" });
+      const out = await compositeFacadeStamps(
+        blob,
+        [{ src: "blob:real-scan", left: 12, top: 40, width: 366, height: 229 }],
+        390,
+      );
+      expect(out).not.toBe(blob);
+      // Second drawImage = facade stamp. Cover scale = max(366/400, 229/900) = 0.915.
+      const stamp = drawCalls[1];
+      const [, sx, sy, sw, sh] = stamp;
+      expect(sw).toBeCloseTo(366, 1); // fills box width
+      expect(sh).toBeCloseTo(900 * 0.915, 1); // scaled height overflows, cropped via clip
+      expect(sx).toBeCloseTo(12, 1); // horizontally centered (dw === outW)
+      expect(sy).toBeCloseTo(40 + (229 - 900 * 0.915) / 2, 1); // vertically centered crop
+      expect(ctx.clip).toHaveBeenCalled();
+      // Not a naive full-frame stretch into the box.
+      expect(stamp).not.toEqual([0, 12, 40, 366, 229]);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    }
+  });
+
+
   it("capture keeps toJpeg + flattenShareJpeg and swaps the cloned canvas via onclone", () => {
     const helper = readFileSync("src/lib/shareReportImage.ts", "utf-8");
     expect(helper).toContain("toJpeg");
