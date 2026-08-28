@@ -72,11 +72,118 @@ async function flattenShareJpeg(blob: Blob): Promise<Blob> {
 
 export type ReportCaptureFn = (root: HTMLElement) => Promise<Blob>;
 
+export interface FacadeStamp {
+  /** JPEG/PNG data URL of the live canvas pixels (or data-facade-src fallback). */
+  src: string;
+  /** CSS-px box relative to the report root. */
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * html-to-image clones the DOM and a cloned <canvas> can come back blank
+ * (tainted / not re-rasterized), which is why WhatsApp got a black house.
+ * Read the pixels from the LIVE canvas before capture. Fail-closed: no pixels,
+ * no stamp — we never invent a facade.
+ */
+export function collectFacadeStamps(root: HTMLElement): FacadeStamp[] {
+  const nodes = Array.from(
+    root.querySelectorAll<HTMLCanvasElement>('canvas[data-testid="building-identity-photo"]'),
+  );
+  const rootRect = root.getBoundingClientRect();
+  const stamps: FacadeStamp[] = [];
+  for (const canvas of nodes) {
+    let src = "";
+    try {
+      if (canvas.width > 0 && canvas.height > 0 && typeof canvas.toDataURL === "function") {
+        const url = canvas.toDataURL("image/jpeg", 0.92);
+        if (typeof url === "string" && url.startsWith("data:image/") && url.length > 64) src = url;
+      }
+    } catch {
+      src = "";
+    }
+    if (!src) {
+      const fallback = canvas.getAttribute("data-facade-src") ?? "";
+      if (fallback.startsWith("data:image/") || /^https?:/.test(fallback)) src = fallback;
+    }
+    if (!src) continue; // fail-closed
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) continue;
+    stamps.push({
+      src,
+      left: rect.left - rootRect.left,
+      top: rect.top - rootRect.top,
+      width: rect.width,
+      height: rect.height,
+    });
+  }
+  return stamps;
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const el = new Image();
+    el.crossOrigin = "anonymous";
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("facade load"));
+    el.src = src;
+  });
+}
+
+/** Paint the live facade pixels back over the captured JPEG at the canvas box. */
+export async function compositeFacadeStamps(
+  blob: Blob,
+  stamps: FacadeStamp[],
+  rootWidthCss: number,
+): Promise<Blob> {
+  if (stamps.length === 0 || rootWidthCss < 1) return blob;
+  const url = URL.createObjectURL(blob);
+  try {
+    const base = await loadImage(url);
+    const bw = base.naturalWidth || base.width;
+    const bh = base.naturalHeight || base.height;
+    if (bw < 1 || bh < 1) return blob;
+    const scale = bw / rootWidthCss;
+    const canvas = document.createElement("canvas");
+    canvas.width = bw;
+    canvas.height = bh;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return blob;
+    ctx.drawImage(base, 0, 0);
+    for (const stamp of stamps) {
+      try {
+        const img = await loadImage(stamp.src);
+        ctx.drawImage(
+          img,
+          stamp.left * scale,
+          stamp.top * scale,
+          stamp.width * scale,
+          stamp.height * scale,
+        );
+      } catch {
+        /* fail-closed: keep whatever the capture produced */
+      }
+    }
+    const out = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/jpeg", 0.92);
+    });
+    return out && out.size > 0 ? out : blob;
+  } catch {
+    return blob;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /** Rasterize the live report root. Does not invent fields — pixels come from the DOM. */
 export async function captureReportElement(root: HTMLElement): Promise<Blob> {
   const pixelRatio = typeof window !== "undefined"
     ? Math.min(2, window.devicePixelRatio || 1)
     : 1;
+  const stamps = collectFacadeStamps(root);
+  const stampBySrc = new Map(stamps.map((s) => [s.src, s]));
   const dataUrl = await toJpeg(root, {
     quality: 0.92,
     pixelRatio,
@@ -86,14 +193,36 @@ export async function captureReportElement(root: HTMLElement): Promise<Blob> {
       if (!(node instanceof HTMLElement)) return true;
       return !node.hasAttribute("data-capture-hide");
     },
-  });
+    // Replace the blank cloned canvas with the live facade pixels.
+    onclone: (doc: Document) => {
+      const clones = Array.from(
+        doc.querySelectorAll<HTMLCanvasElement>('canvas[data-testid="building-identity-photo"]'),
+      );
+      clones.forEach((clone, i) => {
+        const stamp = stamps[i] ?? stampBySrc.get(clone.getAttribute("data-facade-src") ?? "");
+        if (!stamp) return; // fail-closed
+        const img = doc.createElement("img");
+        img.src = stamp.src;
+        img.setAttribute("data-testid", "building-identity-photo");
+        img.setAttribute("alt", "Edificio acquisito");
+        img.className = clone.className;
+        img.style.width = "100%";
+        img.style.display = "block";
+        img.style.objectFit = "cover";
+        clone.replaceWith(img);
+      });
+    },
+  } as Parameters<typeof toJpeg>[1]);
   const res = await fetch(dataUrl);
   const blob = await res.blob();
   if (!blob || blob.size === 0) {
     throw new Error("capture empty");
   }
-  return flattenShareJpeg(blob);
+  const rootWidthCss = root.getBoundingClientRect().width || root.offsetWidth || 0;
+  const stamped = await compositeFacadeStamps(blob, stamps, rootWidthCss);
+  return flattenShareJpeg(stamped);
 }
+
 
 export async function buildReportShareFile(opts: {
   root: HTMLElement;
