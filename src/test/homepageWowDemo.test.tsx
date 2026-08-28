@@ -54,7 +54,9 @@ describe("homepage WOW demo is public", () => {
     expect(screen.getAllByText(/Palazzina/).length).toBeGreaterThanOrEqual(1);
     expect(document.body.textContent).toMatch(/Intonaco ocra/);
     expect(document.body.textContent).toMatch(/Persiane verdi/);
-    expect(document.body.textContent).toMatch(/successione/i);
+    expect(document.body.textContent).not.toMatch(/successione/i);
+    expect(document.body.textContent).not.toMatch(/in vendita/i);
+    expect(document.body.textContent).not.toMatch(/intero stabile/i);
     expect(document.body.textContent).not.toMatch(/Questo edificio/i);
     expect(document.body.textContent).not.toMatch(/3 appartamenti/i);
   });
