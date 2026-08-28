@@ -79,6 +79,7 @@ function FacadeCanvas({ src }: { src: string }) {
     <canvas
       ref={ref}
       data-testid="building-identity-photo"
+      data-facade-src={src}
       role="img"
       aria-label="Edificio acquisito"
       className="w-full aspect-[16/10] block bg-muted [dynamic-range-limit:standard]"
