@@ -134,6 +134,26 @@ export function BuildingIdentityCard({
   const address = identify?.address?.trim() || null;
   const notes = (visualNotes ?? []).map((s) => s.trim()).filter(Boolean);
 
+  // Photo-read facts (never official)
+  const photoCivico = analysis?.visibleHouseNumber?.trim() || null;
+  const photoStreet = analysis?.visibleStreetName?.trim() || null;
+  // GPS-resolved facts (never catasto)
+  const geo = identify?.geoResolution;
+  const gpsCivico = geo?.resolvedHouseNumber?.trim() || null;
+  const gpsStreet = geo?.resolvedStreet?.trim() || null;
+  const cap = geo?.resolvedPostalCode?.trim() || null;
+  const comune = geo?.resolvedComune?.trim() || null;
+  const provincia = geo?.resolvedProvincia?.trim() || null;
+  const capComune = [cap, comune ? (provincia ? `${comune} (${provincia})` : comune) : null]
+    .filter(Boolean).join(" · ") || null;
+  const civicoConfirmed = street?.houseNumberConfirmed === true;
+  const streetConfirmed = street?.streetConfirmed === true;
+  const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, "");
+  // Fail-closed: never pick a winner between photo and GPS civico
+  const civicoMismatch =
+    !civicoConfirmed && !!photoCivico && !!gpsCivico && norm(photoCivico) !== norm(gpsCivico);
+
+
   return (
     <div
       data-testid="building-identity"
