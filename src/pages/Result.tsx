@@ -2181,9 +2181,24 @@ const Result = () => {
   const publishedCount = completedModules.filter(k => isSectionPublishable(result[k].status, result[k].data)).length;
   const excludedCount = completedModules.length - publishedCount;
 
-  const handleShare = async () => {
+  /** Invia il report JPEG al WhatsApp dell'agenzia salvato dall'agente. */
+  const sendToAgency = async (phoneE164: string) => {
     const root = reportRootRef.current;
     if (!root || capturing) return;
+    const url = buildAgencyWhatsappUrl(
+      phoneE164,
+      buildAgencyShareCaption({
+        street: identifyData?.geoResolution?.resolvedStreet ?? null,
+        houseNumber: identifyData?.geoResolution?.resolvedHouseNumber ?? null,
+        comuneLabel: officialOmi.data?.comuneLabel ?? identifyData?.comune ?? null,
+        zonaOmi: officialOmi.data?.zonaOmi ?? null,
+      }),
+    );
+    if (!url) {
+      // fail-closed: numero non valido, non si invia nulla
+      toast({ title: "Numero non valido", description: "Aggiorna il WhatsApp dell'agenzia.", variant: "destructive" });
+      return;
+    }
     const title = buildShareTitle({
       comuneLabel: officialOmi.data?.comuneLabel ?? null,
       zonaOmi: officialOmi.data?.zonaOmi ?? null,
@@ -2197,18 +2212,27 @@ const Result = () => {
         title,
         capture: (reportRoot) => captureReportElement(reportRoot, { facadeSrc: state.photo }),
       });
-      const outcome = await shareOrDownloadReportFile(file, title);
-      if (outcome === "downloaded") {
-        toast({ title: "Immagine salvata", description: file.name });
-      }
+      downloadBlobFile(file);
+      window.open(url, "_blank", "noopener");
+      toast({ title: "Report pronto per l'agenzia", description: `Allega ${file.name} nella chat aperta.` });
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
-      toast({ title: "Condivisione non riuscita", description: "Riprova tra poco.", variant: "destructive" });
+      toast({ title: "Invio non riuscito", description: "Riprova tra poco.", variant: "destructive" });
     } finally {
       document.documentElement.removeAttribute("data-sottra-capture");
       setCapturing(false);
     }
   };
+
+  const handleShare = async () => {
+    if (!agencyPhone) {
+      setAgencyDialogOpen(true);
+      return;
+    }
+    await sendToAgency(agencyPhone);
+  };
+
+
 
   // ── WOW Snapshot computation ──
   const pricingData = result.pricing.data as PricingData | null;
