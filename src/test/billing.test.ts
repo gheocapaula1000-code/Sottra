@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isBillingReady, setBillingReady } from "@/lib/billing";
-import { PLANS, ALLOWED_PRICE_IDS, getPlanByProductId, getPlanByPriceId, HAS_REAL_ANNUAL_PRICES } from "@/lib/plans";
+import { PLANS, ALLOWED_PRICE_IDS, getPlanByProductId, getPlanByPriceId } from "@/lib/plans";
 import type { PlanKey } from "@/lib/plans";
 
 // ─── Plan Catalog ───────────────────────────────────────────────
