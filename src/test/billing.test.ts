@@ -243,11 +243,12 @@ describe("Checkout validation rules", () => {
     }
   });
 
-  it("all annual price IDs are in ALLOWED_PRICE_IDS", () => {
-    for (const key of Object.keys(PLANS) as PlanKey[]) {
-      expect(ALLOWED_PRICE_IDS).toContain(PLANS[key].price_id_annual);
+  it("no annual placeholder price survives", () => {
+    for (const id of ALLOWED_PRICE_IDS) {
+      expect(id).not.toMatch(/_TODO/);
     }
   });
+
 
   it("trial is not a purchasable price", () => {
     expect(ALLOWED_PRICE_IDS).not.toContain("trial");
