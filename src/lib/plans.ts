@@ -1,7 +1,7 @@
 // Stripe product/price mapping for Sottra plans.
 // Listino FLAT: il tetto scansioni è incluso, nessun extra a consumo.
 // Esaurito il tetto la scansione si ferma fino al mese successivo (o si passa al piano sopra).
-// Pi.Gi Service è in regime forfettario: IVA non applicabile, mai «+ IVA».
+// Pi.Gi Service è in regime forfettario: IVA non applicabile.
 // Nessun piano annuale: solo mensile.
 export const PLANS = {
   agente: {

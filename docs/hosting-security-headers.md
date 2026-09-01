@@ -85,7 +85,7 @@ Configurabile via Dashboard → Rules → Transform Rules → Modify Response He
 
 ## Checklist post-deploy
 
-- [ ] Header presenti (verificare con `curl -I https://sottra.it`)
+- [ ] Header presenti (verificare con `curl -I https://sottra.app`)
 - [ ] HSTS attivo solo dopo conferma HTTPS stabile
 - [ ] Nessuna rottura iframe/UI (se `X-Frame-Options: DENY`, verificare che non serva embedding)
 - [ ] Nessun blocco imprevisto su geolocation o altre API browser usate

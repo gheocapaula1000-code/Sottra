@@ -124,7 +124,7 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       client_reference_id: user.id,
       metadata: { supabase_user_id: user.id },
-      // Pi.Gi Service è in regime forfettario: IVA non applicabile, mai «+ IVA».
+      // Pi.Gi Service è in regime forfettario: IVA non applicabile.
       automatic_tax: { enabled: false },
       subscription_data: {
         metadata: { supabase_user_id: user.id },
