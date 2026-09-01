@@ -114,7 +114,22 @@ export default function PricingSection() {
             );
           })}
         </div>
+
+        <div className="mx-auto mt-10 max-w-2xl space-y-2 text-center text-xs text-muted-foreground sm:text-sm">
+          <p>
+            Copertura: tutta Italia, con quotazione OMI ufficiale quando il GPS cade dentro il poligono
+            della microzona. Solo su Padova le sette aree sono nominate una per una.
+          </p>
+          <p>
+            L'agente salva una volta il WhatsApp dell'agenzia e invia il report in un tap.
+          </p>
+          <p>
+            Le stime restano stime: nessun dato catastale inventato, nessuna promessa sulla vendita del
+            singolo civico.
+          </p>
+        </div>
       </div>
+
     </section>
   );
 }
