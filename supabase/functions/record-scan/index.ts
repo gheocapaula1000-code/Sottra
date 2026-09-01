@@ -3,6 +3,8 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isOwnerById } from "../_shared/ownerUtils.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { isBillingActive } from "../_shared/billing.ts";
+import { SCAN_CAP_BY_PRICE_ID } from "../_shared/allowedPrices.ts";
+
 
 serve(async (req) => {
   const preflight = handleCors(req);
