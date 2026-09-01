@@ -92,8 +92,8 @@ describe("Landing and SEO kit — sottra.app only, no VAT, no renovation claim",
     const html = src("index.html");
     expect(html).toContain('<link rel="canonical" href="https://sottra.app/" />');
     expect(html).toContain('property="og:url" content="https://sottra.app/"');
-    expect(html).toContain('property="og:image" content="https://sottra.app/icons/icon-512.png"');
-    expect(html).toContain('name="twitter:image" content="https://sottra.app/icons/icon-512.png"');
+    expect(html).toContain('property="og:image" content="https://sottra.app/brand/sottra-social-1200x630.jpg"');
+    expect(html).toContain('name="twitter:image" content="https://sottra.app/brand/sottra-social-1200x630.jpg"');
     expect(src("public/sitemap.xml")).toContain("https://sottra.app/");
     expect(src("public/robots.txt")).toContain("https://sottra.app/sitemap.xml");
   });
