@@ -38,6 +38,8 @@ const TerminiCondizioni = () => {
             <h2 className="font-semibold text-foreground mb-2">Uso della licenza</h2>
             <p>La licenza d'uso di {APP_BRAND.name} è strettamente personale, non cedibile e non trasferibile. Ogni account è vincolato a un singolo dispositivo per l'intera durata dell'abbonamento. Il cambio dispositivo non è disponibile in modalità self-service: per trasferire l'account a un nuovo dispositivo è necessario contattare il supporto scrivendo a <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary underline">{APP_BRAND.supportEmail}</a>.</p>
             <p className="mt-2">La condivisione dell'account, delle credenziali o dei dati ottenuti tramite il servizio con terzi non autorizzati è espressamente vietata e comporta la sospensione immediata dell'account senza diritto a rimborso.</p>
+            <p className="mt-2">Costituisce invece uso previsto e consentito l'invio del report in formato immagine (JPEG) al numero WhatsApp che l'agente ha salvato come recapito dell'agenzia per cui opera, nell'ambito della propria attività professionale.</p>
+
           </section>
 
           <section>

@@ -13,6 +13,7 @@ import { useScanHistory } from "@/contexts/ScanHistoryContext";
 import { useImportCount } from "@/hooks/useImportCount";
 import AppHeader from "@/components/AppHeader";
 import PullToRefresh from "@/components/PullToRefresh";
+import AgencyWhatsappCard from "@/components/AgencyWhatsappCard";
 
 import {
   ScanLine,
@@ -242,6 +243,8 @@ const Dashboard = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <AgencyWhatsappCard />
 
             {/* Quick actions */}
             <Card>
