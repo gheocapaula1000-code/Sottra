@@ -12,5 +12,11 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /app
+Disallow: /admin
+Disallow: /scan
+Disallow: /result
+Disallow: /history
+Disallow: /territorial-report
 
 Sitemap: https://sottra.app/sitemap.xml
