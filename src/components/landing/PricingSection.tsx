@@ -9,12 +9,13 @@ import {
   PLAN_DESCRIPTIONS,
   PLAN_FEATURES,
   PLAN_POPULAR,
+  VAT_NOTICE,
   planScansLabel,
   planUsersLabel,
   type PlanKey,
 } from "@/lib/plans";
 
-const planOrder: PlanKey[] = ["agente", "agenzia", "enterprise"];
+const planOrder: PlanKey[] = ["agente", "agenzia", "rete"];
 
 export default function PricingSection() {
   const navigate = useNavigate();
@@ -24,16 +25,20 @@ export default function PricingSection() {
       <div className="mx-auto max-w-6xl">
         <div className="text-center">
           <h2 className="text-2xl font-black text-foreground sm:text-3xl lg:text-4xl">
-            Piani chiari, senza sorprese
+            Listino flat, tetto incluso, nessun extra a consumo
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base" style={{ textWrap: "balance" } as React.CSSProperties}>
-            Prova gratuita iniziale: 3 giorni, 5 scansioni, accesso completo.
-            Nessuna carta di credito richiesta.
+            Prova gratuita iniziale: 3 giorni, 5 scansioni, accesso completo. Zero carta di credito.
           </p>
           <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground sm:text-sm">
-            Al termine del trial serve un abbonamento attivo per continuare. Nessun piano gratuito permanente.
+            Al termine del trial serve un abbonamento attivo. Esaurito il tetto di scansioni ci si ferma
+            fino al mese successivo, oppure si passa al piano sopra.
+          </p>
+          <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground sm:text-sm">
+            {VAT_NOTICE}
           </p>
         </div>
+
 
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {planOrder.map((key) => {
