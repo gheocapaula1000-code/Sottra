@@ -7,7 +7,7 @@ import type { PlanKey } from "@/lib/plans";
 
 describe("Plans catalog — completeness", () => {
   it("has all three tiers", () => {
-    expect(Object.keys(PLANS)).toEqual(["agente", "agenzia", "enterprise"]);
+    expect(Object.keys(PLANS)).toEqual(["agente", "agenzia", "rete"]);
   });
 
   it("each plan has required fields", () => {
@@ -21,31 +21,21 @@ describe("Plans catalog — completeness", () => {
     }
   });
 
-  it("annual price = monthly × 10 for all plans", () => {
-    for (const key of Object.keys(PLANS) as PlanKey[]) {
-      expect(PLANS[key].price_annual).toBe(PLANS[key].price * 10);
-    }
-  });
-
-  it("every plan has a price_id_annual (placeholder or real)", () => {
-    for (const key of Object.keys(PLANS) as PlanKey[]) {
-      expect(PLANS[key].price_id_annual).toBeTruthy();
-      expect(typeof PLANS[key].price_id_annual).toBe("string");
-      expect(PLANS[key].price_id_annual.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("ALLOWED_PRICE_IDS contains all monthly AND annual prices", () => {
+  it("ALLOWED_PRICE_IDS contains every monthly price", () => {
     for (const key of Object.keys(PLANS) as PlanKey[]) {
       expect(ALLOWED_PRICE_IDS).toContain(PLANS[key].price_id);
-      expect(ALLOWED_PRICE_IDS).toContain(PLANS[key].price_id_annual);
     }
   });
 
-  it("HAS_REAL_ANNUAL_PRICES is false when using TODO placeholders", () => {
-    // Current state: all annual prices are placeholders
-    expect(HAS_REAL_ANNUAL_PRICES).toBe(false);
+  it("flat pricing: 79 / 249 / 690 with 80 / 600 / 2000 scans", () => {
+    expect(PLANS.agente.price).toBe(79);
+    expect(PLANS.agenzia.price).toBe(249);
+    expect(PLANS.rete.price).toBe(690);
+    expect(PLANS.agente.scans).toBe(80);
+    expect(PLANS.agenzia.scans).toBe(600);
+    expect(PLANS.rete.scans).toBe(2000);
   });
+
 });
 
 // ─── Plan Lookups ───────────────────────────────────────────────
@@ -54,20 +44,14 @@ describe("Plan lookups", () => {
   it("getPlanByProductId resolves known products", () => {
     expect(getPlanByProductId(PLANS.agente.product_id)).toBe("agente");
     expect(getPlanByProductId(PLANS.agenzia.product_id)).toBe("agenzia");
-    expect(getPlanByProductId(PLANS.enterprise.product_id)).toBe("enterprise");
+    expect(getPlanByProductId(PLANS.rete.product_id)).toBe("rete");
     expect(getPlanByProductId("unknown")).toBeNull();
   });
 
   it("getPlanByPriceId resolves monthly prices", () => {
     expect(getPlanByPriceId(PLANS.agente.price_id)).toBe("agente");
     expect(getPlanByPriceId(PLANS.agenzia.price_id)).toBe("agenzia");
-    expect(getPlanByPriceId(PLANS.enterprise.price_id)).toBe("enterprise");
-  });
-
-  it("getPlanByPriceId resolves annual prices", () => {
-    expect(getPlanByPriceId(PLANS.agente.price_id_annual)).toBe("agente");
-    expect(getPlanByPriceId(PLANS.agenzia.price_id_annual)).toBe("agenzia");
-    expect(getPlanByPriceId(PLANS.enterprise.price_id_annual)).toBe("enterprise");
+    expect(getPlanByPriceId(PLANS.rete.price_id)).toBe("rete");
   });
 
   it("getPlanByPriceId returns null for unknown", () => {
@@ -96,7 +80,6 @@ describe("No free tier — business rules", () => {
   it("no plan has price=0", () => {
     for (const key of Object.keys(PLANS) as PlanKey[]) {
       expect(PLANS[key].price).toBeGreaterThan(0);
-      expect(PLANS[key].price_annual).toBeGreaterThan(0);
     }
   });
 
