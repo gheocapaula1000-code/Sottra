@@ -32,11 +32,7 @@ export default function HeroSection() {
             size="sm"
             variant="outline"
             className="hidden sm:inline-flex"
-            onClick={() =>
-              document
-                .getElementById("pricing")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
+            onClick={() => navigate("/prezzi")}
           >
             Piani e prezzi
           </Button>
