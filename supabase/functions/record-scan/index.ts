@@ -183,6 +183,30 @@ serve(async (req) => {
       });
     }
 
+    // ── Flat monthly cap for subscribers (80 / 600 / 2000) ──
+    // Nessun extra a consumo: raggiunto il tetto ci si ferma fino al mese successivo.
+    if (hasSubscription && planCap !== null) {
+      const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+      const { count } = await serviceClient
+        .from("scan_events")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .gte("created_at", periodStart);
+
+      if (typeof count === "number" && count >= planCap) {
+        return new Response(JSON.stringify({
+          error: "Tetto scansioni del piano raggiunto per questo mese",
+          limit_reached: true,
+          scans_used: count,
+          max_scans: planCap,
+        }), {
+          headers: { ...cors, "Content-Type": "application/json" },
+          status: 403,
+        });
+      }
+    }
+
+
     // Call the idempotent DB function
     const { data, error } = await serviceClient.rpc("record_scan", {
       _user_id: user.id,
