@@ -110,9 +110,10 @@ serve(async (req) => {
 
     // ── DB-first subscription check (source of truth) ──
     let hasSubscription = false;
+    let planCap: number | null = null;
     const { data: subData } = await serviceClient
       .from("subscriptions")
-      .select("status")
+      .select("status, price_id")
       .eq("user_id", user.id)
       .in("status", ["active", "trialing"])
       .limit(1)
@@ -120,7 +121,9 @@ serve(async (req) => {
 
     if (subData) {
       hasSubscription = true;
+      planCap = subData.price_id ? SCAN_CAP_BY_PRICE_ID[subData.price_id] ?? null : null;
     }
+
 
     // ── Stripe fallback (only if DB has no useful record and billing is active) ──
     if (!hasSubscription && isBillingActive()) {
