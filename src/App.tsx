@@ -41,6 +41,7 @@ const Result = lazyWithRecovery(() => import("./pages/Result"));
 const History = lazyWithRecovery(() => import("./pages/History"));
 const Login = lazyWithRecovery(() => import("./pages/Login"));
 const Signup = lazyWithRecovery(() => import("./pages/Signup"));
+const Prezzi = lazyWithRecovery(() => import("./pages/Prezzi"));
 const PrivacyPolicy = lazyWithRecovery(() => import("./pages/PrivacyPolicy"));
 const CookiePolicy = lazyWithRecovery(() => import("./pages/CookiePolicy"));
 const TerminiCondizioni = lazyWithRecovery(() => import("./pages/TerminiCondizioni"));
@@ -90,6 +91,7 @@ const App = () => (
                     <Route path="/" element={<Index />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
+                    <Route path="/prezzi" element={<Prezzi />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/app" element={<AppDashboardGate />} />
