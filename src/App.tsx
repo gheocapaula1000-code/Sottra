@@ -41,6 +41,7 @@ const Result = lazyWithRecovery(() => import("./pages/Result"));
 const History = lazyWithRecovery(() => import("./pages/History"));
 const Login = lazyWithRecovery(() => import("./pages/Login"));
 const Signup = lazyWithRecovery(() => import("./pages/Signup"));
+const Prezzi = lazyWithRecovery(() => import("./pages/Prezzi"));
 const PrivacyPolicy = lazyWithRecovery(() => import("./pages/PrivacyPolicy"));
 const CookiePolicy = lazyWithRecovery(() => import("./pages/CookiePolicy"));
 const TerminiCondizioni = lazyWithRecovery(() => import("./pages/TerminiCondizioni"));
