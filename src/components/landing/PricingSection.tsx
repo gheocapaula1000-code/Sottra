@@ -75,8 +75,9 @@ export default function PricingSection() {
                 </div>
 
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Prova gratuita inclusa · Al termine serve un abbonamento attivo
+                  Tetto flat incluso · {VAT_NOTICE}
                 </p>
+
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Badge variant="secondary" className="text-[10px] sm:text-xs">
