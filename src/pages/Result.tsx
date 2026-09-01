@@ -13,9 +13,12 @@ import {
   buildReportShareFile,
   buildShareTitle,
   captureReportElement,
-  shareOrDownloadReportFile,
+  downloadBlobFile,
   waitForCaptureLayout,
 } from "@/lib/shareReportImage";
+import { buildAgencyShareCaption, buildAgencyWhatsappUrl } from "@/lib/agencyWhatsapp";
+import { useAgencyWhatsapp } from "@/hooks/useAgencyWhatsapp";
+import AgencyWhatsappDialog from "@/components/AgencyWhatsappDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
@@ -2008,6 +2011,8 @@ const Result = () => {
   const historySignatureRef = useRef<string | null>(null);
   const reportRootRef = useRef<HTMLDivElement>(null);
   const [capturing, setCapturing] = useState(false);
+  const { phone: agencyPhone, save: saveAgencyPhone, saving: savingAgencyPhone } = useAgencyWhatsapp();
+  const [agencyDialogOpen, setAgencyDialogOpen] = useState(false);
   const officialOmi = resolveOfficialOmiOverlay({
     omiZone: result.omiZone,
     photoWow: result.photoWow,
@@ -2668,7 +2673,7 @@ const Result = () => {
             disabled={capturing || scanning}
           >
             <Share2 className="h-4 w-4" />
-            {capturing ? "Preparazione…" : "Condividi"}
+            {capturing ? "Preparazione…" : agencyPhone ? "Invia in agenzia" : "Condividi"}
           </Button>
           <Button
             variant="secondary"
