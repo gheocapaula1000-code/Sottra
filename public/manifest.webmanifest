@@ -1,14 +1,26 @@
 {
   "name": "Sottra — Quadro immobiliare da una foto",
   "short_name": "Sottra",
-  "description": "Fotografa un edificio. Ottieni valore al mq, zona, affidabilità e costi di ristrutturazione.",
+  "lang": "it",
+  "dir": "ltr",
+  "description": "Fotografa un edificio: OMI ufficiale di microzona e contesto di zona. Le stime restano stime.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0A0F",
   "theme_color": "#0A0A0F",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

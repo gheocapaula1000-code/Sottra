@@ -32,7 +32,7 @@ Questo non rappresenta un rischio CORS: l'origin resolver non controlla accesso 
 Impostare il secret `ALLOWED_ORIGINS` come lista comma-separated di origini autorizzate:
 
 ```
-https://sottra.it,https://sottra.lovable.app,https://id-preview--xxxxx.lovable.app
+https://sottra.app,https://sottra.lovable.app,https://id-preview--xxxxx.lovable.app
 ```
 
 ## Variabili richieste per il billing

@@ -63,7 +63,8 @@ describe("index.html PWA meta tags", () => {
 
   it("has canonical URL pointing to production domain", () => {
     expect(html).toContain('rel="canonical"');
-    expect(html).toContain("sottra.it");
+    expect(html).toContain("https://sottra.app/");
+    expect(html).not.toContain("sottra.it");
   });
 
   it("has no localhost references", () => {

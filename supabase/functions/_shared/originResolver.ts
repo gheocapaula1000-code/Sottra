@@ -5,6 +5,8 @@
  * Falls back to request Origin header only if it is in the allowlist.
  * Never uses raw, unvalidated request origins.
  */
+const PROD_ORIGIN = "https://sottra.app";
+
 export function resolveReturnOrigin(req: Request): string {
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
     .split(",")
@@ -17,10 +19,17 @@ export function resolveReturnOrigin(req: Request): string {
     return reqOrigin;
   }
 
-  // Fallback: first allowed origin (production domain)
+  // Production domain first, if allowlisted
+  if (allowedOrigins.includes(PROD_ORIGIN)) {
+    return PROD_ORIGIN;
+  }
+
+  // Fallback: first allowed origin
   if (allowedOrigins.length > 0) {
     return allowedOrigins[0];
   }
 
-  throw new Error("No allowed origin configured for return URL");
+  // Last resort: the only live URL (sottra.it does not exist)
+  return PROD_ORIGIN;
 }
+

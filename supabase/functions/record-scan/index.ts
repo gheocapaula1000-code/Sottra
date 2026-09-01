@@ -3,6 +3,8 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isOwnerById } from "../_shared/ownerUtils.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { isBillingActive } from "../_shared/billing.ts";
+import { SCAN_CAP_BY_PRICE_ID } from "../_shared/allowedPrices.ts";
+
 
 serve(async (req) => {
   const preflight = handleCors(req);
@@ -110,9 +112,10 @@ serve(async (req) => {
 
     // ── DB-first subscription check (source of truth) ──
     let hasSubscription = false;
+    let planCap: number | null = null;
     const { data: subData } = await serviceClient
       .from("subscriptions")
-      .select("status")
+      .select("status, price_id")
       .eq("user_id", user.id)
       .in("status", ["active", "trialing"])
       .limit(1)
@@ -120,7 +123,9 @@ serve(async (req) => {
 
     if (subData) {
       hasSubscription = true;
+      planCap = subData.price_id ? SCAN_CAP_BY_PRICE_ID[subData.price_id] ?? null : null;
     }
+
 
     // ── Stripe fallback (only if DB has no useful record and billing is active) ──
     if (!hasSubscription && isBillingActive()) {
@@ -179,6 +184,30 @@ serve(async (req) => {
         status: 403,
       });
     }
+
+    // ── Flat monthly cap for subscribers (80 / 600 / 2000) ──
+    // Nessun extra a consumo: raggiunto il tetto ci si ferma fino al mese successivo.
+    if (hasSubscription && planCap !== null) {
+      const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+      const { count } = await serviceClient
+        .from("scan_events")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .gte("created_at", periodStart);
+
+      if (typeof count === "number" && count >= planCap) {
+        return new Response(JSON.stringify({
+          error: "Tetto scansioni del piano raggiunto per questo mese",
+          limit_reached: true,
+          scans_used: count,
+          max_scans: planCap,
+        }), {
+          headers: { ...cors, "Content-Type": "application/json" },
+          status: 403,
+        });
+      }
+    }
+
 
     // Call the idempotent DB function
     const { data, error } = await serviceClient.rpc("record_scan", {

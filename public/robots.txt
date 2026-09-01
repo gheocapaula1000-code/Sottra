@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://sottra.it/sitemap.xml
+Sitemap: https://sottra.app/sitemap.xml
