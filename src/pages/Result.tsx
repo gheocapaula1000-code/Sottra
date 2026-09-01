@@ -2728,6 +2728,19 @@ const Result = () => {
         }}><Bookmark className="h-4 w-4" /></Button>
         </div>
       </footer>
+
+      <AgencyWhatsappDialog
+        open={agencyDialogOpen}
+        onOpenChange={setAgencyDialogOpen}
+        saving={savingAgencyPhone}
+        initialValue={agencyPhone}
+        onSaved={async (e164) => {
+          const saved = await saveAgencyPhone(e164);
+          if (!saved) return;
+          setAgencyDialogOpen(false);
+          await sendToAgency(saved);
+        }}
+      />
     </div>
   );
 };
