@@ -39,7 +39,7 @@ export async function checkEntitlement(userId: string): Promise<EntitlementResul
       .maybeSingle();
     if (roleData) return { allowed: true, reason: "admin" };
 
-    // Active subscription (source of truth)
+    // Active subscription on this very account (source of truth)
     const { data: subData } = await service
       .from("subscriptions")
       .select("status")
@@ -48,6 +48,20 @@ export async function checkEntitlement(userId: string): Promise<EntitlementResul
       .limit(1)
       .maybeSingle();
     if (subData) return { allowed: true, reason: "subscription" };
+
+    // Agency seat: Agenzia / Rete sono venduti con telefoni illimitati sotto UN
+    // abbonamento. L'agente loggato della stessa agenzia eredita l'accesso.
+    // Piano Agente (posto singolo) non viene mai ereditato. Fail-closed.
+    try {
+      const { data: shared } = await service.rpc("agency_shared_subscription", {
+        _user_id: userId,
+      });
+      const row = Array.isArray(shared) ? shared[0] : shared;
+      if (inheritsAgencySeat(row)) return { allowed: true, reason: "agency_seat" };
+    } catch {
+      /* fail-closed: nessuna eredità se il lookup fallisce */
+    }
+
 
     // Active trial
     const { data: trial } = await service
