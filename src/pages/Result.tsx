@@ -64,6 +64,7 @@ import {
   isOpportunityPublishable,
   isPoiPublishable,
   isPricingPublishable,
+  isPricingMicrozonaOmi,
   isPrioritaPublishable,
   isReportFieldsPublishable,
   isRischioPublishable,
