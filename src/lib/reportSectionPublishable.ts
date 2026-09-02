@@ -85,7 +85,17 @@ export function isMeaningfulCopy(value: unknown): boolean {
 
 export function isPricingPublishable(data: PricingData | null | undefined): boolean {
   if (sourceUnavailable(data)) return false;
-  return data!.prezzoMq != null;
+  if (data!.prezzoMq == null) return false;
+  // Fail-closed: pricing is shown only as official OMI microzona data.
+  // If the GPS point missed the AdE polygon (comunale / unknown level), hide it.
+  return isPricingMicrozonaOmi(data!);
+}
+
+/** True only when pricing reads as official OMI microzona (polygon match), never municipal. */
+export function isPricingMicrozonaOmi(data: PricingData): boolean {
+  if (data.omiGeoLevel === "comune" || data.omiGeoLevel === "non_determinato") return false;
+  if (data.omiGeoLevel === "microzona_omi" || data.omiGeoLevel === "zona_specifica" || data.omiGeoLevel === "quartiere") return true;
+  return data.polygonMatch === true;
 }
 
 export function isMarketPublishable(data: MarketContextData | null | undefined): boolean {
