@@ -126,6 +126,41 @@ serve(async (req) => {
       planCap = subData.price_id ? SCAN_CAP_BY_PRICE_ID[subData.price_id] ?? null : null;
     }
 
+    // ── Agency seat: Agenzia / Rete = telefoni illimitati su UN abbonamento ──
+    // L'agente della stessa agenzia eredita l'accesso e consuma lo stesso tetto
+    // mensile del titolare. Piano Agente resta 1 telefono. Fail-closed.
+    let capUserIds: string[] = [user.id];
+    if (!hasSubscription) {
+      try {
+        const { data: shared } = await serviceClient.rpc("agency_shared_subscription", {
+          _user_id: user.id,
+        });
+        const row = Array.isArray(shared) ? shared[0] : shared;
+        if (inheritsAgencySeat(row)) {
+          hasSubscription = true;
+          planCap = row?.price_id ? SCAN_CAP_BY_PRICE_ID[row.price_id] ?? null : null;
+        }
+      } catch {
+        /* fail-closed */
+      }
+    }
+
+    if (hasSubscription) {
+      try {
+        const { data: peers } = await serviceClient.rpc("agency_scan_user_ids", {
+          _user_id: user.id,
+        });
+        const peerIds = Array.isArray(peers)
+          ? peers.map((p: unknown) => (typeof p === "string" ? p : (p as { user_id?: string })?.user_id ?? ""))
+          : [];
+        capUserIds = sharedCapUserIds(user.id, peerIds);
+      } catch {
+        capUserIds = [user.id];
+      }
+    }
+
+
+
 
     // ── Stripe fallback (only if DB has no useful record and billing is active) ──
     if (!hasSubscription && isBillingActive()) {
