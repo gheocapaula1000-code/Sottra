@@ -248,9 +248,11 @@ describe("shouldRenderAccordion + publishability", () => {
 
     const pricing: PricingData = {
       prezzoMq: 2100, prezzoMqMin: 1800, prezzoMqMax: 2500, mediaZona: null, trend5Anni: null,
-      sourceType: "official",
+      sourceType: "official", polygonMatch: true, omiGeoLevel: "microzona_omi",
     };
     expect(isPricingPublishable(pricing)).toBe(true);
+    // Fail-closed: GPS outside the AdE polygon (comunale) hides the pricing card.
+    expect(isPricingPublishable({ ...pricing, polygonMatch: false, omiGeoLevel: "comune" })).toBe(false);
     expect(isPricingPublishable({ ...pricing, prezzoMq: null as unknown as number, sourceType: "official" })).toBe(false);
 
     expect(isPoiPublishable({ totalPois: 12, categories: [], pois: [], searchRadius: 800, sourceType: "verified_geo" })).toBe(true);
