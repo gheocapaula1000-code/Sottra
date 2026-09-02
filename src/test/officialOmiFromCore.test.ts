@@ -467,11 +467,10 @@ describe("honesty: no invented microzona, no fake official APE", () => {
     expect(poi?.categories[0].category).toBe("leisure");
   });
 
-  it("energy section never wears Dato ufficiale; classe is stimata", () => {
+  it("energy section is stripped from the sidewalk Result path; no APE claims remain", () => {
     const result = readFileSync("src/pages/Result.tsx", "utf8");
-    expect(result).toMatch(/Classe stimata/);
-    expect(result).toMatch(/non è un APE ufficiale/);
-    const energy = result.split("function EnergySection")[1].split("const Result")[0];
-    expect(energy).not.toMatch(/Dato ufficiale OMI/);
+    expect(result).not.toContain("EnergySection");
+    expect(result).not.toMatch(/Classe stimata/);
+    expect(result).not.toMatch(/Dato ufficiale OMI/);
   });
 });
