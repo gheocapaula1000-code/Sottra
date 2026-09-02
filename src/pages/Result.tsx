@@ -1556,20 +1556,11 @@ function buildTrasparenzaFonti(result: ScanResult): TrasparenzaFontiData | null 
   if (result.pricing.status === "success" && result.pricing.data) {
     fonti.push({ categoria: "dato_mercato", categoriaLabel: "Prezzi di mercato", provider: "Fonti di mercato verificate", dettaglio: "Elaborazione da comparabili e dati di mercato" });
   }
-  if (result.marketContext.status === "success" && result.marketContext.data) {
-    fonti.push({ categoria: "dato_mercato", categoriaLabel: "Contesto di mercato", provider: "Fonti commerciali", dettaglio: "Analisi comparabili e segnali di mercato" });
-  }
   if (result.poiEnrichment.status === "success" && result.poiEnrichment.data) {
     fonti.push({ categoria: "dato_territoriale", categoriaLabel: "Servizi e POI", provider: "Fonti geospaziali verificate", dettaglio: "Punti di interesse nelle vicinanze" });
   }
   if (result.rischioZona.status === "success" && result.rischioZona.data) {
     fonti.push({ categoria: "dato_territoriale", categoriaLabel: "Rischio zona", provider: "Fonti istituzionali", dettaglio: "Rischio idrogeologico, sismico e ambientale" });
-  }
-  if (result.timeView.status === "success" && result.timeView.data) {
-    fonti.push({ categoria: "scenario", categoriaLabel: "Scenario evolutivo", provider: "Elaborazione Sottra", dettaglio: "Proiezione indicativa basata su trend e segnali" });
-  }
-  if (result.convergenzaTerritoriale.status === "success" && result.convergenzaTerritoriale.data) {
-    fonti.push({ categoria: "elaborazione", categoriaLabel: "Convergenza territoriale", provider: "Indice elaborato Sottra", dettaglio: "Sintesi da fonti multiple" });
   }
 
   return fonti.length > 0 ? { fonti } : null;
