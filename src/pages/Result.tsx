@@ -32,8 +32,6 @@ import type {
   ConvergenzaTerritorialeData, MarketContextData, ComparablesSummary,
   ScanResult, SourceMetadata, PoiEnrichmentData,
   InfrastructureProject, InfrastructureSignal, InfrastructureDriverRisk,
-  CondominioData, EnergyData, ListingsData, MoodScoreData,
-  OffmarketData, StoricoTransazioniData, ZoneIntelligenceData,
   IstatDemographicData, OmiZoneData,
 } from "@/types";
 import { isRenderableTrendDemografico, getAvailableDemographicMetricCount } from "@/lib/demographic";
@@ -55,18 +53,13 @@ import AddressOverrideForm, { formatManualAddress } from "@/components/AddressOv
 import type { ManualAddressInput } from "@/components/AddressOverrideForm";
 import { GeoLevelHeroBanner, PublishableAccordionItem, ReportCaptureOpenContext, resolveReportGeoStatus } from "@/components/report/ReportAccordion";
 import {
-  isCondominioPublishable,
   isConvergenzaPublishable,
   isDemographicsPublishable,
-  isEnergyPublishable,
   isFontiPublishable,
   isInfraPublishable,
-  isListingsPublishable,
   isMarketPublishable,
   isModuleLoading,
-  isMoodPublishable,
   isNeighborhoodPublishable,
-  isOffmarketPublishable,
   isOmiPublishable,
   isOpportunityPublishable,
   isPoiPublishable,
@@ -75,10 +68,8 @@ import {
   isReportFieldsPublishable,
   isRischioPublishable,
   isScenarioTemporalePublishable,
-  isStoricoPublishable,
   isSviluppoPublishable,
   isTimeViewPublishable,
-  isZoneIntelligencePublishable,
   shouldShowEmptyScanAddressPrompt,
 } from "@/lib/reportSectionPublishable";
 import { buildZoneValue, valueNarrativeMode, valueReliabilityLabel } from "@/lib/zoneValueEngine";
