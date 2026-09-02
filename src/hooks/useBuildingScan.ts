@@ -229,7 +229,7 @@ export function useBuildingScan() {
       geo: DerivedScanGeo,
     ) => {
       const {
-        address, confidence, comuneFromAddr, comuneFromIdentify,
+        address, comuneFromAddr, comuneFromIdentify,
         provinciaFromIdentify, addressFromIdentify, finalLat, finalLng,
       } = geo;
 
@@ -512,7 +512,7 @@ export function useBuildingScan() {
 
     const geocoded = await geocodeAddress(manualAddr);
     const geo = deriveGeoFromIdentify(identifyForGeo, manualAddr, lat, lng, geocoded);
-    const { finalLat, finalLng, confidence } = geo;
+    const { finalLat, finalLng } = geo;
 
     if (finalLat == null || finalLng == null || !isValidGps(finalLat, finalLng)) {
       for (const k of TERRITORIAL_MODULES) {
