@@ -3,16 +3,18 @@
  *
  * Verifies that a user may consume paid data endpoints (pro-sources, core-proxy).
  * Access is granted when the user is an owner, has the admin role, has an active
- * trial, or has an active/trialing subscription.
+ * trial, has an active/trialing subscription, or inherits an agency seat
+ * (Agenzia / Rete: telefoni illimitati sotto un solo abbonamento).
  *
  * Never trust client-side gating: every paid data function must call this.
  */
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { isOwnerById } from "./ownerUtils.ts";
+import { inheritsAgencySeat } from "./agencySeats.ts";
 
 export interface EntitlementResult {
   allowed: boolean;
-  reason: "owner" | "admin" | "trial" | "subscription" | "expired" | "error";
+  reason: "owner" | "admin" | "trial" | "subscription" | "agency_seat" | "expired" | "error";
 }
 
 export async function checkEntitlement(userId: string): Promise<EntitlementResult> {
@@ -39,7 +41,7 @@ export async function checkEntitlement(userId: string): Promise<EntitlementResul
       .maybeSingle();
     if (roleData) return { allowed: true, reason: "admin" };
 
-    // Active subscription (source of truth)
+    // Active subscription on this very account (source of truth)
     const { data: subData } = await service
       .from("subscriptions")
       .select("status")
@@ -48,6 +50,20 @@ export async function checkEntitlement(userId: string): Promise<EntitlementResul
       .limit(1)
       .maybeSingle();
     if (subData) return { allowed: true, reason: "subscription" };
+
+    // Agency seat: Agenzia / Rete sono venduti con telefoni illimitati sotto UN
+    // abbonamento. L'agente loggato della stessa agenzia eredita l'accesso.
+    // Piano Agente (posto singolo) non viene mai ereditato. Fail-closed.
+    try {
+      const { data: shared } = await service.rpc("agency_shared_subscription", {
+        _user_id: userId,
+      });
+      const row = Array.isArray(shared) ? shared[0] : shared;
+      if (inheritsAgencySeat(row)) return { allowed: true, reason: "agency_seat" };
+    } catch {
+      /* fail-closed: nessuna eredità se il lookup fallisce */
+    }
+
 
     // Active trial
     const { data: trial } = await service

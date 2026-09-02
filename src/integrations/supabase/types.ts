@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      agency_members: {
+        Row: {
+          agency_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       anncsu_streets: {
         Row: {
           ambiguity_flags: string[] | null
@@ -1150,6 +1174,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agency_id_of: { Args: { _user_id: string }; Returns: string }
+      agency_scan_user_ids: { Args: { _user_id: string }; Returns: string[] }
+      agency_shared_subscription: {
+        Args: { _user_id: string }
+        Returns: {
+          owner_user_id: string
+          price_id: string
+          status: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
