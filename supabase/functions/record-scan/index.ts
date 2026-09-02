@@ -4,6 +4,7 @@ import { isOwnerById } from "../_shared/ownerUtils.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { isBillingActive } from "../_shared/billing.ts";
 import { SCAN_CAP_BY_PRICE_ID } from "../_shared/allowedPrices.ts";
+import { inheritsAgencySeat, sharedCapUserIds } from "../_shared/agencySeats.ts";
 
 
 serve(async (req) => {
@@ -227,7 +228,7 @@ serve(async (req) => {
       const { count } = await serviceClient
         .from("scan_events")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
+        .in("user_id", capUserIds)
         .gte("created_at", periodStart);
 
       if (typeof count === "number" && count >= planCap) {
