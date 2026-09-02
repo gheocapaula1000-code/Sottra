@@ -64,6 +64,7 @@ import {
   isOpportunityPublishable,
   isPoiPublishable,
   isPricingPublishable,
+  isPricingMicrozonaOmi,
   isPrioritaPublishable,
   isReportFieldsPublishable,
   isRischioPublishable,
@@ -407,34 +408,22 @@ function HouseDifferentiationCard({ diff, loading }: { diff: HouseDifferentiatio
 function PricingCard({ data, loading }: { data: PricingData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
   if (!data || data.sourceType === "unavailable" || data.prezzoMq == null) return null;
+  // Fail-closed: this card reads only as official OMI microzona data.
+  // If the GPS point missed the AdE polygon, the card is hidden entirely.
+  if (!isPricingMicrozonaOmi(data)) return null;
 
   const hasMediaZona = data.mediaZona != null;
   const hasTrend = data.trend5Anni != null;
 
-  // Determine if pricing data is municipal-level (false specificity guard)
-  const effectiveGeoLevel = data.omiGeoLevel ?? (data.polygonMatch ? "microzona_omi" : "comune");
-  const isComuneLevel = effectiveGeoLevel === "comune" || (!data.polygonMatch && !data.omiGeoLevel);
-  const isFineZone = effectiveGeoLevel === "microzona_omi" || effectiveGeoLevel === "zona_specifica" || effectiveGeoLevel === "quartiere";
-
   return (
     <Section>
-      <SectionHeader icon={TrendingUp} title={isComuneLevel ? "Prezzi di Mercato (comunale)" : "Prezzi di Mercato"} />
-      {/* Geo-level context — prevents false specificity */}
-      {isFineZone && (
-        <div className="flex items-center gap-1.5 mb-3">
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-            <CheckCircle2 className="h-3 w-3" />Dato di zona
-          </span>
-        </div>
-      )}
-      {isComuneLevel && (
-        <div className="flex items-start gap-2 rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2 mb-3">
-          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-400" />
-          <p className="text-[10px] text-amber-400">
-            Dato riferito al livello comunale — la zona specifica potrebbe presentare valori diversi
-          </p>
-        </div>
-      )}
+      <SectionHeader icon={TrendingUp} title="Prezzi di Mercato (microzona OMI)" />
+      {/* Geo-level context — official OMI microzona, never this interior */}
+      <div className="flex items-center gap-1.5 mb-3">
+        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+          <CheckCircle2 className="h-3 w-3" />Microzona OMI ufficiale (poligono AdE)
+        </span>
+      </div>
       <div className="flex items-baseline gap-1.5 mb-3 min-w-0 flex-wrap">
         <span className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight break-words">{fmtEur(data.prezzoMq)}</span>
         <span className="text-sm text-muted-foreground font-medium">/m²</span>
@@ -446,19 +435,22 @@ function PricingCard({ data, loading }: { data: PricingData | null; loading: boo
         </div>
         {hasMediaZona && (
           <div className="rounded-lg bg-muted/50 px-3 py-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{isComuneLevel ? "Media comunale" : "Media zona"}</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Media zona</span>
             <p className="font-semibold text-foreground text-sm mt-0.5">{fmtEur(data.mediaZona)}</p>
           </div>
         )}
       </div>
       {hasTrend && (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Trend 5 anni{isComuneLevel ? " (comunale)" : ""}</span>
+          <span className="text-muted-foreground">Trend 5 anni</span>
           <span className={cn("font-bold", data.trend5Anni! >= 0 ? "text-emerald-400" : "text-destructive")}>
             {data.trend5Anni! > 0 ? "+" : ""}{fmt(data.trend5Anni)}%
           </span>
         </div>
       )}
+      <p className="text-[10px] text-muted-foreground/70 mt-3 leading-snug">
+        Quotazione ufficiale OMI della microzona — non è il valore di questo interno né di questo appartamento.
+      </p>
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mt-2">{data.confidenceReason}</p>}
       <SourceTag meta={data} />
     </Section>
@@ -1627,11 +1619,10 @@ const Result = () => {
                 </PublishableAccordionItem>
               </SectionSafe>
 
-              {/* Prezzi di Mercato — open when prezzoMq exists */}
+              {/* Prezzi di Mercato — official OMI microzona only; hidden when GPS missed the AdE polygon */}
               <SectionSafe>
-                <PublishableAccordionItem id="pricing" title="Prezzi di Mercato" icon={TrendingUp} defaultOpen
-                  loading={isModuleLoading(result.pricing.status)} publishable={isPricingPublishable(pricingData)}
-                  isWeak={!pricingData?.polygonMatch && (!pricingData?.omiGeoLevel || pricingData?.omiGeoLevel === "comune")}>
+                <PublishableAccordionItem id="pricing" title="Prezzi di Mercato (microzona OMI)" icon={TrendingUp} defaultOpen
+                  loading={isModuleLoading(result.pricing.status)} publishable={isPricingPublishable(pricingData)}>
                   <PricingCard data={pricingData} loading={isModuleLoading(result.pricing.status)} />
                 </PublishableAccordionItem>
               </SectionSafe>
