@@ -1908,48 +1908,26 @@ const Result = () => {
   const houseDiff = wowAndDiff?.houseDiff ?? null;
   const caseResult = wowAndDiff?.caseResult ?? null;
 
-  const marketData = result.marketContext.data as MarketContextData | null;
   const facciataData = result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null;
   const contestoData = result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null;
   const poiData = result.poiEnrichment.data as PoiEnrichmentData | null;
-  const commercialeData = result.posizionamentoCommerciale.data as import("@/types/report").PosizionamentoCommercialeData | null;
   const areaData = result.profiloArea.data as import("@/types/report").ProfiloAreaData | null;
   const rischioData = result.rischioZona.data as RischioZonaData | null;
   const istatData = result.istatDemographic.data as IstatDemographicData | null;
   const trendData = result.trendDemografico.data as TrendDemograficoData | null;
-  const convergenzaData = result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null;
-  const opportunityData = result.opportunity.data as OpportunityData | null;
-  const scenarioData = result.scenarioTemporale.data as ScenarioTemporaleData | null;
-  const timeViewData = result.timeView.data as TimeViewData | null;
   const infraData = result.infrastrutture.data as InfrastrutureData | null;
-  const sviluppoData = result.sviluppoArea.data as SviluppoAreaData | null;
   const prioritaData = result.prioritaCriticita.data as PrioritaCriticitaData | null;
   const fontiData = scanning ? null : buildTrasparenzaFonti(result);
-  const neighborhoodIndex = (result.neighborhood?.data as unknown as NeighborhoodIndex | null) ?? calculateNeighborhoodIndex(
-    poiData,
-    istatData,
-    rischioData,
-    result.omiZone.data as OmiZoneData | null,
-  );
-
   const hasPublishableTendine =
     isOmiPublishable(officialOmi.data)
     || isPricingPublishable(pricingData)
-    || isMarketPublishable(marketData)
     || isReportFieldsPublishable(facciataData as unknown as Record<string, unknown>)
     || isReportFieldsPublishable(contestoData as unknown as Record<string, unknown>)
     || isPoiPublishable(poiData)
-    || isReportFieldsPublishable(commercialeData as unknown as Record<string, unknown>)
     || isReportFieldsPublishable(areaData as unknown as Record<string, unknown>)
     || isRischioPublishable(rischioData)
     || isDemographicsPublishable(istatData, trendData)
-    || isNeighborhoodPublishable(neighborhoodIndex)
-    || isConvergenzaPublishable(convergenzaData)
-    || isOpportunityPublishable(opportunityData)
-    || isScenarioTemporalePublishable(scenarioData)
-    || isTimeViewPublishable(timeViewData)
     || isInfraPublishable(infraData)
-    || isSviluppoPublishable(sviluppoData)
     || isPrioritaPublishable(prioritaData);
 
   const emptyScanNeedsAddress = shouldShowEmptyScanAddressPrompt(scanning, hasPublishableTendine)
@@ -2087,14 +2065,6 @@ const Result = () => {
                 </PublishableAccordionItem>
               </SectionSafe>
 
-              {/* Mercato Locale */}
-              <SectionSafe>
-                <PublishableAccordionItem id="market" title="Mercato Locale" icon={BarChart3} defaultOpen={false}
-                  loading={isModuleLoading(result.marketContext.status)} publishable={isMarketPublishable(marketData)}>
-                  <MarketContextCard data={marketData} loading={isModuleLoading(result.marketContext.status)} />
-                </PublishableAccordionItem>
-              </SectionSafe>
-
               {/* Immobile e Facciata */}
               <SectionSafe>
                 <PublishableAccordionItem id="facciata" title="Immobile e Facciata" icon={Eye} defaultOpen={false}
@@ -2117,14 +2087,6 @@ const Result = () => {
                 <PublishableAccordionItem id="poi" title="Servizi e POI" icon={MapPin} defaultOpen={false}
                   loading={isModuleLoading(result.poiEnrichment.status)} publishable={isPoiPublishable(poiData)}>
                   <PoiEnrichmentCard data={poiData} loading={isModuleLoading(result.poiEnrichment.status)} />
-                </PublishableAccordionItem>
-              </SectionSafe>
-
-              {/* Posizionamento Commerciale */}
-              <SectionSafe>
-                <PublishableAccordionItem id="commerciale" title="Posizionamento Commerciale" icon={Target} defaultOpen={false}
-                  loading={isModuleLoading(result.posizionamentoCommerciale.status)} publishable={isReportFieldsPublishable(commercialeData as unknown as Record<string, unknown>)}>
-                  <PosizionamentoCommercialeCard data={commercialeData} loading={isModuleLoading(result.posizionamentoCommerciale.status)} />
                 </PublishableAccordionItem>
               </SectionSafe>
 
@@ -2158,47 +2120,12 @@ const Result = () => {
                 </PublishableAccordionItem>
               </SectionSafe>
 
-              {/* Profilo di Zona */}
-              <SectionSafe>
-                <PublishableAccordionItem id="vicinato" title="Profilo di Zona" icon={Layers} defaultOpen={false}
-                  loading={isModuleLoading(result.neighborhood?.status)} publishable={isNeighborhoodPublishable(neighborhoodIndex)}>
-                  <NeighborhoodIndexCard
-                    index={neighborhoodIndex}
-                    loading={isModuleLoading(result.neighborhood?.status)}
-                  />
-                </PublishableAccordionItem>
-              </SectionSafe>
-
-              {/* Convergenza + Opportunità */}
-              <SectionSafe>
-                <PublishableAccordionItem id="convergenza" title="Convergenza e Opportunità" icon={Zap} defaultOpen={false}
-                  loading={isModuleLoading(result.convergenzaTerritoriale.status) || isModuleLoading(result.opportunity.status)}
-                  publishable={isConvergenzaPublishable(convergenzaData) || isOpportunityPublishable(opportunityData)}>
-                  <ConvergenzaTerritorialeCard data={convergenzaData} loading={isModuleLoading(result.convergenzaTerritoriale.status)} />
-                  <div className="mt-3" />
-                  <OpportunityCard data={opportunityData} loading={isModuleLoading(result.opportunity.status)} />
-                </PublishableAccordionItem>
-              </SectionSafe>
-
-              {/* Scenario e Proiezioni */}
-              <SectionSafe>
-                <PublishableAccordionItem id="scenario" title="Scenario e Proiezioni" icon={Rocket} defaultOpen={false}
-                  loading={isModuleLoading(result.scenarioTemporale.status) || isModuleLoading(result.timeView.status)}
-                  publishable={isScenarioTemporalePublishable(scenarioData) || isTimeViewPublishable(timeViewData)}>
-                  <ScenarioTemporaleCard data={scenarioData} loading={isModuleLoading(result.scenarioTemporale.status)} />
-                  <div className="mt-3" />
-                  <TimeViewCard data={timeViewData} loading={isModuleLoading(result.timeView.status)} />
-                </PublishableAccordionItem>
-              </SectionSafe>
-
               {/* Infrastrutture e Sviluppo */}
               <SectionSafe>
-                <PublishableAccordionItem id="infra" title="Infrastrutture e Sviluppo" icon={Construction} defaultOpen={false}
-                  loading={isModuleLoading(result.infrastrutture.status) || isModuleLoading(result.sviluppoArea.status)}
-                  publishable={isInfraPublishable(infraData) || isSviluppoPublishable(sviluppoData)}>
+                <PublishableAccordionItem id="infra" title="Infrastrutture" icon={Construction} defaultOpen={false}
+                  loading={isModuleLoading(result.infrastrutture.status)}
+                  publishable={isInfraPublishable(infraData)}>
                   <InfrastrutureCard data={infraData} loading={isModuleLoading(result.infrastrutture.status)} />
-                  <div className="mt-3" />
-                  <SviluppoAreaCard data={sviluppoData} loading={isModuleLoading(result.sviluppoArea.status)} />
                 </PublishableAccordionItem>
               </SectionSafe>
 
