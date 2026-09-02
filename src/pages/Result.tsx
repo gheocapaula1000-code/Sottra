@@ -421,7 +421,7 @@ function PricingCard({ data, loading }: { data: PricingData | null; loading: boo
       {/* Geo-level context — official OMI microzona, never this interior */}
       <div className="flex items-center gap-1.5 mb-3">
         <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-          <CheckCircle2 className="h-3 w-3" />Dato ufficiale OMI — microzona
+          <CheckCircle2 className="h-3 w-3" />Microzona OMI ufficiale (poligono AdE)
         </span>
       </div>
       <div className="flex items-baseline gap-1.5 mb-3 min-w-0 flex-wrap">
