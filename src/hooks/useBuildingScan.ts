@@ -1,7 +1,7 @@
 import { useReducer, useState, useCallback, useRef } from "react";
-import { identifyBuilding, getPricing, getNeighborhood, getPoiEnrichment } from "@/services/scan";
+import { identifyBuilding, getPricing, getPoiEnrichment } from "@/services/scan";
 import { _resetCircuitBreaker } from "@/services/api";
-import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
+import { getInfrastrutture, getRischioZona, getTrendDemografico } from "@/services/forecast";
 import { fetchProSources, geocodeAddress, reverseGeocode } from "@/services/proSources";
 import { getPhotoWow } from "@/services/photoWow";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +48,9 @@ const MODULES: (keyof ScanResult)[] = [
 const SIDEWALK_STRIPPED_MODULES: (keyof ScanResult)[] = [
   "offmarket", "zoneIntelligence", "listings", "condominio",
   "storicoTransazioni", "moodScore", "energy",
+  // Punteggi elaborati / stime non ufficiali: mai sul percorso marciapiede.
+  "marketContext", "timeView", "opportunity",
+  "sviluppoArea", "convergenzaTerritoriale", "neighborhood",
 ];
 
 const REPORT_MODULES: (keyof ScanResult)[] = [
@@ -137,11 +140,9 @@ function reducer(state: ScanResult, action: Action): ScanResult {
 }
 
 const TERRITORIAL_MODULES: (keyof ScanResult)[] = [
-  "marketContext", "timeView", "opportunity",
   "infrastrutture", "rischioZona", "trendDemografico",
-  "sviluppoArea", "convergenzaTerritoriale",
   "poiEnrichment", "omiZone", "istatDemographic",
-  "subMunicipalMatch", "neighborhood",
+  "subMunicipalMatch",
 ];
 
 export type ScanOptions = {
@@ -228,7 +229,7 @@ export function useBuildingScan() {
       geo: DerivedScanGeo,
     ) => {
       const {
-        address, confidence, comuneFromAddr, comuneFromIdentify,
+        address, comuneFromAddr, comuneFromIdentify,
         provinciaFromIdentify, addressFromIdentify, finalLat, finalLng,
       } = geo;
 
@@ -258,15 +259,9 @@ export function useBuildingScan() {
 
       await Promise.allSettled([
         ...(address ? [getPricing(address, photo).then(resolve("pricing")).catch(reject("pricing"))] : []),
-        getMarketContext(finalLat, finalLng, address || undefined).then(resolve("marketContext")).catch(reject("marketContext")),
-        getTimeView(finalLat, finalLng, 12).then(resolve("timeView")).catch(reject("timeView")),
-        getOpportunityIndex(finalLat, finalLng).then(resolve("opportunity")).catch(reject("opportunity")),
         getInfrastrutture(finalLat, finalLng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
         getRischioZona(finalLat, finalLng).then(resolve("rischioZona")).catch(reject("rischioZona")),
         getTrendDemografico(finalLat, finalLng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
-        getSviluppoArea(finalLat, finalLng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
-        getConvergenzaTerritoriale(finalLat, finalLng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
-        getNeighborhood(finalLat, finalLng, address).then(resolve("neighborhood")).catch(reject("neighborhood")),
         getPoiEnrichment(finalLat, finalLng, address).then((r) => {
           if (r.error) {
             dispatch({ type: "MERGE_POI", data: null, message: r.message });
@@ -492,9 +487,8 @@ export function useBuildingScan() {
     };
 
     const affectedModules: (keyof ScanResult)[] = [
-      "pricing", "marketContext", "timeView", "opportunity",
+      "pricing",
       "infrastrutture", "rischioZona", "trendDemografico",
-      "sviluppoArea", "convergenzaTerritoriale",
       "poiEnrichment", "omiZone", "istatDemographic",
       "profiloRapido", "immobileFacciata", "contestoVicinato",
       "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
@@ -518,7 +512,7 @@ export function useBuildingScan() {
 
     const geocoded = await geocodeAddress(manualAddr);
     const geo = deriveGeoFromIdentify(identifyForGeo, manualAddr, lat, lng, geocoded);
-    const { finalLat, finalLng, confidence } = geo;
+    const { finalLat, finalLng } = geo;
 
     if (finalLat == null || finalLng == null || !isValidGps(finalLat, finalLng)) {
       for (const k of TERRITORIAL_MODULES) {
@@ -539,14 +533,9 @@ export function useBuildingScan() {
 
     await Promise.allSettled([
       getPricing(manualAddr, photo).then(resolve("pricing")).catch(reject("pricing")),
-      getMarketContext(finalLat, finalLng, manualAddr).then(resolve("marketContext")).catch(reject("marketContext")),
-      getTimeView(finalLat, finalLng, 12).then(resolve("timeView")).catch(reject("timeView")),
-      getOpportunityIndex(finalLat, finalLng).then(resolve("opportunity")).catch(reject("opportunity")),
       getInfrastrutture(finalLat, finalLng).then(resolve("infrastrutture")).catch(reject("infrastrutture")),
       getRischioZona(finalLat, finalLng).then(resolve("rischioZona")).catch(reject("rischioZona")),
       getTrendDemografico(finalLat, finalLng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
-      getSviluppoArea(finalLat, finalLng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
-      getConvergenzaTerritoriale(finalLat, finalLng, confidence, manualAddr).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
       fetchProSources(finalLat, finalLng).then((proData) => {
         if (proData.poi) {
           dispatch({ type: "MERGE_POI", data: proData.poi });

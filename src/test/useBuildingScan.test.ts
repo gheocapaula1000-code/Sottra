@@ -151,8 +151,8 @@ describe("useBuildingScan", () => {
     expect(result.current.result.identify.status).toBe("success");
     expect(result.current.result.identify.data?.address).toBe("Via Roma 1, Padova");
     expect(result.current.result.pricing.status).toBe("success");
-    expect(result.current.result.timeView.status).toBe("success");
-    expect(result.current.result.opportunity.status).toBe("success");
+    expect(result.current.result.timeView.status).toBe("idle");
+    expect(result.current.result.opportunity.status).toBe("idle");
     expect(result.current.result.omiZone.status).toBe("success");
     expect(result.current.result.omiZone.data?.comuneLabel).toBe("Padova");
     expect(identifyBuilding).toHaveBeenCalled();
@@ -185,7 +185,7 @@ describe("useBuildingScan", () => {
     });
 
     expect(result.current.result.identify.status).toBe("error");
-    expect(result.current.result.timeView.status).toBe("success");
+    expect(result.current.result.timeView.status).toBe("idle");
     expect(result.current.result.omiZone.status).toBe("success");
     expect(result.current.result.pricing.status).toBe("idle");
   });

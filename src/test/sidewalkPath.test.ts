@@ -14,6 +14,12 @@ const STRIPPED_GETTERS = [
   "getStoricoTransazioni",
   "getMoodScore",
   "getEnergy",
+  "getMarketContext",
+  "getTimeView",
+  "getOpportunityIndex",
+  "getSviluppoArea",
+  "getConvergenzaTerritoriale",
+  "getNeighborhood",
 ];
 
 describe("Sidewalk Result path stays official and fail-closed", () => {
@@ -24,7 +30,7 @@ describe("Sidewalk Result path stays official and fail-closed", () => {
     }
     expect(hook).toContain("SIDEWALK_STRIPPED_MODULES");
     // Official core stays
-    for (const keep of ["identifyBuilding", "getPricing", "getNeighborhood", "getPoiEnrichment", "fetchProSources", "getPhotoWow"]) {
+    for (const keep of ["identifyBuilding", "getPricing", "getPoiEnrichment", "fetchProSources", "getPhotoWow", "getRischioZona", "getTrendDemografico"]) {
       expect(hook, keep).toContain(keep);
     }
   });
@@ -40,11 +46,22 @@ describe("Sidewalk Result path stays official and fail-closed", () => {
       "MoodScoreSection",
       "EnergySection",
       "Perplexity",
+      "Apify",
+      "Firecrawl",
+      "MarketContextCard",
+      "PosizionamentoCommercialeCard",
+      "NeighborhoodIndexCard",
+      "ConvergenzaTerritorialeCard",
+      "OpportunityCard",
+      "ScenarioTemporaleCard",
+      "TimeViewCard",
+      "SviluppoAreaCard",
+      "successione",
     ]) {
       expect(page, banned).not.toContain(banned);
     }
     // Official sections stay
-    for (const keep of ["OmiQuotesTable", "IstatSubMunicipalAreasTable", "PoiEnrichmentCard", "NeighborhoodIndexCard", "BuildingIdentityCard"]) {
+    for (const keep of ["OmiQuotesTable", "IstatSubMunicipalAreasTable", "PoiEnrichmentCard", "BuildingIdentityCard", "RischioZonaCard", "TrasparenzaFontiCard"]) {
       expect(page, keep).toContain(keep);
     }
   });

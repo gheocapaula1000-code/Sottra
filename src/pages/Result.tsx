@@ -44,8 +44,8 @@ import {
 import { calculateNeighborhoodIndex, type NeighborhoodIndex, type SubDimension } from "@/lib/neighborhoodIndex";
 import {
   ProfiloRapidoCard, ImmobileFacciataCard, ContestoVicinatoCard,
-  PosizionamentoCommercialeCard, ProfiloAreaCard,
-  ScenarioTemporaleCard, SintesiFinaleCard, TrasparenzaFontiCard,
+  ProfiloAreaCard,
+  SintesiFinaleCard, TrasparenzaFontiCard,
   PrioritaCriticitaCard,
 } from "@/components/report/ReportSections";
 import type { TrasparenzaFontiData, FonteEntry, PrioritaCriticitaData, ScenarioTemporaleData } from "@/types/report";
@@ -465,72 +465,6 @@ function PricingCard({ data, loading }: { data: PricingData | null; loading: boo
   );
 }
 
-function ConvergenzaTerritorialeCard({ data, loading }: { data: ConvergenzaTerritorialeData | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!data || data.sourceType === "unavailable" || data.score == null) return null;
-
-  const _tier = sourceTypeToTier(data.sourceType);
-  const bandColors: Record<string, string> = {
-    molto_forte: "from-emerald-500/15 to-green-500/5 border-emerald-500/20",
-    forte: "from-sky-500/15 to-blue-500/5 border-sky-500/20",
-    interessante: "from-violet-500/10 to-indigo-500/5 border-violet-500/20",
-    debole: "from-stone-500/10 to-stone-400/5 border-stone-500/20",
-  };
-  const bandLabels: Record<string, string> = { molto_forte: "Molto forte", forte: "Forte", interessante: "Interessante", debole: "Debole" };
-  const convergenceLabels: Record<string, string> = { alta: "Elevata", media: "Media", bassa: "Bassa", insufficiente: "Insufficiente" };
-  const coverageLabels: Record<string, string> = { completa: "Completa", buona: "Buona", parziale: "Parziale", scarsa: "Scarsa" };
-
-  const positiveSignals = (data.topPositiveSignals ?? []).slice(0, 3);
-  const negativeSignals = (data.topNegativeSignals ?? []).slice(0, 3);
-
-  return (
-    <Section gradient={data.band ? bandColors[data.band] ?? "" : ""}>
-      <SectionHeader icon={Layers} title="Convergenza Territoriale" badge={data.band ? bandLabels[data.band] : null} />
-      <QualitativeBadge band={data.band} bandLabels={bandLabels} subtitle="Valutazione sintetica Sottra" />
-      <div className="space-y-1 mb-4">
-        {data.convergenceLevel && (
-          <div className="flex items-center gap-2 text-xs"><span className="text-muted-foreground">Convergenza</span><span className="font-semibold text-foreground">{convergenceLabels[data.convergenceLevel] ?? data.convergenceLevel}</span></div>
-        )}
-        {data.coverageLevel && (
-          <div className="flex items-center gap-2 text-xs"><span className="text-muted-foreground">Copertura dati</span><span className="font-semibold text-foreground">{coverageLabels[data.coverageLevel] ?? data.coverageLevel}</span></div>
-        )}
-      </div>
-
-      {positiveSignals.length > 0 && (
-        <div className="space-y-1.5 mb-3">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Segnali favorevoli</p>
-          {positiveSignals.map((s, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" />
-              <div><p className="text-xs text-foreground leading-relaxed">{s.label}</p>{s.source && <p className="text-[10px] text-muted-foreground/50">{s.source}</p>}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {negativeSignals.length > 0 && (
-        <div className="space-y-1.5 mb-3">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Contro-segnali</p>
-          {negativeSignals.map((s, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
-              <div><p className="text-xs text-foreground leading-relaxed">{s.label}</p>{s.source && <p className="text-[10px] text-muted-foreground/50">{s.source}</p>}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {data.confidenceReason && (
-        <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3">
-          <p className="text-xs text-foreground/80 leading-relaxed italic">"{data.confidenceReason}"</p>
-        </div>
-      )}
-      <SourceTag meta={data} />
-      <p className="text-[11px] text-muted-foreground/60 mt-1">Indice di convergenza elaborato — non costituisce consulenza</p>
-    </Section>
-  );
-}
-
 function RischioZonaCard({ data, loading }: { data: RischioZonaData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
   if (!data || data.sourceType === "unavailable" || data.scoreRischio == null) return null;
@@ -667,153 +601,6 @@ function TrendDemograficoCard({ data, loading }: { data: TrendDemograficoData | 
   );
 }
 
-function OpportunityCard({ data, loading }: { data: OpportunityData | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!data) return null;
-  const scoreValue = data.score ?? data.indice ?? null;
-  if (data.sourceType === "unavailable" || scoreValue == null) return null;
-
-  const bandColors: Record<string, string> = {
-    molto_forte: "from-emerald-500/15 to-green-500/5 border-emerald-500/20",
-    forte: "from-sky-500/15 to-blue-500/5 border-sky-500/20",
-    interessante: "from-violet-500/10 to-indigo-500/5 border-violet-500/20",
-    limitata: "from-stone-500/10 to-stone-400/5 border-stone-500/20",
-  };
-  const bandLabels: Record<string, string> = { molto_forte: "Molto forte", forte: "Forte", interessante: "Interessante", limitata: "Limitata" };
-  const effectiveBand = data.band ?? null;
-  const drivers = (data.drivers ?? []).slice(0, 3);
-  const risks = (data.risks ?? []).slice(0, 2);
-  const observation = data.observation ?? data.raccomandazione ?? null;
-
-  return (
-    <Section gradient={effectiveBand ? bandColors[effectiveBand] ?? "" : ""}>
-      <SectionHeader icon={Target} title="Indice Opportunità" badge={effectiveBand ? bandLabels[effectiveBand] : (data.quadrante ?? null)} />
-      <QualitativeBadge band={effectiveBand} bandLabels={bandLabels} subtitle="Indice elaborato Sottra" />
-      {observation && (
-        <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3">
-          <p className="text-xs text-foreground/80 leading-relaxed italic">"{observation}"</p>
-        </div>
-      )}
-
-      {drivers.length > 0 && (
-        <div className="space-y-1.5 mb-3">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Driver principali</p>
-          {drivers.map((d, i) => (
-            <div key={i} className="flex items-start gap-2"><div className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 bg-emerald-500" /><p className="text-xs text-foreground leading-relaxed">{toText(d)}</p></div>
-          ))}
-        </div>
-      )}
-
-      {risks.length > 0 && (
-        <div className="space-y-1.5 mb-3">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Elementi di rischio</p>
-          {risks.map((r, i) => (
-            <div key={i} className="flex items-start gap-2"><div className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 bg-amber-500" /><p className="text-xs text-foreground leading-relaxed">{toText(r)}</p></div>
-          ))}
-        </div>
-      )}
-
-      {observation && (
-        <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3">
-          <p className="text-xs text-foreground/80 leading-relaxed italic">"{observation}"</p>
-        </div>
-      )}
-      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mb-1">{data.confidenceReason}</p>}
-      <SourceTag meta={data} />
-      <p className="text-[11px] text-muted-foreground/60 mt-1">Indice elaborato — non costituisce consulenza finanziaria</p>
-    </Section>
-  );
-}
-
-function TimeViewCard({ data, loading }: { data: TimeViewData | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!data || data.sourceType === "unavailable" || (!data.scenarioBand && data.previsione5Anni == null)) return null;
-
-  const bandColors: Record<string, string> = {
-    favorevole: "from-emerald-500/15 to-green-500/5 border-emerald-500/20",
-    moderatamente_favorevole: "from-sky-500/15 to-blue-500/5 border-sky-500/20",
-    stabile: "from-slate-500/10 to-stone-500/5 border-slate-500/20",
-    da_monitorare: "from-amber-500/10 to-yellow-500/5 border-amber-500/20",
-  };
-  const bandLabels: Record<string, string> = {
-    favorevole: "Favorevole", moderatamente_favorevole: "Moderatamente favorevole", stabile: "Stabile", da_monitorare: "Da monitorare",
-  };
-
-  const drivers = (data.scenarioDrivers ?? []).slice(0, 3);
-  const risks = (data.scenarioRisks ?? []).slice(0, 2);
-
-  return (
-    <Section gradient={data.scenarioBand ? bandColors[data.scenarioBand] ?? "" : ""}>
-      <SectionHeader icon={Eye} title="Scenario Evolutivo" badge={data.scenarioBand ? bandLabels[data.scenarioBand] : null} />
-
-      {data.scenarioHorizon && (
-        <p className="text-xs text-muted-foreground mb-3">Orizzonte: <span className="font-semibold text-foreground">{data.scenarioHorizon}</span></p>
-      )}
-
-      {data.scenarioBand && (
-        <QualitativeBadge
-          band={data.scenarioBand}
-          bandLabels={bandLabels}
-          subtitle="Proiezione indicativa — scenario orientativo, non previsione"
-        />
-      )}
-
-      {data.previsione5Anni != null && (
-        <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2.5 mb-4">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Stima indicativa di variazione</p>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            {[
-              { label: "5a", value: data.previsione5Anni },
-              { label: "10a", value: data.previsione10Anni },
-              { label: "20a", value: data.previsione20Anni },
-            ].filter(item => item.value != null).map((item, i) => (
-              <div key={i} className="flex items-baseline gap-1">
-                <span>{item.label}:</span>
-                <span className="font-medium text-foreground/70 text-xs">~{fmt(item.value)}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {drivers.length > 0 && (
-        <div className="space-y-1.5 mb-3">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Fattori trainanti</p>
-          {drivers.map((d, i) => (
-            <div key={i} className="flex items-start gap-2"><ShieldCheck className="h-3 w-3 mt-0.5 shrink-0 text-emerald-500" /><p className="text-xs text-foreground leading-relaxed">{toText(d)}</p></div>
-          ))}
-        </div>
-      )}
-
-      {risks.length > 0 && (
-        <div className="space-y-1.5 mb-3">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Elementi di attenzione</p>
-          {risks.map((r, i) => (
-            <div key={i} className="flex items-start gap-2"><TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" /><p className="text-xs text-foreground leading-relaxed">{toText(r)}</p></div>
-          ))}
-        </div>
-      )}
-
-      {data.narrativeObservation && (
-        <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3">
-          <p className="text-xs text-foreground/80 leading-relaxed italic">"{data.narrativeObservation}"</p>
-        </div>
-      )}
-
-      {(data.progettiInArrivo ?? []).length > 0 && (
-        <div className="space-y-1 mb-3">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Progetti in arrivo</p>
-          {(data.progettiInArrivo ?? []).map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-foreground"><Rocket className="h-3 w-3 text-primary" />{toText(p)}</div>)}
-        </div>
-      )}
-
-      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mb-1">{data.confidenceReason}</p>}
-      <SourceTag meta={data} />
-      <p className="text-[11px] text-muted-foreground/60 mt-1">Le proiezioni sono indicative e non costituiscono consulenza finanziaria</p>
-    </Section>
-  );
-}
-
 function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; loading: boolean }) {
   if (loading) return <SectionSkeleton />;
   if (!data || data.sourceType === "unavailable" || (data.infrastructureScore == null && !data.narrativeObservation)) return null;
@@ -938,122 +725,6 @@ function InfrastrutureCard({ data, loading }: { data: InfrastrutureData | null; 
 
       {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mb-1">{data.confidenceReason}</p>}
       <SourceTag meta={data} />
-    </Section>
-  );
-}
-
-function SviluppoAreaCard({ data, loading }: { data: SviluppoAreaData | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!data || data.sourceType === "unavailable" || (data.areaDevelopmentScore == null && !data.narrativeObservation)) return null;
-
-  const bandColors: Record<string, string> = {
-    elevata: "from-emerald-500/15 to-green-500/5 border-emerald-500/20",
-    significativa: "from-sky-500/15 to-blue-500/5 border-sky-500/20",
-    moderata: "from-amber-500/10 to-yellow-500/5 border-amber-500/20",
-    contenuta: "from-orange-500/10 to-amber-500/5 border-orange-500/20",
-    limitata: "from-stone-500/10 to-stone-400/5 border-stone-500/20",
-  };
-  const bandLabels: Record<string, string> = { elevata: "Elevata", significativa: "Significativa", moderata: "Moderata", contenuta: "Contenuta", limitata: "Limitata" };
-
-  const topSignals = (data.developmentSignals ?? []).filter(s => s.label).slice(0, 3);
-  const highlights: string[] = [
-    ...(data.infrastructureProjects ?? []).slice(0, 2),
-    ...(data.connectivitySignals ?? []).slice(0, 1),
-    ...(data.publicInvestmentSignals ?? []).slice(0, 1),
-  ].slice(0, 3);
-
-  return (
-    <Section gradient={data.areaDevelopmentBand ? bandColors[data.areaDevelopmentBand] ?? "" : ""}>
-      <SectionHeader icon={Compass} title="Dinamica Territoriale" badge={data.areaDevelopmentBand ? bandLabels[data.areaDevelopmentBand] : null} />
-
-      <QualitativeBadge band={data.areaDevelopmentBand} bandLabels={bandLabels} subtitle="Indice elaborato Sottra" />
-
-      {topSignals.length > 0 && (
-        <div className="space-y-2 mb-3">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Segnali rilevanti</p>
-          {topSignals.map((s, i) => (
-            <div key={i} className="flex items-start gap-2.5">
-              <div className={cn("mt-1 h-2 w-2 rounded-full shrink-0", s.relevance === "alta" ? "bg-emerald-500" : s.relevance === "media" ? "bg-sky-500" : "bg-muted-foreground/40")} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground leading-tight">{s.label}</p>
-                {s.detail && <p className="text-[11px] text-muted-foreground mt-0.5">{s.detail}</p>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {highlights.length > 0 && (
-        <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3 space-y-1.5">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Opere e investimenti</p>
-          {highlights.map((h, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs text-foreground"><Construction className="h-3 w-3 shrink-0 text-primary/60" /><span>{toText(h)}</span></div>
-          ))}
-        </div>
-      )}
-
-      {data.narrativeObservation && (
-        <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3">
-          <p className="text-xs text-foreground/80 leading-relaxed italic">"{data.narrativeObservation}"</p>
-        </div>
-      )}
-
-      {/* School context — structured */}
-      <SchoolContextBlock schoolContext={data.schoolContext} />
-
-      {/* Energy context — string */}
-      {data.energyContext && typeof data.energyContext === "string" && (
-        <div className="rounded-lg bg-background/40 border border-border/30 p-3 mb-3">
-          <div className="flex items-start gap-2 text-xs text-foreground">
-            <Rocket className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-            <span>{data.energyContext}</span>
-          </div>
-        </div>
-      )}
-
-      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mb-1">{data.confidenceReason}</p>}
-      <SourceTag meta={data} />
-    </Section>
-  );
-}
-
-/* ── Market Context Card ──────────────────────────────── */
-
-
-function MarketContextCard({ data, loading }: { data: MarketContextData | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!data || !isMarketPublishable(data)) return null;
-
-  const coverageLabels: Record<string, string> = { completa: "Completa", buona: "Buona", parziale: "Parziale", scarsa: "Scarsa" };
-  const isPartial = data.sourceType === "commercial_partial" || data.marketCoverageLevel === "parziale" || data.marketCoverageLevel === "scarsa";
-
-  return (
-    <Section gradient="from-indigo-500/10 to-violet-500/5 border-indigo-500/15">
-      <SectionHeader icon={BarChart3} title="Mercato Locale" badge={data.marketCoverageLevel ? coverageLabels[data.marketCoverageLevel] : null} />
-
-      {data.comparablesSummary && data.comparablesSummary.count != null && data.comparablesSummary.count > 0 && (
-        <ComparablesBlock comp={data.comparablesSummary} isPartial={isPartial} />
-      )}
-
-      {(data.marketSignals ?? []).length > 0 && (
-        <MarketSignalsBlock signals={data.marketSignals!} />
-      )}
-
-      {data.narrativeObservation && (
-        <div className="rounded-lg bg-background/40 border border-border/30 px-3 py-2 mb-3 mt-3">
-          <p className="text-xs text-foreground/80 leading-relaxed italic">"{data.narrativeObservation}"</p>
-        </div>
-      )}
-
-      {data.confidenceReason && <p className="text-[10px] text-muted-foreground/50 mt-2">{data.confidenceReason}</p>}
-      <SourceTag meta={data} />
-      {isPartial && (
-        <p className="text-[11px] text-muted-foreground/60 mt-1">
-          {data.marketCoverageLevel === "scarsa"
-            ? "Dati di mercato limitati per questa zona — valori puramente indicativi"
-            : "Analisi basata su copertura parziale — dati indicativi"}
-        </p>
-      )}
     </Section>
   );
 }
@@ -1349,97 +1020,6 @@ function DimensionStatusIcon({ status }: { status: SubDimension["status"] }) {
   return <AlertTriangle className="h-3 w-3 text-muted-foreground/40" />;
 }
 
-function NeighborhoodIndexCard({ index, loading }: { index: NeighborhoodIndex | null; loading: boolean }) {
-  if (loading) return <SectionSkeleton />;
-  if (!index || !index.isRenderable || index.score == null) return null;
-
-  const bandColors: Record<string, string> = {
-    ottimo: "from-emerald-500/15 to-green-500/5 border-emerald-500/20",
-    buono: "from-sky-500/15 to-blue-500/5 border-sky-500/20",
-    discreto: "from-violet-500/10 to-indigo-500/5 border-violet-500/20",
-    sufficiente: "from-amber-500/10 to-yellow-500/5 border-amber-500/20",
-    insufficiente: "from-stone-500/10 to-stone-400/5 border-stone-500/20",
-  };
-  const bandLabels: Record<string, string> = {
-    ottimo: "Ottimo", buono: "Buono", discreto: "Discreto", sufficiente: "Sufficiente", insufficiente: "Insufficiente",
-  };
-
-  const geoLevelLabels: Record<string, string> = {
-    microzona: "Microzona", quartiere: "Quartiere", zona: "Zona locale",
-    comune: "Comunale", area_vasta: "Area vasta", stimato: "Stimato",
-  };
-
-  return (
-    <Section gradient={index.band ? bandColors[index.band] ?? "" : ""}>
-      <SectionHeader icon={Layers} title="Profilo di Zona" badge={index.band ? bandLabels[index.band] : null} />
-
-      {/* Geo level indicator */}
-      {index.geoLevel && (
-        <div className="flex items-center gap-1.5 mb-3">
-          <span className={cn(
-            "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium",
-            index.geoLevel === "microzona" || index.geoLevel === "quartiere"
-              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-              : index.geoLevel === "comune"
-                ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
-                : "bg-muted/50 border-border/50 text-muted-foreground",
-          )}>
-            <MapPin className="h-3 w-3" />{geoLevelLabels[index.geoLevel] ?? index.geoLevel}
-          </span>
-          {index.geoLabel && <span className="text-[10px] text-muted-foreground/60">{index.geoLabel}</span>}
-        </div>
-      )}
-
-      {/* Score arc + coverage */}
-      <div className="flex items-center gap-4 mb-4">
-        <ScoreArc value={index.score} />
-        <div className="flex-1 space-y-1.5">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Copertura dati</span>
-            <span className="font-semibold text-foreground">{index.coveragePct}%</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Dimensioni</span>
-            <span className="font-semibold text-foreground">{index.dimensionsAvailable}/{index.dimensionsTotal}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Sub-dimensions */}
-      <div className="space-y-2 mb-3">
-        {index.dimensions.map((dim) => (
-          <div key={dim.id} className="rounded-lg bg-background/40 border border-border/30 px-3 py-2">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <DimensionStatusIcon status={dim.status} />
-                <span className="text-xs font-medium text-foreground">{dim.label}</span>
-              </div>
-              {dim.score != null && (
-                <span className="text-xs font-bold text-foreground">{dim.score}/100</span>
-              )}
-            </div>
-            {dim.note && (
-              <p className="text-[10px] text-muted-foreground/60 leading-relaxed">{dim.note}</p>
-            )}
-            {dim.sources.length > 0 && (
-              <div className="flex items-center gap-1 mt-1 flex-wrap">
-                {dim.sources.map((s, i) => (
-                  <span key={i} className="text-[9px] text-muted-foreground/40">{s}</span>
-                ))}
-                {dim.geoLevel && dim.geoLevel !== index.geoLevel && (
-                  <span className="text-[9px] text-muted-foreground/40">· {geoLevelLabels[dim.geoLevel] ?? dim.geoLevel}</span>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <p className="text-[11px] text-muted-foreground/60">{index.disclaimer}</p>
-    </Section>
-  );
-}
-
 
 
 
@@ -1556,20 +1136,11 @@ function buildTrasparenzaFonti(result: ScanResult): TrasparenzaFontiData | null 
   if (result.pricing.status === "success" && result.pricing.data) {
     fonti.push({ categoria: "dato_mercato", categoriaLabel: "Prezzi di mercato", provider: "Fonti di mercato verificate", dettaglio: "Elaborazione da comparabili e dati di mercato" });
   }
-  if (result.marketContext.status === "success" && result.marketContext.data) {
-    fonti.push({ categoria: "dato_mercato", categoriaLabel: "Contesto di mercato", provider: "Fonti commerciali", dettaglio: "Analisi comparabili e segnali di mercato" });
-  }
   if (result.poiEnrichment.status === "success" && result.poiEnrichment.data) {
     fonti.push({ categoria: "dato_territoriale", categoriaLabel: "Servizi e POI", provider: "Fonti geospaziali verificate", dettaglio: "Punti di interesse nelle vicinanze" });
   }
   if (result.rischioZona.status === "success" && result.rischioZona.data) {
     fonti.push({ categoria: "dato_territoriale", categoriaLabel: "Rischio zona", provider: "Fonti istituzionali", dettaglio: "Rischio idrogeologico, sismico e ambientale" });
-  }
-  if (result.timeView.status === "success" && result.timeView.data) {
-    fonti.push({ categoria: "scenario", categoriaLabel: "Scenario evolutivo", provider: "Elaborazione Sottra", dettaglio: "Proiezione indicativa basata su trend e segnali" });
-  }
-  if (result.convergenzaTerritoriale.status === "success" && result.convergenzaTerritoriale.data) {
-    fonti.push({ categoria: "elaborazione", categoriaLabel: "Convergenza territoriale", provider: "Indice elaborato Sottra", dettaglio: "Sintesi da fonti multiple" });
   }
 
   return fonti.length > 0 ? { fonti } : null;
@@ -1908,48 +1479,26 @@ const Result = () => {
   const houseDiff = wowAndDiff?.houseDiff ?? null;
   const caseResult = wowAndDiff?.caseResult ?? null;
 
-  const marketData = result.marketContext.data as MarketContextData | null;
   const facciataData = result.immobileFacciata.data as import("@/types/report").ImmobileFacciataData | null;
   const contestoData = result.contestoVicinato.data as import("@/types/report").ContestoVicinatoData | null;
   const poiData = result.poiEnrichment.data as PoiEnrichmentData | null;
-  const commercialeData = result.posizionamentoCommerciale.data as import("@/types/report").PosizionamentoCommercialeData | null;
   const areaData = result.profiloArea.data as import("@/types/report").ProfiloAreaData | null;
   const rischioData = result.rischioZona.data as RischioZonaData | null;
   const istatData = result.istatDemographic.data as IstatDemographicData | null;
   const trendData = result.trendDemografico.data as TrendDemograficoData | null;
-  const convergenzaData = result.convergenzaTerritoriale.data as ConvergenzaTerritorialeData | null;
-  const opportunityData = result.opportunity.data as OpportunityData | null;
-  const scenarioData = result.scenarioTemporale.data as ScenarioTemporaleData | null;
-  const timeViewData = result.timeView.data as TimeViewData | null;
   const infraData = result.infrastrutture.data as InfrastrutureData | null;
-  const sviluppoData = result.sviluppoArea.data as SviluppoAreaData | null;
   const prioritaData = result.prioritaCriticita.data as PrioritaCriticitaData | null;
   const fontiData = scanning ? null : buildTrasparenzaFonti(result);
-  const neighborhoodIndex = (result.neighborhood?.data as unknown as NeighborhoodIndex | null) ?? calculateNeighborhoodIndex(
-    poiData,
-    istatData,
-    rischioData,
-    result.omiZone.data as OmiZoneData | null,
-  );
-
   const hasPublishableTendine =
     isOmiPublishable(officialOmi.data)
     || isPricingPublishable(pricingData)
-    || isMarketPublishable(marketData)
     || isReportFieldsPublishable(facciataData as unknown as Record<string, unknown>)
     || isReportFieldsPublishable(contestoData as unknown as Record<string, unknown>)
     || isPoiPublishable(poiData)
-    || isReportFieldsPublishable(commercialeData as unknown as Record<string, unknown>)
     || isReportFieldsPublishable(areaData as unknown as Record<string, unknown>)
     || isRischioPublishable(rischioData)
     || isDemographicsPublishable(istatData, trendData)
-    || isNeighborhoodPublishable(neighborhoodIndex)
-    || isConvergenzaPublishable(convergenzaData)
-    || isOpportunityPublishable(opportunityData)
-    || isScenarioTemporalePublishable(scenarioData)
-    || isTimeViewPublishable(timeViewData)
     || isInfraPublishable(infraData)
-    || isSviluppoPublishable(sviluppoData)
     || isPrioritaPublishable(prioritaData);
 
   const emptyScanNeedsAddress = shouldShowEmptyScanAddressPrompt(scanning, hasPublishableTendine)
@@ -2087,14 +1636,6 @@ const Result = () => {
                 </PublishableAccordionItem>
               </SectionSafe>
 
-              {/* Mercato Locale */}
-              <SectionSafe>
-                <PublishableAccordionItem id="market" title="Mercato Locale" icon={BarChart3} defaultOpen={false}
-                  loading={isModuleLoading(result.marketContext.status)} publishable={isMarketPublishable(marketData)}>
-                  <MarketContextCard data={marketData} loading={isModuleLoading(result.marketContext.status)} />
-                </PublishableAccordionItem>
-              </SectionSafe>
-
               {/* Immobile e Facciata */}
               <SectionSafe>
                 <PublishableAccordionItem id="facciata" title="Immobile e Facciata" icon={Eye} defaultOpen={false}
@@ -2117,14 +1658,6 @@ const Result = () => {
                 <PublishableAccordionItem id="poi" title="Servizi e POI" icon={MapPin} defaultOpen={false}
                   loading={isModuleLoading(result.poiEnrichment.status)} publishable={isPoiPublishable(poiData)}>
                   <PoiEnrichmentCard data={poiData} loading={isModuleLoading(result.poiEnrichment.status)} />
-                </PublishableAccordionItem>
-              </SectionSafe>
-
-              {/* Posizionamento Commerciale */}
-              <SectionSafe>
-                <PublishableAccordionItem id="commerciale" title="Posizionamento Commerciale" icon={Target} defaultOpen={false}
-                  loading={isModuleLoading(result.posizionamentoCommerciale.status)} publishable={isReportFieldsPublishable(commercialeData as unknown as Record<string, unknown>)}>
-                  <PosizionamentoCommercialeCard data={commercialeData} loading={isModuleLoading(result.posizionamentoCommerciale.status)} />
                 </PublishableAccordionItem>
               </SectionSafe>
 
@@ -2158,47 +1691,12 @@ const Result = () => {
                 </PublishableAccordionItem>
               </SectionSafe>
 
-              {/* Profilo di Zona */}
-              <SectionSafe>
-                <PublishableAccordionItem id="vicinato" title="Profilo di Zona" icon={Layers} defaultOpen={false}
-                  loading={isModuleLoading(result.neighborhood?.status)} publishable={isNeighborhoodPublishable(neighborhoodIndex)}>
-                  <NeighborhoodIndexCard
-                    index={neighborhoodIndex}
-                    loading={isModuleLoading(result.neighborhood?.status)}
-                  />
-                </PublishableAccordionItem>
-              </SectionSafe>
-
-              {/* Convergenza + Opportunità */}
-              <SectionSafe>
-                <PublishableAccordionItem id="convergenza" title="Convergenza e Opportunità" icon={Zap} defaultOpen={false}
-                  loading={isModuleLoading(result.convergenzaTerritoriale.status) || isModuleLoading(result.opportunity.status)}
-                  publishable={isConvergenzaPublishable(convergenzaData) || isOpportunityPublishable(opportunityData)}>
-                  <ConvergenzaTerritorialeCard data={convergenzaData} loading={isModuleLoading(result.convergenzaTerritoriale.status)} />
-                  <div className="mt-3" />
-                  <OpportunityCard data={opportunityData} loading={isModuleLoading(result.opportunity.status)} />
-                </PublishableAccordionItem>
-              </SectionSafe>
-
-              {/* Scenario e Proiezioni */}
-              <SectionSafe>
-                <PublishableAccordionItem id="scenario" title="Scenario e Proiezioni" icon={Rocket} defaultOpen={false}
-                  loading={isModuleLoading(result.scenarioTemporale.status) || isModuleLoading(result.timeView.status)}
-                  publishable={isScenarioTemporalePublishable(scenarioData) || isTimeViewPublishable(timeViewData)}>
-                  <ScenarioTemporaleCard data={scenarioData} loading={isModuleLoading(result.scenarioTemporale.status)} />
-                  <div className="mt-3" />
-                  <TimeViewCard data={timeViewData} loading={isModuleLoading(result.timeView.status)} />
-                </PublishableAccordionItem>
-              </SectionSafe>
-
               {/* Infrastrutture e Sviluppo */}
               <SectionSafe>
-                <PublishableAccordionItem id="infra" title="Infrastrutture e Sviluppo" icon={Construction} defaultOpen={false}
-                  loading={isModuleLoading(result.infrastrutture.status) || isModuleLoading(result.sviluppoArea.status)}
-                  publishable={isInfraPublishable(infraData) || isSviluppoPublishable(sviluppoData)}>
+                <PublishableAccordionItem id="infra" title="Infrastrutture" icon={Construction} defaultOpen={false}
+                  loading={isModuleLoading(result.infrastrutture.status)}
+                  publishable={isInfraPublishable(infraData)}>
                   <InfrastrutureCard data={infraData} loading={isModuleLoading(result.infrastrutture.status)} />
-                  <div className="mt-3" />
-                  <SviluppoAreaCard data={sviluppoData} loading={isModuleLoading(result.sviluppoArea.status)} />
                 </PublishableAccordionItem>
               </SectionSafe>
 

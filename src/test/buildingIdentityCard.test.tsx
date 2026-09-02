@@ -133,9 +133,9 @@ describe("Result leads with this-building WOW then zone", () => {
     expect(result).toContain("saveLastScanPhoto");
     // dossier stays dense — do not shrink to 3–4 cards
     expect(result).toContain('id="pricing"');
-    expect(result).toContain('id="market"');
     expect(result).toContain('id="facciata"');
-    expect(result).toContain('id="convergenza"');
+    expect(result).toContain('id="istat"');
+    expect(result).toContain('id="poi"');
     expect(result).toContain("Fonti e Metodologia");
   });
 });
