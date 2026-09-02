@@ -39,7 +39,7 @@ describe("Termini e Condizioni match the product Sottra sells", () => {
     expect(page).toMatch(/Piano Agenzia: telefoni illimitati/);
     expect(page).toMatch(/Piano Rete: telefoni illimitati/);
     expect(page).not.toMatch(/vincolato a un singolo dispositivo per l'intera durata/i);
-    expect(page).toMatch(/supporto@sottra\.app/);
+    expect(page).toContain("APP_BRAND.supportEmail");
   });
 
   it("WhatsApp JPEG to the saved agency number is intended use; credential sharing stays forbidden", () => {
