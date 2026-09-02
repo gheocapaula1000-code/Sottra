@@ -1619,11 +1619,10 @@ const Result = () => {
                 </PublishableAccordionItem>
               </SectionSafe>
 
-              {/* Prezzi di Mercato — open when prezzoMq exists */}
+              {/* Prezzi di Mercato — official OMI microzona only; hidden when GPS missed the AdE polygon */}
               <SectionSafe>
-                <PublishableAccordionItem id="pricing" title="Prezzi di Mercato" icon={TrendingUp} defaultOpen
-                  loading={isModuleLoading(result.pricing.status)} publishable={isPricingPublishable(pricingData)}
-                  isWeak={!pricingData?.polygonMatch && (!pricingData?.omiGeoLevel || pricingData?.omiGeoLevel === "comune")}>
+                <PublishableAccordionItem id="pricing" title="Prezzi di Mercato (microzona OMI)" icon={TrendingUp} defaultOpen
+                  loading={isModuleLoading(result.pricing.status)} publishable={isPricingPublishable(pricingData)}>
                   <PricingCard data={pricingData} loading={isModuleLoading(result.pricing.status)} />
                 </PublishableAccordionItem>
               </SectionSafe>
