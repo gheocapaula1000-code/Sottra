@@ -1,5 +1,5 @@
 import { useReducer, useState, useCallback, useRef } from "react";
-import { identifyBuilding, getPricing, getOffmarket, getZoneIntelligence, getListings, getCondominio, getStoricoTransazioni, getMoodScore, getEnergy, getNeighborhood, getPoiEnrichment } from "@/services/scan";
+import { identifyBuilding, getPricing, getNeighborhood, getPoiEnrichment } from "@/services/scan";
 import { _resetCircuitBreaker } from "@/services/api";
 import { getTimeView, getOpportunityIndex, getInfrastrutture, getRischioZona, getTrendDemografico, getSviluppoArea, getConvergenzaTerritoriale, getMarketContext } from "@/services/forecast";
 import { fetchProSources, geocodeAddress, reverseGeocode } from "@/services/proSources";
@@ -38,6 +38,18 @@ const MODULES: (keyof ScanResult)[] = [
   "prioritaCriticita",
 ];
 
+/**
+ * Moduli non ufficiali rimossi dal percorso "marciapiede" (foto + GPS ~20s):
+ * Perplexity (zoneIntelligence, offmarket), Apify/listings, condominio,
+ * storico transazioni, mood score, energy. Non devono mai partire su ogni
+ * scansione: costano e non sono dati ufficiali. Restano nello stato come
+ * `idle` (nascosti, fail-closed).
+ */
+const SIDEWALK_STRIPPED_MODULES: (keyof ScanResult)[] = [
+  "offmarket", "zoneIntelligence", "listings", "condominio",
+  "storicoTransazioni", "moodScore", "energy",
+];
+
 const REPORT_MODULES: (keyof ScanResult)[] = [
   "profiloRapido", "immobileFacciata", "contestoVicinato",
   "posizionamentoCommerciale", "profiloArea", "scenarioTemporale", "sintesiFinale",
@@ -45,7 +57,7 @@ const REPORT_MODULES: (keyof ScanResult)[] = [
 ];
 
 const ADDRESS_OPTIONAL_MODULES: (keyof ScanResult)[] = [
-  "pricing", "listings", "condominio", "storicoTransazioni", "energy",
+  "pricing",
 ];
 
 function buildInitialState(): ScanResult {
@@ -129,8 +141,7 @@ const TERRITORIAL_MODULES: (keyof ScanResult)[] = [
   "infrastrutture", "rischioZona", "trendDemografico",
   "sviluppoArea", "convergenzaTerritoriale",
   "poiEnrichment", "omiZone", "istatDemographic",
-  "subMunicipalMatch", "offmarket", "zoneIntelligence",
-  "moodScore", "neighborhood",
+  "subMunicipalMatch", "neighborhood",
 ];
 
 export type ScanOptions = {
@@ -233,13 +244,7 @@ export function useBuildingScan() {
             };
           await Promise.allSettled([
             getPricing(address, photo).then(resolveAddressOnly("pricing")).catch(reject("pricing")),
-            getEnergy(address, comuneFromAddr).then(resolveAddressOnly("energy")).catch(reject("energy")),
-            ...(addressFromIdentify
-              ? [getStoricoTransazioni(addressFromIdentify, comuneFromIdentify).then(resolveAddressOnly("storicoTransazioni")).catch(reject("storicoTransazioni"))]
-              : []),
           ]);
-          set("listings", { status: "idle", data: null, message: "Dati OMI non disponibili" });
-          set("condominio", { status: "idle", data: null, message: "Dati OMI non disponibili" });
         } else {
           idleAddressModules();
         }
@@ -257,17 +262,6 @@ export function useBuildingScan() {
         getTrendDemografico(finalLat, finalLng).then(resolve("trendDemografico")).catch(reject("trendDemografico")),
         getSviluppoArea(finalLat, finalLng).then(resolve("sviluppoArea")).catch(reject("sviluppoArea")),
         getConvergenzaTerritoriale(finalLat, finalLng, confidence, address).then(resolve("convergenzaTerritoriale")).catch(reject("convergenzaTerritoriale")),
-        getOffmarket(finalLat, finalLng, comuneFromIdentify, provinciaFromIdentify).then(resolve("offmarket")).catch(reject("offmarket")),
-        getZoneIntelligence(finalLat, finalLng, comuneFromIdentify, provinciaFromIdentify, addressFromIdentify || undefined).then(resolve("zoneIntelligence")).catch(reject("zoneIntelligence")),
-        ...(addressFromIdentify
-          ? [
-              getListings(addressFromIdentify, comuneFromIdentify, finalLat, finalLng).then(resolve("listings")).catch(reject("listings")),
-              getCondominio(addressFromIdentify, comuneFromIdentify, finalLat, finalLng).then(resolve("condominio")).catch(reject("condominio")),
-              getStoricoTransazioni(addressFromIdentify, comuneFromIdentify).then(resolve("storicoTransazioni")).catch(reject("storicoTransazioni")),
-            ]
-          : []),
-        getMoodScore(finalLat, finalLng).then(resolve("moodScore")).catch(reject("moodScore")),
-        ...(address ? [getEnergy(address, comuneFromAddr).then(resolve("energy")).catch(reject("energy"))] : []),
         getNeighborhood(finalLat, finalLng, address).then(resolve("neighborhood")).catch(reject("neighborhood")),
         getPoiEnrichment(finalLat, finalLng, address).then((r) => {
           if (r.error) {
