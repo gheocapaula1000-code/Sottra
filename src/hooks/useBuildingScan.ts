@@ -181,6 +181,10 @@ export function useBuildingScan() {
       setScanning(true);
       dispatch({ type: "START_SCAN" });
     }
+    // Stripped modules never fire on the sidewalk path: keep them idle (hidden).
+    for (const k of SIDEWALK_STRIPPED_MODULES) {
+      dispatch({ type: "SET", key: k, value: idle });
+    }
     if (manualAddrInput && manualAddrInput.trim()) {
       setManualAddress({ via: manualAddrInput.trim(), civico: "", cap: "", comune: "", provincia: "" });
     }
