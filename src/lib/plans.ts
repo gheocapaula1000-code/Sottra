@@ -5,24 +5,24 @@
 // Nessun piano annuale: solo mensile.
 export const PLANS = {
   agente: {
-    product_id: "prod_VBGaRco18J0QFg",
-    price_id: "price_1UAu3nGWMFww3yH4xKmNLJfP",
+    product_id: "prod_VBorrDEC1yrQlH",
+    price_id: "price_1UBRDoGhKJTTu87hDT1WGBdS",
     name: "Agente",
     price: 79,
     scans: 80,
     users: 1,
   },
   agenzia: {
-    product_id: "prod_VBGbm93YYVO4oI",
-    price_id: "price_1UAu3qGWMFww3yH424NM6o8d",
+    product_id: "prod_VBorvjfsoPt16x",
+    price_id: "price_1UBRDpGhKJTTu87hNtUKeWJ3",
     name: "Agenzia",
     price: 249,
     scans: 600,
     users: -1,
   },
   rete: {
-    product_id: "prod_VBGbH7DpLf502a",
-    price_id: "price_1UAu3uGWMFww3yH43u6K1Ect",
+    product_id: "prod_VBornpnBumW1Ev",
+    price_id: "price_1UBRDqGhKJTTu87h7Qj9n6Hd",
     name: "Rete",
     price: 690,
     scans: 2000,
