@@ -5,18 +5,18 @@
  */
 const ALLOWED_PRICE_IDS: ReadonlySet<string> = new Set([
   // Agente — 79 €/mese, 80 scansioni, 1 telefono
-  "price_1UAu3nGWMFww3yH4xKmNLJfP",
+  "price_1UBRDoGhKJTTu87hDT1WGBdS",
   // Agenzia — 249 €/mese, 600 scansioni, telefoni illimitati
-  "price_1UAu3qGWMFww3yH424NM6o8d",
+  "price_1UBRDpGhKJTTu87hNtUKeWJ3",
   // Rete — 690 €/mese, 2000 scansioni, telefoni illimitati, più sedi
-  "price_1UAu3uGWMFww3yH43u6K1Ect",
+  "price_1UBRDqGhKJTTu87h7Qj9n6Hd",
 ]);
 
 /** Tetto scansioni incluso per price ID — flat, nessun extra a consumo. */
 export const SCAN_CAP_BY_PRICE_ID: Readonly<Record<string, number>> = {
-  "price_1UAu3nGWMFww3yH4xKmNLJfP": 80,
-  "price_1UAu3qGWMFww3yH424NM6o8d": 600,
-  "price_1UAu3uGWMFww3yH43u6K1Ect": 2000,
+  "price_1UBRDoGhKJTTu87hDT1WGBdS": 80,
+  "price_1UBRDpGhKJTTu87hNtUKeWJ3": 600,
+  "price_1UBRDqGhKJTTu87h7Qj9n6Hd": 2000,
 };
 
 export function isAllowedPriceId(priceId: string): boolean {
