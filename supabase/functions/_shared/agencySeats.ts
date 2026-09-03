@@ -16,15 +16,15 @@
 /** Price ID con posti condivisi (telefoni illimitati). Specchio di src/lib/plans.ts. */
 export const SHARED_SEAT_PRICE_IDS: readonly string[] = [
   // Agenzia — 249 €/mese, 600 scansioni condivise
-  "price_1UAu3qGWMFww3yH424NM6o8d",
+  "price_1UBRDpGhKJTTu87hNtUKeWJ3",
   // Rete — 690 €/mese, 2000 scansioni condivise
-  "price_1UAu3uGWMFww3yH43u6K1Ect",
+  "price_1UBRDqGhKJTTu87h7Qj9n6Hd",
 ];
 
 /** Price ID a postazione singola: nessuna eredità di accesso. */
 export const SINGLE_SEAT_PRICE_IDS: readonly string[] = [
   // Agente — 79 €/mese, 80 scansioni, 1 telefono
-  "price_1UAu3nGWMFww3yH4xKmNLJfP",
+  "price_1UBRDoGhKJTTu87hDT1WGBdS",
 ];
 
 const ACTIVE_STATUSES: readonly string[] = ["active", "trialing"];
