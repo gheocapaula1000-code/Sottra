@@ -1,8 +1,28 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import { assertProductionSupabaseEnv } from "./src/integrations/supabase/env";
+
+/** Fail production builds that would bake an empty/placeholder VITE_SUPABASE_URL (black screen). */
+function supabaseProductionEnvGuard(): Plugin {
+  return {
+    name: "sottra-supabase-production-env",
+    configResolved(config) {
+      if (config.command !== "build") return;
+      if (config.mode !== "production") return;
+      const loaded = loadEnv(config.mode, process.cwd(), "VITE_");
+      assertProductionSupabaseEnv({
+        url: process.env.VITE_SUPABASE_URL || loaded.VITE_SUPABASE_URL || "",
+        publishableKey:
+          process.env.VITE_SUPABASE_PUBLISHABLE_KEY || loaded.VITE_SUPABASE_PUBLISHABLE_KEY || "",
+        ci: process.env.CI === "true",
+        forceProductionVerify: process.env.VERIFY_PRODUCTION_SUPABASE === "1",
+      });
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => ({
   server: {
@@ -29,6 +49,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [
+    supabaseProductionEnvGuard(),
     react(),
     mode === "development" && componentTagger(),
     VitePWA({

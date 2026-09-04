@@ -13,6 +13,9 @@ jobs:
       # Publishable Vite placeholders only — never Stripe/Core secrets.
       # Lovable keeps a local `.env` (expected). CI checkouts have none, so tests
       # get these dummies. Real repo secrets for VITE_* would override if set.
+      # These placeholders are allowed for CI *test packaging* (CI=true).
+      # Production publish (Lovable) must set the real project URL/key; vite build
+      # and verify:package refuse empty or placeholder env when not CI test packaging.
       VITE_SUPABASE_URL: https://example.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
       VITE_SUPABASE_PROJECT_ID: test-project-id

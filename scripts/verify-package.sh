@@ -19,6 +19,37 @@ if [ ! -d dist ]; then
 fi
 log "✅ dist/ present"
 
+# ── Production bundle must contain a real Supabase host (empty VITE_SUPABASE_URL
+#    baked `undefined` and threw `supabaseUrl is required` → black screen).
+#    CI *test packaging* (CI=true, VERIFY_PRODUCTION_SUPABASE unset) may ship
+#    https://example.supabase.co because the workflow injects placeholders for tests.
+#    Production packaging (Lovable publish / local verify:package without CI) must not.
+log "── Checking dist JS for baked VITE_SUPABASE_URL..."
+CI_TEST_PACKAGING=0
+if [ "${CI:-}" = "true" ] && [ "${VERIFY_PRODUCTION_SUPABASE:-}" != "1" ]; then
+  CI_TEST_PACKAGING=1
+fi
+
+if ! grep -R -E --include='*.js' -q 'https://[a-z0-9-]+\.supabase\.co' dist 2>/dev/null; then
+  log "❌ BLOCKED: no supabase.co https host in dist JS — VITE_SUPABASE_URL was empty at build."
+  log "   Lovable publish must set VITE_SUPABASE_URL=https://<project-ref>.supabase.co and rebuild."
+  EXIT=1
+else
+  log "✅ dist JS contains a supabase.co https host"
+fi
+
+if grep -R -E --include='*.js' -q 'https://(example|your-project)\.supabase\.co' dist 2>/dev/null; then
+  if [ "$CI_TEST_PACKAGING" -eq 1 ]; then
+    log "ℹ️  CI test packaging: placeholder https://example.supabase.co allowed (not a production publish)"
+  else
+    log "❌ BLOCKED: production package contains CI placeholder VITE_SUPABASE_URL (example.supabase.co / your-project.supabase.co)."
+    log "   Set the real project URL before packaging. CI tests may keep placeholders."
+    EXIT=1
+  fi
+else
+  log "✅ dist JS does not contain CI placeholder Supabase hosts"
+fi
+
 # ── No .env leaks
 log "── Checking dist/ for .env leaks..."
 if find dist -name '.env*' 2>/dev/null | grep -q .; then

@@ -39,12 +39,31 @@ function buildFallbackUI(title: string, body: string): HTMLDivElement {
 
 function showFatalUI(el: HTMLElement) {
   while (el.firstChild) el.removeChild(el.firstChild);
-  el.appendChild(
-    buildFallbackUI(
-      "Errore di avvio",
-      "Non è stato possibile caricare l'applicazione. Riprova tra qualche istante.",
-    ),
+  const ui = buildFallbackUI(
+    "Errore di avvio",
+    "Non è stato possibile caricare l'applicazione. Riprova tra qualche istante.",
   );
+  ui.setAttribute("data-sottra-fatal", "1");
+  el.appendChild(ui);
+}
+
+/**
+ * Last-resort catch for module-init throws (e.g. historical `supabaseUrl is required`)
+ * that happen before React can mount ErrorBoundary — otherwise the page stays black.
+ */
+function installEmptyRootGuards(el: HTMLElement) {
+  const maybeFallback = (err: unknown) => {
+    if (el.querySelector("[data-sottra-fatal]")) return;
+    if (el.childElementCount > 0) return;
+    console.error("[Sottra] Fatal boot error:", err);
+    showFatalUI(el);
+  };
+  window.addEventListener("error", (ev) => {
+    maybeFallback(ev.error ?? ev.message);
+  });
+  window.addEventListener("unhandledrejection", (ev) => {
+    maybeFallback(ev.reason);
+  });
 }
 
 /**
@@ -68,6 +87,7 @@ if (!root) {
     ),
   );
 } else {
+  installEmptyRootGuards(root);
   try {
     createRoot(root).render(
       <BootGuard>

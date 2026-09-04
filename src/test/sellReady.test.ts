@@ -43,6 +43,16 @@ describe("Sell-ready — secrets stay out of git and the frontend", () => {
     expect(vitest).toContain("VITE_SUPABASE_URL");
     expect(vitest).toContain("https://example.supabase.co");
   });
+
+  it("verify:package does not inject CI placeholders before a production build", () => {
+    const pkg = JSON.parse(src("package.json")) as { scripts: Record<string, string> };
+    expect(pkg.scripts["verify:package"]).not.toContain("ensure-vite-public-env.sh");
+    expect(pkg.scripts["verify:package"]).toContain("verify-package.sh");
+    const verify = src("scripts/verify-package.sh");
+    expect(verify).toContain("CI_TEST_PACKAGING");
+    expect(verify).toContain("example.supabase.co");
+    expect(src("scripts/ensure-vite-public-env.sh")).toContain("VERIFY_PRODUCTION_SUPABASE");
+  });
 });
 
 describe("Sell-ready — billing_active gates checkout", () => {

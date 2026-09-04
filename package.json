@@ -19,7 +19,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "verify:secrets": "bash scripts/verify-secrets.sh",
-    "verify:package": "bash -c 'source scripts/ensure-vite-public-env.sh && npm run build && bash scripts/verify-package.sh'",
+    "verify:package": "npm run build && bash scripts/verify-package.sh",
     "audit:release": "npm run lint && npm run typecheck && npm run test && npm run verify:secrets && npm run verify:package"
   },
   "dependencies": {

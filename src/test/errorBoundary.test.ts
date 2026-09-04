@@ -33,3 +33,12 @@ describe("ErrorBoundary component", () => {
     expect(source).toContain("recovering");
   });
 });
+
+describe("App surfaces missing Supabase env through ErrorBoundary", () => {
+  it("wraps SupabaseConfigGate inside ErrorBoundary", () => {
+    const app = readFileSync("src/App.tsx", "utf-8");
+    expect(app).toContain("SupabaseConfigGate");
+    expect(app).toContain("getSupabaseBootError");
+    expect(app.indexOf("<ErrorBoundary>")).toBeLessThan(app.indexOf("<SupabaseConfigGate>"));
+  });
+});
