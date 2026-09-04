@@ -153,7 +153,7 @@ export function getSupabaseBootError(): string | null {
   const result = evaluateSupabasePublicEnv(resolved, {
     allowPlaceholders: allowSupabasePlaceholdersAtRuntime(),
   });
-  return result.ok ? null : result.message;
+  return result.ok ? null : (result.message ?? SUPABASE_BOOT_ERROR_IT.missingUrl);
 }
 
 const BUILD_INVALID_URL =
