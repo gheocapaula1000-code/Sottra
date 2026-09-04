@@ -46,9 +46,13 @@ export type ResolvedSupabasePublicEnv = {
   source: "env" | "fallback";
 };
 
-export type SupabaseEnvEvaluation =
-  | { ok: true }
-  | { ok: false; code: "missing_url" | "invalid_url" | "placeholder" | "missing_key"; message: string };
+export type SupabaseEnvErrorCode = "missing_url" | "invalid_url" | "placeholder" | "missing_key";
+
+export type SupabaseEnvEvaluation = {
+  ok: boolean;
+  code?: SupabaseEnvErrorCode;
+  message?: string;
+};
 
 export function normalizeSupabaseUrl(raw: unknown): string {
   return typeof raw === "string" ? raw.trim() : "";
