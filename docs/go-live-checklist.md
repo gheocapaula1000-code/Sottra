@@ -35,7 +35,7 @@ Exact dashboard steps (no secret values):
 - [x] `npm test` — all tests pass
 - [x] `npm run typecheck` — zero type errors
 - [x] No `.env` file in build output (`dist/`)
-- [x] `.env` is gitignored and **not tracked** (only `.env.example` template)
+- [x] `.env` is gitignored and **not tracked**. Lovable may recreate a local `.env` constantly — that is expected. Only `.env.example` is committed. CI injects Vite placeholders and does not depend on a committed `.env`.
 - [x] `.env.example` contains only non-secret template keys (server secrets documented as comments)
 - [x] No owner/admin emails in frontend bundle (verified by `verify:secrets`)
 - [x] No hardcoded API keys (`sk_live_`, `sk_test_`, private key PEM) in source

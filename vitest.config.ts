@@ -2,7 +2,8 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
-/** Non-secret placeholders so tests boot without a tracked `.env` (CI has no secrets file). */
+/** Non-secret placeholders so Vitest can import createClient without a committed `.env`.
+ *  A local Lovable `.env` is expected on developer machines; CI has none. */
 const TEST_VITE_ENV = {
   VITE_SUPABASE_URL: "https://example.supabase.co",
   VITE_SUPABASE_PUBLISHABLE_KEY: "test-publishable-key",

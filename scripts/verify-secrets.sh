@@ -4,11 +4,11 @@ set -euo pipefail
 
 EXIT=0
 
-# 1. .env must never be tracked. A local untracked .env is allowed (developer machine).
+# 1. .env must never be tracked. A local untracked .env is expected (Lovable regenerates it).
 echo "── Checking that .env is not tracked..."
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   if git ls-files --error-unmatch .env >/dev/null 2>&1; then
-    echo "❌ BLOCKED: .env is tracked in git — remove it from the index (keep .env.example only)"
+    echo "❌ BLOCKED: .env is tracked in git — untrack it (git rm --cached .env). Lovable may keep a local copy; do not commit it."
     EXIT=1
   else
     echo "✅ .env is not tracked"
@@ -21,9 +21,9 @@ while IFS= read -r f; do
   case "$base" in
     .env.example) continue ;;
     .env)
-      # Local working copy is fine if gitignored and untracked.
+      # Lovable regenerates this locally. Presence is fine; tracking is not.
       if [ "$f" = "./.env" ] || [ "$f" = ".env" ]; then
-        echo "⚠️  WARNING: $f present locally (must stay gitignored; never commit)"
+        echo "✅ local .env present (Lovable-managed; gitignored — never commit)"
       else
         echo "❌ BLOCKED: $f — real env file must not be in repo/package"
         EXIT=1

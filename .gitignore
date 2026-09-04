@@ -12,7 +12,8 @@ dist
 dist-ssr
 *.local
 
-# Secrets — never commit real env files. Keep only .env.example as a template.
+# Lovable regenerates a local .env constantly — that is expected.
+# Never commit it. The only committed template is .env.example.
 .env
 .env.*
 !.env.example

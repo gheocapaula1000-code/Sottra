@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Publishable Vite placeholders only — never Stripe/Core secrets.
-      # Tests import createClient at module load; CI has no tracked `.env`.
+      # Lovable keeps a local `.env` (expected). CI checkouts have none, so tests
+      # get these dummies. Real repo secrets for VITE_* would override if set.
       VITE_SUPABASE_URL: https://example.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
       VITE_SUPABASE_PROJECT_ID: test-project-id

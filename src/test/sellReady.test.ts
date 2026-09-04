@@ -26,9 +26,12 @@ describe("Sell-ready — secrets stay out of git and the frontend", () => {
     expect(example).toContain("billing_active");
   });
 
-  it("verify-secrets blocks a tracked .env", () => {
-    expect(src("scripts/verify-secrets.sh")).toContain("git ls-files --error-unmatch .env");
-    expect(src("scripts/verify-secrets.sh")).not.toContain("Lovable-managed, not shipped");
+  it("verify-secrets blocks a tracked .env but allows a local Lovable copy", () => {
+    const script = src("scripts/verify-secrets.sh");
+    expect(script).toContain("git ls-files --error-unmatch .env");
+    expect(script).toContain("Lovable-managed");
+    expect(script).toContain("never commit");
+    expect(script).not.toContain("must stay gitignored; never commit");
   });
 
   it("CI and Vitest supply publishable Vite placeholders without a tracked .env", () => {

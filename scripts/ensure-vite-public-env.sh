@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Non-secret Vite placeholders when public env is unset (CI / audit without .env).
-# Does not override variables already in the environment. Never sets Stripe/Core secrets.
+# Non-secret Vite placeholders when public env is unset (CI checkout has no .env).
+# Does not override variables already in the environment (including a local Lovable .env).
+# Never sets Stripe/Core secrets. Do not delete a local .env — just never commit it.
 set -euo pipefail
 
 if [ -z "${VITE_SUPABASE_URL:-}" ]; then
