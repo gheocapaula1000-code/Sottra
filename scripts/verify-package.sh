@@ -47,10 +47,12 @@ fi
 
 # ── No hardcoded email in JS bundles
 log "── Checking dist/ for hardcoded emails in JS..."
-if grep -rEoh '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' dist/assets/*.js 2>/dev/null | grep -ivE 'example\.com|test\.com' | head -1 | grep -q '@'; then
+if grep -rEoh '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' dist/assets/*.js 2>/dev/null \
+   | grep -ivE 'example\.com|test\.com|esempio\.it|sottra\.app|pec\.it' \
+   | head -1 | grep -q '@'; then
   log "⚠️  WARNING: Email address found in JS bundle (review manually)"
 else
-  log "✅ No hardcoded emails in JS bundles"
+  log "✅ No unexpected emails in JS bundles"
 fi
 
 # ── Core build artifacts
@@ -125,7 +127,7 @@ fi
 
 # ── Service worker
 log "── Checking service worker..."
-if ls dist/sw.js dist/sw.*.js 2>/dev/null | head -1 | grep -q .; then
+if [ -f dist/sw.js ] || compgen -G "dist/sw.*.js" > /dev/null; then
   log "✅ Service worker present"
 else
   log "❌ Service worker missing in dist/"

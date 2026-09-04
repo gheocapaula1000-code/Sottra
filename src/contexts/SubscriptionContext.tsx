@@ -295,7 +295,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.error("[Subscription] unexpected error (non-fatal):", errMsg, "→", code);
       handleTransientError(code, errMsg);
     }
-  }, [session, authLoading, resetToDefaults, setResolved, handleTransientError]);
+  }, [session, authLoading, resetToDefaults, setResolved, handleTransientError, toast]);
 
   useEffect(() => {
     void refresh();
@@ -333,13 +333,15 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    toast({
-      title: "Pagamento ricevuto",
-      description: "Stiamo attivando l'abbonamento. Se l'accesso non si sblocca subito, attendi qualche secondo.",
-    });
-    // Webhook may lag behind the redirect — poll a few times.
-    const timers = [2000, 5000, 10000].map((ms) => setTimeout(() => void refresh(), ms));
-    return () => timers.forEach(clearTimeout);
+    if (checkout === "success") {
+      toast({
+        title: "Pagamento ricevuto",
+        description: "Stiamo attivando l'abbonamento. Se l'accesso non si sblocca subito, attendi qualche secondo.",
+      });
+      // Webhook may lag behind the redirect — poll a few times.
+      const timers = [2000, 5000, 10000].map((ms) => setTimeout(() => void refresh(), ms));
+      return () => timers.forEach(clearTimeout);
+    }
   }, [refresh, toast]);
 
   // canScan: only active/trialing subscriptions or active trial
