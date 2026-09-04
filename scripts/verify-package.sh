@@ -19,6 +19,41 @@ if [ ! -d dist ]; then
 fi
 log "✅ dist/ present"
 
+# ── Production bundle must contain the Sottra Cloud project host.
+#    Lovable publish has omitted VITE_*; source fallbacks bake this ref into JS.
+#    CI *test packaging* may also contain https://example.supabase.co from workflow env.
+log "── Checking dist JS for Sottra / Supabase hosts..."
+CI_TEST_PACKAGING=0
+if [ "${CI:-}" = "true" ] && [ "${VERIFY_PRODUCTION_SUPABASE:-}" != "1" ]; then
+  CI_TEST_PACKAGING=1
+fi
+
+if ! grep -R -E --include='*.js' -q 'vveunbxfcfhnkkhrqutf' dist 2>/dev/null; then
+  log "❌ BLOCKED: dist JS missing Sottra Cloud project ref vveunbxfcfhnkkhrqutf (source fallback absent)."
+  EXIT=1
+else
+  log "✅ dist JS contains Sottra Cloud project ref vveunbxfcfhnkkhrqutf"
+fi
+
+if ! grep -R -E --include='*.js' -q 'https://[a-z0-9-]+\.supabase\.co' dist 2>/dev/null; then
+  log "❌ BLOCKED: no supabase.co https host in dist JS."
+  EXIT=1
+else
+  log "✅ dist JS contains a supabase.co https host"
+fi
+
+if grep -R -E --include='*.js' -q 'https://(example|your-project)\.supabase\.co' dist 2>/dev/null; then
+  if [ "$CI_TEST_PACKAGING" -eq 1 ]; then
+    log "ℹ️  CI test packaging: placeholder https://example.supabase.co allowed (not a production publish)"
+  else
+    log "❌ BLOCKED: production package contains CI placeholder VITE_SUPABASE_URL (example.supabase.co / your-project.supabase.co)."
+    log "   Set the real project URL before packaging. CI tests may keep placeholders."
+    EXIT=1
+  fi
+else
+  log "✅ dist JS does not contain CI placeholder Supabase hosts"
+fi
+
 # ── No .env leaks
 log "── Checking dist/ for .env leaks..."
 if find dist -name '.env*' 2>/dev/null | grep -q .; then

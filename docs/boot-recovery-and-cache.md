@@ -16,9 +16,10 @@ After a new deploy, old cached HTML may reference hashed JS/CSS chunks that no l
 
 ### Integration Points
 
-- **`main.tsx`**: Catches synchronous render errors and triggers recovery
-- **`App.tsx`**: `lazyWithRecovery()` wraps all `lazy()` imports to catch async chunk failures before they bubble to `ErrorBoundary`
+- **`main.tsx`**: Catches synchronous render errors and triggers recovery; empty-root `error` / `unhandledrejection` guards show the Italian fallback instead of a black page
+- **`App.tsx`**: `lazyWithRecovery()` wraps all `lazy()` imports to catch async chunk failures before they bubble to `ErrorBoundary`; `SupabaseConfigGate` throws during render if publishable Supabase env is missing so ErrorBoundary can display it
 - **`ErrorBoundary.tsx`**: Last-resort catch with chunk error detection; shows spinner during recovery attempt
+- **`src/integrations/supabase/client.ts`**: Lazy client — never calls `createClient` with an empty URL at module top-level
 
 ### `markBootSuccess()`
 

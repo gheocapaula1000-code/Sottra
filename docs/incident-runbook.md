@@ -13,14 +13,18 @@
 
 ### 1. App Shows Blank Screen (P1)
 
-**Symptoms**: White page after login, dashboard never loads
+**Symptoms**: Black/empty page on https://sottra.app, or white page after login
 
 **Diagnosis**:
-1. Check browser console for JS errors
-2. Check if `check-subscription` returns HTTP 200
-3. Check if SubscriptionContext resolves
+1. Check browser console for `supabaseUrl is required` — means `VITE_SUPABASE_URL` was empty at **build** time
+2. Check live JS (`/assets/index-*.js`) for `https://<project-ref>.supabase.co` (must not be missing or `example.supabase.co`)
+3. Check if `check-subscription` returns HTTP 200
+4. Check if SubscriptionContext resolves
 
 **Resolution**:
+- If live JS lacks `vveunbxfcfhnkkhrqutf`: the publish did not include source fallbacks — merge the client.ts fallback PR and republish
+- If `supabaseUrl is required`: old bundle with top-level `createClient(undefined)` — republish this hardening (env-or-fallback, never throw at import)
+- After this hardening: empty Vite env uses the Sottra Cloud publishable (anon) fallback; missing config shows Italian ErrorBoundary / `main.tsx` fallback, never a blank page
 - If auth error: verify Supabase project is online
 - If subscription hang: check edge function logs for `check-subscription`
 - If JS error: check latest deploy, consider rollback

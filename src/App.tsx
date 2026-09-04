@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { getSupabaseBootError } from "@/integrations/supabase/env";
 import { ScanHistoryProvider } from "@/contexts/ScanHistoryContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
@@ -76,9 +77,17 @@ const AdminHouseDifferentiation = lazyWithRecovery(() => import("./pages/AdminHo
 
 const queryClient = new QueryClient();
 
+/** Throws during render so ErrorBoundary (not a blank page) handles missing publish env. */
+function SupabaseConfigGate({ children }: { children: React.ReactNode }) {
+  const bootError = getSupabaseBootError();
+  if (bootError) throw new Error(bootError);
+  return <>{children}</>;
+}
+
 const App = () => (
   <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
+    <SupabaseConfigGate>
+      <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
           <SubscriptionProvider>
@@ -139,7 +148,8 @@ const App = () => (
           </SubscriptionProvider>
         </AuthProvider>
       </TooltipProvider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </SupabaseConfigGate>
   </ErrorBoundary>
 );
 
