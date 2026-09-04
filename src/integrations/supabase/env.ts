@@ -46,9 +46,13 @@ export type ResolvedSupabasePublicEnv = {
   source: "env" | "fallback";
 };
 
-export type SupabaseEnvEvaluation =
-  | { ok: true }
-  | { ok: false; code: "missing_url" | "invalid_url" | "placeholder" | "missing_key"; message: string };
+export type SupabaseEnvErrorCode = "missing_url" | "invalid_url" | "placeholder" | "missing_key";
+
+export type SupabaseEnvEvaluation = {
+  ok: boolean;
+  code?: SupabaseEnvErrorCode;
+  message?: string;
+};
 
 export function normalizeSupabaseUrl(raw: unknown): string {
   return typeof raw === "string" ? raw.trim() : "";
@@ -115,11 +119,18 @@ export function resolveSupabasePublicConfig(env: SupabasePublicEnv): ResolvedSup
   };
 }
 
+/** import.meta.env accessor that also typechecks under the node tsconfig. */
+function viteEnv(): Record<string, unknown> {
+  const meta = import.meta as unknown as { env?: Record<string, unknown> };
+  return meta.env ?? {};
+}
+
 export function readViteSupabaseEnv(): SupabasePublicEnv {
+  const env = viteEnv();
   return {
-    url: String(import.meta.env.VITE_SUPABASE_URL ?? ""),
-    publishableKey: String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""),
-    projectId: String(import.meta.env.VITE_SUPABASE_PROJECT_ID ?? ""),
+    url: String(env.VITE_SUPABASE_URL ?? ""),
+    publishableKey: String(env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""),
+    projectId: String(env.VITE_SUPABASE_PROJECT_ID ?? ""),
   };
 }
 
@@ -129,7 +140,8 @@ export function resolveViteSupabaseConfig(): ResolvedSupabasePublicEnv {
 
 /** True in Vite/Vitest unit tests so placeholders from vitest.config.ts are accepted. */
 export function allowSupabasePlaceholdersAtRuntime(): boolean {
-  return import.meta.env.DEV === true || import.meta.env.MODE === "test";
+  const env = viteEnv();
+  return env.DEV === true || env.MODE === "test";
 }
 
 /**
@@ -141,7 +153,7 @@ export function getSupabaseBootError(): string | null {
   const result = evaluateSupabasePublicEnv(resolved, {
     allowPlaceholders: allowSupabasePlaceholdersAtRuntime(),
   });
-  return result.ok ? null : result.message;
+  return result.ok ? null : (result.message ?? SUPABASE_BOOT_ERROR_IT.missingUrl);
 }
 
 const BUILD_INVALID_URL =
