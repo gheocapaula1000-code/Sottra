@@ -1509,10 +1509,20 @@ const Result = () => {
       <div data-capture-hide>
         <AppHeader rightContent={
           <>
+            {scanning && <span className="text-[11px] text-primary font-medium animate-pulse">Elaborazione…</span>}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => void handleShare()}
+              disabled={capturing || scanning}
+              aria-label="Invia il report"
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/app")} aria-label="Indietro">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            {scanning && <span className="text-[11px] text-primary font-medium animate-pulse">Elaborazione…</span>}
           </>
         } />
       </div>
