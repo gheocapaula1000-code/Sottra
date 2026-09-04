@@ -10,15 +10,15 @@ import { isValidGps, isValidImageDataUrl } from "@/lib/imageUtils";
 import { isSavedResultSnapshot, loadLastScanPhoto, mergeResultScanState, peekLastScanPhoto, saveLastScanPhoto, type LastScanRecord } from "@/lib/lastScanPhotoStore";
 import { buildHistoryDraft, shouldRecordFinishedScan } from "@/lib/scanHistoryStore";
 import {
-  buildReportShareFile,
   buildShareTitle,
   captureReportElement,
-  downloadBlobFile,
+  shareOutcomeToast,
+  shareReportPayload,
+  tryBuildReportShareFile,
   waitForCaptureLayout,
 } from "@/lib/shareReportImage";
-import { buildAgencyShareCaption, buildAgencyWhatsappUrl } from "@/lib/agencyWhatsapp";
+import { buildAgencyShareCaption, buildWhatsappShareUrl } from "@/lib/agencyWhatsapp";
 import { useAgencyWhatsapp } from "@/hooks/useAgencyWhatsapp";
-import AgencyWhatsappDialog from "@/components/AgencyWhatsappDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useBuildingScan } from "@/hooks/useBuildingScan";
@@ -1178,8 +1178,7 @@ const Result = () => {
   const historySignatureRef = useRef<string | null>(null);
   const reportRootRef = useRef<HTMLDivElement>(null);
   const [capturing, setCapturing] = useState(false);
-  const { phone: agencyPhone, save: saveAgencyPhone, saving: savingAgencyPhone } = useAgencyWhatsapp();
-  const [agencyDialogOpen, setAgencyDialogOpen] = useState(false);
+  const { phone: agencyPhone } = useAgencyWhatsapp();
   const officialOmi = resolveOfficialOmiOverlay({
     omiZone: result.omiZone,
     photoWow: result.photoWow,
@@ -1353,55 +1352,63 @@ const Result = () => {
   const publishedCount = completedModules.filter(k => isSectionPublishable(result[k].status, result[k].data)).length;
   const excludedCount = completedModules.length - publishedCount;
 
-  /** Invia il report JPEG al WhatsApp dell'agenzia salvato dall'agente. */
-  const sendToAgency = async (phoneE164: string) => {
+  /** Native share (image and/or caption). WhatsApp / download / copy if share is missing. */
+  const handleShare = async () => {
     const root = reportRootRef.current;
-    if (!root || capturing) return;
-    const url = buildAgencyWhatsappUrl(
-      phoneE164,
-      buildAgencyShareCaption({
-        street: identifyData?.geoResolution?.resolvedStreet ?? null,
-        houseNumber: identifyData?.geoResolution?.resolvedHouseNumber ?? null,
-        comuneLabel: officialOmi.data?.comuneLabel ?? identifyData?.comune ?? null,
-        zonaOmi: officialOmi.data?.zonaOmi ?? null,
-      }),
-    );
-    if (!url) {
-      // fail-closed: numero non valido, non si invia nulla
-      toast({ title: "Numero non valido", description: "Aggiorna il WhatsApp dell'agenzia.", variant: "destructive" });
+    if (!root || capturing) {
+      if (!root) {
+        toast({
+          title: "Condivisione non disponibile",
+          description: "Il report non è ancora pronto.",
+          variant: "destructive",
+        });
+      }
       return;
     }
     const title = buildShareTitle({
       comuneLabel: officialOmi.data?.comuneLabel ?? null,
       zonaOmi: officialOmi.data?.zonaOmi ?? null,
     });
+    const text = buildAgencyShareCaption({
+      street: identifyData?.geoResolution?.resolvedStreet ?? null,
+      houseNumber: identifyData?.geoResolution?.resolvedHouseNumber ?? null,
+      comuneLabel: officialOmi.data?.comuneLabel ?? identifyData?.comune ?? null,
+      zonaOmi: officialOmi.data?.zonaOmi ?? null,
+    });
+    const whatsappUrl = buildWhatsappShareUrl(agencyPhone, text);
+    const appUrl = typeof window !== "undefined" && /^https?:\/\//i.test(window.location.origin)
+      ? window.location.origin
+      : null;
+
     setCapturing(true);
     document.documentElement.setAttribute("data-sottra-capture", "1");
     try {
       await waitForCaptureLayout();
-      const file = await buildReportShareFile({
+      const file = await tryBuildReportShareFile({
         root,
         title,
-        capture: (reportRoot) => captureReportElement(reportRoot, { facadeSrc: state.photo }),
+        capture: (reportRoot) => captureReportElement(reportRoot, { facadeSrc: state?.photo }),
       });
-      downloadBlobFile(file);
-      window.open(url, "_blank", "noopener");
-      toast({ title: "Report pronto per l'agenzia", description: `Allega ${file.name} nella chat aperta.` });
+      const outcome = await shareReportPayload({
+        file,
+        title,
+        text,
+        url: appUrl,
+        whatsappUrl,
+      });
+      const feedback = shareOutcomeToast(outcome, file?.name ?? null);
+      if (feedback) toast(feedback);
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
-      toast({ title: "Invio non riuscito", description: "Riprova tra poco.", variant: "destructive" });
+      toast({
+        title: "Condivisione non riuscita",
+        description: "Riprova, oppure copia il testo e invialo da WhatsApp.",
+        variant: "destructive",
+      });
     } finally {
       document.documentElement.removeAttribute("data-sottra-capture");
       setCapturing(false);
     }
-  };
-
-  const handleShare = async () => {
-    if (!agencyPhone) {
-      setAgencyDialogOpen(true);
-      return;
-    }
-    await sendToAgency(agencyPhone);
   };
 
 
@@ -1734,9 +1741,10 @@ const Result = () => {
             size="lg"
             onClick={() => void handleShare()}
             disabled={capturing || scanning}
+            aria-label="Invia il report"
           >
             <Share2 className="h-4 w-4" />
-            {capturing ? "Preparazione…" : agencyPhone ? "Invia in agenzia" : "Condividi"}
+            {capturing ? "Preparazione…" : "Invia il report"}
           </Button>
           <Button
             variant="secondary"
@@ -1792,18 +1800,6 @@ const Result = () => {
         </div>
       </footer>
 
-      <AgencyWhatsappDialog
-        open={agencyDialogOpen}
-        onOpenChange={setAgencyDialogOpen}
-        saving={savingAgencyPhone}
-        initialValue={agencyPhone}
-        onSaved={async (e164) => {
-          const saved = await saveAgencyPhone(e164);
-          if (!saved) return;
-          setAgencyDialogOpen(false);
-          await sendToAgency(saved);
-        }}
-      />
     </div>
   );
 };

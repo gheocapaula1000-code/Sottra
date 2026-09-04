@@ -85,6 +85,14 @@ export function buildAgencyWhatsappUrl(phone: string | null | undefined, caption
   return `https://wa.me/${digits}?text=${encodeURIComponent(caption)}`;
 }
 
+/**
+ * WhatsApp compose URL. Targets the saved agency number when valid,
+ * otherwise a generic share (`wa.me/?text=`) so the user picks the chat.
+ */
+export function buildWhatsappShareUrl(phone: string | null | undefined, caption: string): string {
+  return buildAgencyWhatsappUrl(phone, caption) ?? `https://wa.me/?text=${encodeURIComponent(caption)}`;
+}
+
 export function readCachedAgencyWhatsapp(): string | null {
   try {
     return normalizeItalianMobile(localStorage.getItem(AGENCY_WHATSAPP_STORAGE_KEY));
