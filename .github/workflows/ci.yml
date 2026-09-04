@@ -9,6 +9,13 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      # Publishable Vite placeholders only — never Stripe/Core secrets.
+      # Tests import createClient at module load; CI has no tracked `.env`.
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
+      VITE_SUPABASE_PROJECT_ID: test-project-id
+      VITE_USE_MOCK: "false"
     steps:
       - uses: actions/checkout@v4
 
@@ -34,11 +41,6 @@ jobs:
 
       - name: Build
         run: npm run build
-        env:
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY: placeholder
-          VITE_SUPABASE_PROJECT_ID: placeholder
-          VITE_USE_MOCK: "false"
 
       - name: Verify package
         run: bash scripts/verify-package.sh

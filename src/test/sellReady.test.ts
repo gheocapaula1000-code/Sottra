@@ -30,6 +30,16 @@ describe("Sell-ready — secrets stay out of git and the frontend", () => {
     expect(src("scripts/verify-secrets.sh")).toContain("git ls-files --error-unmatch .env");
     expect(src("scripts/verify-secrets.sh")).not.toContain("Lovable-managed, not shipped");
   });
+
+  it("CI and Vitest supply publishable Vite placeholders without a tracked .env", () => {
+    const ci = src(".github/workflows/ci.yml");
+    expect(ci).toContain("VITE_SUPABASE_URL: https://example.supabase.co");
+    expect(ci).toContain("VITE_SUPABASE_PUBLISHABLE_KEY: test-publishable-key");
+    expect(ci).not.toMatch(/sk_live_|sk_test_|STRIPE_SECRET_KEY:\s*[^\s#]/);
+    const vitest = src("vitest.config.ts");
+    expect(vitest).toContain("VITE_SUPABASE_URL");
+    expect(vitest).toContain("https://example.supabase.co");
+  });
 });
 
 describe("Sell-ready — billing_active gates checkout", () => {
