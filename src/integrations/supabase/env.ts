@@ -119,11 +119,18 @@ export function resolveSupabasePublicConfig(env: SupabasePublicEnv): ResolvedSup
   };
 }
 
+/** import.meta.env accessor that also typechecks under the node tsconfig. */
+function viteEnv(): Record<string, unknown> {
+  const meta = import.meta as unknown as { env?: Record<string, unknown> };
+  return meta.env ?? {};
+}
+
 export function readViteSupabaseEnv(): SupabasePublicEnv {
+  const env = viteEnv();
   return {
-    url: String(import.meta.env.VITE_SUPABASE_URL ?? ""),
-    publishableKey: String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""),
-    projectId: String(import.meta.env.VITE_SUPABASE_PROJECT_ID ?? ""),
+    url: String(env.VITE_SUPABASE_URL ?? ""),
+    publishableKey: String(env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""),
+    projectId: String(env.VITE_SUPABASE_PROJECT_ID ?? ""),
   };
 }
 
