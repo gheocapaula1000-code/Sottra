@@ -5,7 +5,7 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { assertProductionSupabaseEnv } from "./src/integrations/supabase/env";
 
-/** Fail production builds that would bake an empty/placeholder VITE_SUPABASE_URL (black screen). */
+/** Empty Vite env is OK — Sottra Cloud publishable fallbacks are baked in source. */
 function supabaseProductionEnvGuard(): Plugin {
   return {
     name: "sottra-supabase-production-env",

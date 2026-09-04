@@ -36,7 +36,7 @@ Exact dashboard steps (no secret values):
 - [x] `npm run typecheck` — zero type errors
 - [x] No `.env` file in build output (`dist/`)
 - [x] `.env` is gitignored and **not tracked**. Lovable may recreate a local `.env` constantly — that is expected. Only `.env.example` is committed. CI injects Vite placeholders for **tests / CI test packaging** and does not depend on a committed `.env`.
-- [x] Production `vite build` / `verify:package` refuse empty or placeholder `VITE_SUPABASE_URL` (CI placeholders remain allowed when `CI=true`)
+- [x] Production `vite build` / `verify:package` refuse placeholder `VITE_SUPABASE_URL` outside CI. Empty Vite env is allowed because `client.ts` bakes Sottra Cloud publishable fallbacks (`vveunbxfcfhnkkhrqutf`).
 - [x] `.env.example` contains only non-secret template keys (server secrets documented as comments)
 - [x] No owner/admin emails in frontend bundle (verified by `verify:secrets`)
 - [x] No hardcoded API keys (`sk_live_`, `sk_test_`, private key PEM) in source

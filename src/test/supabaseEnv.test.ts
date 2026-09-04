@@ -7,6 +7,8 @@ import {
   isPlaceholderSupabaseUrl,
   isValidSupabaseProjectUrl,
   normalizeSupabaseUrl,
+  resolveSupabasePublicConfig,
+  SOTTRA_CLOUD_SUPABASE,
   SUPABASE_BOOT_ERROR_IT,
 } from "@/integrations/supabase/env";
 
@@ -48,23 +50,43 @@ describe("Supabase public env validation", () => {
     expect(allowed.ok).toBe(true);
   });
 
-  it("rejects missing publishable key", () => {
+  it("rejects missing publishable key when evaluating raw env (before fallback)", () => {
     const result = evaluateSupabasePublicEnv({ url: REAL_URL, publishableKey: "  " }, { allowPlaceholders: false });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("missing_key");
   });
+
+  it("falls back to Sottra Cloud publishable values when env is empty", () => {
+    const resolved = resolveSupabasePublicConfig({ url: "", publishableKey: "" });
+    expect(resolved.source).toBe("fallback");
+    expect(resolved.url).toBe(SOTTRA_CLOUD_SUPABASE.url);
+    expect(resolved.publishableKey).toBe(SOTTRA_CLOUD_SUPABASE.publishableKey);
+    expect(resolved.projectId).toBe("vveunbxfcfhnkkhrqutf");
+  });
+
+  it("prefers non-empty Vite env over the source fallback", () => {
+    const resolved = resolveSupabasePublicConfig({
+      url: "https://otherproject.supabase.co",
+      publishableKey: "env-key",
+      projectId: "otherproject",
+    });
+    expect(resolved.source).toBe("env");
+    expect(resolved.url).toBe("https://otherproject.supabase.co");
+    expect(resolved.publishableKey).toBe("env-key");
+    expect(resolved.projectId).toBe("otherproject");
+  });
 });
 
 describe("assertProductionSupabaseEnv", () => {
-  it("always fails on empty URL (the production black-screen cause)", () => {
+  it("allows empty URL because Sottra Cloud source fallbacks ship in the bundle", () => {
     expect(() =>
       assertProductionSupabaseEnv({
         url: "",
-        publishableKey: REAL_KEY,
-        ci: true,
-        forceProductionVerify: false,
+        publishableKey: "",
+        ci: false,
+        forceProductionVerify: true,
       }),
-    ).toThrow(/VITE_SUPABASE_URL is empty/);
+    ).not.toThrow();
   });
 
   it("allows CI placeholders for test packaging", () => {
@@ -113,12 +135,18 @@ describe("assertProductionSupabaseEnv", () => {
 });
 
 describe("client.ts and boot surfaces stay defensive", () => {
-  it("does not call createClient at module top-level", () => {
+  it("does not call createClient at module top-level and prefers env then Sottra Cloud fallback", () => {
     const source = readFileSync(resolve("src/integrations/supabase/client.ts"), "utf8");
     expect(source).not.toMatch(/export const supabase = createClient/);
-    expect(source).toContain("getSupabaseBootError");
+    expect(source).toContain("https://vveunbxfcfhnkkhrqutf.supabase.co");
+    expect(source).toContain(SOTTRA_CLOUD_SUPABASE.publishableKey);
+    expect(source).toContain("envUrl || FALLBACK_SUPABASE_URL");
+    expect(source).toContain("envKey || FALLBACK_SUPABASE_PUBLISHABLE_KEY");
     expect(source).toContain("createUnavailableClient");
     expect(source).toContain("new Proxy");
+    const envSrc = readFileSync(resolve("src/integrations/supabase/env.ts"), "utf8");
+    expect(envSrc).toContain("vveunbxfcfhnkkhrqutf");
+    expect(envSrc).toContain(SOTTRA_CLOUD_SUPABASE.publishableKey);
   });
 
   it("App gates missing env inside ErrorBoundary", () => {

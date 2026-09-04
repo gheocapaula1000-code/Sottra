@@ -1,4 +1,4 @@
-// Lovable may regenerate a default createClient() here — keep lazy init.
+// Lovable may regenerate a default createClient() here — keep lazy init + fallbacks.
 // Top-level createClient(undefined) throws `supabaseUrl is required` and blanks the page.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
@@ -66,6 +66,27 @@ function createUnavailableClient(reason: string): SottraSupabase {
   });
 }
 
+/**
+ * Prefer Vite env when Lovable actually injects it. If publish leaves
+ * VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY empty, use the known
+ * Sottra Lovable Cloud publishable values (anon key is public-by-design).
+ */
+const FALLBACK_SUPABASE_URL = "https://vveunbxfcfhnkkhrqutf.supabase.co";
+const FALLBACK_SUPABASE_PROJECT_ID = "vveunbxfcfhnkkhrqutf";
+const FALLBACK_SUPABASE_PUBLISHABLE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2ZXVuYnhmY2ZobmtraHJxdXRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NzI4MjMsImV4cCI6MjA4ODQ0ODgyM30.TrEbZx-Jz7n2q_uiC1j_vWVU_SRwKjpvA9EBRXqw1pg";
+
+function resolveClientConfig(): { url: string; publishableKey: string; projectId: string } {
+  const envUrl = String(import.meta.env.VITE_SUPABASE_URL ?? "").trim();
+  const envKey = String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
+  const envProjectId = String(import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "").trim();
+  return {
+    url: envUrl || FALLBACK_SUPABASE_URL,
+    publishableKey: envKey || FALLBACK_SUPABASE_PUBLISHABLE_KEY,
+    projectId: envProjectId || FALLBACK_SUPABASE_PROJECT_ID,
+  };
+}
+
 function getSupabaseClient(): SottraSupabase {
   if (client) return client;
 
@@ -76,17 +97,22 @@ function getSupabaseClient(): SottraSupabase {
     return client;
   }
 
-  const url = String(import.meta.env.VITE_SUPABASE_URL ?? "").trim();
-  const key = String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
-
-  client = createClient<Database>(url, key, {
-    auth: {
-      storage: brokeredPreviewStorage(),
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  });
-  return client;
+  try {
+    const { url, publishableKey } = resolveClientConfig();
+    client = createClient<Database>(url, publishableKey, {
+      auth: {
+        storage: brokeredPreviewStorage(),
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });
+    return client;
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "Supabase init failed";
+    console.error("[Sottra] Supabase createClient failed:", err);
+    client = createUnavailableClient(reason);
+    return client;
+  }
 }
 
 // Import the supabase client like this:

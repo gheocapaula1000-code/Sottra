@@ -2,16 +2,24 @@
  * Publishable Supabase env — used at runtime (boot gate) and at build time
  * (vite production guard). Never throws at module load.
  *
- * Production publish (Lovable) must set:
- *   VITE_SUPABASE_URL=https://<project-ref>.supabase.co
- *   VITE_SUPABASE_PUBLISHABLE_KEY=<anon/publishable key>
- * Do not commit `.env`. CI may use https://example.supabase.co for tests only.
+ * Lovable publish has shipped bundles with empty `import.meta.env.VITE_*`.
+ * Source fallbacks below are the Sottra Lovable Cloud project (anon key is
+ * public-by-design). Prefer Vite env when present; use these when empty.
+ * Do not commit `.env`.
  */
 
 export const SUPABASE_PLACEHOLDER_HOSTS = [
   "example.supabase.co",
   "your-project.supabase.co",
 ] as const;
+
+/** Sottra Lovable Cloud — publishable (anon) credentials for empty Vite env. */
+export const SOTTRA_CLOUD_SUPABASE = {
+  url: "https://vveunbxfcfhnkkhrqutf.supabase.co",
+  projectId: "vveunbxfcfhnkkhrqutf",
+  publishableKey:
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2ZXVuYnhmY2ZobmtraHJxdXRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NzI4MjMsImV4cCI6MjA4ODQ0ODgyM30.TrEbZx-Jz7n2q_uiC1j_vWVU_SRwKjpvA9EBRXqw1pg",
+} as const;
 
 /** Italian copy shown via ErrorBoundary / main.tsx when the client cannot boot. */
 export const SUPABASE_BOOT_ERROR_IT = {
@@ -28,6 +36,14 @@ export const SUPABASE_BOOT_ERROR_IT = {
 export type SupabasePublicEnv = {
   url: string;
   publishableKey: string;
+  projectId?: string;
+};
+
+export type ResolvedSupabasePublicEnv = {
+  url: string;
+  publishableKey: string;
+  projectId: string;
+  source: "env" | "fallback";
 };
 
 export type SupabaseEnvEvaluation =
@@ -60,7 +76,7 @@ export function isValidSupabaseProjectUrl(url: string): boolean {
 }
 
 /**
- * Shared evaluation for runtime boot and production packaging.
+ * Shared evaluation for explicit env values (no source fallback).
  * `allowPlaceholders` is true for Vitest / CI test packaging only.
  */
 export function evaluateSupabasePublicEnv(
@@ -85,42 +101,60 @@ export function evaluateSupabasePublicEnv(
   return { ok: true };
 }
 
+/** Prefer Vite env when non-empty; otherwise Sottra Cloud publishable fallbacks. */
+export function resolveSupabasePublicConfig(env: SupabasePublicEnv): ResolvedSupabasePublicEnv {
+  const envUrl = normalizeSupabaseUrl(env.url);
+  const envKey = typeof env.publishableKey === "string" ? env.publishableKey.trim() : "";
+  const envProjectId = typeof env.projectId === "string" ? env.projectId.trim() : "";
+  const usedEnv = Boolean(envUrl && envKey);
+  return {
+    url: envUrl || SOTTRA_CLOUD_SUPABASE.url,
+    publishableKey: envKey || SOTTRA_CLOUD_SUPABASE.publishableKey,
+    projectId: envProjectId || SOTTRA_CLOUD_SUPABASE.projectId,
+    source: usedEnv ? "env" : "fallback",
+  };
+}
+
+export function readViteSupabaseEnv(): SupabasePublicEnv {
+  return {
+    url: String(import.meta.env.VITE_SUPABASE_URL ?? ""),
+    publishableKey: String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""),
+    projectId: String(import.meta.env.VITE_SUPABASE_PROJECT_ID ?? ""),
+  };
+}
+
+export function resolveViteSupabaseConfig(): ResolvedSupabasePublicEnv {
+  return resolveSupabasePublicConfig(readViteSupabaseEnv());
+}
+
 /** True in Vite/Vitest unit tests so placeholders from vitest.config.ts are accepted. */
 export function allowSupabasePlaceholdersAtRuntime(): boolean {
   return import.meta.env.DEV === true || import.meta.env.MODE === "test";
 }
 
 /**
- * Runtime boot check. Returns Italian copy or null.
+ * Runtime boot check against the *resolved* config (env or source fallback).
  * Must not throw — callers decide whether to surface ErrorBoundary.
  */
 export function getSupabaseBootError(): string | null {
-  const result = evaluateSupabasePublicEnv(
-    {
-      url: String(import.meta.env.VITE_SUPABASE_URL ?? ""),
-      publishableKey: String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""),
-    },
-    { allowPlaceholders: allowSupabasePlaceholdersAtRuntime() },
-  );
+  const resolved = resolveViteSupabaseConfig();
+  const result = evaluateSupabasePublicEnv(resolved, {
+    allowPlaceholders: allowSupabasePlaceholdersAtRuntime(),
+  });
   return result.ok ? null : result.message;
 }
 
-const BUILD_MISSING_URL =
-  "[Sottra] Production build blocked: VITE_SUPABASE_URL is empty. Lovable publish must set VITE_SUPABASE_URL=https://<project-ref>.supabase.co (and VITE_SUPABASE_PUBLISHABLE_KEY) then rebuild. Do not ship an empty bundle.";
-
 const BUILD_INVALID_URL =
-  "[Sottra] Production build blocked: VITE_SUPABASE_URL must be https://<project-ref>.supabase.co";
+  "[Sottra] Production build blocked: VITE_SUPABASE_URL must be https://<project-ref>.supabase.co (or empty to use the Sottra Cloud source fallback).";
 
 const BUILD_PLACEHOLDER =
-  "[Sottra] Production build blocked: VITE_SUPABASE_URL is a CI/test placeholder (https://example.supabase.co). Set the real project URL for production packaging. CI test builds may keep placeholders when CI=true.";
-
-const BUILD_MISSING_KEY =
-  "[Sottra] Production build blocked: VITE_SUPABASE_PUBLISHABLE_KEY is empty. Lovable publish must set the publishable (anon) key and rebuild.";
+  "[Sottra] Production build blocked: VITE_SUPABASE_URL is a CI/test placeholder (https://example.supabase.co). Omit it to use the Sottra Cloud source fallback, or set the real project URL. CI test builds may keep placeholders when CI=true.";
 
 /**
- * Fail a production `vite build` when publishable env cannot be shipped.
- * CI test packaging (CI=true, VERIFY_PRODUCTION_SUPABASE unset) may use placeholders.
- * Empty URL always fails — that is the sottra.app black-screen root cause.
+ * Production `vite build` guard.
+ * Empty VITE_* is allowed: `client.ts` / `SOTTRA_CLOUD_SUPABASE` bake the real
+ * project into the bundle (Lovable publish has been omitting Vite env).
+ * Explicit CI placeholders still fail outside CI test packaging.
  */
 export function assertProductionSupabaseEnv(input: {
   url: string;
@@ -129,19 +163,15 @@ export function assertProductionSupabaseEnv(input: {
   forceProductionVerify: boolean;
 }): void {
   const url = normalizeSupabaseUrl(input.url);
-  const key = typeof input.publishableKey === "string" ? input.publishableKey.trim() : "";
   const allowPlaceholders = input.ci && !input.forceProductionVerify;
 
   if (!url) {
-    throw new Error(BUILD_MISSING_URL);
+    return;
   }
   if (!isValidSupabaseProjectUrl(url)) {
     throw new Error(BUILD_INVALID_URL);
   }
   if (!allowPlaceholders && isPlaceholderSupabaseUrl(url)) {
     throw new Error(BUILD_PLACEHOLDER);
-  }
-  if (!key) {
-    throw new Error(BUILD_MISSING_KEY);
   }
 }

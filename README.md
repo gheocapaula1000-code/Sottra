@@ -38,16 +38,7 @@ src/
 VITE_USE_MOCK=false              # true per dati dimostrativi in sviluppo
 ```
 
-**Lovable publish (obbligatorio)** — senza queste il bundle produzione resta vuoto e la PWA non si avvia:
-
-```env
-VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=<anon/publishable key>
-VITE_SUPABASE_PROJECT_ID=<project-ref>
-```
-
-Progetto produzione: `vveunbxfcfhnkkhrqutf` → `https://vveunbxfcfhnkkhrqutf.supabase.co`.
-Non committare `.env` (Lovable lo rigenera in locale). `vite build` e `verify:package` bloccano URL vuoti o placeholder (`https://example.supabase.co`); CI può usare i placeholder solo per i test (`CI=true`).
+**Lovable Cloud fallback (in source)** — publish has omitted `VITE_*` and shipped a black screen. The client prefers env when present, otherwise uses project `vveunbxfcfhnkkhrqutf` (`https://vveunbxfcfhnkkhrqutf.supabase.co`) plus the publishable anon key. Still set Vite env on publish when possible. Never commit `.env`. CI may use `https://example.supabase.co` for tests (`CI=true`). Explicit production placeholders still fail `vite build` / `verify:package`.
 
 > Le chiavi `CORE_API_URL`, `CORE_API_KEY`, `OWNER_EMAILS` e `STRIPE_SECRET_KEY`
 > sono configurate server-side nelle Edge Function e non devono essere esposte al client.

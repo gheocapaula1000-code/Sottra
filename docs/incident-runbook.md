@@ -22,8 +22,9 @@
 4. Check if SubscriptionContext resolves
 
 **Resolution**:
-- If `supabaseUrl is required` / no supabase host in the bundle: set Lovable publish env `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` and **rebuild/republish** (code cannot patch an already-empty bundle)
-- After this hardening: missing env must show the Italian ErrorBoundary / `main.tsx` fallback, never a blank page; production `vite build` must refuse empty/placeholder URL
+- If live JS lacks `vveunbxfcfhnkkhrqutf`: the publish did not include source fallbacks — merge the client.ts fallback PR and republish
+- If `supabaseUrl is required`: old bundle with top-level `createClient(undefined)` — republish this hardening (env-or-fallback, never throw at import)
+- After this hardening: empty Vite env uses the Sottra Cloud publishable (anon) fallback; missing config shows Italian ErrorBoundary / `main.tsx` fallback, never a blank page
 - If auth error: verify Supabase project is online
 - If subscription hang: check edge function logs for `check-subscription`
 - If JS error: check latest deploy, consider rollback
