@@ -16,6 +16,11 @@ describe("PWA manifest validation", () => {
     expect(configSource).toContain('scope: "/"');
   });
 
+  it("declares Italian lang and stable id", () => {
+    expect(configSource).toContain('lang: "it"');
+    expect(configSource).toContain('id: "https://sottra.app/"');
+  });
+
   it("has required icon sizes (192 and 512)", () => {
     expect(configSource).toContain("192x192");
     expect(configSource).toContain("512x512");

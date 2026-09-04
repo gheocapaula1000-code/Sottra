@@ -24,7 +24,7 @@ const NoteLegali = () => {
           <p><strong>Legge applicabile:</strong> {e.applicableLaw}</p>
           <p><strong>Foro competente:</strong> {e.jurisdiction}</p>
 
-          <p className="text-xs text-muted-foreground pt-4">Ultimo aggiornamento: marzo 2026</p>
+          <p className="text-xs text-muted-foreground pt-4">Ultimo aggiornamento: settembre 2026</p>
         </div>
       </div>
     </div>

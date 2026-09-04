@@ -7,6 +7,7 @@ export default function Footer() {
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 text-center">
         <SottraMark size="sm" />
         <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground sm:text-sm">
+          <a href="/prezzi" className="hover:text-foreground transition-colors">Piani e prezzi</a>
           <a href="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</a>
           <a href="/cookie-policy" className="hover:text-foreground transition-colors">Cookie Policy</a>
           <a href="/termini-condizioni" className="hover:text-foreground transition-colors">Termini e Condizioni</a>

@@ -126,6 +126,15 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
           </div>
         )}
 
+        {isPastDue && !billingReady && (
+          <p className="mt-6 text-sm text-muted-foreground">
+            Per sbloccare l'account scrivi a{" "}
+            <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary underline">
+              {APP_BRAND.supportEmail}
+            </a>
+          </p>
+        )}
+
         {!isPastDue && (
           <>
             <p className="mt-2 text-xs text-muted-foreground">

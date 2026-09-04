@@ -295,7 +295,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.error("[Subscription] unexpected error (non-fatal):", errMsg, "→", code);
       handleTransientError(code, errMsg);
     }
-  }, [session, authLoading, resetToDefaults, setResolved, handleTransientError]);
+  }, [session, authLoading, resetToDefaults, setResolved, handleTransientError, toast]);
 
   useEffect(() => {
     void refresh();
@@ -314,19 +314,35 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [session, refresh]);
 
-  // Auto-refresh on checkout return
+  // Auto-refresh on checkout return (Stripe success/cancel land on /app?checkout=…)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("checkout") === "success") {
-      // Clean up URL
-      const url = new URL(window.location.href);
-      url.searchParams.delete("checkout");
-      window.history.replaceState({}, "", url.pathname);
-      // Delay refresh to let webhook process
-      const timer = setTimeout(() => void refresh(), 2000);
-      return () => clearTimeout(timer);
+    const checkout = params.get("checkout");
+    if (checkout !== "success" && checkout !== "cancel") return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("checkout");
+    const next = url.pathname + (url.search ? url.search : "");
+    window.history.replaceState({}, "", next);
+
+    if (checkout === "cancel") {
+      toast({
+        title: "Pagamento annullato",
+        description: "Nessun addebito. Puoi scegliere un piano quando vuoi.",
+      });
+      return;
     }
-  }, [refresh]);
+
+    if (checkout === "success") {
+      toast({
+        title: "Pagamento ricevuto",
+        description: "Stiamo attivando l'abbonamento. Se l'accesso non si sblocca subito, attendi qualche secondo.",
+      });
+      // Webhook may lag behind the redirect — poll a few times.
+      const timers = [2000, 5000, 10000].map((ms) => setTimeout(() => void refresh(), ms));
+      return () => timers.forEach(clearTimeout);
+    }
+  }, [refresh, toast]);
 
   // canScan: only active/trialing subscriptions or active trial
   const canScan = isOwner || isAdmin || subscribed || (trial?.active ?? false);

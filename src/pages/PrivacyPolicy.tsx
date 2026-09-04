@@ -20,22 +20,42 @@ const PrivacyPolicy = () => {
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Tipi di dati raccolti</h2>
-            <p>Dati di navigazione (log del server, indirizzo IP), cookie tecnici, e dati forniti volontariamente dall'utente (es. email, form di contatto).</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Email e credenziali di accesso (autenticazione)</li>
+              <li>Coordinate GPS del dispositivo al momento della scansione, usate in modo transitorio per localizzare la microzona OMI</li>
+              <li>Fotografia dell'edificio inviata all'elaborazione (non archiviata nel backend Sottra)</li>
+              <li>Dati di navigazione (log del server, indirizzo IP) e cookie tecnici di sessione</li>
+              <li>Dati di fatturazione e pagamento gestiti da Stripe (Sottra non memorizza numeri di carta)</li>
+            </ul>
           </section>
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Finalità del trattamento</h2>
-            <p>Funzionamento del servizio, assistenza tecnica, adempimenti di legge.</p>
+            <p>Erogazione del servizio (scansione, report territoriale, trial e abbonamento), autenticazione, assistenza tecnica, adempimenti di legge e, se scelto dall'utente, invio del report in formato immagine al WhatsApp dell'agenzia salvato.</p>
           </section>
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Base giuridica</h2>
-            <p>Consenso dell'interessato, esecuzione di un contratto, legittimo interesse del titolare.</p>
+            <p>Esecuzione del contratto (uso del servizio e dell'abbonamento), consenso (fotocamera, geolocalizzazione, invio WhatsApp), legittimo interesse (sicurezza e prevenzione abusi) e obblighi di legge.</p>
+          </section>
+
+          <section>
+            <h2 className="font-semibold text-foreground mb-2">Cosa NON conserviamo</h2>
+            <p>Le foto dell'edificio e le coordinate GPS non restano nel database Sottra dopo l'elaborazione della scansione. Il contenuto del report è ricostruito lato client dalla risposta delle API. Sottra non inventa visure catastali, APE ufficiali, vendite o successioni sul civico fotografato.</p>
+          </section>
+
+          <section>
+            <h2 className="font-semibold text-foreground mb-2">Responsabili e destinatari</h2>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Supabase — autenticazione, database e funzioni (hosting UE disponibile)</li>
+              <li>Stripe — pagamenti e abbonamenti (PCI DSS)</li>
+              <li>Central Core V3 — analisi dell'edificio e contesto territoriale, invocato solo dal backend Sottra (core-proxy), mai direttamente dal browser</li>
+            </ul>
           </section>
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Conservazione dei dati</h2>
-            <p>I dati personali sono conservati per il tempo strettamente necessario al raggiungimento delle finalità per cui sono stati raccolti.</p>
+            <p>Account, trial, eventi di scansione (id, senza foto) e stato abbonamento sono conservati per il tempo necessario all'erogazione del servizio e agli obblighi di legge, poi cancellati o anonimizzati su richiesta.</p>
           </section>
 
           <section>
@@ -58,7 +78,7 @@ const PrivacyPolicy = () => {
             <p>{e.applicableLaw} — {e.jurisdiction}</p>
           </section>
 
-          <p className="text-xs text-muted-foreground pt-4">Ultimo aggiornamento: marzo 2026</p>
+          <p className="text-xs text-muted-foreground pt-4">Ultimo aggiornamento: settembre 2026</p>
         </div>
       </div>
     </div>

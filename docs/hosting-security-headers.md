@@ -43,10 +43,10 @@ Invia il referrer completo solo per same-origin; solo l'origin per cross-origin.
 ### Permissions-Policy
 
 ```
-Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=()
+Permissions-Policy: camera=(self), microphone=(), geolocation=(self), payment=()
 ```
 
-Disabilita API sensibili non utilizzate. `geolocation=(self)` se usata per localizzazione immobili.
+Disabilita microfono e Payment Request. `geolocation=(self)` e `camera=(self)` sono obbligatori: la scansione Android usa getUserMedia, iOS usa la fotocamera di sistema, il GPS serve alla microzona OMI.
 
 ## Esempio di configurazione
 
@@ -57,7 +57,7 @@ add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; prelo
 add_header X-Frame-Options "DENY" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self), payment=()" always;
+add_header Permissions-Policy "camera=(self), microphone=(), geolocation=(self), payment=()" always;
 ```
 
 ### Cloudflare (Transform Rules)
@@ -76,7 +76,7 @@ Configurabile via Dashboard → Rules → Transform Rules → Modify Response He
         { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(self), payment=()" }
+        { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=(self), payment=()" }
       ]
     }
   ]

@@ -47,10 +47,12 @@ fi
 
 # ── No hardcoded email in JS bundles
 log "── Checking dist/ for hardcoded emails in JS..."
-if grep -rEoh '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' dist/assets/*.js 2>/dev/null | grep -ivE 'example\.com|test\.com' | head -1 | grep -q '@'; then
+if grep -rEoh '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' dist/assets/*.js 2>/dev/null \
+   | grep -ivE 'example\.com|test\.com|esempio\.it|sottra\.app|pec\.it' \
+   | head -1 | grep -q '@'; then
   log "⚠️  WARNING: Email address found in JS bundle (review manually)"
 else
-  log "✅ No hardcoded emails in JS bundles"
+  log "✅ No unexpected emails in JS bundles"
 fi
 
 # ── Core build artifacts
@@ -74,7 +76,7 @@ else
   log "✅ PWA manifest found: $MANIFEST"
 
   # Validate manifest fields
-  for field in name short_name start_url display icons; do
+  for field in name short_name start_url display icons lang id scope; do
     if grep -q "\"$field\"" "$MANIFEST"; then
       log "  ✅ manifest.$field present"
     else
@@ -82,6 +84,28 @@ else
       EXIT=1
     fi
   done
+
+  if grep -q '"standalone"' "$MANIFEST"; then
+    log "  ✅ manifest.display standalone"
+  else
+    log "  ❌ manifest.display is not standalone"
+    EXIT=1
+  fi
+
+  if grep -q '"lang": "it"' "$MANIFEST" || grep -q '"lang":"it"' "$MANIFEST"; then
+    log "  ✅ manifest.lang = it"
+  else
+    log "  ❌ manifest.lang is not it"
+    EXIT=1
+  fi
+
+  # Combined "any maskable" on one icon fails Lighthouse maskable-icon
+  if grep -q '"any maskable"' "$MANIFEST"; then
+    log "  ❌ combined purpose \"any maskable\" — use separate any + maskable icons"
+    EXIT=1
+  else
+    log "  ✅ icons do not use combined any+maskable purpose"
+  fi
 
   # Validate icon sizes
   for size in 192x192 512x512; do
@@ -103,15 +127,16 @@ fi
 
 # ── Service worker
 log "── Checking service worker..."
-if ls dist/sw.js dist/sw.*.js 2>/dev/null | head -1 | grep -q .; then
+if [ -f dist/sw.js ] || compgen -G "dist/sw.*.js" > /dev/null; then
   log "✅ Service worker present"
 else
-  log "⚠️  WARNING: no service worker found in dist/"
+  log "❌ Service worker missing in dist/"
+  EXIT=1
 fi
 
 # ── Icon files
 log "── Checking icon files..."
-for icon in icons/icon-192.png icons/icon-512.png; do
+for icon in icons/icon-192.png icons/icon-512.png icons/icon-maskable-192.png icons/icon-maskable-512.png icons/apple-touch-icon.png; do
   if [ -f "dist/$icon" ] || [ -f "public/$icon" ]; then
     log "  ✅ $icon present"
   else
@@ -119,6 +144,13 @@ for icon in icons/icon-192.png icons/icon-512.png; do
     EXIT=1
   fi
 done
+
+if grep -q 'apple-touch-icon' dist/index.html; then
+  log "✅ apple-touch-icon in dist/index.html"
+else
+  log "❌ apple-touch-icon missing in dist/index.html"
+  EXIT=1
+fi
 
 # ── Headers artifact
 log "── Checking security headers artifact..."
@@ -132,8 +164,15 @@ if [ -f dist/_headers ]; then
       EXIT=1
     fi
   done
+  if grep -q "camera=(self)" dist/_headers; then
+    log "  ✅ Permissions-Policy allows camera=(self) for scans"
+  else
+    log "  ❌ Permissions-Policy must allow camera=(self) — Android scan uses getUserMedia"
+    EXIT=1
+  fi
 else
-  log "⚠️  WARNING: _headers not found in dist/ (security headers not enforced)"
+  log "❌ _headers not found in dist/ (security headers not enforced)"
+  EXIT=1
 fi
 
 # ── index.html sanity

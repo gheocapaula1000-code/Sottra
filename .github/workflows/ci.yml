@@ -9,6 +9,14 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      # Publishable Vite placeholders only — never Stripe/Core secrets.
+      # Lovable keeps a local `.env` (expected). CI checkouts have none, so tests
+      # get these dummies. Real repo secrets for VITE_* would override if set.
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
+      VITE_SUPABASE_PROJECT_ID: test-project-id
+      VITE_USE_MOCK: "false"
     steps:
       - uses: actions/checkout@v4
 
@@ -34,14 +42,6 @@ jobs:
 
       - name: Build
         run: npm run build
-        env:
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY: placeholder
-          VITE_SUPABASE_PROJECT_ID: placeholder
 
-      - name: Verify build artifacts
-        run: |
-          test -d dist || (echo "❌ dist/ missing" && exit 1)
-          test -f dist/index.html || (echo "❌ index.html missing" && exit 1)
-          test -f dist/manifest.webmanifest || test -f dist/manifest.json || (echo "❌ PWA manifest missing" && exit 1)
-          echo "✅ Build artifacts verified"
+      - name: Verify package
+        run: bash scripts/verify-package.sh

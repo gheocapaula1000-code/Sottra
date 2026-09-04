@@ -28,7 +28,7 @@ const CookiePolicy = () => {
 
           <section>
             <h2 className="font-semibold text-foreground mb-2">Cookie di terze parti</h2>
-            <p>Questo sito non utilizza cookie di profilazione. Potrebbero essere presenti cookie tecnici di terze parti (es. Google Fonts).</p>
+            <p>Questo sito non utilizza cookie di profilazione. Potrebbero essere presenti cookie tecnici di terze parti (es. Google Fonts). Il checkout e il portale abbonamenti avvengono su Stripe: eventuali cookie di pagamento sono gestiti da Stripe sul proprio dominio, non da Sottra.</p>
           </section>
 
           <section>
@@ -42,7 +42,7 @@ const CookiePolicy = () => {
             <p className="mt-1">Per informazioni: <a href={`mailto:${APP_BRAND.infoEmail}`} className="text-primary underline">{APP_BRAND.infoEmail}</a></p>
           </section>
 
-          <p className="text-xs text-muted-foreground pt-4">Ultimo aggiornamento: marzo 2026</p>
+          <p className="text-xs text-muted-foreground pt-4">Ultimo aggiornamento: settembre 2026</p>
         </div>
       </div>
     </div>

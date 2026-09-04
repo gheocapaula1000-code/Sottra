@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Lovable regenerates a local .env constantly — that is expected.
+# Never commit it. The only committed template is .env.example.
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
