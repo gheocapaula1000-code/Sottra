@@ -36,7 +36,7 @@ const AgencyWhatsappCard = () => {
       </CardHeader>
       <CardContent className="pt-0 space-y-3">
         <p className="text-xs text-muted-foreground">
-          I report vengono inviati a questo numero con un tap dalla pagina risultato.
+          Se la condivisione nativa non è disponibile, WhatsApp si apre su questo numero.
         </p>
         <Input
           type="tel"

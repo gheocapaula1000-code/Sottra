@@ -54,6 +54,7 @@ describe("buildReportShareFile — capture the report root", () => {
 describe("shareOrDownloadReportFile", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("shares a JPEG file via navigator.share when canShare accepts files", async () => {
@@ -74,13 +75,134 @@ describe("shareOrDownloadReportFile", () => {
   });
 });
 
+describe("shareReportPayload — native share then fallbacks", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  const file = () => new File([new Uint8Array([1, 2, 3])], "sottra-padova-d8.jpg", { type: "image/jpeg" });
+  const caption = "Report Sottra — Via Monsignor Giovanni Forte, Padova — sottra.app";
+
+  it("falls back to text+url share when canShare rejects files", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const canShare = vi.fn((data: ShareData) => !data.files);
+    vi.stubGlobal("navigator", { share, canShare, clipboard: { writeText: vi.fn() } });
+
+    const { shareReportPayload } = await import("@/lib/shareReportImage");
+    const outcome = await shareReportPayload({
+      file: file(),
+      title: "Sottra · Padova D8",
+      text: caption,
+      url: "https://sottra.app",
+    });
+
+    expect(outcome).toBe("shared");
+    expect(share).toHaveBeenCalledTimes(1);
+    expect(share).toHaveBeenCalledWith({
+      title: "Sottra · Padova D8",
+      text: caption,
+      url: "https://sottra.app",
+    });
+  });
+
+  it("treats AbortError as cancelled and does not download", async () => {
+    const share = vi.fn().mockRejectedValue(Object.assign(new Error("Share canceled"), { name: "AbortError" }));
+    const canShare = vi.fn().mockReturnValue(true);
+    const createElement = vi.spyOn(document, "createElement");
+    vi.stubGlobal("navigator", { share, canShare });
+
+    const { shareReportPayload } = await import("@/lib/shareReportImage");
+    const outcome = await shareReportPayload({
+      file: file(),
+      title: "Sottra · Padova D8",
+      text: caption,
+    });
+
+    expect(outcome).toBe("cancelled");
+    expect(createElement).not.toHaveBeenCalledWith("a");
+  });
+
+  it("downloads, copies, and opens WhatsApp when navigator.share is missing", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const open = vi.spyOn(window, "open").mockReturnValue({ closed: false } as Window);
+    vi.stubGlobal("URL", {
+      createObjectURL: () => "blob:sottra-share",
+      revokeObjectURL: () => {},
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    const { shareReportPayload } = await import("@/lib/shareReportImage");
+    const outcome = await shareReportPayload({
+      file: file(),
+      title: "Sottra · Padova D8",
+      text: caption,
+      whatsappUrl: "https://wa.me/?text=Report%20Sottra",
+    });
+
+    expect(outcome).toBe("whatsapp");
+    expect(writeText).toHaveBeenCalledWith(caption);
+    expect(open).toHaveBeenCalledWith("https://wa.me/?text=Report%20Sottra", "_blank", "noopener,noreferrer");
+  });
+
+  it("copies caption when there is no image and no share API", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+
+    const { shareReportPayload } = await import("@/lib/shareReportImage");
+    const outcome = await shareReportPayload({
+      title: "Sottra",
+      text: caption,
+    });
+
+    expect(outcome).toBe("copied");
+    expect(writeText).toHaveBeenCalledWith(caption);
+  });
+});
+
+describe("shareCapturePixelRatio and tryBuildReportShareFile", () => {
+  it("caps pixel ratio so a long mobile report stays under the canvas budget", async () => {
+    const { shareCapturePixelRatio } = await import("@/lib/shareReportImage");
+    expect(shareCapturePixelRatio(390, 800, 3)).toBe(2);
+    const tall = shareCapturePixelRatio(390, 20000, 2);
+    expect(tall).toBeLessThan(2);
+    expect(390 * 20000 * tall * tall).toBeLessThanOrEqual(12_000_000 + 1);
+  });
+
+  it("returns null when capture times out instead of throwing", async () => {
+    const { tryBuildReportShareFile } = await import("@/lib/shareReportImage");
+    const root = document.createElement("div");
+    await expect(
+      tryBuildReportShareFile({
+        root,
+        title: "Sottra",
+        timeoutMs: 20,
+        capture: () => new Promise(() => {}),
+      }),
+    ).resolves.toBeNull();
+  });
+});
+
+describe("shareOutcomeToast — Italian, no silent no-op", () => {
+  it("explains success and fallbacks in Italian", async () => {
+    const { shareOutcomeToast } = await import("@/lib/shareReportImage");
+    expect(shareOutcomeToast("shared")?.title).toBe("Report condiviso");
+    expect(shareOutcomeToast("downloaded", "sottra.jpg")?.description).toContain("sottra.jpg");
+    expect(shareOutcomeToast("copied")?.title).toBe("Testo copiato");
+    expect(shareOutcomeToast("whatsapp")?.title).toBe("WhatsApp aperto");
+    expect(shareOutcomeToast("cancelled")).toBeNull();
+  });
+});
+
 describe("share wiring — not KeyDraft JSON", () => {
   it("Result uses the image helper, not sottraExportBridge", () => {
     const result = readFileSync("src/pages/Result.tsx", "utf-8");
     const helper = readFileSync("src/lib/shareReportImage.ts", "utf-8");
-    expect(result).toContain("buildReportShareFile");
+    expect(result).toContain("tryBuildReportShareFile");
+    expect(result).toContain("shareReportPayload");
     expect(result).toContain("captureReportElement");
-    expect(result).toContain("captureReportElement(reportRoot, { facadeSrc: state.photo })");
+    expect(result).toContain("captureReportElement(reportRoot, { facadeSrc: state?.photo })");
     expect(result).toContain("result-report-root");
     expect(result).not.toContain("sottraExportBridge");
     expect(helper).toContain("toJpeg");
@@ -246,6 +368,7 @@ describe("capture stamps the live facade canvas (no blank clone in WhatsApp)", (
     expect(helper).toContain("flattenShareJpeg");
     expect(helper).toContain("onclone");
     expect(helper).toContain('canvas[data-testid="building-identity-photo"]');
+    expect(helper).toContain("shareCapturePixelRatio");
     expect(helper).toContain("collectFacadeStamps");
     expect(helper).toContain("compositeFacadeStamps");
   });

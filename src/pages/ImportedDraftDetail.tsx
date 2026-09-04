@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Camera, User, FileText, Copy, Check } from "lucide-react";
+import { ArrowLeft, Camera, User, FileText, Copy, Check, Share2 } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,6 +9,17 @@ import { ImportOriginBadge } from "@/components/keydraft/ImportOriginBadge";
 import { ImportStatusBadge } from "@/components/keydraft/ImportStatusBadge";
 import { fetchImportById, updateDraftStatus } from "@/services/keydraftImport";
 import type { KeyDraftImportRecord, ImportDraftStatus } from "@/types/keydraft";
+import { RESULT_SAFE_BOTTOM_PAD } from "@/lib/resultChrome";
+import {
+  captureReportElement,
+  shareOutcomeToast,
+  shareReportPayload,
+  tryBuildReportShareFile,
+  waitForCaptureLayout,
+} from "@/lib/shareReportImage";
+import { buildWhatsappShareUrl } from "@/lib/agencyWhatsapp";
+import { useAgencyWhatsapp } from "@/hooks/useAgencyWhatsapp";
+import { buildImportedDraftShareText, buildImportedDraftShareTitle } from "@/lib/shareDraft";
 
 function Section({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
@@ -72,6 +83,9 @@ export default function ImportedDraftDetail() {
   const [record, setRecord] = useState<KeyDraftImportRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const reportRootRef = useRef<HTMLDivElement>(null);
+  const { phone: agencyPhone } = useAgencyWhatsapp();
 
   useEffect(() => {
     if (!id) return;
@@ -93,6 +107,59 @@ export default function ImportedDraftDetail() {
       toast({ title: "Errore", description: "Impossibile aggiornare lo stato", variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!record || capturing) {
+      if (!record) {
+        toast({
+          title: "Condivisione non disponibile",
+          description: "La scheda non è ancora pronta.",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+    const title = buildImportedDraftShareTitle(record);
+    const text = buildImportedDraftShareText(record);
+    const whatsappUrl = buildWhatsappShareUrl(agencyPhone, text);
+    const appUrl = typeof window !== "undefined" && /^https?:\/\//i.test(window.location.origin)
+      ? window.location.origin
+      : null;
+    const facadeSrc = record.bridge_payload.photo_derived?.photo_urls?.[0] ?? null;
+
+    setCapturing(true);
+    document.documentElement.setAttribute("data-sottra-capture", "1");
+    try {
+      await waitForCaptureLayout();
+      const root = reportRootRef.current;
+      const file = root
+        ? await tryBuildReportShareFile({
+          root,
+          title,
+          capture: (el) => captureReportElement(el, { facadeSrc }),
+        })
+        : null;
+      const outcome = await shareReportPayload({
+        file,
+        title,
+        text,
+        url: appUrl,
+        whatsappUrl,
+      });
+      const feedback = shareOutcomeToast(outcome, file?.name ?? null);
+      if (feedback) toast(feedback);
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return;
+      toast({
+        title: "Condivisione non riuscita",
+        description: "Riprova, oppure copia il testo e invialo da WhatsApp.",
+        variant: "destructive",
+      });
+    } finally {
+      document.documentElement.removeAttribute("data-sottra-capture");
+      setCapturing(false);
     }
   };
 
@@ -131,13 +198,34 @@ export default function ImportedDraftDetail() {
   const _originMap = record.origin_map ?? {};
 
   return (
-    <div className="min-h-dvh bg-background pb-safe">
-      <AppHeader />
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 pb-24">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-background">
+      <div data-capture-hide>
+        <AppHeader rightContent={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => void handleShare()}
+            disabled={capturing}
+            aria-label="Invia il report"
+          >
+            <Share2 className="h-4 w-4" />
+          </Button>
+        } />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={reportRootRef}
+        data-testid="imported-draft-root"
+        className="max-w-2xl mx-auto px-4 py-6 space-y-4 w-full"
+        style={{ paddingBottom: RESULT_SAFE_BOTTOM_PAD }}
+      >
         {/* Back + header */}
+        <div data-capture-hide>
         <Button variant="ghost" size="sm" className="gap-1.5 -ml-2" onClick={() => navigate("/app/imports")}>
           <ArrowLeft className="h-4 w-4" /> Bozze importate
         </Button>
+        </div>
 
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
@@ -287,6 +375,29 @@ export default function ImportedDraftDetail() {
           </div>
         )}
       </div>
+      </div>
+
+      <footer
+        data-capture-hide
+        data-testid="imported-draft-action-bar"
+        className="shrink-0 border-t border-border/50 bg-background px-4 sm:px-5 pt-3 z-40"
+        style={{
+          paddingBottom: RESULT_SAFE_BOTTOM_PAD,
+          paddingLeft: "max(env(safe-area-inset-left, 0px), 16px)",
+          paddingRight: "max(env(safe-area-inset-right, 0px), 16px)",
+        }}
+      >
+        <Button
+          className="w-full min-h-[48px] active:scale-[0.97] transition-transform"
+          size="lg"
+          onClick={() => void handleShare()}
+          disabled={capturing}
+          aria-label="Invia il report"
+        >
+          <Share2 className="h-4 w-4" />
+          {capturing ? "Preparazione…" : "Invia il report"}
+        </Button>
+      </footer>
     </div>
   );
 }

@@ -223,19 +223,46 @@ export async function compositeFacadeStamps(
   }
 }
 
+/**
+ * Keep the capture canvas under iOS/PWA memory limits (~16M pixels).
+ * Flatten + facade composite allocate extra canvases, so stay below that.
+ */
+export function shareCapturePixelRatio(
+  cssWidth: number,
+  cssHeight: number,
+  devicePixelRatio = 1,
+): number {
+  const w = Math.max(1, cssWidth);
+  const h = Math.max(1, cssHeight);
+  const maxPixels = 12_000_000;
+  const dpr = Math.min(2, Math.max(1, devicePixelRatio || 1));
+  if (w * h * dpr * dpr <= maxPixels) return dpr;
+  return Math.max(0.5, Math.min(dpr, Math.sqrt(maxPixels / (w * h))));
+}
+
 /** Rasterize the live report root. Does not invent fields — pixels come from the DOM. */
 export async function captureReportElement(
   root: HTMLElement,
   options: ReportCaptureOptions = {},
 ): Promise<Blob> {
-  const pixelRatio = typeof window !== "undefined"
-    ? Math.min(2, window.devicePixelRatio || 1)
-    : 1;
+  const cssWidth = Math.max(
+    root.scrollWidth || 0,
+    root.offsetWidth || 0,
+    root.getBoundingClientRect().width || 0,
+  );
+  const cssHeight = Math.max(root.scrollHeight || 0, root.offsetHeight || 0);
+  const pixelRatio = shareCapturePixelRatio(
+    cssWidth,
+    cssHeight,
+    typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
+  );
   const stamps = collectFacadeStamps(root, options);
   const stampBySrc = new Map(stamps.map((s) => [s.src, s]));
   const dataUrl = await toJpeg(root, {
     quality: 0.92,
     pixelRatio,
+    width: cssWidth || undefined,
+    height: cssHeight || undefined,
     backgroundColor: "#0a0a0f",
     cacheBust: true,
     filter: (node) => {
@@ -267,7 +294,7 @@ export async function captureReportElement(
   if (!blob || blob.size === 0) {
     throw new Error("capture empty");
   }
-  const rootWidthCss = root.getBoundingClientRect().width || root.offsetWidth || 0;
+  const rootWidthCss = cssWidth || root.getBoundingClientRect().width || root.offsetWidth || 0;
   const stamped = await compositeFacadeStamps(blob, stamps, rootWidthCss);
   return flattenShareJpeg(stamped);
 }
@@ -295,19 +322,194 @@ export function downloadBlobFile(file: File): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+export const REPORT_CAPTURE_TIMEOUT_MS = 8000;
+
+export type ShareReportOutcome = "shared" | "downloaded" | "copied" | "whatsapp" | "cancelled";
+
+export interface ShareReportPayload {
+  file?: File | null;
+  title: string;
+  text: string;
+  /** App origin only — never presented as a permalink to this scan. */
+  url?: string | null;
+  whatsappUrl?: string | null;
+}
+
+type NavigatorWithShare = Navigator & {
+  canShare?: (data: ShareData) => boolean;
+  share?: (data: ShareData) => Promise<void>;
+};
+
+export function isShareCancellation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const e = error as { name?: string; message?: string };
+  if (e.name === "AbortError") return true;
+  const msg = (e.message ?? "").toLowerCase();
+  return msg.includes("share canceled") || msg.includes("share cancelled") || msg.includes("abort");
+}
+
+function canShareData(nav: NavigatorWithShare, data: ShareData): boolean {
+  try {
+    if (typeof nav.canShare !== "function") return true;
+    return nav.canShare(data);
+  } catch {
+    return false;
+  }
+}
+
+async function tryNavigatorShare(data: ShareData): Promise<"shared" | "cancelled" | "failed"> {
+  const nav = navigator as NavigatorWithShare;
+  if (typeof nav.share !== "function") return "failed";
+  if (!canShareData(nav, data)) return "failed";
+  try {
+    await nav.share(data);
+    return "shared";
+  } catch (error) {
+    if (isShareCancellation(error)) return "cancelled";
+    return "failed";
+  }
+}
+
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  const value = text.trim();
+  if (!value) return false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {
+    /* fall through to execCommand */
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = value;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Prefer window.open; fall back to a synthetic <a> so iOS PWA can still leave the gesture. */
+export function openShareFallbackUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    if (opened) return true;
+  } catch {
+    /* popup blocked — try a click */
+  }
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Native share when the browser allows it (image file, else text+url).
+ * Fallbacks: download JPEG, copy caption, open WhatsApp. Never a silent no-op.
+ */
+export async function shareReportPayload(payload: ShareReportPayload): Promise<ShareReportOutcome> {
+  const title = payload.title.trim() || "Sottra";
+  const text = payload.text.trim() || title;
+  const file = payload.file && payload.file.size > 0 ? payload.file : null;
+  const url = typeof payload.url === "string" && /^https?:\/\//i.test(payload.url) ? payload.url : null;
+
+  if (file) {
+    const withFiles: ShareData = { files: [file], title, text };
+    const fileShare = await tryNavigatorShare(withFiles);
+    if (fileShare === "shared") return "shared";
+    if (fileShare === "cancelled") return "cancelled";
+  }
+
+  const textData: ShareData = { title, text };
+  if (url) textData.url = url;
+  const textShare = await tryNavigatorShare(textData);
+  if (textShare === "shared") return "shared";
+  if (textShare === "cancelled") return "cancelled";
+
+  if (file) downloadBlobFile(file);
+  const copied = await copyTextToClipboard(text);
+  if (payload.whatsappUrl && openShareFallbackUrl(payload.whatsappUrl)) {
+    return "whatsapp";
+  }
+  if (file) return "downloaded";
+  if (copied) return "copied";
+  throw new Error("share unavailable");
+}
+
+export async function tryBuildReportShareFile(opts: {
+  root: HTMLElement;
+  title: string;
+  capture: ReportCaptureFn;
+  timeoutMs?: number;
+}): Promise<File | null> {
+  const timeoutMs = opts.timeoutMs ?? REPORT_CAPTURE_TIMEOUT_MS;
+  try {
+    return await Promise.race([
+      buildReportShareFile(opts),
+      new Promise<never>((_, reject) => {
+        window.setTimeout(() => reject(new Error("capture timeout")), timeoutMs);
+      }),
+    ]);
+  } catch {
+    return null;
+  }
+}
+
+export function shareOutcomeToast(
+  outcome: ShareReportOutcome,
+  fileName?: string | null,
+): { title: string; description: string } | null {
+  switch (outcome) {
+    case "shared":
+      return {
+        title: "Report condiviso",
+        description: "Il report è stato inviato all'app scelta.",
+      };
+    case "downloaded":
+      return {
+        title: "Immagine salvata",
+        description: fileName
+          ? `Apri File o WhatsApp e allega ${fileName}.`
+          : "Apri File o WhatsApp e allega l'immagine del report.",
+      };
+    case "copied":
+      return {
+        title: "Testo copiato",
+        description: "Incollalo in WhatsApp o in un messaggio.",
+      };
+    case "whatsapp":
+      return {
+        title: "WhatsApp aperto",
+        description: fileName
+          ? `Allega ${fileName} nella chat se l'immagine è stata salvata.`
+          : "Completa l'invio dalla chat WhatsApp.",
+      };
+    case "cancelled":
+      return null;
+  }
+}
+
 export async function shareOrDownloadReportFile(
   file: File,
   title: string,
-): Promise<"shared" | "downloaded"> {
-  const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
-  if (typeof nav.share === "function") {
-    const data: ShareData = { files: [file], title, text: title };
-    const can = typeof nav.canShare !== "function" || nav.canShare(data);
-    if (can) {
-      await nav.share(data);
-      return "shared";
-    }
-  }
-  downloadBlobFile(file);
-  return "downloaded";
+  text = title,
+): Promise<ShareReportOutcome> {
+  return shareReportPayload({ file, title, text });
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
 import {
   isValidBridgePayload,
   type KeyDraftBridgePayload,
@@ -198,5 +199,68 @@ describe("Sottra Autonomy — No KeyDraft Dependency", () => {
     const showImportsLink = importCount > 0;
     expect(showImportsLink).toBe(false);
     // Dashboard renders normally without imports link
+  });
+});
+
+describe("Imported draft direct share", () => {
+  it("uses WhatsApp-ready summary when KeyDraft provided it", async () => {
+    const { buildImportedDraftShareText, buildImportedDraftShareTitle } = await import("@/lib/shareDraft");
+    const record = {
+      id: "1",
+      user_id: "u",
+      listing_id: "KD-2024-001",
+      run_id: null,
+      status: "importata" as const,
+      source_app: "keydraft",
+      bridge_payload: validPayload,
+      sottra_completions: {},
+      origin_map: {},
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+    expect(buildImportedDraftShareText(record)).toBe(
+      "Appartamento 4 locali, 120mq, Via Roma 10 Milano - €350.000",
+    );
+    expect(buildImportedDraftShareTitle(record)).toBe("Sottra · Via Roma 10, Milano");
+  });
+
+  it("composes only real fields when generated text is missing — no visura/APE/OMI invented", async () => {
+    const { buildImportedDraftShareText } = await import("@/lib/shareDraft");
+    const record = {
+      id: "1",
+      user_id: "u",
+      listing_id: "KD-MIN-001",
+      run_id: null,
+      status: "importata" as const,
+      source_app: "keydraft",
+      bridge_payload: {
+        ...minimalPayload,
+        agent_supplied: { address: "Via Monsignor Giovanni Fortin, Padova", surface_sqm: 85, floor: "2" },
+        property: { rooms_estimated: 4 },
+      },
+      sottra_completions: { superficie_mq: 85, piano: "2" },
+      origin_map: {},
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+    const text = buildImportedDraftShareText(record);
+    expect(text).toContain("Via Monsignor Giovanni Fortin, Padova");
+    expect(text).toContain("85 m²");
+    expect(text).toContain("4 locali");
+    expect(text).toContain("Piano 2");
+    expect(text).toContain("sottra.app");
+    expect(text.toLowerCase()).not.toMatch(/visura|planimetria|attestato|scadenza|genera report/);
+    expect(text).not.toContain("1400");
+  });
+
+  it("ImportedDraftDetail wires Web Share like Result", () => {
+    const page = readFileSync("src/pages/ImportedDraftDetail.tsx", "utf-8");
+    expect(page).toContain("shareReportPayload");
+    expect(page).toContain("Invia il report");
+    expect(page).toContain("imported-draft-action-bar");
+    expect(page).toContain("buildImportedDraftShareText");
+    expect(page).not.toContain("SCARICA PDF");
+    expect(page).not.toContain("Genera report");
+    expect(page).not.toContain("Recupera valutazione");
   });
 });

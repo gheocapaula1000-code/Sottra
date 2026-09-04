@@ -19,17 +19,20 @@ describe("Result scroll + chrome", () => {
     expect(result).not.toMatch(/<div className="flex h-dvh flex-col overflow-hidden/);
   });
 
-  it("only one Condividi in the live chrome", () => {
+  it("Invia il report in header and sticky footer", () => {
     const result = readFileSync("src/pages/Result.tsx", "utf-8");
     const wow = readFileSync("src/components/report/WowPanel.tsx", "utf-8");
     expect(wow).not.toContain("Condividi");
+    expect(wow).not.toContain("Invia il report");
     expect(wow).not.toContain("Nuova scansione");
     expect(result).toContain("result-action-bar");
-    expect(result).toContain("Condividi");
-    expect(result.match(/Condividi/g)?.length).toBe(1);
+    expect(result).toContain("Invia il report");
+    expect(result.match(/Invia il report/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(result.match(/aria-label="Invia il report"/g)?.length).toBe(2);
     expect(result.match(/Nuova scansione/g)?.length).toBe(1);
     expect(result).not.toContain("fixed bottom-16");
     expect(result).not.toContain("Condividi Report");
+    expect(result).not.toContain("Invia in agenzia");
     expect(wow).toContain("Intelligence zona");
     expect(wow).toContain("piano esclusiva");
   });

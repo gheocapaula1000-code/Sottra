@@ -70,18 +70,31 @@ describe("buildAgencyShareCaption — only real facts", () => {
   });
 });
 
+describe("buildWhatsappShareUrl", () => {
+  it("targets the saved agency number when valid", async () => {
+    const { buildWhatsappShareUrl } = await import("@/lib/agencyWhatsapp");
+    const url = buildWhatsappShareUrl("345 678 9012", "Report Sottra — sottra.app");
+    expect(url).toContain("https://wa.me/393456789012?text=");
+  });
+
+  it("opens a generic compose when no agency number is saved", async () => {
+    const { buildWhatsappShareUrl } = await import("@/lib/agencyWhatsapp");
+    expect(buildWhatsappShareUrl(null, "Report Sottra — sottra.app")).toBe(
+      "https://wa.me/?text=" + encodeURIComponent("Report Sottra — sottra.app"),
+    );
+  });
+});
+
 describe("Result wiring", () => {
   const result = readFileSync("src/pages/Result.tsx", "utf-8");
 
-  it("sends to the saved agency number using the scanned photo", () => {
-    expect(result).toContain("buildAgencyWhatsappUrl");
-    expect(result).toContain("captureReportElement(reportRoot, { facadeSrc: state.photo })");
-    expect(result).toContain("Invia in agenzia");
-    expect(result).toContain("AgencyWhatsappDialog");
-  });
-
-  it("asks for the number before the first send instead of opening a generic sheet", () => {
-    expect(result).toContain("setAgencyDialogOpen(true)");
-    expect(result).not.toContain("shareOrDownloadReportFile");
+  it("shares via Web Share using the scanned photo, with WhatsApp as fallback", () => {
+    expect(result).toContain("shareReportPayload");
+    expect(result).toContain("tryBuildReportShareFile");
+    expect(result).toContain("buildWhatsappShareUrl");
+    expect(result).toContain("captureReportElement(reportRoot, { facadeSrc: state?.photo })");
+    expect(result).toContain("Invia il report");
+    expect(result).not.toContain("setAgencyDialogOpen(true)");
+    expect(result).not.toContain("AgencyWhatsappDialog");
   });
 });
