@@ -131,6 +131,7 @@ serve(async (req) => {
       },
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
+      locale: "it",
       success_url: `${returnOrigin}/app?checkout=success`,
       cancel_url: `${returnOrigin}/app?checkout=cancel`,
     });

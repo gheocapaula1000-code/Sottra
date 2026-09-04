@@ -4,16 +4,26 @@ set -euo pipefail
 
 EXIT=0
 
-# 1. Check for real .env files (allow only .env.example; warn on root .env which is Lovable-managed)
+# 1. .env must never be tracked. A local untracked .env is allowed (developer machine).
+echo "── Checking that .env is not tracked..."
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+    echo "❌ BLOCKED: .env is tracked in git — remove it from the index (keep .env.example only)"
+    EXIT=1
+  else
+    echo "✅ .env is not tracked"
+  fi
+fi
+
 echo "── Checking for real .env files..."
 while IFS= read -r f; do
   base=$(basename "$f")
   case "$base" in
     .env.example) continue ;;
     .env)
-      # Root .env is Lovable-managed — warn but don't block
-      if [ "$f" = "./.env" ]; then
-        echo "⚠️  WARNING: $f present (Lovable-managed, not shipped in dist)"
+      # Local working copy is fine if gitignored and untracked.
+      if [ "$f" = "./.env" ] || [ "$f" = ".env" ]; then
+        echo "⚠️  WARNING: $f present locally (must stay gitignored; never commit)"
       else
         echo "❌ BLOCKED: $f — real env file must not be in repo/package"
         EXIT=1
@@ -48,6 +58,13 @@ if grep -E 'eyJ[a-zA-Z0-9]{20,}' .env.example 2>/dev/null; then
   EXIT=1
 else
   echo "✅ .env.example is clean"
+fi
+
+if grep -E '^(STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|CORE_API_KEY|SUPABASE_SERVICE_ROLE_KEY)=' .env.example 2>/dev/null; then
+  echo "❌ .env.example must not assign server-side secret keys (comments only)"
+  EXIT=1
+else
+  echo "✅ .env.example has no server-side secret assignments"
 fi
 
 # 4. Verify no owner/admin emails are hardcoded in frontend source

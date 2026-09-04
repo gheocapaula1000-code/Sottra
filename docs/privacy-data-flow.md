@@ -39,8 +39,8 @@ User Device → Supabase Edge Functions → Central Core V3
 1. **Zero client secrets**: No API keys in frontend code. All Core API calls go through `core-proxy` edge function.
 2. **JWT validation**: All edge functions validate user tokens server-side via `getClaims()`.
 3. **RLS policies**: Database tables protected by Row-Level Security.
-4. **CSP meta tag**: Restricts `connect-src` to Supabase domains only.
-5. **CORS**: Edge functions allow `*` origin (standard for Supabase functions).
+4. **CSP via `_headers`**: `connect-src` ristretto a `'self'` e `https://*.supabase.co` (WebSocket incluso). Nessun meta CSP in `index.html`.
+5. **CORS**: deny-by-default. `ALLOWED_ORIGINS` è una allowlist comma-separated; origini fuori lista ricevono `Access-Control-Allow-Origin: null`. Deve includere `https://sottra.app`.
 
 ## Third-Party Processors
 - **Supabase**: Authentication, database, edge functions (EU hosting available)

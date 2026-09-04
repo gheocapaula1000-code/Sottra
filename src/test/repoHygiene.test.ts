@@ -11,6 +11,11 @@ describe(".gitignore hygiene", () => {
   it("blocks dist/ from being committed", () => {
     expect(gitignore).toContain("dist");
   });
+
+  it("ignores .env and keeps .env.example", () => {
+    expect(gitignore).toMatch(/^\.env$/m);
+    expect(gitignore).toContain("!.env.example");
+  });
 });
 
 describe("headers artifact", () => {
@@ -34,6 +39,11 @@ describe("headers artifact", () => {
 
   it("has Permissions-Policy", () => {
     expect(headers).toContain("Permissions-Policy");
+  });
+
+  it("allows camera=(self) so Android getUserMedia scans work", () => {
+    expect(headers).toContain("camera=(self)");
+    expect(headers).not.toMatch(/camera=\(\)/);
   });
 
   it("has HSTS", () => {
@@ -72,6 +82,8 @@ describe("route shells defined in App.tsx", () => {
     "/cookie-policy",
     "/termini-condizioni",
     "/note-legali",
+    "/prezzi",
+    "/signup",
   ];
 
   for (const route of requiredRoutes) {

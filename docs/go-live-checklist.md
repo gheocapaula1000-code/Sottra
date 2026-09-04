@@ -8,13 +8,35 @@ Severity levels:
 
 ---
 
+## Remaining owner ops (not code-fixable)
+
+These stay unchecked until Paula / Pi.Gi Service sets them in the **Supabase Edge Function secrets** (and Stripe Dashboard). The app is built to degrade safely if they are missing: `billing_active = false` hides payment CTAs, trial still works.
+
+- [ ] `STRIPE_SECRET_KEY` set (live key for production billing)
+- [ ] `STRIPE_WEBHOOK_SECRET` set (signing secret of the live `stripe-webhook` endpoint)
+- [ ] `ALLOWED_ORIGINS` set as comma-separated allowlist. **Must include `https://sottra.app`.** Add Lovable preview origins only when those URLs are in use.
+- [ ] Stripe webhook endpoint points at the deployed `stripe-webhook` function; events include `checkout.session.completed`, `customer.subscription.*`, `invoice.paid`, `invoice.payment_failed`
+- [ ] Confirm live Stripe products/prices still match `src/lib/plans.ts` (Agente €79 / Agenzia €249 / Rete €690, monthly, no VAT / `automatic_tax` off)
+- [ ] After this PR: **rotate** `CORE_API_KEY` (it previously lived in git history as `VITE_CORE_API_KEY`). Optionally rotate the Supabase anon key if the tracked `.env` is treated as a leak. Do not commit replacements.
+
+Exact dashboard steps (no secret values):
+
+1. Supabase → Project → Edge Functions → Secrets: set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ALLOWED_ORIGINS=https://sottra.app` (plus any preview origins).
+2. Stripe Dashboard → Developers → Webhooks → add endpoint `https://<project-ref>.supabase.co/functions/v1/stripe-webhook` → copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
+3. Stripe → Products: three monthly prices, regime forfettario (do not enable Stripe Tax).
+4. Redeploy or restart functions so they pick up secrets.
+5. Sign in as a normal test user → `/app` after trial → paywall shows three plans only if `billing_active` is true (self-test “Verifica accesso” → Billing configurato = sì).
+
+---
+
 ## 🔴 BLOCKER
 
 - [x] `npm run build` succeeds without errors
 - [x] `npm test` — all tests pass
 - [x] `npm run typecheck` — zero type errors
 - [x] No `.env` file in build output (`dist/`)
-- [x] `.env.example` contains only non-secret template keys
+- [x] `.env` is gitignored and **not tracked** (only `.env.example` template)
+- [x] `.env.example` contains only non-secret template keys (server secrets documented as comments)
 - [x] No owner/admin emails in frontend bundle (verified by `verify:secrets`)
 - [x] No hardcoded API keys (`sk_live_`, `sk_test_`, private key PEM) in source
 - [x] `CORE_API_URL` set in edge function secrets
@@ -30,6 +52,7 @@ Severity levels:
 - [x] CSP meta tag / `_headers` restricts `connect-src` to Supabase only
 - [x] RLS enabled on all user-facing tables
 - [x] `building_truth_support` remains `false` — no false precision claims
+- [x] `Permissions-Policy` allows `camera=(self)` and `geolocation=(self)` so scan works
 
 ## 🟠 CRITICAL
 
@@ -38,7 +61,7 @@ Severity levels:
 - [x] `diagnostics` deployed, restricted to admin OR owner (server-side)
 - [x] `record-scan` deployed, owner bypass uses `isOwnerById()` (was `isOwnerEmail()`)
 - [x] `pro-sources` deployed for OMI/POI lookups
-- [x] `create-checkout` deployed, blocks duplicate subscriptions (409), degrades without Stripe
+- [x] `create-checkout` deployed, blocks duplicate subscriptions (409), degrades without Stripe, locale `it`, `automatic_tax` off
 - [x] `customer-portal` deployed, DB-first customer ID lookup, degrades without Stripe
 - [x] `stripe-webhook` deployed, returns 500 on processing failure (enables Stripe retries)
 - [x] All functions have `verify_jwt = false` in config.toml (JWT validated in code)
@@ -53,35 +76,40 @@ Severity levels:
 - [x] Source taxonomy badges match expected values (official, elaborated, partial, unavailable)
 - [x] OMI data labeled as `official_data` only when polygon-matched
 - [x] Primary zone basis ≠ comunale when fine-grained data is available
-- [ ] `STRIPE_SECRET_KEY` set (required for billing — UI auto-detects via `billing_active` flag)
-- [ ] `STRIPE_WEBHOOK_SECRET` set (required for webhook signature verification)
-- [ ] `ALLOWED_ORIGINS` set (comma-separated allowlist for CORS and Stripe return URLs)
+- [ ] `STRIPE_SECRET_KEY` set (required for billing — UI auto-detects via `billing_active` flag) — **owner ops**
+- [ ] `STRIPE_WEBHOOK_SECRET` set (required for webhook signature verification) — **owner ops**
+- [ ] `ALLOWED_ORIGINS` set (comma-separated allowlist for CORS and Stripe return URLs; include `https://sottra.app`) — **owner ops**
 - [x] `COMMERCIAL_BYPASS_EMAILS` set (full user access, no admin)
+- [x] Checkout return (`/app?checkout=success|cancel`) refreshes subscription and shows Italian toasts
+- [x] Privacy / Cookie / Termini / Note legali name GPS, photo, Stripe, core-proxy, forfettario, sottra.app
 
 ## 🟡 IMPORTANT
 
 - [x] `package.json` name is `sottra`, version ≥ 1.0.0
 - [x] `BUILD_VERSION` in `src/lib/buildInfo.ts` is updated
-- [x] Manifest has correct `name`, `short_name`, `start_url: /`, `scope: /`
-- [x] Icons present (192×192, 512×512 minimum)
+- [x] Manifest has correct `name`, `short_name`, `start_url: /`, `scope: /`, `lang: it`, `id`
+- [x] Icons present (192×192, 512×512, maskable, apple-touch 180)
 - [x] `display: standalone`, `orientation: portrait`
 - [x] Service worker registers and caches assets
 - [x] No horizontal overflow on iPhone SE (320px)
 - [x] CTA buttons min-height 48px
 - [x] Safe area insets applied (header, footer, banner)
 - [x] Input font-size ≥ 16px (no iOS zoom)
-- [x] GitHub Actions pipeline: lint → typecheck → test → verify:secrets → build
+- [x] GitHub Actions pipeline: lint → typecheck → test → verify:secrets → build → verify:package
 - [x] Dependabot configured for npm and GitHub Actions
 - [x] `audit:release` script validates full pipeline locally
-- [ ] Lighthouse PWA audit ≥ 90
+- [x] Automated PWA installability checks in `verify:package` (manifest, SW, icons, maskable, apple-touch, camera policy)
+- [ ] Lighthouse PWA audit ≥ 90 on **https://sottra.app** (production HTTPS + real device/Chrome) — structural CI checks pass; numeric Lighthouse score still needs a live URL
 
-## ⚪ IMPROVEMENT
+## ⚪ IMPROVEMENT / device smoke
+
+Automated coverage added for signup copy, pricing alignment, billing degrade, checkout return, legal pages, PWA artifacts, and `.env` hygiene. The following still need a **real phone**:
 
 - [ ] Smoke test: login → scan → report → save flow (on real device)
 - [ ] Verify the bootstrap account has full access (on real device)
 - [ ] Verify PWA installs on Android and iOS
-- [ ] Verify Stripe absence causes no errors or blocked flows
-- [ ] Verify `past_due` users see portal CTA, not scan access
+- [ ] Verify Stripe absence causes no errors or blocked flows (trial still scans) — code-level degrade is covered; confirm on production secrets off/on
+- [ ] Verify `past_due` users see portal CTA, not scan access (with live Stripe)
 
 ## Access Matrix
 
@@ -98,7 +126,7 @@ Severity levels:
 - `STRIPE_WEBHOOK_SECRET`
 - `ALLOWED_ORIGINS`
 
-If any is missing, `billing_active = false` → payment CTAs are hidden/disabled.
+If any is missing, `billing_active = false` → payment CTAs are hidden/disabled. Trial, owner bootstrap, and commercial bypass still work.
 
 ## Edge Function Auth Model (uniform)
 

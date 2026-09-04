@@ -38,10 +38,7 @@ jobs:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: placeholder
           VITE_SUPABASE_PROJECT_ID: placeholder
+          VITE_USE_MOCK: "false"
 
-      - name: Verify build artifacts
-        run: |
-          test -d dist || (echo "❌ dist/ missing" && exit 1)
-          test -f dist/index.html || (echo "❌ index.html missing" && exit 1)
-          test -f dist/manifest.webmanifest || test -f dist/manifest.json || (echo "❌ PWA manifest missing" && exit 1)
-          echo "✅ Build artifacts verified"
+      - name: Verify package
+        run: bash scripts/verify-package.sh
