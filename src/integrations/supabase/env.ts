@@ -140,7 +140,8 @@ export function resolveViteSupabaseConfig(): ResolvedSupabasePublicEnv {
 
 /** True in Vite/Vitest unit tests so placeholders from vitest.config.ts are accepted. */
 export function allowSupabasePlaceholdersAtRuntime(): boolean {
-  return import.meta.env.DEV === true || import.meta.env.MODE === "test";
+  const env = viteEnv();
+  return env.DEV === true || env.MODE === "test";
 }
 
 /**
