@@ -1,8 +1,10 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { parsePlanKey } from "@/lib/pendingCheckout";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -13,7 +15,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!session) {
-    return <Navigate to="/login" replace />;
+    const plan = parsePlanKey(new URLSearchParams(location.search).get("plan"));
+    const next = `${location.pathname}${location.search}`;
+    const params = new URLSearchParams();
+    params.set("next", next);
+    if (plan) params.set("plan", plan);
+    return <Navigate to={`/login?${params.toString()}`} replace />;
   }
 
   return <>{children}</>;

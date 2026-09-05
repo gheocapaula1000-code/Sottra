@@ -11,12 +11,15 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { PRICING_FAQ, faqJsonLd } from "@/lib/pricingFaq";
+import { useAuth } from "@/contexts/AuthContext";
 
 const PAGE_TITLE = "Piani e prezzi — Sottra";
 const PAGE_DESCRIPTION =
   "Listino flat Sottra: Agente 79 €, Agenzia 249 €, Rete 690 € al mese. IVA non applicabile (regime forfettario). Prova 3 giorni, 5 scansioni, zero carta.";
 
 export default function Prezzi() {
+  const { session } = useAuth();
+
   useEffect(() => {
     const prevTitle = document.title;
     document.title = PAGE_TITLE;
@@ -51,12 +54,25 @@ export default function Prezzi() {
             <SottraMark size="md" textOnly />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
-            <Button size="sm" variant="ghost" asChild>
-              <Link to="/login">Accedi</Link>
-            </Button>
-            <Button size="sm" asChild>
-              <Link to="/signup">Prova gratis 3 giorni</Link>
-            </Button>
+            {session ? (
+              <>
+                <Button size="sm" variant="ghost" asChild>
+                  <Link to="/app">Pannello</Link>
+                </Button>
+                <Button size="sm" asChild>
+                  <Link to="/abbonamento">Abbonati</Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button size="sm" variant="ghost" asChild>
+                  <Link to="/login">Accedi</Link>
+                </Button>
+                <Button size="sm" asChild>
+                  <Link to="/signup">Prova gratis 3 giorni</Link>
+                </Button>
+              </>
+            )}
           </div>
         </nav>
       </header>

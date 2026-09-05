@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { getSupabaseBootError } from "@/integrations/supabase/env";
@@ -14,6 +14,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
 import TrialProtectedRoute from "@/components/TrialProtectedRoute";
 import AppDashboardGate from "@/components/AppDashboardGate";
+import PendingCheckoutRunner from "@/components/PendingCheckoutRunner";
 import PwaUpdateBanner from "@/components/PwaUpdateBanner";
 import OfflineBanner from "@/components/OfflineBanner";
 import { BUILD_VERSION } from "@/lib/buildInfo";
@@ -74,6 +75,7 @@ const AdminZoneBoundaries = lazyWithRecovery(() => import("./pages/AdminZoneBoun
 const AdminZoneValue = lazyWithRecovery(() => import("./pages/AdminZoneValue"));
 const AdminZoneOutlook = lazyWithRecovery(() => import("./pages/AdminZoneOutlook"));
 const AdminHouseDifferentiation = lazyWithRecovery(() => import("./pages/AdminHouseDifferentiation"));
+const Abbonamento = lazyWithRecovery(() => import("./pages/Abbonamento"));
 
 const queryClient = new QueryClient();
 
@@ -95,12 +97,18 @@ const App = () => (
               <Toaster />
               <Sonner />
               <BrowserRouter>
+                <PendingCheckoutRunner />
                 <Suspense fallback={<div className="flex min-h-dvh items-center justify-center bg-background"><div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" /></div>}>
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/prezzi" element={<Prezzi />} />
+                    <Route path="/abbonamento" element={<ProtectedRoute><Abbonamento /></ProtectedRoute>} />
+                    <Route path="/subscription" element={<Navigate to="/abbonamento" replace />} />
+                    <Route path="/upgrade" element={<Navigate to="/abbonamento" replace />} />
+                    <Route path="/account" element={<Navigate to="/abbonamento" replace />} />
+                    <Route path="/impostazioni" element={<Navigate to="/abbonamento" replace />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/app" element={<AppDashboardGate />} />

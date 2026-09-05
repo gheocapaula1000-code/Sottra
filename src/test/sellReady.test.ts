@@ -78,7 +78,7 @@ describe("Sell-ready — billing_active gates checkout", () => {
   it("paywall hides Stripe CTAs until billingReady", () => {
     const trial = src("src/components/TrialExpiredScreen.tsx");
     expect(trial).toContain("isBillingReady");
-    expect(trial).toContain("handleCheckout");
+    expect(trial).toContain("startCheckout");
     expect(trial).toContain("APP_BRAND.supportEmail");
     expect(trial).toContain("past_due");
   });
@@ -113,6 +113,24 @@ describe("Sell-ready — commercial surfaces match plans.ts", () => {
     expect(src("src/components/landing/PricingSection.tsx")).toContain('from "@/lib/plans"');
     expect(src("src/pages/Signup.tsx")).toContain("/app");
     expect(src("src/pages/Signup.tsx")).toContain("3 giorni");
+  });
+
+  it("paid checkout is reachable from pricing, app and /abbonamento", () => {
+    const pricing = src("src/components/landing/PricingSection.tsx");
+    expect(pricing).toContain("startCheckout");
+    expect(pricing).toContain("Abbonati");
+    expect(pricing).toContain("Inizia la prova gratuita");
+    expect(src("src/hooks/useStartCheckout.ts")).toContain("price_id");
+    expect(src("src/lib/checkout.ts")).toContain("create-checkout");
+    const dash = src("src/pages/Dashboard.tsx");
+    expect(dash).toContain("Abbonati");
+    expect(dash).toContain("/abbonamento");
+    const app = src("src/App.tsx");
+    expect(app).toContain('path="/abbonamento"');
+    expect(app).toContain('path="/upgrade"');
+    expect(src("src/pages/Abbonamento.tsx")).toContain("startCheckout");
+    expect(src("src/pages/Login.tsx")).toContain("createCheckoutSession");
+    expect(src("src/pages/Signup.tsx")).toContain("emailRedirectTo");
   });
 });
 

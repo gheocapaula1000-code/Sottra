@@ -26,10 +26,12 @@ describe("Landing and scan copy stay honest", () => {
 
   it("trial expired screen uses the same plan catalog", () => {
     const trial = src("src/components/TrialExpiredScreen.tsx");
-    expect(trial).toContain("PLAN_FEATURES");
-    expect(trial).toContain("planScansLabel");
+    const grid = src("src/components/PlanCheckoutGrid.tsx");
+    expect(trial).toContain("PlanCheckoutGrid");
     expect(trial).toContain("isBillingReady");
-    expect(trial).not.toMatch(/80 scansioni/);
+    expect(grid).toContain("PLAN_FEATURES");
+    expect(grid).toContain("planScansLabel");
+    expect(grid).not.toMatch(/80 scansioni/);
   });
 
   it("capture gate does not claim civic/catasto building truth", () => {

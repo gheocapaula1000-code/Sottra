@@ -129,6 +129,16 @@ If the self-test call itself fails, a **client-side fallback** panel is shown in
 - `create-checkout` blocks duplicate subscriptions (409 if `active`/`trialing`/`past_due` exists)
 - `create-checkout` directs `past_due` users to Customer Portal instead of creating new checkout
 - Frontend handles errors gracefully (toast, not crash)
+- The app free trial (`user_trials`, 3 days, no card) is **not** a Stripe `trialing` subscription — trial users may call `create-checkout`
+
+### Selling path (UI)
+
+Checkout is started by `src/lib/checkout.ts` → `create-checkout` with `PLANS[plan].price_id`. Entry points:
+
+- Marketing `/prezzi` (and homepage `PricingSection`): **Abbonati — {piano}** starts Checkout when logged in, or `/signup?plan=` then Checkout after login. **Inizia la prova gratuita** stays card-free.
+- `/app` during trial: **Abbonati** → `/abbonamento` plan picker.
+- After trial: `TrialExpiredScreen` still shows the three plans when `billingReady`.
+- `/abbonamento` (aliases `/upgrade`, `/subscription`, `/account`, `/impostazioni`) is the in-app subscribe page.
 
 ### Edge Function: `record-scan`
 
