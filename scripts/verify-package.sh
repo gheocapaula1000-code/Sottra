@@ -187,6 +187,21 @@ else
   EXIT=1
 fi
 
+MANIFEST_LINKS=$(grep -c 'rel="manifest"' dist/index.html || true)
+if [ "$MANIFEST_LINKS" -eq 1 ]; then
+  log "✅ exactly one rel=manifest link in dist/index.html"
+else
+  log "❌ expected exactly one rel=manifest link in dist/index.html (found ${MANIFEST_LINKS})"
+  EXIT=1
+fi
+
+if grep -q 'rel="apple-touch-icon"' dist/index.html && [ "$(grep -c 'rel="apple-touch-icon"' dist/index.html || true)" -eq 1 ]; then
+  log "✅ exactly one apple-touch-icon link"
+else
+  log "❌ expected exactly one apple-touch-icon link in dist/index.html"
+  EXIT=1
+fi
+
 # ── Headers artifact
 log "── Checking security headers artifact..."
 if [ -f dist/_headers ]; then

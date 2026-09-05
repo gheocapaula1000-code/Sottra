@@ -40,8 +40,9 @@ VITE_USE_MOCK=false              # true per dati dimostrativi in sviluppo
 
 **Lovable Cloud fallback (in source)** — publish has omitted `VITE_*` and shipped a black screen. The client prefers env when present, otherwise uses project `vveunbxfcfhnkkhrqutf` (`https://vveunbxfcfhnkkhrqutf.supabase.co`) plus the publishable anon key. Still set Vite env on publish when possible. Never commit `.env`. CI may use `https://example.supabase.co` for tests (`CI=true`). Explicit production placeholders still fail `vite build` / `verify:package`.
 
-> Le chiavi `CORE_API_URL`, `CORE_API_KEY`, `OWNER_EMAILS` e `STRIPE_SECRET_KEY`
+> Le chiavi `CORE_API_URL`, `CORE_API_KEY` / `AI_CORE_SECRET_SOTTRA`, `ADMIN_BOOTSTRAP_EMAILS` e `STRIPE_SECRET_KEY`
 > sono configurate server-side nelle Edge Function e non devono essere esposte al client.
+> Rotazione Core (leak storico in git history, non nel tree attuale): `docs/core-secret-rotation.md`.
 
 ## Scripts
 ```bash

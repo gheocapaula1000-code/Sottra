@@ -51,6 +51,34 @@ else
   echo "✅ No hardcoded secrets detected"
 fi
 
+# 2b. Core secret must never be client-bundled or assigned as a literal
+echo "── Checking CORE / Vite Core key hygiene..."
+if grep -rE 'VITE_CORE_API_KEY\s*=' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.json' \
+   --include='*.example' --exclude-dir=node_modules --exclude-dir=dist . 2>/dev/null; then
+  echo "❌ BLOCKED: VITE_CORE_API_KEY assignment — Core secret must not be a Vite/public env"
+  EXIT=1
+else
+  echo "✅ No VITE_CORE_API_KEY assignments"
+fi
+
+# Literal CORE_API_KEY / AI_CORE_SECRET = "…" (env.get("CORE_API_KEY") is allowed)
+if grep -rE '(CORE_API_KEY|AI_CORE_SECRET(_SOTTRA)?)\s*=\s*["'\''`][^"'\''`]{8,}' \
+   --include='*.ts' --include='*.tsx' --include='*.js' --include='*.json' \
+   --exclude-dir=node_modules --exclude-dir=dist --exclude='package-lock.json' . 2>/dev/null; then
+  echo "❌ BLOCKED: hardcoded Core secret literal"
+  EXIT=1
+else
+  echo "✅ No hardcoded Core secret literals"
+fi
+
+if grep -rE 'VITE_CORE_API_KEY|CORE_API_KEY|AI_CORE_SECRET' --include='*.ts' --include='*.tsx' \
+   src/ 2>/dev/null | grep -vE 'test/|sessionGuard' | grep -q .; then
+  echo "❌ BLOCKED: Core secret name referenced under src/ (must stay server-side)"
+  EXIT=1
+else
+  echo "✅ Frontend src/ does not reference Core secret names"
+fi
+
 # 3. Verify .env.example has no real values
 echo "── Checking .env.example for real values..."
 if grep -E 'eyJ[a-zA-Z0-9]{20,}' .env.example 2>/dev/null; then

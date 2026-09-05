@@ -36,11 +36,11 @@
 **Diagnosis**:
 1. Check `/admin/diagnostics` for Core health
 2. Check edge function logs for `core-proxy`
-3. Verify `CORE_API_URL` and `AI_CORE_SECRET`
+3. Verify `CORE_API_URL` and the Core secret (`AI_CORE_SECRET_SOTTRA` / `AI_CORE_SECRET` / `CORE_API_KEY`) — see [`docs/core-secret-rotation.md`](./core-secret-rotation.md)
 
 **Resolution**:
 - If Core is down: wait for Central Core recovery
-- If credentials wrong: update secrets in Lovable Cloud
+- If credentials wrong: rotate/update Edge secrets (do not commit the value; do not rewrite git history)
 - If timeout: Core may be overloaded, retry later
 
 ### 3. Trial Credits Not Decrementing (P3)

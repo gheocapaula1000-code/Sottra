@@ -54,6 +54,8 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      // PwaUpdateBanner uses virtual:pwa-register/react — do not also inject a register script.
+      injectRegister: false,
       includeAssets: [
         "icons/icon-192.png",
         "icons/icon-512.png",
@@ -87,6 +89,7 @@ export default defineConfig(({ mode }) => ({
         theme_color: "#0A0A0F",
         background_color: "#0A0A0F",
         display: "standalone",
+        display_override: ["standalone", "minimal-ui"],
         start_url: "/",
         scope: "/",
         orientation: "portrait",

@@ -1,5 +1,5 @@
 /** Build version — bumped on each deploy (YYYY.MM.DD.N) */
-export const BUILD_VERSION = "2026.09.04.3";
+export const BUILD_VERSION = "2026.09.05.1";
 
 /**
  * Sottra — Release Readiness State
@@ -8,7 +8,7 @@ export const BUILD_VERSION = "2026.09.04.3";
  */
 export const READINESS_STATE = {
   ready_for_device_validation: true,
-  last_readiness_check: "2026-09-04",
+  last_readiness_check: "2026-09-05",
   engines_modified: false,
   safety_invariants_verified: true,
   seo_hardened: true,

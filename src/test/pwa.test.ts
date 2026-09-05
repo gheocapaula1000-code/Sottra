@@ -49,5 +49,9 @@ describe("PWA vite config", () => {
     expect(config).toContain("192x192");
     expect(config).toContain("512x512");
     expect(config).toContain('"maskable"');
+    // useRegisterSW in PwaUpdateBanner — no second inject
+    expect(config).toContain("injectRegister: false");
+    expect(config).toContain("display_override");
+    expect(config).toContain("navigateFallback: \"index.html\"");
   });
 });

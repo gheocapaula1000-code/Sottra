@@ -26,7 +26,7 @@
 | Secret | Required | Purpose |
 |--------|----------|---------|
 | `CORE_API_URL` | Yes | Central Core endpoint |
-| `CORE_API_KEY` | Yes | Central Core auth |
+| `CORE_API_KEY` (or `AI_CORE_SECRET_SOTTRA` / `AI_CORE_SECRET`) | Yes | Central Core auth. Rotate if the historical `VITE_CORE_API_KEY` leak is still live — [`docs/core-secret-rotation.md`](./core-secret-rotation.md) |
 | `ADMIN_BOOTSTRAP_EMAILS` | Yes | Owner/admin bootstrap |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Admin DB operations |
 | `COMMERCIAL_BYPASS_EMAILS` | Yes | Commercial access bypass |
