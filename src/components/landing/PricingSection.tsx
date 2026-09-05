@@ -14,11 +14,39 @@ import {
   planUsersLabel,
   type PlanKey,
 } from "@/lib/plans";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useStartCheckout } from "@/hooks/useStartCheckout";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { isBillingReady } from "@/lib/billing";
 
 const planOrder: PlanKey[] = ["agente", "agenzia", "rete"];
 
 export default function PricingSection() {
   const navigate = useNavigate();
+  const { session } = useAuth();
+  const { subscribed, planKey, canManageBilling, isOwner, isAdmin } = useSubscription();
+  const { startCheckout, startTrial, loadingPlan } = useStartCheckout();
+  const { toast } = useToast();
+
+  const loggedIn = Boolean(session);
+  const showTrialCta = !loggedIn;
+  const canOpenPortal = loggedIn && isBillingReady() && canManageBilling && !isAdmin && !isOwner;
+
+  const handlePortal = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) window.location.href = data.url;
+    } catch (e: unknown) {
+      toast({
+        title: "Errore",
+        description: e instanceof Error ? e.message : "Errore sconosciuto",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <section id="pricing" className="px-5 py-20 sm:px-10 lg:px-20">
@@ -44,6 +72,7 @@ export default function PricingSection() {
           {planOrder.map((key) => {
             const plan = PLANS[key];
             const popular = key === PLAN_POPULAR;
+            const isCurrent = subscribed && planKey === key;
             return (
               <Card
                 key={plan.name}
@@ -102,14 +131,59 @@ export default function PricingSection() {
                   ))}
                 </ul>
 
-                <Button
-                  className="mt-5 w-full"
-                  variant={popular ? "default" : "outline"}
-                  size="lg"
-                  onClick={() => navigate("/signup")}
-                >
-                  Inizia la prova gratuita
-                </Button>
+                {isCurrent ? (
+                  <Button
+                    className="mt-5 w-full"
+                    variant={canOpenPortal ? "default" : "outline"}
+                    size="lg"
+                    disabled={!canOpenPortal}
+                    onClick={() => void handlePortal()}
+                  >
+                    {canOpenPortal ? "Gestisci abbonamento" : "Piano attuale"}
+                  </Button>
+                ) : subscribed ? (
+                  <Button
+                    className="mt-5 w-full"
+                    variant="outline"
+                    size="lg"
+                    disabled={!canOpenPortal}
+                    onClick={() => void handlePortal()}
+                  >
+                    {canOpenPortal ? "Cambia piano" : "Piano non selezionato"}
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      className="mt-5 w-full"
+                      variant={popular ? "default" : "outline"}
+                      size="lg"
+                      disabled={loadingPlan !== null}
+                      onClick={() => void startCheckout(key)}
+                    >
+                      {loadingPlan === key ? "Caricamento…" : `Abbonati — ${plan.name}`}
+                    </Button>
+                    {showTrialCta && (
+                      <Button
+                        className="mt-2 w-full"
+                        variant="ghost"
+                        size="lg"
+                        onClick={startTrial}
+                      >
+                        Inizia la prova gratuita
+                      </Button>
+                    )}
+                    {loggedIn && (
+                      <Button
+                        className="mt-2 w-full"
+                        variant="ghost"
+                        size="lg"
+                        onClick={() => navigate("/app")}
+                      >
+                        Continua la prova
+                      </Button>
+                    )}
+                  </>
+                )}
               </Card>
             );
           })}

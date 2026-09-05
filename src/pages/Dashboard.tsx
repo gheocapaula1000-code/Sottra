@@ -67,6 +67,7 @@ const Dashboard = () => {
 
   // Show billing CTA for subscribed users AND past_due users (so they can fix payment)
   const showBillingCta = isBillingReady() && canManageBilling && !isAdmin;
+  const showSubscribeCta = !isOwner && !isAdmin && !displaySubscribed;
 
   const accountLabel = displaySubscribed
     ? cancelAtPeriodEnd ? "In scadenza" : "Abbonamento attivo"
@@ -83,6 +84,12 @@ const Dashboard = () => {
             <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={() => navigate("/admin")}>
               <Shield className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Pannello admin</span>
+            </Button>
+          )}
+          {showSubscribeCta && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-primary" onClick={() => navigate("/abbonamento")}>
+              <CreditCard className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Abbonati</span>
             </Button>
           )}
           {showBillingCta && (
@@ -214,10 +221,24 @@ const Dashboard = () => {
                   </Badge>
                 </div>
                 {displayTrial?.active && !displaySubscribed && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Scansioni</span>
-                    <span className="text-xs font-medium text-foreground">{displayTrial.scans_used}/{displayTrial.max_scans}</span>
-                  </div>
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Scansioni</span>
+                      <span className="text-xs font-medium text-foreground">{displayTrial.scans_used}/{displayTrial.max_scans}</span>
+                    </div>
+                    {showSubscribeCta && (
+                      <Button size="sm" className="w-full min-h-[40px] gap-1.5" onClick={() => navigate("/abbonamento")}>
+                        <CreditCard className="h-3.5 w-3.5" />
+                        Abbonati
+                      </Button>
+                    )}
+                  </>
+                )}
+                {showSubscribeCta && !displayTrial?.active && (
+                  <Button size="sm" className="w-full min-h-[40px] gap-1.5" onClick={() => navigate("/abbonamento")}>
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Abbonati
+                  </Button>
                 )}
                 {displaySubscribed && (
                   <>
@@ -259,6 +280,9 @@ const Dashboard = () => {
                 )}
                 {(isAdmin || isOwner) && (
                   <QuickAction icon={<Activity className="h-4 w-4" />} label="Diagnostica Core" onClick={() => navigate("/admin/diagnostics")} />
+                )}
+                {showSubscribeCta && (
+                  <QuickAction icon={<CreditCard className="h-4 w-4" />} label="Abbonati" onClick={() => navigate("/abbonamento")} />
                 )}
                 {showBillingCta && (
                   <QuickAction icon={<CreditCard className="h-4 w-4" />} label="Gestisci abbonamento" onClick={handleManageSubscription} />

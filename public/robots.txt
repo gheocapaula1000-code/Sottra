@@ -13,6 +13,7 @@ Allow: /
 User-agent: *
 Allow: /
 Disallow: /app
+Disallow: /abbonamento
 Disallow: /admin
 Disallow: /scan
 Disallow: /result

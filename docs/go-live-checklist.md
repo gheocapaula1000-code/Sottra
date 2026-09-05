@@ -27,7 +27,7 @@ Exact Stripe dashboard recap (no secret values) — only if billing must be re-v
 2. Stripe Dashboard → Developers → Webhooks → endpoint `https://<project-ref>.supabase.co/functions/v1/stripe-webhook`.
 3. Stripe → Products: three monthly prices, regime forfettario (do not enable Stripe Tax).
 4. Redeploy or restart functions so they pick up secrets.
-5. Sign in as a normal test user → `/app` after trial → paywall shows three plans only if `billing_active` is true (self-test “Verifica accesso” → Billing configurato = sì).
+5. Sign in as a normal test user → `/app` after trial → paywall **always** shows three Checkout CTAs (Agente/Agenzia/Rete). `supporto@sottra.app` is secondary, not the only action. Self-test “Verifica accesso” still reports whether billing secrets are set.
 
 ---
 
@@ -120,11 +120,19 @@ Automated coverage: signup copy, pricing alignment, billing degrade, checkout re
 
 ### Stripe live checkout (real card — owner only)
 
-1. Use a **non-bypass** account with expired trial (or a fresh signup).
-2. `/app` paywall: three plans €79 / €249 / €690, forfettario, no VAT toggle.
-3. Pay with a real card on Stripe Checkout (`locale=it`).
-4. Return `/?checkout=success` → Italian toast → `canScan` unlocks after webhook (poll up to ~10s).
-5. Customer portal from Dashboard still opens. Cancel path shows “Pagamento annullato”.
+Selling path (no new Stripe products; prices stay 79 / 249 / 690):
+
+1. Logged-out `/prezzi`: each plan shows **Abbonati** (Checkout after login/signup) **and** «Inizia la prova gratuita» → `/signup` without card.
+2. Logged-in trial `/app`: **Abbonati** → `/abbonamento` → `create-checkout` with that plan’s `price_id`. Aliases `/upgrade`, `/subscription`, `/account`, `/impostazioni` redirect here.
+3. After trial ends, `/app` paywall still offers the three plans.
+4. Stop at the Stripe Checkout URL in automated/agent tests. A real card is owner-only.
+
+Owner card confirmation:
+
+1. Use a **non-bypass** account (trial or expired trial).
+2. Open Checkout for Agente/Agenzia/Rete (`locale=it`).
+3. Return `/app?checkout=success` → Italian toast → `canScan` unlocks after webhook (poll up to ~10s).
+4. Customer portal from Dashboard still opens. Cancel path shows “Pagamento annullato”.
 
 ### Other live checks
 

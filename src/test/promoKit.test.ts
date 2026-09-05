@@ -101,7 +101,7 @@ describe("Promo / SEO / OG kit", () => {
     expect(src("public/sitemap.xml")).toContain("https://sottra.app/prezzi");
     const robots = src("public/robots.txt");
     expect(robots).toContain("Sitemap: https://sottra.app/sitemap.xml");
-    for (const p of ["/app", "/admin", "/scan", "/result", "/history", "/territorial-report"]) {
+    for (const p of ["/app", "/abbonamento", "/admin", "/scan", "/result", "/history", "/territorial-report"]) {
       expect(robots).toContain(`Disallow: ${p}`);
     }
   });
