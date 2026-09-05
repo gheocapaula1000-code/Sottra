@@ -28,7 +28,7 @@ describe("Landing and scan copy stay honest", () => {
     const trial = src("src/components/TrialExpiredScreen.tsx");
     const grid = src("src/components/PlanCheckoutGrid.tsx");
     expect(trial).toContain("PlanCheckoutGrid");
-    expect(trial).toContain("isBillingReady");
+    expect(trial).toContain("startCheckout");
     expect(grid).toContain("PLAN_FEATURES");
     expect(grid).toContain("planScansLabel");
     expect(grid).not.toMatch(/80 scansioni/);

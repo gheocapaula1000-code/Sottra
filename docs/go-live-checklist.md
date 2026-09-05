@@ -27,7 +27,7 @@ Exact Stripe dashboard recap (no secret values) — only if billing must be re-v
 2. Stripe Dashboard → Developers → Webhooks → endpoint `https://<project-ref>.supabase.co/functions/v1/stripe-webhook`.
 3. Stripe → Products: three monthly prices, regime forfettario (do not enable Stripe Tax).
 4. Redeploy or restart functions so they pick up secrets.
-5. Sign in as a normal test user → `/app` after trial → paywall shows three plans only if `billing_active` is true (self-test “Verifica accesso” → Billing configurato = sì).
+5. Sign in as a normal test user → `/app` after trial → paywall **always** shows three Checkout CTAs (Agente/Agenzia/Rete). `supporto@sottra.app` is secondary, not the only action. Self-test “Verifica accesso” still reports whether billing secrets are set.
 
 ---
 

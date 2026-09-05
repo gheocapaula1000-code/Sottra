@@ -75,12 +75,16 @@ describe("Sell-ready — billing_active gates checkout", () => {
     expect(src("supabase/functions/customer-portal/index.ts")).toContain("status: 503");
   });
 
-  it("paywall hides Stripe CTAs until billingReady", () => {
+  it("expired-trial paywall always offers Checkout; supporto is secondary", () => {
     const trial = src("src/components/TrialExpiredScreen.tsx");
-    expect(trial).toContain("isBillingReady");
     expect(trial).toContain("startCheckout");
+    expect(trial).toContain("PlanCheckoutGrid");
+    expect(trial).toContain("Abbonati a");
     expect(trial).toContain("APP_BRAND.supportEmail");
     expect(trial).toContain("past_due");
+    expect(trial).not.toContain("isBillingReady");
+    expect(trial).not.toMatch(/Per attivare un piano, contattaci/);
+    expect(trial).not.toMatch(/billingReady && \(/);
   });
 
   it("client billing defaults off", () => {

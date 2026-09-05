@@ -85,5 +85,5 @@ curl -s https://<project>.supabase.co/functions/v1/check-subscription \
 | Trial not created | `handle_new_user_trial` trigger missing | Check trigger; `check-subscription` auto-creates | ✅ Resilience fallback |
 | Core proxy 503 | `CORE_API_URL` or `CORE_API_KEY` missing | Update secrets in Lovable Cloud | ✅ Graceful 503 response |
 | Owner bypass not working | `isOwnerEmail()` used instead of `isOwnerById()` | Fixed: all functions now use table-based check | ✅ Fixed |
-| Stripe checkout fails | `STRIPE_SECRET_KEY` missing | `isBillingActive()` returns false, CTA hidden | ✅ Graceful degradation |
+| Stripe checkout fails | `STRIPE_SECRET_KEY` missing | `isBillingActive()` returns 503; paywall still shows plan CTAs and toasts | ✅ Graceful degradation |
 | Chunk load error after deploy | Stale SW cache | `recoverFromChunkError()` clears cache + reloads | ✅ Automated recovery |

@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CreditCard } from "lucide-react";
-import { VAT_NOTICE } from "@/lib/plans";
-import { isBillingReady } from "@/lib/billing";
+import { PLANS, VAT_NOTICE } from "@/lib/plans";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +19,6 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
   const { toast } = useToast();
   const { startCheckout, loadingPlan } = useStartCheckout();
 
-  const billingReady = isBillingReady();
   const isPastDue = subscriptionStatus === "past_due";
 
   const handleManageSubscription = async () => {
@@ -53,34 +51,31 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
           ) : (
             <>
               Hai utilizzato <strong className="text-foreground">{scansUsed} scansioni</strong> durante i 3 giorni di prova.
-              {billingReady
-                ? " Per continuare a utilizzare Sottra, scegli il piano più adatto."
-                : ` Per attivare un piano, contattaci a ${APP_BRAND.supportEmail}.`}
+              {" "}Per continuare, abbonati ad Agente, Agenzia o Rete. Il checkout Stripe si apre in una pagina sicura.
             </>
           )}
         </p>
 
-        {isPastDue && canManageBilling && billingReady && (
-          <div className="mt-8">
-            <Button
-              size="lg"
-              className="gap-2"
-              onClick={handleManageSubscription}
-              disabled={loadingPortal}
-            >
-              <CreditCard className="h-4 w-4" />
-              {loadingPortal ? "Caricamento…" : "Gestisci abbonamento"}
-            </Button>
+        {isPastDue && (
+          <div className="mt-8 space-y-4">
+            {canManageBilling && (
+              <Button
+                size="lg"
+                className="gap-2"
+                onClick={handleManageSubscription}
+                disabled={loadingPortal}
+              >
+                <CreditCard className="h-4 w-4" />
+                {loadingPortal ? "Caricamento…" : "Gestisci abbonamento"}
+              </Button>
+            )}
+            <p className="text-sm text-muted-foreground">
+              Se il portale non si apre, scrivi a{" "}
+              <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary underline">
+                {APP_BRAND.supportEmail}
+              </a>
+            </p>
           </div>
-        )}
-
-        {isPastDue && !billingReady && (
-          <p className="mt-6 text-sm text-muted-foreground">
-            Per sbloccare l'account scrivi a{" "}
-            <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary underline">
-              {APP_BRAND.supportEmail}
-            </a>
-          </p>
         )}
 
         {!isPastDue && (
@@ -88,13 +83,18 @@ export const TrialExpiredScreen = ({ scansUsed, canManageBilling, subscriptionSt
             <p className="mt-2 text-xs text-muted-foreground">
               Nessun dato bancario è stato richiesto durante la prova · Paghi solo se decidi di proseguire
             </p>
-
-            {billingReady && (
-              <>
-                <p className="mt-6 text-xs text-muted-foreground">{VAT_NOTICE}</p>
-                <PlanCheckoutGrid onCheckout={startCheckout} loadingPlan={loadingPlan} />
-              </>
-            )}
+            <p className="mt-6 text-xs text-muted-foreground">{VAT_NOTICE}</p>
+            <PlanCheckoutGrid
+              onCheckout={startCheckout}
+              loadingPlan={loadingPlan}
+              ctaLabel={(key) => `Abbonati a ${PLANS[key].name}`}
+            />
+            <p className="mt-8 text-sm text-muted-foreground">
+              Serve aiuto?{" "}
+              <a href={`mailto:${APP_BRAND.supportEmail}`} className="text-primary underline">
+                {APP_BRAND.supportEmail}
+              </a>
+            </p>
           </>
         )}
       </div>

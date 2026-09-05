@@ -10,7 +10,9 @@
  *   - ALLOWED_ORIGINS          (Edge Functions secret — comma-separated allowlist)
  *
  * Until the first successful check-subscription response, billing defaults
- * to NOT ready — no broken CTAs will ever appear.
+ * to NOT ready. Portal / "Gestisci abbonamento" CTAs may stay hidden.
+ * Expired-trial Checkout CTAs must still render — the edge function is
+ * the source of truth and toasts if Stripe is actually down.
  *
  * Transient error handling:
  *   - First-boot errors (no prior state): billingReady is set to false,
@@ -21,8 +23,8 @@
  *     stale=true.
  *
  * Hard-disabled billing (billing_active=false from a successful response):
- *   - billingReady is set to false — CTAs are hidden because the backend
- *     confirmed Stripe is not configured.
+ *   - billingReady is set to false — manage-portal CTAs may hide.
+ *   - Do not hide Agente/Agenzia/Rete Checkout on TrialExpiredScreen.
  */
 
 /** Runtime billing-ready flag — set by SubscriptionContext after check-subscription responds. */

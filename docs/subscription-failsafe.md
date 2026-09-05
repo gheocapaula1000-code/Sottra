@@ -137,7 +137,7 @@ Checkout is started by `src/lib/checkout.ts` → `create-checkout` with `PLANS[p
 
 - Marketing `/prezzi` (and homepage `PricingSection`): **Abbonati — {piano}** starts Checkout when logged in, or `/signup?plan=` then Checkout after login. **Inizia la prova gratuita** stays card-free.
 - `/app` during trial: **Abbonati** → `/abbonamento` plan picker.
-- After trial: `TrialExpiredScreen` still shows the three plans when `billingReady`.
+- After trial / entitlement blocked: `TrialExpiredScreen` **always** shows Abbonati Checkout CTAs for Agente/Agenzia/Rete. `supporto@sottra.app` is secondary. `billingReady` must not hide the selling path.
 - `/abbonamento` (aliases `/upgrade`, `/subscription`, `/account`, `/impostazioni`) is the in-app subscribe page.
 
 ### Edge Function: `record-scan`
@@ -176,8 +176,8 @@ Checkout is started by `src/lib/checkout.ts` → `create-checkout` with `PLANS[p
   - `ALLOWED_ORIGINS`
 - **Client-side** (`src/lib/billing.ts`): Runtime flag set by `SubscriptionContext` from `billing_active` response field.
   - **Successful response with `billing_active=true`**: `billingReady` set to `true`
-  - **Successful response with `billing_active=false`** (hard-disabled): `billingReady` set to `false` — CTAs hidden
-  - **First-boot transient error** (no prior state): `billingReady` set to `false` — no CTAs shown
+  - **Successful response with `billing_active=false`** (hard-disabled): `billingReady` set to `false` — portal/manage CTAs may hide; **expired-trial Checkout CTAs stay visible** (invoke toasts if Stripe is actually down)
+  - **First-boot transient error** (no prior state): `billingReady` set to `false` — retry UI, not paywall
   - **Subsequent transient error** (prior valid state exists): `billingReady` **preserved** — portal CTAs remain visible so past_due users can still manage their subscription
 
 ### Trial Independence
