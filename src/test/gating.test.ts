@@ -1,10 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { AUTH_ERROR_CODES, isAuthErrorCode } from "@/lib/sessionGuard";
 
 // These tests validate the gating logic without rendering React components,
 // by testing the decision rules that TrialProtectedRoute / AppDashboardGate use.
-
-/** Auth error codes from check-subscription that should trigger local signout, not bootFailed. */
-const AUTH_ERROR_CODES = new Set(["auth_missing", "auth_empty", "auth_invalid", "auth_exception"]);
 
 describe("Screen gating logic", () => {
   describe("canScan derivation", () => {
@@ -76,7 +74,7 @@ describe("SubscriptionContext parsePayload safety", () => {
 
 describe("Auth error vs transient error classification", () => {
   function classifyError(code: string): "auth" | "transient" {
-    return AUTH_ERROR_CODES.has(code) ? "auth" : "transient";
+    return isAuthErrorCode(code) ? "auth" : "transient";
   }
 
   it("auth_invalid → auth error (signout + redirect)", () => {

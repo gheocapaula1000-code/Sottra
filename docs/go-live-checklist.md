@@ -10,19 +10,21 @@ Severity levels:
 
 ## Remaining owner ops (not code-fixable)
 
-These stay unchecked until Paula / Pi.Gi Service sets them in the **Supabase Edge Function secrets** (and Stripe Dashboard). The app is built to degrade safely if they are missing: `billing_active = false` hides payment CTAs, trial still works.
+Stripe live secrets, webhook, prices, and `sottra.app` deploy were completed in prior owner ops (PRs #42–#44 era). This agent did **not** re-open the Stripe Dashboard. Re-check only if billing CTAs disappear (`billing_active = false`).
 
-- [ ] `STRIPE_SECRET_KEY` set (live key for production billing)
-- [ ] `STRIPE_WEBHOOK_SECRET` set (signing secret of the live `stripe-webhook` endpoint)
-- [ ] `ALLOWED_ORIGINS` set as comma-separated allowlist. **Must include `https://sottra.app`.** Add Lovable preview origins only when those URLs are in use.
-- [ ] Stripe webhook endpoint points at the deployed `stripe-webhook` function; events include `checkout.session.completed`, `customer.subscription.*`, `invoice.paid`, `invoice.payment_failed`
-- [ ] Confirm live Stripe products/prices still match `src/lib/plans.ts` (Agente €79 / Agenzia €249 / Rete €690, monthly, no VAT / `automatic_tax` off)
-- [ ] After this PR: **rotate** `CORE_API_KEY` (it previously lived in git history as `VITE_CORE_API_KEY`). Optionally rotate the Supabase anon key if the tracked `.env` is treated as a leak. Do not commit replacements.
+- [x] `STRIPE_SECRET_KEY` set (live key for production billing) — owner ops, prior release
+- [x] `STRIPE_WEBHOOK_SECRET` set (signing secret of the live `stripe-webhook` endpoint) — owner ops, prior release
+- [x] `ALLOWED_ORIGINS` includes `https://sottra.app` — owner ops, prior release
+- [x] Stripe webhook endpoint points at the deployed `stripe-webhook` function; events include `checkout.session.completed`, `customer.subscription.*`, `invoice.paid`, `invoice.payment_failed` — owner ops, prior release
+- [x] Live Stripe products/prices match `src/lib/plans.ts` (Agente €79 / Agenzia €249 / Rete €690, monthly, no VAT / `automatic_tax` off) — owner ops, prior release
+- [ ] **Rotate** Core secret — still required. The value previously lived in **old git history** as `VITE_CORE_API_KEY` (and a tracked `.env`). It is **not** in current tracked source. Do not rewrite history. Steps: [`docs/core-secret-rotation.md`](./core-secret-rotation.md). Optionally rotate the Supabase anon key if the old tracked `.env` is treated as a leak. Do not commit replacements.
 
-Exact dashboard steps (no secret values):
+`user_hold`: no references in this repo (no Lovable dashboard queue wiring). Do not invent Cloud UI clicks.
 
-1. Supabase → Project → Edge Functions → Secrets: set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ALLOWED_ORIGINS=https://sottra.app` (plus any preview origins).
-2. Stripe Dashboard → Developers → Webhooks → add endpoint `https://<project-ref>.supabase.co/functions/v1/stripe-webhook` → copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
+Exact Stripe dashboard recap (no secret values) — only if billing must be re-verified:
+
+1. Supabase → Project → Edge Functions → Secrets: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ALLOWED_ORIGINS=https://sottra.app` (plus any preview origins).
+2. Stripe Dashboard → Developers → Webhooks → endpoint `https://<project-ref>.supabase.co/functions/v1/stripe-webhook`.
 3. Stripe → Products: three monthly prices, regime forfettario (do not enable Stripe Tax).
 4. Redeploy or restart functions so they pick up secrets.
 5. Sign in as a normal test user → `/app` after trial → paywall shows three plans only if `billing_active` is true (self-test “Verifica accesso” → Billing configurato = sì).
@@ -77,9 +79,9 @@ Exact dashboard steps (no secret values):
 - [x] Source taxonomy badges match expected values (official, elaborated, partial, unavailable)
 - [x] OMI data labeled as `official_data` only when polygon-matched
 - [x] Primary zone basis ≠ comunale when fine-grained data is available
-- [ ] `STRIPE_SECRET_KEY` set (required for billing — UI auto-detects via `billing_active` flag) — **owner ops**
-- [ ] `STRIPE_WEBHOOK_SECRET` set (required for webhook signature verification) — **owner ops**
-- [ ] `ALLOWED_ORIGINS` set (comma-separated allowlist for CORS and Stripe return URLs; include `https://sottra.app`) — **owner ops**
+- [x] `STRIPE_SECRET_KEY` set (required for billing — UI auto-detects via `billing_active` flag) — **owner ops, prior release**
+- [x] `STRIPE_WEBHOOK_SECRET` set (required for webhook signature verification) — **owner ops, prior release**
+- [x] `ALLOWED_ORIGINS` set (comma-separated allowlist for CORS and Stripe return URLs; include `https://sottra.app`) — **owner ops, prior release**
 - [x] `COMMERCIAL_BYPASS_EMAILS` set (full user access, no admin)
 - [x] Checkout return (`/app?checkout=success|cancel`) refreshes subscription and shows Italian toasts
 - [x] Privacy / Cookie / Termini / Note legali name GPS, photo, Stripe, core-proxy, forfettario, sottra.app
@@ -99,18 +101,38 @@ Exact dashboard steps (no secret values):
 - [x] GitHub Actions pipeline: lint → typecheck → test → verify:secrets → build → verify:package
 - [x] Dependabot configured for npm and GitHub Actions
 - [x] `audit:release` script validates full pipeline locally
-- [x] Automated PWA installability checks in `verify:package` (manifest, SW, icons, maskable, apple-touch, camera policy)
-- [ ] Lighthouse PWA audit ≥ 90 on **https://sottra.app** (production HTTPS + real device/Chrome) — structural CI checks pass; numeric Lighthouse score still needs a live URL
+- [x] Automated PWA installability checks in `verify:package` (manifest, SW, icons, maskable, apple-touch, single manifest link, camera policy)
+- [x] PWA installability artifacts on **https://sottra.app** (HTTPS, `manifest.webmanifest`, `sw.js`, 192/512 + maskable + apple-touch 180) — code/CI. Lighthouse 12+ no longer ships a numeric PWA category; do not block on “PWA ≥ 90”.
+- [ ] Optional: Chrome DevTools → Application → Manifest installability on a real device after the next Lovable publish (confirms this PR’s single manifest link + `injectRegister: false`)
 
-## ⚪ IMPROVEMENT / device smoke
+## ⚪ IMPROVEMENT / device smoke (manual only)
 
-Automated coverage added for signup copy, pricing alignment, billing degrade, checkout return, legal pages, PWA artifacts, and `.env` hygiene. The following still need a **real phone**:
+Automated coverage: signup copy, pricing alignment, billing degrade, checkout return, legal pages, PWA artifacts, `.env` / Core-secret hygiene, auth session hydration, entitlement fail-closed. The following still need a **human + real phone / live Stripe**. Do not invent results here.
 
-- [ ] Smoke test: login → scan → report → save flow (on real device)
-- [ ] Verify the bootstrap account has full access (on real device)
-- [ ] Verify PWA installs on Android and iOS
-- [ ] Verify Stripe absence causes no errors or blocked flows (trial still scans) — code-level degrade is covered; confirm on production secrets off/on
-- [ ] Verify `past_due` users see portal CTA, not scan access (with live Stripe)
+### Device smoke — login → scan → report → share
+
+1. Install PWA or open `https://sottra.app` on a real Android and a real iPhone.
+2. Sign in (bootstrap owner + one trial user).
+3. `/scan`: allow camera + GPS → take a facade photo → wait for report.
+4. Confirm OMI / zone sections that have data; empty sections stay omitted.
+5. Result header: **Invia il report** opens the native share sheet (not a dead button).
+6. Save / history: the scan appears after reload.
+
+### Stripe live checkout (real card — owner only)
+
+1. Use a **non-bypass** account with expired trial (or a fresh signup).
+2. `/app` paywall: three plans €79 / €249 / €690, forfettario, no VAT toggle.
+3. Pay with a real card on Stripe Checkout (`locale=it`).
+4. Return `/?checkout=success` → Italian toast → `canScan` unlocks after webhook (poll up to ~10s).
+5. Customer portal from Dashboard still opens. Cancel path shows “Pagamento annullato”.
+
+### Other live checks
+
+- [ ] Device smoke above (Android + iPhone)
+- [ ] Bootstrap account has full access including `/admin/diagnostics`
+- [ ] PWA “Add to Home Screen” on Android Chrome and iOS Safari
+- [ ] `past_due` (live Stripe): portal CTA visible, scan blocked
+- [ ] After Core rotation: one successful scan (see `docs/core-secret-rotation.md`)
 
 ## Access Matrix
 

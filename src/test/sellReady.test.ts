@@ -32,6 +32,8 @@ describe("Sell-ready — secrets stay out of git and the frontend", () => {
     expect(script).toContain("Lovable-managed");
     expect(script).toContain("never commit");
     expect(script).not.toContain("must stay gitignored; never commit");
+    expect(script).toContain("VITE_CORE_API_KEY");
+    expect(script).toContain("hardcoded Core secret literal");
   });
 
   it("CI and Vitest supply publishable Vite placeholders without a tracked .env", () => {

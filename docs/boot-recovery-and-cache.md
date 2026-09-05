@@ -28,6 +28,7 @@ Called in `main.tsx` after successful render. Clears the reload guard so future 
 ## Service Worker Strategy
 
 - **Register type**: `autoUpdate` — new SW activates immediately with `skipWaiting` + `clientsClaim`
+- **Single register path**: `injectRegister: false` — only `PwaUpdateBanner` / `useRegisterSW` registers the worker (avoids a double inject + duplicate `<link rel="manifest">`)
 - **Poll interval**: 30s via `PwaUpdateBanner`
 - **Error budget**: Polling stops after 3 consecutive update check errors to prevent loops
 - **Cache cleanup**: `cleanupOutdatedCaches: true` removes old workbox caches

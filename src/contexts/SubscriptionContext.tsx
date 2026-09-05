@@ -5,9 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getPlanByProductId, getPlanByPriceId, PlanKey } from "@/lib/plans";
 import { setBillingReady } from "@/lib/billing";
 import { useToast } from "@/hooks/use-toast";
-
-/** Error codes from check-subscription that indicate an auth problem (not transient). */
-const AUTH_ERROR_CODES = new Set(["auth_missing", "auth_empty", "auth_invalid", "auth_exception"]);
+import { deriveEntitlementFlags, isAuthErrorCode, sessionNeedsReauth } from "@/lib/sessionGuard";
 
 interface TrialInfo {
   active: boolean;
@@ -188,17 +186,15 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       // Ignore and fallback to context session
     }
 
-    const expiresAt = activeSession.expires_at;
-    if (expiresAt && expiresAt * 1000 < Date.now()) {
-      console.warn("[Subscription] session expired, skipping");
+    if (sessionNeedsReauth(activeSession)) {
+      console.warn("[Subscription] session expired or token missing — signing out locally");
+      await supabase.auth.signOut({ scope: "local" });
       resetToDefaults();
-      return;
-    }
-
-    const accessToken = activeSession.access_token;
-    if (!accessToken) {
-      console.warn("[Subscription] missing access token, skipping");
-      resetToDefaults();
+      toast({
+        title: "Sessione scaduta",
+        description: "Sessione scaduta o non valida, accedi di nuovo.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -245,7 +241,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       // If response has error AND ok=false, it's a real error
       if (bodyError && !bodyOk) {
         // Auth errors → invalidate local session, redirect to login
-        if (AUTH_ERROR_CODES.has(errorCode)) {
+        if (isAuthErrorCode(errorCode)) {
           console.warn("[Subscription] auth error — signing out locally:", errorCode, bodyError);
           await supabase.auth.signOut({ scope: "local" });
           resetToDefaults();
@@ -344,10 +340,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [refresh, toast]);
 
-  // canScan: only active/trialing subscriptions or active trial
-  const canScan = isOwner || isAdmin || subscribed || (trial?.active ?? false);
-  // canManageBilling: also includes past_due (so user can fix payment)
-  const canManageBilling = isOwner || isAdmin || subscribed || subscriptionStatus === "past_due";
+  const { canScan, canManageBilling } = deriveEntitlementFlags({
+    isOwner,
+    isAdmin,
+    subscribed,
+    trialActive: trial?.active ?? false,
+    subscriptionStatus,
+  });
 
   return (
     <SubscriptionContext.Provider value={{
