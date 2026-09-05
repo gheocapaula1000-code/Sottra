@@ -82,7 +82,7 @@ describe("index.html PWA meta tags", () => {
   });
 
   it("does not hardcode a second manifest or 192 apple-touch (plugin injects one manifest)", () => {
-    expect(html).not.toContain('rel="manifest"');
+    expect(html).not.toMatch(/<link[^>]+rel="manifest"/);
     expect((html.match(/rel="apple-touch-icon"/g) || []).length).toBe(1);
     expect(html).toContain("/icons/apple-touch-icon.png");
   });
